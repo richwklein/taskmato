@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: '/'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 20
+  - package-ecosystem: npm
+    directory: '/'
+    groups:
+      react:
+        patterns:
+          - 'react'
+          - 'react-*'
+          - '@react/*'
+      eslint:
+        patterns:
+          - 'eslint'
+          - 'eslint-*'
+          - '@eslint/*'
+          - 'typescript-eslint'
+          - '@typescript-eslint/*'
+      prettier:
+        patterns:
+          - 'prettier'
+          - 'prettier-*'
+      vitest:
+        patterns:
+          - 'vitest'
+          - 'vitest-*'
+          - '@vitest/*'
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 20

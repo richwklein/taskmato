@@ -1,0 +1,30 @@
+name: 'Format and Lint'
+on:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Checkout source code'
+        uses: actions/checkout@v4
+
+      - name: 'Delete package-lock.json'
+        run: rm -f package-lock.json
+
+      - name: 'Setup Node.js environment'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.tool-versions'
+
+      - name: 'Install dependencies'
+        run: npm install
+
+      - name: 'Check formatting'
+        if: always()
+        run: npm run format:check
+
+      - name: 'Check lint'
+        if: always()
+        run: npm run lint:check

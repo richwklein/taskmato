@@ -1,0 +1,29 @@
+{
+  "files.exclude": {
+    ".git/": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true
+  },
+  "editor.tabCompletion": "on",
+  "editor.rulers": [80, 100, 120],
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 120,
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.configPath": "prettier.config.mjs",
+  "prettier.documentSelectors": [
+    "**/*.{js,mjs,cjs,jsx,ts,tsx,jsonc,md,mdx,astro}"
+  ],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  },
+  "eslint.format.enable": false,
+  "eslint.lintTask.enable": true,
+  "cSpell.words": ["pomodoro", "tsconfigs", "vitest"],
+  "[markdown]": {
+    "editor.wordWrap": "wordWrapColumn"
+  }
+}
