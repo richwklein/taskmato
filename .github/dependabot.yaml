@@ -28,6 +28,15 @@ updates:
         patterns:
           - 'prettier'
           - 'prettier-*'
+          - '@prettier/*'
+      typescript:
+        patterns:
+          - 'typescript'
+          - 'typescript-eslint'
+          - '@typescript-eslint/*'
+          - '@types/*'
+          - 'tslib'
+          - 'ts-node'
       vitest:
         patterns:
           - 'vitest'

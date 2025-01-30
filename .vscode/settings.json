@@ -14,16 +14,14 @@
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "prettier.configPath": "prettier.config.mjs",
-  "prettier.documentSelectors": [
-    "**/*.{js,mjs,cjs,jsx,ts,tsx,jsonc,md,mdx,astro}"
-  ],
+  "prettier.documentSelectors": ["**/*.{js,mjs,cjs,jsx,ts,tsx,jsonc,md,mdx,astro}"],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "always"
   },
   "eslint.format.enable": false,
   "eslint.lintTask.enable": true,
-  "cSpell.words": ["pomodoro", "tsconfigs", "vitest"],
   "[markdown]": {
     "editor.wordWrap": "wordWrapColumn"
-  }
+  },
+  "cSpell.words": ["taskmato", "pomodoro", "tsconfigs", "vitest"]
 }
