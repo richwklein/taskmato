@@ -3,6 +3,7 @@ import path from 'path'
 import { defineConfig } from 'vite'
 
 export const alias = {
+  '@features': path.resolve(__dirname, 'src/features'),
   '@components': path.resolve(__dirname, 'src/components'),
   '@context': path.resolve(__dirname, 'src/context'),
   '@hooks': path.resolve(__dirname, 'src/hooks'),
