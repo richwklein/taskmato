@@ -5,7 +5,7 @@ import axios from 'axios'
 
 const SYNC_API_URL = 'https://api.todoist.com/sync/v9/sync'
 const FULL_SYNC_TOKEN = '*'
-const RESOURCE_TYPES = ['projects', 'sections', 'items', 'labels']
+const RESOURCE_TYPES = ['projects', 'sections', 'items', 'labels', 'days_orders']
 
 interface ISyncService {
   sync(data: SyncData): Promise<SyncData>
@@ -21,7 +21,7 @@ export class SyncService implements ISyncService {
   private static instance: SyncService
   private apiKey: string
 
-  constructor(apiKey: string = 'cb90df985a02e927072e89a108ac6b3ba35f5ed8') {
+  constructor(apiKey: string = 'ec0ab5c5a2104a9350e0f7ac5f22a4d73687ba71') {
     // TODO get apiKey from settings
     this.apiKey = apiKey
   }
@@ -146,8 +146,8 @@ const buildTasks = (
       content: value.content,
       description: value.description,
       labels: getLabelsByIds(value.labels, labels),
-      due: value.due?.datetime ? new Date(value.due.datetime) : null,
-      deadline: value.deadline?.datetime ? new Date(value.deadline.datetime) : null,
+      due: value.due?.date ? new Date(value.due.date) : null,
+      deadline: value.deadline?.date ? new Date(value.deadline.date) : null,
       isCompleted: value.checked,
       parentId: value.parent_id,
       projectId: value.project_id,

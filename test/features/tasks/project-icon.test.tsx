@@ -1,4 +1,4 @@
-import { ProjectIcon } from '@features/projects/project-icon'
+import { ProjectIcon } from '@features/tasks/project-icon'
 import { render, screen } from '@testing-library/react'
 import { ProjectType } from '@types'
 import { describe, expect, it } from 'vitest'

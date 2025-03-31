@@ -1,4 +1,4 @@
-import { ProjectIcon } from '@features/projects'
+import { ProjectIcon } from '@features/tasks'
 import {
   Box,
   Divider,
@@ -34,6 +34,8 @@ interface ProjectSelectProps {
  * @returns The rendered ProjectSelect component.
  */
 export function ProjectSelect({ disable, projects, selectedId, onSelect, sx }: ProjectSelectProps) {
+  // TODO do not depend on the projects sort order
+
   const handleChange = (event: SelectChangeEvent<string>) => {
     onSelect(event.target.value as string)
   }

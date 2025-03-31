@@ -21,7 +21,10 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.0",
     "@mui/material": "^6.4.0",
+    "@preact/signals-core": "^1.8.0",
+    "@preact/signals-react": "^3.0.1",
     "axios": "^1.7.9",
+    "mui-markdown": "^1.2.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.3"

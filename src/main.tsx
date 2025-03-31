@@ -1,9 +1,13 @@
-import { CssBaseline } from "@mui/material";
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import '@styles/main.css'
 
-createRoot(document.getElementById("root")!).render(
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+
+import Taskmato from './Taskmato'
+
+const root = createRoot(document.getElementById('root')!)
+root.render(
   <StrictMode>
-    <CssBaseline />
-  </StrictMode>,
-);
+    <Taskmato />
+  </StrictMode>
+)
