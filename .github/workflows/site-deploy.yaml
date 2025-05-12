@@ -1,31 +1,28 @@
-name: 'Format and Lint'
-on:
-  pull_request:
+name: Deploy site
+
+on: [push]
 
 jobs:
-  lint:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: 'Checkout source code'
         uses: actions/checkout@v4
 
-      - name: 'Setup Node.js environment'
+      - name: 'Setup NodeJS'
         uses: actions/setup-node@v4
         with:
           node-version-file: '.tool-versions'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: 'Install pnpm'
         run: corepack enable
 
+      - name: 'Install Netlify'
+        run: pnpm add netlify-cli@17.10.1 -g
+
       - name: 'Install Dependencies'
         run: pnpm install --frozen-lockfile
 
-      - name: 'Check formatting'
-        if: always()
-        run: pnpm format:check
-
-      - name: 'Check lint'
-        if: always()
-        run: pnpm lint:check
+      - name: 'Build project'
+        run: pnpm build
