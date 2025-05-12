@@ -1,10 +1,13 @@
-name: Format and Lint
+name: Test
 on:
   pull_request:
 
 jobs:
-  lint:
+  test:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout source code
@@ -25,10 +28,12 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check formatting
-        if: always()
-        run: pnpm format:check
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
 
-      - name: Check lint
+      - name: Upload coverage report
         if: always()
-        run: pnpm lint:check
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
