@@ -2,30 +2,61 @@ name: Deploy site
 
 on: [push]
 
+env:
+  BRANCH_NAME: ${{ github.ref_name }}
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout source code'
+      - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: 'Setup pnpm'
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4.1.0
         with:
           version: 10.10.0 # Keep this in sync with the version in .tool-versions
           run_install: false
 
-      - name: 'Setup NodeJS'
+      - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.tool-versions'
-          cache: 'pnpm'
+          node-version-file: .tool-versions
+          cache: pnpm
 
-      - name: 'Install Netlify'
+      - name: Install Netlify
         run: pnpm add netlify-cli@17.10.1 -g
 
-      - name: 'Install Dependencies'
+      - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 'Build project'
+      - name: Build project
         run: pnpm build
+
+      - name: Deploy to Netlify
+        id: netlify_deploy
+        run: |
+          prod_flag=""
+          if [ "$BRANCH_NAME" = "main" ]; then prod_flag="--prod"; fi
+          netlify deploy \
+            --dir dist \
+            --site ${{ secrets.NETLIFY_SITE_ID }} \
+            --auth ${{ secrets.NETLIFY_API_TOKEN }} \
+            $prod_flag \
+            --json \
+            > deploy_output.json
+
+      - name: Extract deploy URL
+        id: extract_url
+        if: ${{ env.BRANCH_NAME != 'main' }}
+        run: |
+          deploy_url=$(jq -r '.deploy_url' deploy_output.json)
+          echo "deploy_url=$deploy_url" >> $GITHUB_ENV
+
+      - name: 'Comment deployment URL on PR'
+        if: ${{ env.BRANCH_NAME != 'main' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: deploy_url
+          message: |
+            A preview deployment has been created for this branch. You can view it [here](${{ env.deploy_url }}).
