@@ -6,15 +6,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npx tsc -b && npx vite build",
-    "preview": "npx vite preview",
-    "lint": "npx eslint --fix \"**/*.{js,mjs,cjs,jsx,ts,tsx,json}\"",
-    "lint:check": "npx eslint \"**/*.{js,mjs,cjs,jsx,ts,tsx,json}\"",
-    "format": "npx prettier --write \"**/*.{js,mjs,cjs,jsx,ts,tsx,json,md,mdx}\"",
-    "format:check": "npx prettier --check \"**/*.{js,mjs,cjs,jsx,ts,tsx,json,md,mdx}\"",
-    "test": "npx vitest run",
-    "test:watch": "npx vitest watch",
-    "test:list": "npx vitest list"
+    "build": "pnpm exec tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint --fix \"**/*.{js,mjs,cjs,jsx,ts,tsx,json}\"",
+    "lint:check": "eslint \"**/*.{js,mjs,cjs,jsx,ts,tsx,json}\"",
+    "format": "prettier --write \"**/*.{js,mjs,cjs,jsx,ts,tsx,json,md,mdx}\"",
+    "format:check": "prettier --check \"**/*.{js,mjs,cjs,jsx,ts,tsx,json,md,mdx}\"",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:list": "vitest list"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

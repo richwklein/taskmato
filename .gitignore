@@ -3,7 +3,6 @@ dist/
 
 # dependencies & cache
 node_modules/
-package-lock.json
 
 # logs
 npm-debug.log*

@@ -8,7 +8,7 @@ A pomodoro app based around todoist tasks
 - [ ] Add recommended extensions
 - [x] Add a development server launch command
 - [ ] Get an icon and svg to use in the toolbar and favicon
-- [ ] Look at switching to pnpm
+- [x] Look at switching to pnpm
 
 ## Source Code
 

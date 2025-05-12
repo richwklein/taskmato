@@ -2,10 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Development Server",
-      "command": "./node_modules/.bin/vite .",
+      "type": "node",
       "request": "launch",
-      "type": "node-terminal",
+      "name": "Development Server",
+      "skipFiles": ["<node_internals>/**"],
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}"
     }
   ]

@@ -18,7 +18,7 @@ export default tsLint.config({
     'react-hooks': reactHooks,
     'react-refresh': reactRefresh,
     'simple-import-sort': importSort,
-    'vitest': vitestLint,
+    vitest: vitestLint,
   },
   rules: {
     ...react.configs.recommended.rules,
@@ -27,7 +27,7 @@ export default tsLint.config({
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     'simple-import-sort/imports': 'error',
     'simple-import-sort/exports': 'error',
-    ...vitestLint.configs.recommended.rules
+    ...vitestLint.configs.recommended.rules,
   },
   settings: {
     react: {
