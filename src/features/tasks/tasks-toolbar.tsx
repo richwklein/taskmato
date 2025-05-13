@@ -2,7 +2,6 @@ import { ProjectSelect } from '@features/tasks'
 import RefreshButton from '@features/tasks/refresh-button'
 import { useDataContext } from '@hooks/useDataContext'
 import { TextField, Toolbar } from '@mui/material'
-import { ChangeEvent } from 'react'
 
 interface TasksToolbarProps {
   sx?: object
@@ -19,10 +18,6 @@ interface TasksToolbarProps {
  */
 export function TasksToolbar({ sx }: TasksToolbarProps) {
   const { isLoading, projects, view, showProject } = useDataContext()
-
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    // dataContext.searchTasks(event.target.value)
-  }
 
   const handleProjectChange = (projectId: string) => {
     showProject(projectId)
@@ -47,7 +42,7 @@ export function TasksToolbar({ sx }: TasksToolbarProps) {
         label="Search Tasks..."
         //value={dataContext.searchQuery}
         disabled={isLoading}
-        onChange={handleSearchChange}
+        // onChange={handleSearchChange}
         sx={{ mr: 2, flexGrow: 1 }}
         // TODO debounce the search calls
         // TODO move to it's own component

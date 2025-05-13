@@ -91,6 +91,6 @@ A pomodoro app based around todoist tasks
 
 ## Netlify
 
-- create the site
-- update the dns to the bluehost dns
-- use github action to publish site
+- [x] create the site
+- [x] update the dns to the bluehost dns
+- [ ] use github action to publish site

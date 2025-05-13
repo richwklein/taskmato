@@ -1,4 +1,4 @@
-name: Deploy site
+name: Deploy Site
 
 on: [push]
 
@@ -25,7 +25,7 @@ jobs:
           cache: pnpm
 
       - name: Install Netlify
-        run: pnpm add netlify-cli@17.10.1 -g
+        run: pnpm add netlify-cli@21.3.0 -g
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile

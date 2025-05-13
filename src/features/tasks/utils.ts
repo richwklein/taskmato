@@ -21,5 +21,3 @@ export function filterTasksBySection(sectionId: string | null, tasks: Task[]): T
     }
   })
 }
-
-export function sortTasks(tasks: Task[], useDayOrder: boolean = false) {}

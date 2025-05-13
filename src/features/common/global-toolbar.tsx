@@ -3,7 +3,7 @@ import HomeIcon from '@mui/icons-material/Home'
 import MoreTimeIcon from '@mui/icons-material/MoreTime'
 import SettingsIcon from '@mui/icons-material/Settings'
 import { AppBar, ButtonGroup, IconButton, Toolbar, Typography } from '@mui/material'
-import { Link } from 'react-router'
+import { Link } from 'react-router-dom'
 
 import ThemeSwitch from '../../components/ThemeSwitch'
 
