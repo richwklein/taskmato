@@ -7,9 +7,6 @@ concurrency:
   group: preview-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  BRANCH_NAME: ${{ github.ref_name }}
-
 jobs:
   build:
     uses: ./.github/workflows/code-build.yaml
@@ -54,5 +51,4 @@ jobs:
         with:
           header: pr-preview
           message: |
-            :rocket: View preview at <br> ${{ env.deploy_url }}
-            <h6>Built to branch [`${{ env.BRANCH_NAME }}`](${{ github.server_url }}/${{ github.repository }}/tree/${{ env.BRANCH_NAME }})</h6>
+            :rocket: View preview at ${{ env.deploy_url }}
