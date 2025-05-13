@@ -17,8 +17,8 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build.outputs.artifact_name }}
-          path: dist # Path where the artifacts will be downloaded
+          name: build-artifacts
+          path: dist
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4.1.0
