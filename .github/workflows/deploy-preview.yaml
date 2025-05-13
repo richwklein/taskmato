@@ -7,6 +7,9 @@ concurrency:
   group: preview-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  BRANCH_NAME: ${{ github.ref_name }}
+
 jobs:
   build:
     uses: ./.github/workflows/code-build.yaml
@@ -49,6 +52,7 @@ jobs:
       - name: 'Comment deployment URL on PR'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: deploy_url
+          header: pr-preview
           message: |
-            A preview deployment has been created for this branch. You can view it [here](${{ env.deploy_url }}).
+            :rocket: View preview at <br> ${{ env.deploy_url }}
+            <h6>Built to branch [`${{ env.BRANCH_NAME }}`](${{ github.server_url }}/${{ github.repository }}/tree/${{ env.BRANCH_NAME }})</h6>
