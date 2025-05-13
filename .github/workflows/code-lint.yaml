@@ -2,6 +2,10 @@ name: Format and Lint
 on:
   pull_request:
 
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
