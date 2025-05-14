@@ -33,6 +33,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Output new tag'
+        if: steps.release.outputs.released == 'true'
         env:
           RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
           RELEASE_NAME: ${{ steps.release.outputs.release_name }}
