@@ -21,6 +21,7 @@ jobs:
         uses: ./.github/actions/setup-code
 
       - name: Download build artifacts
+        id: download
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.build.outputs.artifact_name }}
@@ -29,7 +30,7 @@ jobs:
       - name: Deploy to Netlify
         run: |
           pnpm exec netlify deploy \
-            --dir ${{ needs.build.outputs.artifact_path }} \
+            --dir ${{ steps.download.outputs.download-path }} \
             --site ${{ secrets.NETLIFY_SITE_ID }} \
             --auth ${{ secrets.NETLIFY_API_TOKEN }} \
             --prod
