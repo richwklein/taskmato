@@ -2,7 +2,7 @@
   "name": "taskmato",
   "private": true,
   "description": "A Pomodoro timer for Todoist tasks.",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "type": "module",
   "packageManager": "pnpm@10.11.0",
   "scripts": {

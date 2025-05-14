@@ -8,6 +8,7 @@ const FULL_SYNC_TOKEN = '*'
 const RESOURCE_TYPES = ['projects', 'sections', 'items', 'labels', 'days_orders']
 
 interface ISyncService {
+  setKey(key: string): void
   sync(data: SyncData): Promise<SyncData>
 }
 
@@ -19,11 +20,11 @@ interface ISyncService {
  */
 export class SyncService implements ISyncService {
   private static instance: SyncService
-  private apiKey: string
+  private key: string
 
-  constructor(apiKey: string = 'ec0ab5c5a2104a9350e0f7ac5f22a4d73687ba71') {
+  constructor(key: string) {
     // TODO get apiKey from settings
-    this.apiKey = apiKey
+    this.key = key
   }
 
   /**
@@ -32,9 +33,18 @@ export class SyncService implements ISyncService {
    */
   public static getInstance(): SyncService {
     if (!SyncService.instance) {
-      SyncService.instance = new SyncService()
+      SyncService.instance = new SyncService(localStorage.getItem('todoistApiKey') || '')
     }
     return SyncService.instance
+  }
+
+  /**
+   * Sets the API key for the SyncService.
+   *
+   * @param key - The API key to set.
+   */
+  setKey(key: string): void {
+    this.key = key
   }
 
   /**
@@ -47,6 +57,16 @@ export class SyncService implements ISyncService {
    * @returns the merged data.
    */
   async sync(data: SyncData): Promise<SyncData> {
+    if (this.key === '') {
+      return {
+        token: null,
+        projects: new Map(),
+        sections: new Map(),
+        tasks: new Map(),
+        labels: new Map(),
+      }
+    }
+
     const syncToken = data.token ?? FULL_SYNC_TOKEN
 
     try {
@@ -58,7 +78,7 @@ export class SyncService implements ISyncService {
         },
         {
           headers: {
-            Authorization: `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${this.key}`,
           },
         }
       )

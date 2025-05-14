@@ -10,6 +10,7 @@ A pomodoro app based around todoist tasks
 - [ ] Get an icon and svg to use in the toolbar and favicon
 - [x] Look at switching to pnpm
 - [ ] Move common setup to a reusable workflow
+- [ ] script to sync versions between tools-version and packageManager
 
 ## Source Code
 
@@ -52,6 +53,7 @@ A pomodoro app based around todoist tasks
 
 - pomodoro timer (modal or view)
 
+  - show a timer bar on other views if a session is in progress
   - show a circular progress countdown timer
   - Allow swapping the task in the current session with another one
   - Allow stopping or pausing the timer
@@ -76,8 +78,10 @@ A pomodoro app based around todoist tasks
   - weekly stats (task count, total duration, average duration, max duration)
 
 - Settings (view)
-
-  - input for api key used to sync data with todoist
+  - [x] redirect to settings if api key is missing
+  - [x] prevent other pages if api key not set
+  - [x] input for api key used to sync data with todoist
+  - [ ] better storage and handling of the api key
   - timer duration
   - break duration
   - play a sound when complete
