@@ -33,7 +33,7 @@ jobs:
       - name: Deploy to Netlify
         run: |
           pnpm exec netlify deploy \
-            --dir ${{ env.ARTIFACT_PATH }} \
+            --dir ${{ env.ARTIFACT_NAME }} \
             --site ${{ secrets.NETLIFY_SITE_ID }} \
             --auth ${{ secrets.NETLIFY_API_TOKEN }} \
             --prod

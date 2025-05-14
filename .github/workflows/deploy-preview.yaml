@@ -29,7 +29,6 @@ jobs:
         uses: ./.github/actions/setup-code
 
       - name: Download build artifacts
-        id: download
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
@@ -38,7 +37,7 @@ jobs:
       - name: Deploy to Netlify
         run: |
           pnpm exec netlify deploy \
-            --dir ${{ env.ARTIFACT_PATH }} \
+            --dir ${{ env.ARTIFACT_NAME }} \
             --site ${{ secrets.NETLIFY_SITE_ID }} \
             --auth ${{ secrets.NETLIFY_API_TOKEN }} \
             --json \
@@ -54,10 +53,10 @@ jobs:
         with:
           header: pr-preview
           message: |
-            A preview of #${{ env.PULL_REQUEST_NUMBER }} is ready!
+            <h3>A preview of #${{ env.PULL_REQUEST_NUMBER }} is ready!</h3>
 
             :rocket: You can view the preview at ${{ env.deploy_url }}.
 
-            :warning: This is a preview deployment and should not be considered production-ready. Please note that this deployment is not permanent and may be removed at any time.
+            This is a preview deployment and should not be considered production-ready. Please note that this deployment is not permanent and may be removed at any time.
 
             This was generated from the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
