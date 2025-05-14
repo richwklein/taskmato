@@ -7,6 +7,11 @@ concurrency:
   group: preview-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+  ARTIFACT_NAME: 'build-artifacts'
+  ARTIFACT_PATH: 'dist'
+
 jobs:
   build:
     uses: ./.github/workflows/code-build.yaml
@@ -16,10 +21,6 @@ jobs:
     if: github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     needs: build
-    env:
-      PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-      ARTIFACT_NAME: ${{ needs.build.outputs.artifact_name }}
-      ARTIFACT_PATH: ${{ needs.build.outputs.artifact_path }}
 
     steps:
       - name: Checkout source code
@@ -37,7 +38,7 @@ jobs:
       - name: Deploy to Netlify
         run: |
           pnpm exec netlify deploy \
-            --dir ${{ env.ARTIFACT_NAME }} \
+            --dir ${{ env.ARTIFACT_PATH }} \
             --site ${{ secrets.NETLIFY_SITE_ID }} \
             --auth ${{ secrets.NETLIFY_API_TOKEN }} \
             --json \

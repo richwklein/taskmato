@@ -2,24 +2,6 @@ name: Production Build
 
 on:
   workflow_call:
-    inputs:
-      artifact_name:
-        description: 'The name of the uploaded artifact'
-        type: string
-        required: false
-        default: 'build-artifacts'
-      artifact_path:
-        description: 'The path to the uploaded artifact'
-        type: string
-        required: false
-        default: dist
-    outputs:
-      artifact_name:
-        description: 'Artifact name for reuse'
-        value: ${{ jobs.build.outputs.artifact_name }}
-      artifact_path:
-        description: 'Artifact path for reuse'
-        value: ${{ jobs.build.outputs.artifact_path }}
 
 jobs:
   build:
@@ -34,16 +16,9 @@ jobs:
       - name: Build project
         run: |
           pnpm build
-          echo "artifact_name=${{inputs.artifact_name}}" >> $GITHUB_ENV
-          echo "artifact_path=${{inputs.artifact_name}}" >> $GITHUB_ENV
-
-      - name: Set artifact outputs
-        run: |
-          echo "artifact_name=${{ inputs.artifact_name }}" >> $GITHUB_OUTPUT
-          echo "artifact_path=${{ inputs.artifact_path }}" >> $GITHUB_OUTPUT
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
-          path: ${{ inputs.artifact_path }}
+          name: 'build-artifacts'
+          path: 'dist'
