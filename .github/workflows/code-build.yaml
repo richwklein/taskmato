@@ -25,18 +25,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Code
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Tools & Dependencies
         uses: ./.github/actions/setup-code
 
       - name: Build project
-        id: build
         run: |
           pnpm build
           echo "artifact_name=${{inputs.artifact_name}}" >> $GITHUB_ENV
           echo "artifact_path=${{inputs.artifact_name}}" >> $GITHUB_ENV
 
       - name: Set artifact outputs
-        id: set-vars
         run: |
           echo "artifact_name=${{ inputs.artifact_name }}" >> $GITHUB_OUTPUT
           echo "artifact_path=${{ inputs.artifact_path }}" >> $GITHUB_OUTPUT
