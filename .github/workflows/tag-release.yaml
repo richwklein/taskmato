@@ -57,10 +57,11 @@ jobs:
       - name: 'Setup Tools & Dependencies'
         uses: ./.github/actions/setup-code
 
-      - name: 'Download build artifacts'
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
 
       - name: Compress build artifacts
         run: |
@@ -80,6 +81,12 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: 'Checkout source code'
+        uses: actions/checkout@v4
+
+      - name: 'Setup Tools & Dependencies'
+        uses: ./.github/actions/setup-code
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
