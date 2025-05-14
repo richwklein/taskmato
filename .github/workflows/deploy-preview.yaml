@@ -9,8 +9,6 @@ concurrency:
 
 env:
   PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-  REPOSITORY: ${{ github.repository}}
-  RUN_ID: ${{ github.run_id }}
   COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
   ARTIFACT_NAME: 'build-artifacts'
   ARTIFACT_PATH: 'dist'
@@ -57,10 +55,10 @@ jobs:
         with:
           header: pr-preview
           message: |
-            <h3>A preview of #${{ env.PULL_REQUEST_NUMBER }} is ready!</h3>
+            <h3>A preview deploy of pull request #${{ env.PULL_REQUEST_NUMBER }} is ready!</h3>
 
             :rocket: You can view the preview at ${{ env.DEPLOY_URL }}.
 
             This is a preview deployment and should not be considered production-ready. Please note that this deployment is not permanent and may be removed at any time.
 
-            This was generated in [workflow #${{ env.RUN_ID }}](https://github.com/${{ env.REPOSITORY }}/actions/runs/${{ env.RUN_ID }}) for commit [${{ env.COMMIT_SHA }}](https://github.com/${{ env.REPOSITORY }}/commit/${{ env.COMMIT_SHA }}).
+            This was generated in [workflow #${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for commit [${{ env.COMMIT_SHA }}](https://github.com/${{ github.repository }}/commit/${{ env.COMMIT_SHA }}).
