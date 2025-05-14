@@ -1,5 +1,0 @@
-[build]
-  command = "pnpm build"
-  publish = "./dist"
-  [build.environment]
-    NODE_VERSION = "20.16.0" # keep this in sync with the version in .tool-versions

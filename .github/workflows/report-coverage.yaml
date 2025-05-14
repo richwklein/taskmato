@@ -14,14 +14,14 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
       - name: Download test coverage
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
 
       - name: Report test coverage on pull request
         uses: davelosert/vitest-coverage-report-action@v2

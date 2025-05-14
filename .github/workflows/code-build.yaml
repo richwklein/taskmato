@@ -1,3 +1,5 @@
+name: Production Build
+
 on:
   workflow_call:
     inputs:
@@ -16,20 +18,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4.1.0
-        with:
-          version: 10.10.0 # Keep this in sync with the version in .tool-versions
-          run_install: false
-
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
           node-version-file: .tool-versions
           cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -38,8 +39,8 @@ jobs:
         id: build
         run: |
           pnpm build
-          echo "artifact_name=build-artifacts" >> $GITHUB_ENV
-          echo "artifact_path=dist" >> $GITHUB_ENV
+          echo "artifact_name=${{inputs.artifact_name}}" >> $GITHUB_ENV
+          echo "artifact_path=${{inputs.artifact_name}}" >> $GITHUB_ENV
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

@@ -1,5 +1,9 @@
 name: Build and Deploy
 
+env:
+  ARTIFACT_NAME: build-artifacts
+  ARTIFACT_PATH: dist
+
 on:
   push:
     branches:
@@ -9,31 +13,29 @@ jobs:
   build:
     uses: ./.github/workflows/code-build.yaml
     secrets: inherit
+    with:
+      artifact_name: ${{ env.ARTIFACT_NAME }}
+      artifact_path: ${{ env.ARTIFACT_PATH }}
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: build-artifacts
-          path: dist
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4.1.0
-        with:
-          version: 10.10.0 # Keep this in sync with the version in .tool-versions
-          run_install: false
-
-      - name: Install Netlify
-        run: pnpm add netlify-cli@21.3.0 -g
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
 
       - name: Deploy to Netlify
-        id: netlify_deploy
         run: |
-          netlify deploy \
-            --dir dist \
+          pnpm exec netlify deploy \
+            --dir ${{ env.ARTIFACT_PATH }} \
             --site ${{ secrets.NETLIFY_SITE_ID }} \
             --auth ${{ secrets.NETLIFY_API_TOKEN }} \
             --prod
