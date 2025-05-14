@@ -6,6 +6,7 @@ import { StatisticsView } from '@features/statistics'
 import TasksView from '@features/tasks/tasks-view'
 import { CssBaseline, ThemeProvider } from '@mui/material'
 import theme from '@styles/theme'
+import { JSX } from 'react'
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom'
 
 /**
