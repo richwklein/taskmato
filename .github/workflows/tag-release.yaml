@@ -1,0 +1,102 @@
+name: Tag and Deploy Release
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  ARTIFACT_NAME: 'build-artifacts'
+  ARTIFACT_PATH: 'dist'
+
+jobs:
+  tag:
+    name: 'Tag on Release'
+    runs-on: ubuntu-latest
+
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      release_name: ${{ steps.release.outputs.release_name }}
+      upload_url: ${{ steps.release.outputs.upload_url }}
+
+    steps:
+      - name: 'Checkout source code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: 'Create GitHub release'
+        id: 'release'
+        uses: 'justincy/github-action-npm-release@2.0.2'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Output new tag'
+        if: steps.release.outputs.released == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          RELEASE_NAME: ${{ steps.release.outputs.release_name }}
+        run: echo "new tag $RELEASE_TAG ($RELEASE_NAME)"
+
+  build:
+    needs: tag
+    uses: ./.github/workflows/code-build.yaml
+    secrets: inherit
+
+  upload:
+    needs:
+      - tag
+      - build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Checkout source code'
+        uses: actions/checkout@v4
+
+      - name: 'Setup Tools & Dependencies'
+        uses: ./.github/actions/setup-code
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
+
+      - name: Compress build artifacts
+        run: |
+          tar -czf taskmato-${{ needs.tag.outputs.release_tag }}.tar.gz -C ${{ env.ARTIFACT_PATH }} .
+
+      - name: Upload build artifacts to GitHub release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.tag.outputs.upload_url }}
+          asset_path: ./taskmato-${{ needs.tag.outputs.release_name }}.tar.gz
+          asset_name: taskmato-${{ needs.tag.outputs.release_name }}.tar.gz
+          asset_content_type: application/gzip
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout source code'
+        uses: actions/checkout@v4
+
+      - name: 'Setup Tools & Dependencies'
+        uses: ./.github/actions/setup-code
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
+
+      - name: Deploy to Netlify
+        run: |
+          pnpm exec netlify deploy \
+            --dir ${{ env.ARTIFACT_PATH }} \
+            --site ${{ secrets.NETLIFY_SITE_ID }} \
+            --auth ${{ secrets.NETLIFY_API_TOKEN }} \
+            --prod
