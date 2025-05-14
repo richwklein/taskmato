@@ -9,6 +9,9 @@ concurrency:
 
 env:
   PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+  REPOSITORY: ${{ github.repository}}
+  RUN_ID: ${{ github.run_id }}
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
   ARTIFACT_NAME: 'build-artifacts'
   ARTIFACT_PATH: 'dist'
 
@@ -47,7 +50,7 @@ jobs:
       - name: Extract deploy URL
         run: |
           deploy_url=$(jq -r '.deploy_url' deploy_output.json)
-          echo "deploy_url=$deploy_url" >> $GITHUB_ENV
+          echo "DEPLOY_URL=$deploy_url" >> $GITHUB_ENV
 
       - name: 'Comment on PR'
         uses: marocchino/sticky-pull-request-comment@v2
@@ -56,8 +59,8 @@ jobs:
           message: |
             <h3>A preview of #${{ env.PULL_REQUEST_NUMBER }} is ready!</h3>
 
-            :rocket: You can view the preview at ${{ env.deploy_url }}.
+            :rocket: You can view the preview at ${{ env.DEPLOY_URL }}.
 
             This is a preview deployment and should not be considered production-ready. Please note that this deployment is not permanent and may be removed at any time.
 
-            This was generated from the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for commit [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }}).
+            This was generated from the [workflow run](https://github.com/${{ env.REPOSITORY }}/actions/runs/${{ env.RUN_ID }}) for commit [${{ env.COMMIT_SHA }}](https://github.com/${{ env.REPOSITORY }}/commit/${{ env.COMMIT_SHA }}).
