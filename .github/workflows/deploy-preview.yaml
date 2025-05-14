@@ -32,6 +32,10 @@ jobs:
           name: ${{ needs.build.outputs.artifact_name }}
           path: ${{ needs.build.outputs.artifact_path }}
 
+      - name: 'Debug: Print artifact path'
+        run: |
+          echo "Artifact path: ${{ needs.build.outputs.artifact_path }}"
+
       - name: Deploy to Netlify
         run: |
           pnpm exec netlify deploy \
