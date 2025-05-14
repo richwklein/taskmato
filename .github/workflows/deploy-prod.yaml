@@ -13,6 +13,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      ARTIFACT_NAME: ${{ needs.build.outputs.artifact_name }}
+      ARTIFACT_PATH: ${{ needs.build.outputs.artifact_path }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -24,13 +27,13 @@ jobs:
         id: download
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build.outputs.artifact_name }}
-          path: ${{ needs.build.outputs.artifact_path }}
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
 
       - name: Deploy to Netlify
         run: |
           pnpm exec netlify deploy \
-            --dir ${{ steps.download.outputs.download-path }} \
+            --dir ${{ env.ARTIFACT_PATH }} \
             --site ${{ secrets.NETLIFY_SITE_ID }} \
             --auth ${{ secrets.NETLIFY_API_TOKEN }} \
             --prod
