@@ -1,0 +1,5 @@
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - netlify-cli
+  - sharp
+  - unix-dgram

@@ -18,6 +18,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
@@ -28,9 +31,6 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           run_install: false
-
-      - name: Checkout source code
-        uses: actions/checkout@v4
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
