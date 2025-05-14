@@ -13,27 +13,20 @@ on:
         type: string
         required: false
         default: dist
+    outputs:
+      artifact_name:
+        description: 'Artifact name for reuse'
+        value: ${{ jobs.build.outputs.artifact_name }}
+      artifact_path:
+        description: 'Artifact path for reuse'
+        value: ${{ jobs.build.outputs.artifact_path }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .tool-versions
-          cache: pnpm
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup Code
+        uses: ./.github/actions/setup-node-pnpm
 
       - name: Build project
         id: build
@@ -41,6 +34,12 @@ jobs:
           pnpm build
           echo "artifact_name=${{inputs.artifact_name}}" >> $GITHUB_ENV
           echo "artifact_path=${{inputs.artifact_name}}" >> $GITHUB_ENV
+
+      - name: Set artifact outputs
+        id: set-vars
+        run: |
+          echo "artifact_name=${{ inputs.artifact_name }}" >> $GITHUB_OUTPUT
+          echo "artifact_path=${{ inputs.artifact_path }}" >> $GITHUB_OUTPUT
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

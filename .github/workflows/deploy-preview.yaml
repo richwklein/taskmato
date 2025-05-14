@@ -9,49 +9,30 @@ concurrency:
 
 env:
   PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-  ARTIFACT_NAME: build-artifacts
-  ARTIFACT_PATH: dist
 
 jobs:
   build:
     uses: ./.github/workflows/code-build.yaml
     secrets: inherit
-    with:
-      artifact_name: ${{ env.ARTIFACT_NAME }}
-      artifact_path: ${{ env.ARTIFACT_PATH }}
 
   deploy:
     if: github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .tool-versions
-          cache: pnpm
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup Code
+        uses: ./.github/actions/setup-node-pnpm
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: ${{ env.ARTIFACT_PATH }}
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: ${{ needs.build.outputs.artifact_path }}
 
       - name: Deploy to Netlify
         run: |
           pnpm exec netlify deploy \
-            --dir ${{ env.ARTIFACT_PATH }} \
+            --dir ${{ needs.build.outputs.artifact_path }} \
             --site ${{ secrets.NETLIFY_SITE_ID }} \
             --auth ${{ secrets.NETLIFY_API_TOKEN }} \
             --json \
