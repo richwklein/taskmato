@@ -1,9 +1,9 @@
-name: Build and Deploy
+name: Deploy Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - '*'
 
 env:
   ARTIFACT_NAME: 'build-artifacts'
