@@ -60,4 +60,4 @@ jobs:
 
             This is a preview deployment and should not be considered production-ready. Please note that this deployment is not permanent and may be removed at any time.
 
-            This was generated from the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+            This was generated from the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for commit [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }}).
