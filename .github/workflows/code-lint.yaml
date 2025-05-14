@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Setup Code
-        uses: ./.github/actions/setup-node-pnpm
+        uses: ./.github/actions/setup-code
 
       - name: Check formatting
         if: always()

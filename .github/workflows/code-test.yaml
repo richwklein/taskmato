@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Setup Code
-        uses: ./.github/actions/setup-node-pnpm
+        uses: ./.github/actions/setup-code
 
       - name: Run unit tests with coverage
         run: pnpm test:coverage
