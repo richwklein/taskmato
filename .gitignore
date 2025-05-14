@@ -3,7 +3,6 @@ dist/
 
 # dependencies & cache
 node_modules/
-package-lock.json
 
 # logs
 npm-debug.log*
@@ -21,3 +20,5 @@ coverage/
 # macOS-specific files
 .DS_Store
 Icon?
+# Local Netlify folder
+.netlify

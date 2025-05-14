@@ -1,0 +1,26 @@
+name: 'Setup Tools & Code dependencies'
+description: 'Check out code, set up Node.js and PNPM, and install dependencies'
+
+inputs:
+  node-version-file:
+    description: 'Path to node version file'
+    default: '.tool-versions'
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        run_install: false
+
+    - name: Setup NodeJS
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: ${{ inputs.node-version-file }}
+        cache: pnpm
+
+    - name: Install Dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash
