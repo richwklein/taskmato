@@ -1,4 +1,4 @@
-name: Report Test Coverage
+name: Report test coverage
 
 on:
   workflow_run:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Setup Tools & Dependencies
+      - name: Setup tools & dependencies
         uses: ./.github/actions/setup-code
 
       - name: Download test coverage

@@ -1,4 +1,4 @@
-name: Deploy PR Preview
+name: Deploy pull request preview
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -27,7 +27,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Setup Tools & Dependencies
+      - name: Setup tools & dependencies
         uses: ./.github/actions/setup-code
 
       - name: Download build artifacts
@@ -36,7 +36,7 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: ${{ env.ARTIFACT_PATH }}
 
-      - name: Deploy to Netlify
+      - name: Deploy preview to Netlify
         run: |
           pnpm exec netlify deploy \
             --dir ${{ env.ARTIFACT_PATH }} \
@@ -45,12 +45,12 @@ jobs:
             --json \
             > deploy_output.json
 
-      - name: Extract deploy URL
+      - name: Output deploy URL
         run: |
           deploy_url=$(jq -r '.deploy_url' deploy_output.json)
           echo "DEPLOY_URL=$deploy_url" >> $GITHUB_ENV
 
-      - name: 'Comment on PR'
+      - name: Comment on pull request
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: pr-preview
