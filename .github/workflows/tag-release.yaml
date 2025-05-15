@@ -1,4 +1,4 @@
-name: Tag and Deploy Release
+name: Tag and deploy release
 
 on:
   push:
@@ -11,29 +11,28 @@ env:
 
 jobs:
   tag:
-    name: 'Tag on Release'
     runs-on: ubuntu-latest
 
     outputs:
       release_tag: ${{ steps.release.outputs.release_tag }}
       release_name: ${{ steps.release.outputs.release_name }}
       upload_url: ${{ steps.release.outputs.upload_url }}
+      released: ${{ steps.release.outputs.released }}
 
     steps:
-      - name: 'Checkout source code'
+      - name: Checkout source code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
 
-      - name: 'Create GitHub release'
+      - name: Create GitHub release
         id: 'release'
         uses: 'justincy/github-action-npm-release@2.0.2'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 'Output new tag'
-        if: steps.release.outputs.released == 'true'
+      - name: Output new tag
         env:
           RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
           RELEASE_NAME: ${{ steps.release.outputs.release_name }}
@@ -41,6 +40,7 @@ jobs:
 
   build:
     needs: tag
+    if: needs.tag.outputs.released == 'true'
     uses: ./.github/workflows/code-build.yaml
     secrets: inherit
 
@@ -54,7 +54,7 @@ jobs:
       - name: 'Checkout source code'
         uses: actions/checkout@v4
 
-      - name: 'Setup Tools & Dependencies'
+      - name: 'Setup tools & dependencies'
         uses: ./.github/actions/setup-code
 
       - name: Download build artifacts
@@ -84,7 +84,7 @@ jobs:
       - name: 'Checkout source code'
         uses: actions/checkout@v4
 
-      - name: 'Setup Tools & Dependencies'
+      - name: 'Setup tools & dependencies'
         uses: ./.github/actions/setup-code
 
       - name: Download build artifacts
@@ -93,7 +93,7 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: ${{ env.ARTIFACT_PATH }}
 
-      - name: Deploy to Netlify
+      - name: Deploy release to Netlify
         run: |
           pnpm exec netlify deploy \
             --dir ${{ env.ARTIFACT_PATH }} \

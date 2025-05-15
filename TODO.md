@@ -88,10 +88,11 @@ A pomodoro app based around todoist tasks
 
 ## Github
 
-- Add a social preview
-- Add a build action
-- Add a deploy action see this [article](https://www.raulmelo.me/en/blog/deploying-netlify-github-actions-guide)
-- Add an action for deploying documentation
+- [ ] Add a social preview
+- [x] Add a build action
+- [x] Add a deploy action see this [article](https://www.raulmelo.me/en/blog/deploying-netlify-github-actions-guide)
+- [ ] Add an action for deploying documentation
+- [ ] Setup issue and pull request templates
 
 ## Netlify
 

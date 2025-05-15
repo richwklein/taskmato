@@ -1,4 +1,4 @@
-name: 'Setup Tools & Code dependencies'
+name: 'Setup tools & code dependencies'
 description: 'Check out code, set up Node.js and PNPM, and install dependencies'
 
 inputs:
@@ -15,12 +15,12 @@ runs:
       with:
         run_install: false
 
-    - name: Setup NodeJS
+    - name: Setup nodeJS
       uses: actions/setup-node@v4
       with:
         node-version-file: ${{ inputs.node-version-file }}
         cache: pnpm
 
-    - name: Install Dependencies
+    - name: Install dependencies
       run: pnpm install --frozen-lockfile
       shell: bash
