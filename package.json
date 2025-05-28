@@ -24,7 +24,7 @@
     "@mui/icons-material": "^7.1.0",
     "@mui/material": "^7.1.0",
     "@preact/signals-core": "^1.8.0",
-    "@preact/signals-react": "^3.0.1",
+    "@preact/signals-react": "^3.1.1",
     "@vitest/coverage-v8": "^3.1.4",
     "axios": "^1.7.9",
     "mui-markdown": "^2.0.1",
