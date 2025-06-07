@@ -1,15 +1,18 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
+    open-pull-requests-limit: 20
+    schedule:
+      interval: daily
     directory: '/'
     groups:
       github-actions:
         patterns:
           - '*'
+  - package-ecosystem: npm
+    open-pull-requests-limit: 20
     schedule:
       interval: daily
-    open-pull-requests-limit: 20
-  - package-ecosystem: npm
     directory: '/'
     groups:
       react:
@@ -17,6 +20,8 @@ updates:
           - 'react'
           - 'react-*'
           - '@react/*'
+          - '@types/react'
+          - '@types/react-*'
       mui:
         patterns:
           - '@emotion/*'
@@ -39,7 +44,6 @@ updates:
           - 'typescript'
           - 'typescript-eslint'
           - '@typescript-eslint/*'
-          - '@types/*'
           - 'tslib'
           - 'ts-node'
       vitest:
@@ -49,17 +53,3 @@ updates:
           - 'vitest-*'
           - '@vitest/*'
           - '@testing-library/*'
-    schedule:
-      interval: daily
-    allow:
-      - dependency-type: 'all'
-    ignore:
-      - update-types:
-          - 'version-update:semver-patch'
-    open-pull-requests-limit: 20
-
-  - package-ecosystem: 'npm'
-    directory: '/'
-    schedule:
-      interval: 'daily'
-    security-updates-only: true
