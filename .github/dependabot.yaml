@@ -51,4 +51,15 @@ updates:
           - '@testing-library/*'
     schedule:
       interval: daily
+    allow:
+      - dependency-type: 'all'
+    ignore:
+      - update-types:
+          - 'version-update:semver-patch'
     open-pull-requests-limit: 20
+
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+    security-updates-only: true
