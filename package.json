@@ -25,7 +25,7 @@
     "@mui/material": "^7.1.1",
     "@preact/signals-core": "^1.9.0",
     "@preact/signals-react": "^3.2.0",
-    "@vitest/coverage-v8": "^3.2.2",
+    "@vitest/coverage-v8": "^3.2.3",
     "axios": "^1.9.0",
     "mui-markdown": "^2.0.1",
     "react": "^19.1.0",
