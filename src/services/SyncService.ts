@@ -5,7 +5,7 @@ import axios from 'axios'
 
 const SYNC_API_URL = 'https://api.todoist.com/sync/v9/sync'
 const FULL_SYNC_TOKEN = '*'
-const RESOURCE_TYPES = ['projects', 'sections', 'items', 'labels', 'days_orders']
+const RESOURCE_TYPES = ['projects', 'sections', 'items', 'labels', 'day_orders']
 
 interface ISyncService {
   setKey(key: string): void
@@ -84,7 +84,7 @@ export class SyncService implements ISyncService {
       )
 
       const labels = buildLabels(data.labels, response.data.labels)
-
+      console.log(response.data)
       return {
         token: response.data.sync_token,
         projects: buildProjects(data.projects, response.data.projects),

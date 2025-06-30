@@ -9,13 +9,11 @@ A pomodoro app based around todoist tasks
 - [x] Add a development server launch command
 - [ ] Get an icon and svg to use in the toolbar and favicon
 - [x] Look at switching to pnpm
-- [ ] Move common setup to a reusable workflow
 - [ ] script to sync versions between tools-version and packageManager
 
 ## Source Code
 
 - data sync
-
   - use todoist [sync api](https://developer.todoist.com/sync/v9/#read-resources) to sync items:
     - projects
     - sections
@@ -27,7 +25,6 @@ A pomodoro app based around todoist tasks
 - objects synced with just id references, replace ids with objects being referenced when computing state for the views
 
 - task list (home view)
-
   - store the todoist api key somewhere secure
   - first load retrieve a list of tasks from todoist using their api
   - Have a project select dropdown on the task view toolbar to only show tasks from that project
@@ -52,7 +49,6 @@ A pomodoro app based around todoist tasks
   - on hover show additional timer durations
 
 - pomodoro timer (modal or view)
-
   - show a timer bar on other views if a session is in progress
   - show a circular progress countdown timer
   - Allow swapping the task in the current session with another one
@@ -72,7 +68,6 @@ A pomodoro app based around todoist tasks
     - switch tasks without completing
 
 - Statistics (view)
-
   - stats broken down by project and / or label
   - daily stats (task count, total duration, average duration, max duration)
   - weekly stats (task count, total duration, average duration, max duration)
@@ -93,6 +88,9 @@ A pomodoro app based around todoist tasks
 - [x] Add a deploy action see this [article](https://www.raulmelo.me/en/blog/deploying-netlify-github-actions-guide)
 - [ ] Add an action for deploying documentation
 - [ ] Setup issue and pull request templates
+- [x] Move common setup to a reusable workflow
+- [ ] Have deploy's be dependent on the workflow run of build and make build required.
+- [ ] Re-enable the github ruleset when I figure out how to bypass certain rules.
 
 ## Netlify
 
