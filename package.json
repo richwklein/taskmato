@@ -28,7 +28,7 @@
     "@preact/signals-react": "^3.2.1",
     "@vitest/coverage-v8": "^3.2.4",
     "axios": "^1.11.0",
-    "mui-markdown": "^2.0.2",
+    "mui-markdown": "^2.0.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.7.1"
