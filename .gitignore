@@ -20,5 +20,6 @@ coverage/
 # macOS-specific files
 .DS_Store
 Icon?
+
 # Local Netlify folder
 .netlify
