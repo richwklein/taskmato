@@ -1,19 +1,22 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    open-pull-requests-limit: 20
-    schedule:
-      interval: daily
     directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 20
     groups:
       github-actions:
         patterns:
           - '*'
   - package-ecosystem: npm
-    open-pull-requests-limit: 20
-    schedule:
-      interval: daily
     directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 20
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-patch']
     groups:
       react:
         patterns:

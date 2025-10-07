@@ -6,8 +6,8 @@ on:
       - main
 
 env:
-  ARTIFACT_NAME: 'build-artifacts'
-  ARTIFACT_PATH: 'dist'
+  ARTIFACT_NAME: "build-artifacts"
+  ARTIFACT_PATH: "dist"
 
 jobs:
   tag:
@@ -27,8 +27,8 @@ jobs:
           ref: ${{ github.ref }}
 
       - name: Create GitHub release
-        id: 'release'
-        uses: 'justincy/github-action-npm-release@2.0.2'
+        id: "release"
+        uses: "justincy/github-action-npm-release@2.0.2"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -51,10 +51,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 'Checkout source code'
+      - name: "Checkout source code"
         uses: actions/checkout@v5
 
-      - name: 'Setup tools & dependencies'
+      - name: "Setup tools & dependencies"
         uses: ./.github/actions/setup-code
 
       - name: Download build artifacts
@@ -81,10 +81,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout source code'
+      - name: "Checkout source code"
         uses: actions/checkout@v5
 
-      - name: 'Setup tools & dependencies'
+      - name: "Setup tools & dependencies"
         uses: ./.github/actions/setup-code
 
       - name: Download build artifacts

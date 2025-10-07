@@ -10,8 +10,8 @@ concurrency:
 env:
   PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
   COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
-  ARTIFACT_NAME: 'build-artifacts'
-  ARTIFACT_PATH: 'dist'
+  ARTIFACT_NAME: "build-artifacts"
+  ARTIFACT_PATH: "dist"
 
 jobs:
   build:
