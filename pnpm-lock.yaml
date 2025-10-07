@@ -23,9 +23,6 @@ importers:
       axios:
         specifier: ^1.12.2
         version: 1.12.2
-      latest:
-        specifier: ^0.2.0
-        version: 0.2.0
       mui-markdown:
         specifier: ^2.0.3
         version: 2.0.3(@mui/material@7.3.4(@emotion/react@11.14.0(@types/react@19.2.2)(react@19.2.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.2)(react@19.2.0))(@types/react@19.2.2)(react@19.2.0))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(markdown-to-jsx@7.7.6(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -4031,10 +4028,6 @@ packages:
     resolution: {integrity: sha512-7W0vV3rqv5tokqkBAFV1LbR7HPOWzXQDpDgEuib/aJ1jsZZx6x3c2mBI+TJhJzOhkGeaLbCKEHXEXLfirtG2JA==}
     engines: {node: '>=18'}
 
-  latest@0.2.0:
-    resolution: {integrity: sha512-nsIM/FjwLcsKZ1KDAw5CivnM26zzMs3zGBL4SdjYXHI5tMcOWjGhFDMBKIum4WNAkZmeVw7zU1jR2H2UiKoQVA==}
-    hasBin: true
-
   layout-base@1.0.2:
     resolution: {integrity: sha512-8h2oVEZNktL4BH2JCOI90iD1yXwL6iNW7KcCKT2QZgQJR2vbqDsldCTPRU9NifTCqHZci57XvQQ15YTu+sTYPg==}
 
@@ -4451,82 +4444,6 @@ packages:
   npm-run-path@5.3.0:
     resolution: {integrity: sha512-ppwTtiJZq0O/ai0z7yfudtBpWIoxM8yE6nHi1X47eFR2EWORqfbu6CnPlNsjeN683eT0qG6H/Pyf9fCcvjnnnQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
-
-  npm@2.15.12:
-    resolution: {integrity: sha512-WMoAJ518W0vHjWy1abYnTeyG9YQpSoYGPxAx7d0C0L7U7Jo44bZsrvTjccmDohCJGxpasdKfqsKsl6o/RUPx6A==}
-    hasBin: true
-    bundledDependencies:
-      - abbrev
-      - ansi
-      - ansi-regex
-      - ansicolors
-      - ansistyles
-      - archy
-      - async-some
-      - block-stream
-      - char-spinner
-      - chmodr
-      - chownr
-      - cmd-shim
-      - columnify
-      - config-chain
-      - dezalgo
-      - editor
-      - fs-vacuum
-      - fs-write-stream-atomic
-      - fstream
-      - fstream-npm
-      - github-url-from-git
-      - github-url-from-username-repo
-      - glob
-      - graceful-fs
-      - hosted-git-info
-      - imurmurhash
-      - inflight
-      - inherits
-      - ini
-      - init-package-json
-      - lockfile
-      - lru-cache
-      - minimatch
-      - mkdirp
-      - node-gyp
-      - nopt
-      - normalize-git-url
-      - normalize-package-data
-      - npm-cache-filename
-      - npm-install-checks
-      - npm-package-arg
-      - npm-registry-client
-      - npm-user-validate
-      - npmlog
-      - once
-      - opener
-      - osenv
-      - path-is-inside
-      - read
-      - read-installed
-      - read-package-json
-      - readable-stream
-      - realize-package-specifier
-      - request
-      - retry
-      - rimraf
-      - semver
-      - sha
-      - slide
-      - sorted-object
-      - spdx-license-ids
-      - strip-ansi
-      - tar
-      - text-table
-      - uid-number
-      - umask
-      - validate-npm-package-license
-      - validate-npm-package-name
-      - which
-      - wrappy
-      - write-file-atomic
 
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
@@ -10642,10 +10559,6 @@ snapshots:
     dependencies:
       package-json: 10.0.1
 
-  latest@0.2.0:
-    dependencies:
-      npm: 2.15.12
-
   layout-base@1.0.2:
     optional: true
 
@@ -11172,8 +11085,6 @@ snapshots:
   npm-run-path@5.3.0:
     dependencies:
       path-key: 4.0.0
-
-  npm@2.15.12: {}
 
   nth-check@2.1.1:
     dependencies:
