@@ -1,7 +1,7 @@
-import useDataContext from '@hooks/useDataContext'
+import { db } from '@features/common/db'
+import useTasksContext from '@features/tasks/use-tasks'
 import { Visibility, VisibilityOff } from '@mui/icons-material'
 import { Box, Button, IconButton, InputAdornment, TextField, Typography } from '@mui/material'
-import { SyncService } from '@services/SyncService'
 import { useState } from 'react'
 
 /**
@@ -15,14 +15,13 @@ import { useState } from 'react'
 export function SettingsView() {
   const [apiKey, setApiKey] = useState(localStorage.getItem('todoistApiKey') || '')
   const [showApiKey, setShowApiKey] = useState(false)
-  const { sync } = useDataContext()
+  const { sync } = useTasksContext()
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Save the API key (e.g., to localStorage or a backend)
     // TODO do this in a more secure way
     // TODO move to a context and hook
-    localStorage.setItem('todoistApiKey', apiKey)
-    SyncService.getInstance().setKey(apiKey)
+    await db.settings.put({ key: 'todoist.api.key', value: apiKey })
     sync(true)
     alert('API key saved successfully!')
   }

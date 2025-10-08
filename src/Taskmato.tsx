@@ -1,12 +1,13 @@
-import DataProvider from '@context/data/DataProvider'
 import { LoadingBar } from '@features/common'
 import { GlobalToolbar } from '@features/common'
+import { db } from '@features/common/db'
 import { SettingsView } from '@features/settings'
 import { StatisticsView } from '@features/statistics'
+import TasksProvider from '@features/tasks/tasks-provider'
 import TasksView from '@features/tasks/tasks-view'
-import { CssBaseline, ThemeProvider } from '@mui/material'
+import { Box, CircularProgress, CssBaseline, ThemeProvider } from '@mui/material'
 import theme from '@styles/theme'
-import { JSX } from 'react'
+import { JSX, useEffect, useState } from 'react'
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom'
 
 /**
@@ -15,8 +16,27 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-d
  * If the API key is not set in localStorage, it redirects to the SettingsView.
  */
 function RequireApiKey({ children }: { children: JSX.Element }) {
-  const apiKey = localStorage.getItem('todoistApiKey')
-  if (!apiKey) {
+  const [isLoading, setLoading] = useState(true)
+  const [hasKey, setHasKey] = useState(false)
+
+  useEffect(() => {
+    const fetchApiKey = async () => {
+      const keySetting = await db.settings.get('todoist.api.key')
+      setHasKey(!!(keySetting && keySetting.value))
+      setLoading(false)
+    }
+    fetchApiKey()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex' }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (!hasKey) {
     return <Navigate to="/settings" replace />
   }
   return children
@@ -33,7 +53,7 @@ function Taskmato() {
   return (
     <ThemeProvider theme={theme} noSsr>
       <CssBaseline />
-      <DataProvider>
+      <TasksProvider>
         <Router>
           <GlobalToolbar />
           <LoadingBar sx={{ mb: 1 }} />
@@ -58,7 +78,7 @@ function Taskmato() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
-      </DataProvider>
+      </TasksProvider>
     </ThemeProvider>
   )
 }

@@ -1,4 +1,4 @@
-import useDataContext from '@hooks/useDataContext'
+import useTasksContext from '@features/tasks/use-tasks'
 import { Box, LinearProgress } from '@mui/material'
 
 type LoadingBarProps = {
@@ -15,7 +15,7 @@ type LoadingBarProps = {
  */
 export function LoadingBar({ sx }: LoadingBarProps) {
   /** TODO see if we can pass in the loading state */
-  const { isLoading } = useDataContext()
+  const { isLoading } = useTasksContext()
 
   if (isLoading) {
     return <LinearProgress sx={{ ...sx }} />

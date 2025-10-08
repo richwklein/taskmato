@@ -1,4 +1,4 @@
-import useDataContext from '@hooks/useDataContext'
+import useTasksContext from '@features/tasks/use-tasks'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { CircularProgress, IconButton } from '@mui/material'
 
@@ -15,7 +15,7 @@ type RefreshButtonProps = {
  * @returns The rendered RefreshComponent
  */
 export function RefreshButton({ sx }: RefreshButtonProps) {
-  const { isLoading, sync } = useDataContext()
+  const { isLoading, sync } = useTasksContext()
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (event.shiftKey) {
