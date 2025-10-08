@@ -10,9 +10,6 @@ export const todaySectionId = 'today'
 /** Id of the overdue section */
 export const overdueSectionId = 'overdue'
 
-/** Id of the project that is selected by default */
-export const defaultProjectId: string = todayProjectId
-
 /**
  * get a list of projects.
  *

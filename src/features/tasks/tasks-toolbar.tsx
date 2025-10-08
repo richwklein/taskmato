@@ -1,6 +1,6 @@
 import { ProjectSelect } from '@features/tasks'
 import RefreshButton from '@features/tasks/refresh-button'
-import { useDataContext } from '@hooks/useDataContext'
+import { useTasksContext } from '@features/tasks/use-tasks'
 import { TextField, Toolbar } from '@mui/material'
 
 interface TasksToolbarProps {
@@ -17,7 +17,7 @@ interface TasksToolbarProps {
  * @returns The rendered TaskToolbar component.
  */
 export function TasksToolbar({ sx }: TasksToolbarProps) {
-  const { isLoading, projects, view, showProject } = useDataContext()
+  const { isLoading, projects, view, showProject } = useTasksContext()
 
   const handleProjectChange = (projectId: string) => {
     showProject(projectId)

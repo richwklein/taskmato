@@ -92,7 +92,6 @@ export type Label = {
  * @property description - A long Markdown description.
  * @property labels - A list of labels associated with the task.
  * @property due - Optional due date when this should be completed.
- * @property deadline - Optional date of when the task must be completed by.
  * @property isCompleted - If the work has been marked as completed.
  * @property parentId - Optional parent task of this work.
  * @property projectId - The project the task belongs to (today project is special).
@@ -107,7 +106,6 @@ export type Task = {
   description: string
   labels: Label[]
   due: Date | null
-  deadline: Date | null
   isCompleted: boolean
   parentId: string | null
   projectId: string
@@ -117,32 +115,11 @@ export type Task = {
 }
 
 /**
- * Used to pass information between the sync service.
- *
- * @property token - the sync token used to indicate a partial sync
- * @property projects - The current or updated projects
- * @property sections - The current or updated sections
- * @property tasks - The current or updated tasks
- * @property labels - The current or updated labels
+ * A setting stored in the database.
+ * @property key - The unique key of the setting.
+ * @property value - The value of the setting which can be a string, number, or boolean.
  */
-export type SyncData = {
-  token: string | null
-  projects: Map<string, Project>
-  sections: Map<string, Section>
-  tasks: Map<string, Task>
-  labels: Map<string, Label>
-}
-
-/**
- * The set of object that make up the data needed to populate the home's view of tasks.
- *
- * @property projectId - The currently selected project driving the view.
- * @property projects - The list of all possible projects to select.
- * @property sections - All the sections for the selected project.
- * @property tasks - All the tasks for the selected project.
- */
-export type TasksView = {
-  projectId: string | null
-  sections: Section[]
-  tasks: Task[]
+export type Setting = {
+  key: string
+  value: string | number | boolean
 }

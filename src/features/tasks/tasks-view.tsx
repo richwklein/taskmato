@@ -1,5 +1,5 @@
-import { TasksToolbar } from '@features/tasks'
-import { useDataContext } from '@hooks/useDataContext'
+import { TaskGrid, TasksToolbar } from '@features/tasks'
+import { useTasksContext } from '@features/tasks/use-tasks'
 import { Box } from '@mui/material'
 
 /**
@@ -11,7 +11,7 @@ import { Box } from '@mui/material'
  * @returns the rendered Home component.
  */
 export function TasksView() {
-  const { view } = useDataContext()
+  const { view } = useTasksContext()
   if (!view) {
     return null
   }
@@ -19,6 +19,7 @@ export function TasksView() {
   return (
     <Box component={'main'} sx={{ px: 2 }}>
       <TasksToolbar sx={{ mb: 2 }} />
+      <TaskGrid tasks={view.tasks} />
     </Box>
   )
 }
