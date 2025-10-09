@@ -39,6 +39,7 @@ export function getPriorities(): Priority[] {
  * Get a priority by an id. If the priority is not found, return the default priority.
  */
 export function getPriorityById(priorityId: number): Priority {
+  if (!priorityId) return defaultPriority
   const priority = priorities.find((priority) => priority.id === priorityId)
   return priority ?? defaultPriority
 }

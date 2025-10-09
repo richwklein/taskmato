@@ -16,13 +16,13 @@ export default defineConfig({
       reporter: ['text', 'json-summary', 'json'],
       reportsDirectory: './coverage',
       reportOnFailure: true,
-      /** TODO re-enable thresholds once we reach them
+      /** TODO increase coverage as we add tests */
       thresholds: {
-        lines: 60,
-        branches: 60,
-        functions: 60,
-        statements: 60,
-      }, */
+        lines: 15,
+        branches: 30,
+        functions: 20,
+        statements: 15,
+      },
     },
   },
 })

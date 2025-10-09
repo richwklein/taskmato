@@ -1,11 +1,10 @@
-import { colors, defaultColor, getColorById } from '@utils/colors'
+import { berryRed, defaultColor, getColorById, lavender } from '@utils/colors'
 import { describe, expect, it } from 'vitest'
 
 describe('getColorById', () => {
   it('returns the correct color when id exists', () => {
-    const target = colors[0]
-    const result = getColorById(target.id)
-    expect(result).toBe(target)
+    const result = getColorById(berryRed.id)
+    expect(result).toBe(berryRed)
   })
 
   it('returns the default color when id does not exist', () => {
@@ -26,8 +25,7 @@ describe('getColorById', () => {
   })
 
   it('is case insensitive when matching ids', () => {
-    const color = colors[1]
-    const result = getColorById(color.id.toUpperCase())
-    expect(result).toBe(color)
+    const result = getColorById(lavender.id.toUpperCase())
+    expect(result).toBe(lavender)
   })
 })
