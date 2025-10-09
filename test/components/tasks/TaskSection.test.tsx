@@ -1,4 +1,4 @@
-import { TaskSection } from '@components/tasks/TaskSection'
+import { TaskSection } from '@components/tasks'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { Section } from '@types'
 import { describe, expect, it } from 'vitest'

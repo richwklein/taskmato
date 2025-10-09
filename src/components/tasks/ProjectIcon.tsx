@@ -5,6 +5,7 @@ import { ProjectType } from '@types'
 
 interface ProjectIconProps {
   type: ProjectType
+  title: string
   sx?: object
 }
 
@@ -15,18 +16,20 @@ interface ProjectIconProps {
  * are used for the Today and Inbox projects.
  *
  * @param type - The type of the project
+ * @param title - The title for the icon
  * @param sx - The optional style object to apply to the toolbar.
  * @returns The rendered ProjectIcon component.
  */
-export function ProjectIcon({ type, sx }: ProjectIconProps) {
+export function ProjectIcon({ type, title, sx }: ProjectIconProps) {
   let Icon = TagIcon
+
   if (type === ProjectType.Today) {
     Icon = TodayIcon
   } else if (type === ProjectType.Inbox) {
     Icon = InboxIcon
   }
 
-  return <Icon sx={{ ...sx }} />
+  return <Icon titleAccess={title} sx={{ ...sx }} />
 }
 
 export default ProjectIcon
