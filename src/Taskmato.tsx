@@ -1,14 +1,13 @@
-import { LoadingBar } from '@features/common'
-import { GlobalToolbar } from '@features/common'
-import { db } from '@features/common/db'
+import { GlobalToolbar } from '@components/global/GlobalToolbar'
+import { ThemeModeApplier } from '@components/settings/ThemeModeApplier'
 import { SettingsView } from '@features/settings'
 import { StatisticsView } from '@features/statistics'
 import TasksProvider from '@features/tasks/tasks-provider'
 import TasksView from '@features/tasks/tasks-view'
-import { Box, CircularProgress, CssBaseline, ThemeProvider } from '@mui/material'
-import theme from '@styles/theme'
+import { Box, CircularProgress } from '@mui/material'
+import { db } from '@utils/db'
 import { JSX, useEffect, useState } from 'react'
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 
 /**
  * A wrapper component to enforce API key presence.
@@ -30,7 +29,14 @@ function RequireApiKey({ children }: { children: JSX.Element }) {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100%',
+        }}
+      >
         <CircularProgress />
       </Box>
     )
@@ -51,35 +57,30 @@ function RequireApiKey({ children }: { children: JSX.Element }) {
  */
 function Taskmato() {
   return (
-    <ThemeProvider theme={theme} noSsr>
-      <CssBaseline />
-      <TasksProvider>
-        <Router>
-          <GlobalToolbar />
-          <LoadingBar sx={{ mb: 1 }} />
-          <Routes>
-            <Route path="settings" element={<SettingsView />} />
-            <Route
-              path="statistics"
-              element={
-                <RequireApiKey>
-                  <StatisticsView />
-                </RequireApiKey>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <RequireApiKey>
-                  <TasksView />
-                </RequireApiKey>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
-      </TasksProvider>
-    </ThemeProvider>
+    <TasksProvider>
+      <ThemeModeApplier />
+      <GlobalToolbar />
+      <Routes>
+        <Route path="settings" element={<SettingsView />} />
+        <Route
+          path="statistics"
+          element={
+            <RequireApiKey>
+              <StatisticsView />
+            </RequireApiKey>
+          }
+        />
+        <Route
+          path="/"
+          element={
+            <RequireApiKey>
+              <TasksView />
+            </RequireApiKey>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </TasksProvider>
   )
 }
 
