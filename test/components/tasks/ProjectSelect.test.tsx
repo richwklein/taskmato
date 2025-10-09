@@ -12,7 +12,7 @@ describe('ProjectSelect', () => {
   })
 
   it('renders a select input with all project options', async () => {
-    render(<ProjectSelect disable={false} projects={fakeProjects} onSelect={onSelect} />)
+    render(<ProjectSelect disabled={false} projects={fakeProjects} onSelect={onSelect} />)
 
     const combobox = screen.getByRole('combobox', { name: /project/i })
     expect(combobox).toBeInTheDocument()
@@ -22,7 +22,7 @@ describe('ProjectSelect', () => {
   })
 
   it('calls onSelect when a project is chosen', async () => {
-    render(<ProjectSelect disable={false} projects={fakeProjects} onSelect={onSelect} />)
+    render(<ProjectSelect disabled={false} projects={fakeProjects} onSelect={onSelect} />)
 
     const combobox = screen.getByRole('combobox', { name: /project/i })
     fireEvent.mouseDown(combobox)
@@ -36,7 +36,7 @@ describe('ProjectSelect', () => {
   it('renders the selected project when selectedId is valid', () => {
     render(
       <ProjectSelect
-        disable={false}
+        disabled={false}
         projects={fakeProjects}
         selectedId="inbox"
         onSelect={onSelect}
@@ -53,7 +53,7 @@ describe('ProjectSelect', () => {
   it('renders empty selection when selectedId is not in project list', () => {
     render(
       <ProjectSelect
-        disable={false}
+        disabled={false}
         projects={fakeProjects}
         selectedId="invalid-id"
         onSelect={onSelect}
@@ -65,7 +65,7 @@ describe('ProjectSelect', () => {
   })
 
   it('disables the select when disable prop is true', () => {
-    render(<ProjectSelect disable={true} projects={fakeProjects} onSelect={onSelect} />)
+    render(<ProjectSelect disabled={true} projects={fakeProjects} onSelect={onSelect} />)
 
     const combobox = screen.getByRole('combobox', { name: /project/i })
     expect(combobox).toHaveAttribute('aria-disabled', 'true')

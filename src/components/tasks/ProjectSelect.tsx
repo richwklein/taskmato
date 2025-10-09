@@ -13,7 +13,7 @@ import {
 import { Project, ProjectType } from '@types'
 
 interface ProjectSelectProps {
-  disable: boolean
+  disabled: boolean
   projects: Project[]
   selectedId?: string
   onSelect: (projectId: string) => void
@@ -32,7 +32,13 @@ interface ProjectSelectProps {
  * @param sx - The optional style object to apply to the toolbar.
  * @returns The rendered ProjectSelect component.
  */
-export function ProjectSelect({ disable, projects, selectedId, onSelect, sx }: ProjectSelectProps) {
+export function ProjectSelect({
+  disabled,
+  projects,
+  selectedId,
+  onSelect,
+  sx,
+}: ProjectSelectProps) {
   const handleChange = (event: SelectChangeEvent<string>) => {
     onSelect(event.target.value as string)
   }
@@ -99,7 +105,7 @@ export function ProjectSelect({ disable, projects, selectedId, onSelect, sx }: P
         onChange={handleChange}
         label="Project"
         renderValue={renderSelectedProject}
-        disabled={disable}
+        disabled={disabled}
       >
         {renderMenuItems()}
       </Select>
