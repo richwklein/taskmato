@@ -24,7 +24,13 @@ export function GlobalToolbar({ sx }: GlobalToolbarProps) {
       <Toolbar>
         {/* TODO replace icon */}
         <MoreTimeIcon color="inherit" sx={{ mr: 1 }} />
-        <Typography variant="h6" color="inherit" component="div" sx={{ flexGrow: 1 }}>
+        <Typography
+          variant="h6"
+          color="inherit"
+          component="div"
+          role="heading"
+          sx={{ flexGrow: 1 }}
+        >
           {'Taskmato'}
         </Typography>
         <ButtonGroup>
