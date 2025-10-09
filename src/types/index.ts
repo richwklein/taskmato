@@ -1,7 +1,7 @@
 /**
  * Common type used to express the color on other objects
  *
- * @property id - The identifier of the color.
+ * @property id - The lowercase identifier of the color.
  * @property name - The readable display name.
  * @property hex - The hexadecimal color value.
  */

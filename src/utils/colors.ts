@@ -101,7 +101,7 @@ export const taupe: Color = {
   hex: '#ccac93',
 } as const
 
-export const colors = [
+const colors = [
   berryRed,
   red,
   orange,
@@ -131,6 +131,8 @@ export const defaultColor: Color = charcoal
  * Get a color by an id. If the color is not found, return the default color.
  */
 export function getColorById(colorId: string): Color {
-  const color = colors.find((color) => color.id === colorId)
+  if (!colorId) return defaultColor
+  const normalizedId = colorId.toLowerCase()
+  const color = colors.find((color) => color.id === normalizedId)
   return color ?? defaultColor
 }
