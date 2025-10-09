@@ -5,8 +5,6 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import { AppBar, ButtonGroup, IconButton, Toolbar, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 
-import ThemeSwitch from '../../components/ThemeSwitch'
-
 interface GlobalToolbarProps {
   sx?: object
 }
@@ -29,8 +27,6 @@ export function GlobalToolbar({ sx }: GlobalToolbarProps) {
         <Typography variant="h6" color="inherit" component="div" sx={{ flexGrow: 1 }}>
           {'Taskmato'}
         </Typography>
-        {/* TODO move to settings page */}
-        <ThemeSwitch />
         <ButtonGroup>
           <IconButton color="inherit" aria-label="Home" component={Link} to="/">
             <HomeIcon />
