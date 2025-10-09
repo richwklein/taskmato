@@ -1,5 +1,4 @@
 export { PriorityIcon } from '@features/tasks/priority-icon'
-export { ProjectSelect } from '@features/tasks/project-select'
 export { RefreshButton } from '@features/tasks/refresh-button'
 export { TaskCard } from '@features/tasks/task-card'
 export { TaskGrid } from '@features/tasks/task-grid'

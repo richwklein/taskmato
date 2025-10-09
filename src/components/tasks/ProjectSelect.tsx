@@ -1,4 +1,4 @@
-import { ProjectIcon } from '@features/tasks'
+import { ProjectIcon } from '@components/tasks'
 import {
   Box,
   Divider,
@@ -11,12 +11,11 @@ import {
   SelectChangeEvent,
 } from '@mui/material'
 import { Project, ProjectType } from '@types'
-import { JSX } from 'react/jsx-runtime'
 
 interface ProjectSelectProps {
   disable: boolean
   projects: Project[]
-  selectedId: string | null
+  selectedId?: string
   onSelect: (projectId: string) => void
   sx?: object
 }
@@ -34,26 +33,33 @@ interface ProjectSelectProps {
  * @returns The rendered ProjectSelect component.
  */
 export function ProjectSelect({ disable, projects, selectedId, onSelect, sx }: ProjectSelectProps) {
-  // TODO do not depend on the projects sort order
-
   const handleChange = (event: SelectChangeEvent<string>) => {
     onSelect(event.target.value as string)
   }
 
+  // only use the selectedId if is contained in the list of projects
+  const projectId = selectedId && projects.some((p) => p.id === selectedId) ? selectedId : null
+
   const renderSelectedProject = (selected: string) => {
     const project = projects.find((p) => p.id === selected)
-    if (!project) return null
+    if (!project) {
+      return <span aria-label="No project selected" />
+    }
 
     return (
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <ProjectIcon type={project.type} sx={{ color: project.color.hex, mr: 1 }} />
+        <ProjectIcon
+          type={project.type}
+          sx={{ color: project.color.hex, mr: 1 }}
+          title={project.name}
+        />
         {project.name}
       </Box>
     )
   }
 
   const renderMenuItems = () => {
-    const items: JSX.Element[] = []
+    const items: React.ReactNode[] = []
     let hasInsertedDivider = false
 
     projects.forEach((project) => {
@@ -69,7 +75,11 @@ export function ProjectSelect({ disable, projects, selectedId, onSelect, sx }: P
           sx={{ pl: project.parentId !== null ? 4 : 2 }}
         >
           <ListItemIcon>
-            <ProjectIcon type={project.type} sx={{ color: project.color.hex, mr: 1 }} />
+            <ProjectIcon
+              type={project.type}
+              sx={{ color: project.color.hex, mr: 1 }}
+              title={project.name}
+            />
           </ListItemIcon>
           <ListItemText>{project.name}</ListItemText>
         </MenuItem>
@@ -84,7 +94,8 @@ export function ProjectSelect({ disable, projects, selectedId, onSelect, sx }: P
       <InputLabel id="project-select-label">Project</InputLabel>
       <Select
         labelId="project-select-label"
-        value={selectedId || ''}
+        displayEmpty
+        value={projectId ?? ''}
         onChange={handleChange}
         label="Project"
         renderValue={renderSelectedProject}
