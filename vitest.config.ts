@@ -18,10 +18,10 @@ export default defineConfig({
       reportOnFailure: true,
       /** TODO increase coverage as we add tests */
       thresholds: {
-        lines: 30,
-        branches: 70,
-        functions: 50,
-        statements: 30,
+        statements: 35,
+        branches: 75,
+        functions: 55,
+        lines: 35,
       },
     },
   },

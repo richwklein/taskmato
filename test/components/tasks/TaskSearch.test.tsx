@@ -1,4 +1,3 @@
-// TaskSearch.test.tsx
 import { TaskSearch } from '@components/tasks'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

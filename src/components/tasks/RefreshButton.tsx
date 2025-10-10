@@ -1,8 +1,10 @@
-import useTasksContext from '@features/tasks/use-tasks'
 import RefreshIcon from '@mui/icons-material/Refresh'
-import { CircularProgress, IconButton } from '@mui/material'
+import { IconButton } from '@mui/material'
 
 type RefreshButtonProps = {
+  disabled: boolean
+  onRefresh: () => void
+  onHardRefresh: () => void
   sx?: object
 }
 
@@ -14,14 +16,12 @@ type RefreshButtonProps = {
  * @param sx - The optional style object to apply to the toolbar.
  * @returns The rendered RefreshComponent
  */
-export function RefreshButton({ sx }: RefreshButtonProps) {
-  const { isLoading, sync } = useTasksContext()
-
+export function RefreshButton({ disabled, onRefresh, onHardRefresh, sx }: RefreshButtonProps) {
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (event.shiftKey) {
-      sync(true)
+      onHardRefresh()
     } else {
-      sync(false)
+      onRefresh()
     }
   }
 
@@ -30,10 +30,10 @@ export function RefreshButton({ sx }: RefreshButtonProps) {
       aria-label="Refresh"
       color="inherit"
       onClick={handleClick}
-      disabled={isLoading}
+      disabled={disabled}
       sx={{ ...sx }}
     >
-      {isLoading ? <CircularProgress color="inherit" size={24} /> : <RefreshIcon />}
+      <RefreshIcon />
     </IconButton>
   )
 }

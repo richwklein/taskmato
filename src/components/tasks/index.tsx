@@ -1,4 +1,5 @@
 export { ProjectIcon } from '@components/tasks/ProjectIcon'
 export { ProjectSelect } from '@components/tasks/ProjectSelect'
+export { RefreshButton } from '@components/tasks/RefreshButton'
 export { TaskSearch } from '@components/tasks/TaskSearch'
 export { TaskSection } from '@components/tasks/TaskSection'
