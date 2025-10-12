@@ -1,7 +1,8 @@
-import { db } from '@features/common/db'
+import { ThemeSetting } from '@components/settings/ThemeSetting'
 import useTasksContext from '@features/tasks/use-tasks'
 import { Visibility, VisibilityOff } from '@mui/icons-material'
 import { Box, Button, IconButton, InputAdornment, TextField, Typography } from '@mui/material'
+import { db } from '@utils/db'
 import { useState } from 'react'
 
 /**
@@ -35,6 +36,8 @@ export function SettingsView() {
       <Typography variant="h5" gutterBottom>
         Settings
       </Typography>
+      <ThemeSetting sx={{ mb: 4 }} />
+
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <TextField
           label="Todoist API Key"

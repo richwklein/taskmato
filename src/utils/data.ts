@@ -1,5 +1,4 @@
-import { Project, ProjectType, Section, Task } from '@types'
-import { defaultColor } from '@utils/colors'
+import { Section, Task } from '@types'
 
 /** Id of the today project */
 export const todayProjectId = 'today'
@@ -9,39 +8,6 @@ export const todaySectionId = 'today'
 
 /** Id of the overdue section */
 export const overdueSectionId = 'overdue'
-
-/**
- * get a list of projects.
- *
- * This function adds the special Today and Inbox projects if they do not exist
- * and then sorts the projects by order within a parent project.
- *
- * @param projects - The map of projects to use in creating the list.
- * @returns the sorted an updated list of projects.
- */
-export function getProjects(projects: Map<string, Project>): Project[] {
-  const temp = new Map<string, Project>(projects)
-  temp.set(todayProjectId, {
-    id: todayProjectId,
-    name: 'Today',
-    color: defaultColor,
-    type: ProjectType.Today,
-    parentId: null,
-    order: 0,
-  })
-
-  const sorted = Array.from(temp.values()).sort((a, b) => {
-    return a.type !== b.type ? a.type - b.type : a.order - b.order
-  })
-
-  const buildHierarchy = (parentId: string | null): Project[] => {
-    return sorted
-      .filter((project) => project.parentId === parentId)
-      .flatMap((project) => [project, ...buildHierarchy(project.id)])
-  }
-
-  return buildHierarchy(null)
-}
 
 /**
  * get all sections for the given projectId.

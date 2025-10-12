@@ -1,15 +1,17 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { Accordion, AccordionDetails, AccordionSummary, Typography } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 import { Section } from '@types'
 import React from 'react'
 
 interface TasksSectionProps {
   section: Section
   children?: React.ReactNode
-  sx?: object
+  /** Optional system styles forwarded to the progress component. */
+  sx?: SxProps<Theme>
 }
 
-export function TaskSection({ section, sx, children }: TasksSectionProps) {
+export function TasksSection({ section, sx, children }: TasksSectionProps) {
   const [expanded, setExpanded] = React.useState(true)
 
   const handleExpansion = () => {
@@ -26,4 +28,4 @@ export function TaskSection({ section, sx, children }: TasksSectionProps) {
   )
 }
 
-export default TaskSection
+export default TasksSection

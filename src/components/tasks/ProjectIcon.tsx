@@ -1,26 +1,20 @@
 import InboxIcon from '@mui/icons-material/Inbox'
 import TagIcon from '@mui/icons-material/Tag'
 import TodayIcon from '@mui/icons-material/Today'
+import type { SxProps, Theme } from '@mui/material/styles'
 import { ProjectType } from '@types'
 
 interface ProjectIconProps {
+  /** The type of project. Special icons are used for Inbox, and Today projects. */
   type: ProjectType
-  title: string
-  sx?: object
+  /** Optional system styles forwarded to the progress component. */
+  sx?: SxProps<Theme>
 }
 
 /**
- * ProjectIcon Component
- *
- * A component for rendering the icon associated with a project. Different icons
- * are used for the Today and Inbox projects.
- *
- * @param type - The type of the project
- * @param title - The title for the icon
- * @param sx - The optional style object to apply to the toolbar.
- * @returns The rendered ProjectIcon component.
+ * ProjectIcon — returns the appropriate icon for a project type.
  */
-export function ProjectIcon({ type, title, sx }: ProjectIconProps) {
+export function ProjectIcon({ type, sx }: ProjectIconProps) {
   let Icon = TagIcon
 
   if (type === ProjectType.Today) {
@@ -29,7 +23,7 @@ export function ProjectIcon({ type, title, sx }: ProjectIconProps) {
     Icon = InboxIcon
   }
 
-  return <Icon titleAccess={title} sx={{ ...sx }} />
+  return <Icon sx={{ ...sx }} />
 }
 
 export default ProjectIcon

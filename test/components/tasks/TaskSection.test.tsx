@@ -1,9 +1,9 @@
-import { TaskSection } from '@components/tasks'
+import { TasksSection } from '@components/tasks'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { Section } from '@types'
 import { describe, expect, it } from 'vitest'
 
-describe('TaskSection', () => {
+describe('TasksSection', () => {
   const section: Section = {
     id: 'sec1',
     name: 'Untitled Section',
@@ -12,15 +12,15 @@ describe('TaskSection', () => {
   }
 
   it('renders the section title', () => {
-    render(<TaskSection section={section}>Content</TaskSection>)
+    render(<TasksSection section={section}>Content</TasksSection>)
     expect(screen.getByText('Untitled Section')).toBeInTheDocument()
   })
 
   it('renders child content inside AccordionDetails', () => {
     render(
-      <TaskSection section={section}>
+      <TasksSection section={section}>
         <div>Task List Content</div>
-      </TaskSection>
+      </TasksSection>
     )
 
     expect(screen.getByText('Task List Content')).toBeInTheDocument()
@@ -28,9 +28,9 @@ describe('TaskSection', () => {
 
   it('starts expanded by default', () => {
     render(
-      <TaskSection section={section}>
+      <TasksSection section={section}>
         <p>Visible content</p>
-      </TaskSection>
+      </TasksSection>
     )
 
     // AccordionDetails content should be visible initially
@@ -39,9 +39,9 @@ describe('TaskSection', () => {
 
   it('toggles expansion when header is clicked', () => {
     render(
-      <TaskSection section={section}>
+      <TasksSection section={section}>
         <p>Hidden content</p>
-      </TaskSection>
+      </TasksSection>
     )
 
     const summary = screen.getByRole('button', { expanded: true })

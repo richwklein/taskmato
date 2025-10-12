@@ -1,10 +1,7 @@
-import { GlobalToolbar } from '@components/global'
-import { RequireApiKey } from '@components/global'
-import { ThemeModeApplier } from '@components/settings'
+import { GlobalToolbar, ThemeModeApplier } from '@components/global'
 import { SettingsView } from '@features/settings'
-import { StatisticsView } from '@features/statistics'
 import TasksProvider from '@features/tasks/tasks-provider'
-import TasksView from '@features/tasks/tasks-view'
+import { StatisticsPage, TasksPage } from '@pages'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 /**
@@ -21,22 +18,8 @@ function Taskmato() {
       <GlobalToolbar />
       <Routes>
         <Route path="settings" element={<SettingsView />} />
-        <Route
-          path="statistics"
-          element={
-            <RequireApiKey>
-              <StatisticsView />
-            </RequireApiKey>
-          }
-        />
-        <Route
-          path="/"
-          element={
-            <RequireApiKey>
-              <TasksView />
-            </RequireApiKey>
-          }
-        />
+        <Route path="statistics" element={<StatisticsPage />} />
+        <Route path="/" element={<TasksPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </TasksProvider>

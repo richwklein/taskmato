@@ -1,8 +1,8 @@
-import { db } from '@features/common/db'
 import type { Label, Project, Section, Task } from '@types'
 import { ProjectType } from '@types'
 import { getColorById } from '@utils/colors'
 import { defaultColor } from '@utils/colors'
+import { db } from '@utils/db'
 import { getPriorityById } from '@utils/priorities'
 import axios from 'axios'
 import Dexie from 'dexie'
@@ -27,12 +27,6 @@ export type SyncResult = {
  * This includes fetching from the local database and syncing with Todoist.
  */
 export class TasksService {
-  // todo sort these
-
-  async getTasks(): Promise<Task[]> {
-    return db.tasks.toArray()
-  }
-
   async getTasksByProjectId(projectId: string): Promise<Task[]> {
     return db.tasks.where('projectId').equals(projectId).toArray()
   }
@@ -43,7 +37,7 @@ export class TasksService {
    * @returns A sorted list of projects with hierarchy.
    */
   async getProjects(): Promise<Project[]> {
-    const projects = (await db.projects.toArray()).reduce((map, project) => {
+    const projects = (await db.projects.orderBy('type').toArray()).reduce((map, project) => {
       map.set(project.id, project)
       return map
     }, new Map<string, Project>())
@@ -70,22 +64,49 @@ export class TasksService {
     return buildHierarchy(null)
   }
 
+  /**
+   * Get a single project by its ID.
+   *
+   * @param id - The id of the project to retrieve.
+   * @returns
+   */
   async getProjectById(id: string): Promise<Project | undefined> {
     return db.projects.get(id)
   }
 
-  async getSections(): Promise<Section[]> {
-    return db.sections.toArray()
-  }
-
+  /**
+   * get all sections for the given projectId.
+   *
+   * This will create sections for the special today project and then sorts the
+   * sections in order.
+   *
+   * @param projectId - The id of the project to filter the sections by.
+   * @returns The updated and sorted list of sections.
+   */
   async getSectionsByProjectId(projectId: string): Promise<Section[]> {
-    return db.sections.where('projectId').equals(projectId).toArray()
+    const sections = await db.sections.where('projectId').equals(projectId).sortBy('order')
+
+    // TODO add the special today sections
+
+    // return the sorted sections can be empty
+    return sections.sort((a, b) => a.order - b.order)
   }
 
+  /**
+   * Get all {@link Label | labels} in the database sorted by order.
+   *
+   * @returns All labels in the database.
+   */
   async getLabels(): Promise<Label[]> {
-    return db.labels.toArray()
+    return await db.labels.orderBy('order').toArray()
   }
 
+  /**
+   * Synchronize the local database with Todoist.
+   *
+   * @param force - If true, performs a full sync by clearing local data.
+   * @returns a {@link SyncResult} indicating success or failure.
+   */
   async sync(force: boolean): Promise<SyncResult> {
     const keySetting = await db.settings.get(API_KEY_SETTING)
     if (!keySetting || !keySetting.value) {
@@ -97,6 +118,7 @@ export class TasksService {
     let token = setting ? (setting.value as string) : null
     if (force || !token) {
       token = FULL_SYNC_TOKEN
+      await clearTables()
     }
 
     try {
@@ -114,7 +136,7 @@ export class TasksService {
       )
 
       // TODO use the setting service instead of direct DB access
-      await db.settings.put({ key: 'todoist.sync.token', value: response.data.sync_token })
+      await db.settings.put({ key: SYNC_TOKEN_SETTING, value: response.data.sync_token as string })
 
       const labels = await updateTable(db.labels, response.data.labels, (record) => ({
         id: record.id,
@@ -129,7 +151,7 @@ export class TasksService {
           return map
         }, new Map<string, Label>())
 
-      Promise.all([
+      await Promise.all([
         updateTable(db.projects, response.data.projects, (record) => ({
           id: record.id,
           name: record.name,
@@ -196,7 +218,7 @@ function getLabelsByIds(labelIds: string[], labels: Map<string, Label>): Label[]
  * @param records - The records to merge into the table.
  * @param mapper - A function that maps the raw record to the desired type.
  */
-export async function updateTable<T>(
+async function updateTable<T>(
   table: Dexie.Table<T, string>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   records: Record<string, any>[],
@@ -224,6 +246,13 @@ export async function updateTable<T>(
   }
 
   return remaining
+}
+
+/**
+ * Clear all the task related data from the database.
+ */
+async function clearTables() {
+  await Promise.all([db.projects.clear(), db.sections.clear(), db.tasks.clear(), db.labels.clear()])
 }
 
 export default new TasksService()

@@ -1,4 +1,4 @@
-import { LoadingBar } from '@components/LoadingBar'
+import { LoadingBar } from '@components/common'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 

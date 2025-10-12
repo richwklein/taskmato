@@ -1,20 +1,17 @@
 // ThemeSetting.tsx
 import { FormControl, FormControlLabel, FormLabel, Radio, RadioGroup } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 import type { ThemeMode } from '@services/SettingsService'
 import settingsService from '@services/SettingsService'
 import React, { useEffect, useState } from 'react'
 
 type ThemeSettingProps = {
-  sx?: object
+  /** Optional system styles forwarded to the progress component. */
+  sx?: SxProps<Theme>
 }
 
 /**
- * ThemeSetting Component
- *
- * Allows the user to select the application's theme mode (light, dark, or system).
- * Saves the preference to the settings database.
- *
- * @returns A component for selecting the application's theme mode.
+ * ThemeSetting — user control for selecting the app’s color mode.
  */
 export function ThemeSetting({ sx }: ThemeSettingProps) {
   const [themeMode, setThemeMode] = useState<ThemeMode>('system')
@@ -31,8 +28,6 @@ export function ThemeSetting({ sx }: ThemeSettingProps) {
     const newValue = event.target.value as ThemeMode
     setThemeMode(newValue)
     await settingsService.setThemeMode(newValue)
-
-    // Trigger a theme update
   }
 
   return (

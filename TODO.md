@@ -49,6 +49,9 @@ A pomodoro app based around todoist tasks
   - [ ] allow marking a task as completed
   - [ ] allow starting a pomodoro timer with default duration (button visible)
   - [ ] on hover show additional timer durations
+  - [ ] Estimated Poms per task; show a tiny progress ring if partially done.
+  - [ ] Remember last filter + layout (SettingsService).
+  - [ ] [Keyboard shortcuts: / focus search, j/k navigate, Enter start, Esc clear](https://www.npmjs.com/package/react-hotkeys-hook)
 
 - [ ] pomodoro timer (modal or view)
   - [ ] show a timer bar on other views if a session is in progress
@@ -69,6 +72,7 @@ A pomodoro app based around todoist tasks
     - [ ] start another time
     - [ ] mark task as completed
     - [ ] switch tasks without completing
+  - [ ] Now/Next tray: after clicking Start, surface “Next” so users can queue the following task.
 
 - [ ] Statistics (view)
   - [ ] stats broken down by project and / or label

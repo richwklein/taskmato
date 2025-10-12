@@ -8,6 +8,8 @@ import { createContext } from 'react'
  */
 export interface TasksView {
   projectId: string
+  searchTerm?: string
+  projects: Project[]
   sections: Section[]
   tasks: Task[]
 }
@@ -16,20 +18,22 @@ export interface TasksView {
  * The context for the task provider.
  */
 export interface TasksContextType {
+  isInitialized: boolean
   isLoading: boolean
-  projects: Project[]
   view: TasksView | null
   sync: (force: boolean) => void
   showProject: (projectId: string) => void
+  filterTasks: (searchTerm: string) => void
 }
 
 /**
  * The context for the task provider.
  *
  * @property isLoading - A boolean indicating if the tasks are currently loading.
- * @property projects - The projects that the tasks are organized into.
+ * @property isInitialized - A boolean indicating if the tasks have been initialized.
  * @property view - The data needed to drive the Tasks in the home view.
  * @property sync - A function to sync the tasks
  * @property showProject - select the project to show based on the given id.
+ * @property filterTasks - filter the tasks based on the given search term.
  */
 export const TasksContext = createContext<TasksContextType | undefined>(undefined)

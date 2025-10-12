@@ -1,4 +1,4 @@
-import { RequireApiKey } from '@components/global/RequireApiKey'
+import { RequireApiKey } from '@components/common'
 import settingsService from '@services/SettingsService'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -12,7 +12,7 @@ describe('RequireApiKey', () => {
     vi.clearAllMocks()
   })
 
-  it('shows LoadingBox while checking for API key', async () => {
+  it('shows LoadingView while checking for API key', async () => {
     // Delay resolution to simulate async loading
     mockedSettingsService.getApiKey.mockImplementationOnce(
       () => new Promise((resolve) => setTimeout(() => resolve(null), 10))
@@ -26,7 +26,7 @@ describe('RequireApiKey', () => {
       </MemoryRouter>
     )
 
-    // LoadingBox renders immediately
+    // LoadingView renders immediately
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 

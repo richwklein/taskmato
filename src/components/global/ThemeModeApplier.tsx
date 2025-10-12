@@ -4,11 +4,7 @@ import settingsService from '@services/SettingsService'
 import { useEffect } from 'react'
 
 /**
- * ThemeModeApplier Component
- * Applies the user's theme mode preference (light, dark, or system)
- * by updating the MUI color scheme accordingly.
- *
- * @returns A component that applies the theme mode as a side effect.
+ * ThemeModeApplier — side-effect component that keeps MUI color mode in sync with user settings.
  */
 export function ThemeModeApplier() {
   const { mode, setMode } = useColorScheme()

@@ -26,4 +26,12 @@ export const fakeProjects: Project[] = [
     parentId: null,
     order: 1,
   },
+  {
+    id: 'p2',
+    name: 'SDLC',
+    type: ProjectType.Project,
+    color: defaultColor,
+    parentId: 'p1',
+    order: 2,
+  },
 ]

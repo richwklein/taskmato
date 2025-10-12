@@ -1,11 +1,12 @@
+import { TaskCard } from '@features/tasks'
 import { Grid } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 import { Task } from '@types'
-
-import TaskCard from './task-card'
 
 interface TaskGridProps {
   tasks: Task[]
-  sx?: object
+  /** Optional system styles forwarded to the progress component. */
+  sx?: SxProps<Theme>
 }
 
 /**

@@ -1,11 +1,13 @@
 import { TextField } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 import { useEffect } from 'react'
 import { useDebouncedCallback } from 'use-debounce'
 
 interface TaskSearchProps {
   disabled: boolean
   onSearch: (searchTerm: string) => void
-  sx?: object
+  /** Optional system styles forwarded to the progress component. */
+  sx?: SxProps<Theme>
 }
 
 /**

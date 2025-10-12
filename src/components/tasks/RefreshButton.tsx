@@ -1,11 +1,13 @@
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { IconButton } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 
 type RefreshButtonProps = {
   disabled: boolean
   onRefresh: () => void
   onHardRefresh: () => void
-  sx?: object
+  /** Optional system styles forwarded to the progress component. */
+  sx?: SxProps<Theme>
 }
 
 /**

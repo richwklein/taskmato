@@ -1,19 +1,16 @@
 import { Box, CircularProgress } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 
-type LoadingBoxProps = {
-  sx?: object
+type LoadingViewProps = {
+  /** Optional system styles forwarded to the progress component. */
+  sx?: SxProps<Theme>
 }
 
 /**
- * LoadingBox Component
- *
- * An undetermined circular loading box that displays at full height.
+ * LoadingView — centered, full-height spinner container.
  * This is useful for loading states where the content is not yet available.
- *
- * @param sx - The optional style object to apply to the loading box.
- * @returns The rendered LoadingBox component.
  */
-export function LoadingBox({ sx }: LoadingBoxProps) {
+export function LoadingView({ sx }: LoadingViewProps) {
   return (
     <Box
       sx={{
@@ -29,4 +26,4 @@ export function LoadingBox({ sx }: LoadingBoxProps) {
   )
 }
 
-export default LoadingBox
+export default LoadingView

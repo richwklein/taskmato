@@ -1,6 +1,5 @@
 import { TasksContext, TasksContextType, TasksView } from '@features/tasks/tasks-context'
 import tasksService from '@features/tasks/tasks-service'
-import { Project } from '@types'
 import React, { useCallback, useEffect, useState } from 'react'
 
 /** Id of the project that is selected by default */
@@ -17,27 +16,40 @@ export const DEFAULT_PROJECT_ID: string = 'today'
 export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setLoading] = useState<boolean>(false)
   const [isInitialized, setInitialized] = useState<boolean>(false)
-  const [view, setView] = useState<TasksView | null>(null)
-  const [projects, setProjects] = useState<Project[]>([])
+  const [view, setView] = useState<TasksView>({
+    projectId: DEFAULT_PROJECT_ID,
+    projects: [],
+    sections: [],
+    tasks: [],
+  })
 
-  const createView = useCallback(
-    async (projectId: string) => {
-      const project = projects.find((project) => project.id === projectId)
+  const syncView = useCallback(
+    async (projectId: string, searchTerm: string | undefined) => {
+      const project = await tasksService.getProjectById(projectId)
       const setId = project ? project.id : DEFAULT_PROJECT_ID
+      console.log(`projectId=${projectId}, setId=${setId}, searchTerm=${searchTerm}`)
+
+      // filter tasks and sections
+      let sections = await tasksService.getSectionsByProjectId(setId)
+      let tasks = await tasksService.getTasksByProjectId(setId)
+      if (searchTerm) {
+        tasks = tasks.filter((task) =>
+          task.content.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+
+        const sectionIdsWithTasks = new Set(tasks.map((task) => task.sectionId))
+        sections = sections.filter((section) => sectionIdsWithTasks.has(section.id))
+      }
+
       return {
         projectId: setId,
-        sections: await tasksService.getSectionsByProjectId(setId),
-        tasks: await tasksService.getTasksByProjectId(setId),
+        searchTerm: searchTerm,
+        projects: await tasksService.getProjects(),
+        sections: sections,
+        tasks: tasks,
       }
     },
-    [projects]
-  )
-
-  const showProject = useCallback(
-    async (projectId: string) => {
-      setView(await createView(projectId))
-    },
-    [createView]
+    [tasksService]
   )
 
   const sync = useCallback(
@@ -50,11 +62,12 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           throw new Error(results.message)
         }
 
-        setProjects(await tasksService.getProjects())
         if (!isInitialized) {
           setInitialized(true)
-          setView(await createView(DEFAULT_PROJECT_ID))
         }
+
+        setView(await syncView(view.projectId, view.searchTerm))
+        console.log(view)
       } catch (error) {
         console.error('Failed to load tasks', error)
         throw error
@@ -62,7 +75,21 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setLoading(false)
       }
     },
-    [isInitialized, createView]
+    [view, isInitialized, syncView]
+  )
+
+  const showProject = useCallback(
+    async (projectId: string) => {
+      setView(await syncView(projectId, view.searchTerm))
+    },
+    [view, syncView]
+  )
+
+  const filterTasks = useCallback(
+    async (searchTerm: string) => {
+      setView(await syncView(view.projectId, searchTerm))
+    },
+    [view, syncView]
   )
 
   useEffect(() => {
@@ -72,11 +99,12 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [isInitialized, sync])
 
   const contextValue: TasksContextType = {
+    isInitialized,
     isLoading,
-    projects,
     view,
     sync,
     showProject,
+    filterTasks,
   }
 
   return <TasksContext.Provider value={contextValue}>{children}</TasksContext.Provider>
