@@ -1,8 +1,8 @@
 // ThemeSetting.tsx
 import { FormControl, FormControlLabel, FormLabel, Radio, RadioGroup } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
-import type { ThemeMode } from '@services/SettingsService'
 import settingsService from '@services/SettingsService'
+import type { ThemeMode } from '@utils/settings'
 import React, { useEffect, useState } from 'react'
 
 type ThemeSettingProps = {

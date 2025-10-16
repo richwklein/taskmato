@@ -12,9 +12,12 @@ export function ThemeModeApplier() {
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined
+    let canceled = false
 
     settingsService
       .getWithListener('ui.theme.mode', (newMode) => {
+        if (canceled) return
+
         let nextMode: 'light' | 'dark'
         if (newMode === 'system') {
           nextMode = prefersDark ? 'dark' : 'light'
@@ -25,10 +28,15 @@ export function ThemeModeApplier() {
         if (mode !== nextMode) setMode(nextMode)
       })
       .then((unsub) => {
-        unsubscribe = unsub
+        if (canceled) {
+          unsub()
+        } else {
+          unsubscribe = unsub
+        }
       })
 
     return () => {
+      canceled = true
       if (unsubscribe) unsubscribe()
     }
   }, [mode, prefersDark, setMode])

@@ -16,14 +16,14 @@ type SettingsTypeMap = (typeof settings.type)['TypeMap']
 export interface ISettingsService {
   /**
    * Get the value for a specific {@link SettingsKey}.
-   * @param key The setting key to retrieve.
+   * @param key The settings key to retrieve.
    * @returns The stored value or a reasonable default if not present.
    */
   get<K extends SettingsKey>(key: K): Promise<SettingsTypeMap[K]>
 
   /**
    * Set the value for a specific {@link SettingsKey}.
-   * @param key The setting key to update.
+   * @param key The settings key to update.
    * @param value The new value to store.
    */
   set<K extends SettingsKey>(key: K, value: SettingsTypeMap[K]): Promise<void>
@@ -32,7 +32,7 @@ export interface ISettingsService {
    * Get a setting and listen for future updates.
    * The listener will be called immediately with the current value,
    * then whenever the setting changes.
-   * @param key The setting key to observe.
+   * @param key The settings key to observe.
    * @param listener Callback invoked with the latest value.
    * @returns A function to unsubscribe from further updates.
    */

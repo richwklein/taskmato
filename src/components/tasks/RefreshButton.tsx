@@ -3,20 +3,24 @@ import { IconButton } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
 
 type RefreshButtonProps = {
+  /** Control if the button is disabled and does not fire handlers. */
   disabled: boolean
+
+  /** Handler for a standard refresh. */
   onRefresh: () => void
+
+  /**  Handler for a hard refresh (force-resync). */
   onHardRefresh: () => void
+
   /** Optional system styles forwarded to the progress component. */
   sx?: SxProps<Theme>
 }
 
 /**
- * RefreshButton Component
+ * RefreshButton — refreshes the Home view’s task data.
  *
- * The button used to refresh the tasks for the home view.
- *
- * @param sx - The optional style object to apply to the toolbar.
- * @returns The rendered RefreshComponent
+ * Click triggers a standard refresh; Shift+Click triggers a hard refresh (force sync from Todoist).
+ * Uses aria-label="Refresh" for screen readers.
  */
 export function RefreshButton({ disabled, onRefresh, onHardRefresh, sx }: RefreshButtonProps) {
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
