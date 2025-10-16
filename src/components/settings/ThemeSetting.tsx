@@ -18,7 +18,7 @@ export function ThemeSetting({ sx }: ThemeSettingProps) {
 
   useEffect(() => {
     const loadSetting = async () => {
-      const setting = await settingsService.getThemeMode()
+      const setting = await settingsService.get('ui.theme.mode')
       setThemeMode(setting)
     }
     loadSetting()
@@ -27,7 +27,7 @@ export function ThemeSetting({ sx }: ThemeSettingProps) {
   const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value as ThemeMode
     setThemeMode(newValue)
-    await settingsService.setThemeMode(newValue)
+    await settingsService.set('ui.theme.mode', newValue)
   }
 
   return (

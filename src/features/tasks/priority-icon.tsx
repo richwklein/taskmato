@@ -18,7 +18,7 @@ type PriorityIconProps = {
  * @returns The rendered PriorityIcon component.
  */
 export function PriorityIcon({ priority, sx }: PriorityIconProps) {
-  return <AssignmentIcon sx={{ color: priority.color.hex, ...sx }} />
+  return <AssignmentIcon sx={{ color: priority.color.hex, ...sx }} fontSize={'small'} />
 }
 
 export default PriorityIcon

@@ -24,12 +24,20 @@ export function RequireApiKey({ children }: RequireApiKeyProps) {
   const [hasKey, setHasKey] = useState(false)
 
   useEffect(() => {
+    let canceled = false
     const fetchApiKey = async () => {
-      const key = await settingsService.getApiKey()
-      setHasKey(!!key)
-      setLoading(false)
+      const key = await settingsService.get('todoist.api.key')
+      if (!canceled) {
+        setHasKey(!!key)
+        setLoading(false)
+      }
     }
     fetchApiKey()
+
+    //Marks the call as canceled to prevent setting state async on unmount
+    return () => {
+      canceled = true
+    }
   }, [])
 
   if (isLoading) {

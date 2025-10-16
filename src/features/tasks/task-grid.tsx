@@ -1,4 +1,4 @@
-import { TaskCard } from '@features/tasks'
+import { TaskCard } from '@components/tasks'
 import { Grid } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
 import { Task } from '@types'
@@ -23,7 +23,7 @@ export function TaskGrid({ tasks, sx }: TaskGridProps) {
     <Grid container spacing={1} sx={{ ...sx }}>
       {tasks.map((task) => {
         return (
-          <Grid size={{ xl: 4, lg: 6, md: 12 }} key={task.id}>
+          <Grid size={{ xl: 4, lg: 6, md: 12 }} key={task.id} alignItems={'stretch'}>
             <TaskCard task={task} />
           </Grid>
         )

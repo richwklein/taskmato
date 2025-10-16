@@ -14,7 +14,7 @@ export function ThemeModeApplier() {
     let unsubscribe: (() => void) | undefined
 
     settingsService
-      .getThemeModeWithListener((newMode) => {
+      .getWithListener('ui.theme.mode', (newMode) => {
         let nextMode: 'light' | 'dark'
         if (newMode === 'system') {
           nextMode = prefersDark ? 'dark' : 'light'

@@ -1,13 +1,25 @@
 import { ThemeSetting } from '@components/settings/ThemeSetting'
-import settingsService from '@services/SettingsService' // <- uses the global mock
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { vi } from 'vitest'
 
-const mockedSettings = vi.mocked(settingsService)
+// locally mock for this suite
+vi.mock('@services/SettingsService', () => {
+  return {
+    default: {
+      get: vi.fn(),
+      set: vi.fn(),
+      getWithListener: vi.fn(),
+    },
+  }
+})
+
+// Import after the mock
+import settingsService from '@services/SettingsService'
 
 describe('ThemeSetting', () => {
   const user = userEvent.setup()
+  const mockedSettingsService = vi.mocked(settingsService)
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -21,33 +33,29 @@ describe('ThemeSetting', () => {
     expect(screen.getByLabelText(/system/i)).toBeInTheDocument()
   })
 
-  it('loads and displays the saved theme mode on mount', async () => {
-    // Override default mock to return dark mode
-    mockedSettings.getThemeMode.mockResolvedValueOnce('dark')
-
-    render(<ThemeSetting />)
-
-    // wait for async effect to finish
-    await waitFor(() => {
-      expect(settingsService.getThemeMode).toHaveBeenCalled()
+  it('loads and displays saved theme', async () => {
+    mockedSettingsService.get.mockImplementation(async (key) => {
+      if (key === 'ui.theme.mode') return 'dark'
+      return null
     })
 
-    const darkRadio = screen.getByLabelText(/dark/i)
-    await waitFor(() => expect(darkRadio).toBeChecked())
+    render(<ThemeSetting />)
+    await waitFor(() =>
+      expect(mockedSettingsService.get).toHaveBeenCalledExactlyOnceWith('ui.theme.mode')
+    )
+    expect(screen.getByLabelText(/dark/i)).toBeChecked()
   })
 
-  it('calls setThemeMode and updates selection when user changes theme', async () => {
-    mockedSettings.getThemeMode.mockResolvedValueOnce('light')
-    mockedSettings.setThemeMode.mockResolvedValueOnce(undefined)
+  it('calls set when theme changes', async () => {
+    mockedSettingsService.get.mockImplementation(async (key) => {
+      if (key === 'ui.theme.mode') return 'light'
+      return null
+    })
 
     render(<ThemeSetting />)
     const darkRadio = await screen.findByLabelText(/dark/i)
     await user.click(darkRadio)
 
-    expect(darkRadio).toBeChecked()
-
-    await waitFor(() => {
-      expect(settingsService.setThemeMode).toHaveBeenCalledExactlyOnceWith('dark')
-    })
+    expect(mockedSettingsService.set).toHaveBeenCalledExactlyOnceWith('ui.theme.mode', 'dark')
   })
 })

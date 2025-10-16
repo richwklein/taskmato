@@ -1,20 +1,31 @@
 import { RequireApiKey } from '@components/common'
-import settingsService from '@services/SettingsService'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Use the globally mocked SettingsService but override behavior per test
-const mockedSettingsService = vi.mocked(settingsService)
+// locally mock for this suite
+vi.mock('@services/SettingsService', () => {
+  return {
+    default: {
+      get: vi.fn(),
+      set: vi.fn(),
+      getWithListener: vi.fn(),
+    },
+  }
+})
+
+import settingsService from '@services/SettingsService'
 
 describe('RequireApiKey', () => {
+  const mockedSettingsService = vi.mocked(settingsService)
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('shows LoadingView while checking for API key', async () => {
     // Delay resolution to simulate async loading
-    mockedSettingsService.getApiKey.mockImplementationOnce(
+    mockedSettingsService.get.mockImplementationOnce(
       () => new Promise((resolve) => setTimeout(() => resolve(null), 10))
     )
 
@@ -31,7 +42,10 @@ describe('RequireApiKey', () => {
   })
 
   it('renders children if API key exists', async () => {
-    mockedSettingsService.getApiKey.mockResolvedValueOnce('FAKE_API_KEY')
+    mockedSettingsService.get.mockImplementation(async (key) => {
+      if (key === 'todoist.api.key') return 'FAKE_API_KEY'
+      return null
+    })
 
     render(
       <MemoryRouter>
@@ -41,14 +55,14 @@ describe('RequireApiKey', () => {
       </MemoryRouter>
     )
 
-    await waitFor(() => expect(mockedSettingsService.getApiKey).toHaveBeenCalled())
+    await waitFor(() => expect(mockedSettingsService.get).toHaveBeenCalled())
 
     expect(screen.getByTestId('child')).toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
   it('redirects to settings if no API key found', async () => {
-    mockedSettingsService.getApiKey.mockResolvedValueOnce(null)
+    mockedSettingsService.get.mockResolvedValueOnce(null)
 
     render(
       <MemoryRouter>
@@ -58,7 +72,7 @@ describe('RequireApiKey', () => {
       </MemoryRouter>
     )
 
-    await waitFor(() => expect(mockedSettingsService.getApiKey).toHaveBeenCalled())
+    await waitFor(() => expect(mockedSettingsService.get).toHaveBeenCalled())
 
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()

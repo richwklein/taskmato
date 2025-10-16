@@ -1,3 +1,4 @@
+import settingService from '@services/SettingsService'
 import type { Label, Project, Section, Task } from '@types'
 import { ProjectType } from '@types'
 import { getColorById } from '@utils/colors'
@@ -13,8 +14,6 @@ export const todayProjectId = 'today'
 const SYNC_API_URL = 'https://api.todoist.com/sync/v9/sync'
 const FULL_SYNC_TOKEN = '*'
 const RESOURCE_TYPES = ['projects', 'sections', 'items', 'labels', 'day_orders']
-const SYNC_TOKEN_SETTING = 'todoist.sync.token'
-const API_KEY_SETTING = 'todoist.api.key'
 
 /** Results from a call to sync the data */
 export type SyncResult = {
@@ -108,14 +107,12 @@ export class TasksService {
    * @returns a {@link SyncResult} indicating success or failure.
    */
   async sync(force: boolean): Promise<SyncResult> {
-    const keySetting = await db.settings.get(API_KEY_SETTING)
-    if (!keySetting || !keySetting.value) {
+    const apiKey = await settingService.get('todoist.api.key')
+    if (!apiKey) {
       return { status: 'error', message: 'API key not set' }
     }
 
-    // TODO use setting service instead of direct DB access
-    const setting = await db.settings.get(SYNC_TOKEN_SETTING)
-    let token = setting ? (setting.value as string) : null
+    let token = await settingService.get('todoist.sync.token')
     if (force || !token) {
       token = FULL_SYNC_TOKEN
       await clearTables()
@@ -130,26 +127,24 @@ export class TasksService {
         },
         {
           headers: {
-            Authorization: `Bearer ${keySetting.value}`,
+            Authorization: `Bearer ${apiKey}`,
           },
         }
       )
 
-      // TODO use the setting service instead of direct DB access
-      await db.settings.put({ key: SYNC_TOKEN_SETTING, value: response.data.sync_token as string })
+      await settingService.set('todoist.sync.token', response.data.sync_token as string)
 
-      const labels = await updateTable(db.labels, response.data.labels, (record) => ({
+      await updateTable(db.labels, response.data.labels, (record) => ({
         id: record.id,
         name: record.name,
-        color: record.color,
-        order: record.order,
+        color: getColorById(record.color),
+        order: record.item_order,
       }))
-      const labelsMap = Array.from(labels)
-        .filter((label): label is Label => label.id !== undefined)
-        .reduce((map, label) => {
-          map.set(label.id, label)
-          return map
-        }, new Map<string, Label>())
+
+      const labelsMap = (await this.getLabels()).reduce((map, label) => {
+        map.set(label.name, label)
+        return map
+      }, new Map<string, Label>())
 
       await Promise.all([
         updateTable(db.projects, response.data.projects, (record) => ({
@@ -173,7 +168,7 @@ export class TasksService {
           priority: getPriorityById(record.priority),
           content: record.content,
           description: record.description,
-          labels: getLabelsByIds(record.labels, labelsMap),
+          labels: getLabelsByName(record.labels, labelsMap),
           due: record.due?.date ? new Date(record.due.date) : null,
           isCompleted: record.checked,
           parentId: record.parent_id,
@@ -197,10 +192,8 @@ export class TasksService {
  * @param labelsMap - map of existing labels
  * @returns A list of labels
  */
-function getLabelsByIds(labelIds: string[], labels: Map<string, Label>): Label[] {
-  const found = labelIds
-    .map((id) => labels.get(id))
-    .filter((label) => label !== undefined) as Label[]
+function getLabelsByName(labelNames: string[], labels: Map<string, Label>): Label[] {
+  const found = labelNames.map((name) => labels.get(name)) as Label[]
 
   found.sort((a, b) => a.order - b.order)
   return found

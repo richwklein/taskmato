@@ -4,8 +4,10 @@ import { SidebarNavigation } from '@components/tasks'
 import { TasksSections } from '@features/tasks/task-sections'
 import { useTasksContext } from '@features/tasks/use-tasks'
 import { Box, useMediaQuery } from '@mui/material'
+import settingsService from '@services/SettingsService'
 import theme from '@styles/theme'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
 /**
  * TasksPage component
  *
@@ -19,6 +21,7 @@ export function TasksPage() {
   const [isOpen, setIsOpen] = useState(true)
   const [isClosing, setIsClosing] = useState(false)
   const isDesktop = useMediaQuery(theme.breakpoints.up('md')) // true on md+
+  const prevIsDesktopRef = useRef(isDesktop)
 
   const drawerWidth = 240
 
@@ -31,11 +34,37 @@ export function TasksPage() {
     setIsClosing(false)
   }
 
-  const handleDrawerToggle = () => {
-    if (!isClosing) {
-      setIsOpen(!isOpen)
+  const handleDrawerToggle = async () => {
+    if (isClosing) return
+    const newState = !isOpen
+    setIsOpen(newState)
+
+    // Save setting if desktop
+    if (isDesktop) {
+      await settingsService.set('ui.sidebar.open', newState)
     }
   }
+
+  useEffect(() => {
+    let canceled = false
+    const fetchOpen = async () => {
+      const open = await settingsService.get('ui.sidebar.open')
+      if (!canceled) {
+        setIsOpen(open)
+      }
+    }
+
+    // fetch the open state on first load or switching settings
+    if (!prevIsDesktopRef.current && isDesktop) {
+      fetchOpen()
+    }
+    prevIsDesktopRef.current = isDesktop
+
+    //Marks the call as canceled to prevent setting state async on unmount
+    return () => {
+      canceled = true
+    }
+  }, [isDesktop])
 
   return (
     <RequireApiKey>

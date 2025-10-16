@@ -1,43 +1,45 @@
 import { db } from '@utils/db'
+import { settings } from '@utils/settings'
 
-export type SettingValue = string | number | boolean
-export type ThemeMode = 'light' | 'dark' | 'system'
+type SettingsKey = (typeof settings.type)['Key']
+type SettingsTypeMap = (typeof settings.type)['TypeMap']
+
+/* -------------------------------------------------------------------------- */
+/*                             SETTINGS SERVICE API                           */
+/* -------------------------------------------------------------------------- */
 
 /**
- * A service that is responsible for getting and saving settings.
+ * Provides type-safe get/set access to application settings.
+ * Uses IndexedDB (via `db.settings`) for persistence and supports
+ * event-driven updates through {@link getWithListener}.
  */
 export interface ISettingsService {
   /**
-   * Get the current {@link ThemeMode | theme mode}, default to 'system if not set.
+   * Get the value for a specific {@link SettingsKey}.
+   * @param key The setting key to retrieve.
+   * @returns The stored value or a reasonable default if not present.
    */
-  getThemeMode(): Promise<ThemeMode>
+  get<K extends SettingsKey>(key: K): Promise<SettingsTypeMap[K]>
 
   /**
-   * Get the current {@link ThemeMode | theme mode} and listen for changes.
-   * The listener will be called immediately with the current setting.
-   *
-   * @param listener A callback function that receives the updated theme mode.
+   * Set the value for a specific {@link SettingsKey}.
+   * @param key The setting key to update.
+   * @param value The new value to store.
+   */
+  set<K extends SettingsKey>(key: K, value: SettingsTypeMap[K]): Promise<void>
+
+  /**
+   * Get a setting and listen for future updates.
+   * The listener will be called immediately with the current value,
+   * then whenever the setting changes.
+   * @param key The setting key to observe.
+   * @param listener Callback invoked with the latest value.
    * @returns A function to unsubscribe from further updates.
    */
-  getThemeModeWithListener(listener: (mode: ThemeMode) => void): Promise<() => void>
-
-  /**
-   * Set the {@link ThemeMode | theme mode} setting.
-   * @param mode The theme mode to set: 'light', 'dark', or 'system'.
-   */
-  setThemeMode(mode: ThemeMode): Promise<void>
-
-  /**
-   * Get the stored Todoist API key.
-   * @returns The stored Todoist API key, or null if not set.
-   */
-  getApiKey(): Promise<string | null>
-
-  /**
-   * Set the Todoist API key.
-   * @param key The Todoist API key to store.
-   */
-  setApiKey(key: string): Promise<void>
+  getWithListener<K extends SettingsKey>(
+    key: K,
+    listener: (value: SettingsTypeMap[K]) => void
+  ): Promise<() => void>
 }
 
 class SettingsService implements ISettingsService {
@@ -46,26 +48,17 @@ class SettingsService implements ISettingsService {
 
   private constructor() {}
 
-  private async getSetting(key: string): Promise<SettingValue | null> {
-    const setting = await db.settings.get(key)
-    return setting ? setting.value : null
+  private async getSetting<K extends SettingsKey>(key: K): Promise<SettingsTypeMap[K] | null> {
+    const record = await db.settings.get(key)
+    return (record?.value ?? null) as SettingsTypeMap[K] | null
   }
 
-  private async setSetting(key: string, value: SettingValue): Promise<void> {
+  private async setSetting<K extends SettingsKey>(
+    key: K,
+    value: SettingsTypeMap[K]
+  ): Promise<void> {
     await db.settings.put({ key, value })
-    this.notify(key, value)
-  }
-
-  private notify(key: string, value: SettingValue) {
     this.eventTarget.dispatchEvent(new CustomEvent(key, { detail: value }))
-  }
-
-  private addListener(key: string, listener: (value: SettingValue) => void) {
-    const handler = ((event: CustomEvent<SettingValue>) => {
-      listener(event.detail)
-    }) as EventListener
-    this.eventTarget.addEventListener(key, handler)
-    return () => this.eventTarget.removeEventListener(key, handler)
   }
 
   static getInstance() {
@@ -75,32 +68,30 @@ class SettingsService implements ISettingsService {
     return this.instance
   }
 
-  async getThemeMode(): Promise<ThemeMode> {
-    const mode = await this.getSetting('theme.mode')
-    return (mode as ThemeMode) || 'system'
+  async get<K extends SettingsKey>(key: K): Promise<SettingsTypeMap[K]> {
+    const value = await this.getSetting(key)
+
+    // TODO decrypt secure settings
+
+    return value ?? settings.defaults[key]
   }
 
-  async getThemeModeWithListener(listener: (mode: ThemeMode) => void): Promise<() => void> {
-    const currentMode = await this.getThemeMode()
-    listener(currentMode)
-    return this.addListener('theme.mode', (value) => {
-      listener(value as ThemeMode)
-    })
+  async set<K extends SettingsKey>(key: K, value: SettingsTypeMap[K]): Promise<void> {
+    const toStore: SettingsTypeMap[K] = value
+
+    // TODO encrypt secure settings
+    await this.setSetting(key, toStore)
   }
 
-  async setThemeMode(mode: ThemeMode): Promise<void> {
-    await this.setSetting('theme.mode', mode)
-  }
-
-  async getApiKey(): Promise<string | null> {
-    // TODO decrypte the key if encrypted
-    const key = await this.getSetting('todoist.api.key')
-    return key as string | null
-  }
-
-  async setApiKey(key: string): Promise<void> {
-    // TODO encrypt the key before storing
-    await this.setSetting('todoist.api.key', key)
+  async getWithListener<K extends SettingsKey>(
+    key: K,
+    listener: (value: SettingsTypeMap[K]) => void
+  ): Promise<() => void> {
+    const current = await this.get(key)
+    listener(current)
+    const handler = (event: Event) => listener((event as CustomEvent).detail)
+    this.eventTarget.addEventListener(key, handler)
+    return () => this.eventTarget.removeEventListener(key, handler)
   }
 }
 

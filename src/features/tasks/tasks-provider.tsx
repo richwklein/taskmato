@@ -27,7 +27,6 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     async (projectId: string, searchTerm: string | undefined) => {
       const project = await tasksService.getProjectById(projectId)
       const setId = project ? project.id : DEFAULT_PROJECT_ID
-      console.log(`projectId=${projectId}, setId=${setId}, searchTerm=${searchTerm}`)
 
       // filter tasks and sections
       let sections = await tasksService.getSectionsByProjectId(setId)
@@ -67,7 +66,6 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         setView(await syncView(view.projectId, view.searchTerm))
-        console.log(view)
       } catch (error) {
         console.error('Failed to load tasks', error)
         throw error

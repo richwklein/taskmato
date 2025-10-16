@@ -2,7 +2,7 @@ import { ThemeSetting } from '@components/settings/ThemeSetting'
 import useTasksContext from '@features/tasks/use-tasks'
 import { Visibility, VisibilityOff } from '@mui/icons-material'
 import { Box, Button, IconButton, InputAdornment, TextField, Typography } from '@mui/material'
-import { db } from '@utils/db'
+import settingService from '@services/SettingsService'
 import { useState } from 'react'
 
 /**
@@ -22,7 +22,7 @@ export function SettingsView() {
     // Save the API key (e.g., to localStorage or a backend)
     // TODO do this in a more secure way
     // TODO move to a context and hook
-    await db.settings.put({ key: 'todoist.api.key', value: apiKey })
+    await settingService.set('todoist.api.key', apiKey)
     sync(true)
     alert('API key saved successfully!')
   }

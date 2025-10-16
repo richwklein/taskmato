@@ -1,3 +1,5 @@
+import { SettingValue } from '@utils/settings'
+
 /**
  * Common type used to express the color on other objects
  *
@@ -121,5 +123,5 @@ export type Task = {
  */
 export type Setting = {
   key: string
-  value: string | number | boolean
+  value: SettingValue
 }

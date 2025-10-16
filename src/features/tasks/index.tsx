@@ -1,6 +1,3 @@
-export { BoardToolbar } from '@components/tasks/BoardToolbar'
 export { PriorityIcon } from '@features/tasks/priority-icon'
-export { TaskCard } from '@features/tasks/task-card'
 export { TaskGrid } from '@features/tasks/task-grid'
 export { TasksSections } from '@features/tasks/task-sections'
-export { TasksView } from '@features/tasks/tasks-view'
