@@ -26,7 +26,7 @@ export default function Taskmato() {
       <Routes>
         <Route path="settings" element={<SettingsPage />} />
         <Route path="statistics" element={<StatisticsPage />} />
-        <Route path="/" element={<TasksPage />} />
+        <Route index path="/" element={<TasksPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </GlobalProvider>
