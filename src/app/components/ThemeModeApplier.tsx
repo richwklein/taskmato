@@ -47,7 +47,7 @@ export function ThemeModeApplier() {
       canceled = true
       if (unsubscribe) unsubscribe()
     }
-  }, [mode, prefersDark, setMode, settings])
+  }, [mode, setMode, prefersDark, settings])
 
   return null // no UI — just side effect
 }
