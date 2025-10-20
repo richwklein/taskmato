@@ -14,5 +14,5 @@
   "eslint.format.enable": false,
   "eslint.lintTask.enable": true,
   "[markdown]": { "editor.wordWrap": "wordWrapColumn" },
-  "cSpell.words": ["taskmato", "pomodoro", "tsconfigs", "vitest"]
+  "cSpell.words": ["Dexie", "pomodoro", "taskmato", "tsconfigs", "vitest"]
 }
