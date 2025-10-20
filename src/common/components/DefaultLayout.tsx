@@ -17,7 +17,7 @@ export interface DefaultLayoutProps {
 }
 
 /**
- * Provides a consistent full-viewport layout for all pages.
+ * DefaultLayout - Provides a consistent full-viewport layout for all pages.
  *
  * The layout is divided into two boxes:
  * - The **outer container** reserves space for the AppBar.
