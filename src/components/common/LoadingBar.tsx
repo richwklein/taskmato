@@ -21,12 +21,9 @@ export function LoadingBar({ isLoading, sx }: LoadingBarProps) {
       variant={isLoading ? 'indeterminate' : 'determinate'}
       value={isLoading ? undefined : 0}
       sx={{
-        height: 4,
         opacity: isLoading ? 1 : 0,
         ...sx,
       }}
     />
   )
 }
-
-export default LoadingBar
