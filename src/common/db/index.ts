@@ -1,8 +1,9 @@
-import type { Label, Project, Section, Setting, Task } from '@types'
+import type { Label, Project, Section, SessionSnapshot, Setting, Task } from '@types'
 import Dexie, { type EntityTable } from 'dexie'
 
 /**
- * The IndexedDB database for the application.
+ * TaskmatoDB — Dexie wrapper around the app’s IndexedDB schema.
+ * Defines the database version and object stores.
  */
 export class TaskmatoDB extends Dexie {
   projects!: EntityTable<Project, 'id'>
@@ -10,6 +11,7 @@ export class TaskmatoDB extends Dexie {
   tasks!: EntityTable<Task, 'id'>
   labels!: EntityTable<Label, 'id'>
   settings!: EntityTable<Setting, 'key'>
+  sessions!: EntityTable<SessionSnapshot, 'id'>
 
   constructor() {
     super('TaskmatoDB')
@@ -19,6 +21,7 @@ export class TaskmatoDB extends Dexie {
       tasks: 'id, priority.id, due, isCompleted, parentId, projectId, sectionId, order, dayOrder',
       labels: 'id, name, color.id, order',
       settings: 'key',
+      sessions: '++id, taskId, phase, startTime, *labels',
     })
   }
 }
