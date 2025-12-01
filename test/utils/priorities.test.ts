@@ -1,4 +1,4 @@
-import { defaultPriority, getPriorityById, priority3 } from '@utils/priorities'
+import { defaultPriority, getPriorityById, priority3 } from '@features/tasks/model/priorities'
 import { describe, expect, it } from 'vitest'
 
 describe('getPriorityById', () => {

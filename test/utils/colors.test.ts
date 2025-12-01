@@ -1,4 +1,4 @@
-import { berryRed, defaultColor, getColorById, lavender } from '@utils/colors'
+import { berryRed, defaultColor, getColorById, lavender } from '@features/tasks/model/colors'
 import { describe, expect, it } from 'vitest'
 
 describe('getColorById', () => {

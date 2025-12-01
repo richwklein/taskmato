@@ -1,8 +1,4 @@
 export { BoardToolbar } from '@components/tasks/BoardToolbar'
-export { ProjectIcon } from '@components/tasks/ProjectIcon'
-export { RefreshButton } from '@components/tasks/RefreshButton'
-export { SidebarNavigation } from '@components/tasks/SidebarNavigation'
-export { SidebarToggle } from '@components/tasks/SidebarToggle'
 export { TaskCard } from '@components/tasks/TaskCard'
 export { TaskSearch } from '@components/tasks/TaskSearch'
 export { TasksSection } from '@components/tasks/TasksSection'

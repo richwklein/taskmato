@@ -15,13 +15,13 @@ import { Task } from '@types'
 import { MuiMarkdown } from 'mui-markdown'
 
 import PriorityIcon from '../../features/tasks/priority-icon'
-
 interface TaskCardProps {
   task: Task
+  onStartTask: (task: Task) => void
   sx?: SxProps<Theme>
 }
 
-export function TaskCard({ task, sx }: TaskCardProps) {
+export function TaskCard({ task, onStartTask, sx }: TaskCardProps) {
   const theme = useTheme()
 
   const dueDate = task.due ? new Date(task.due) : null
@@ -127,6 +127,7 @@ export function TaskCard({ task, sx }: TaskCardProps) {
             size="small"
             variant="contained"
             color="primary"
+            onClick={() => onStartTask(task)}
             sx={{
               textTransform: 'none',
               fontSize: 12,

@@ -105,3 +105,31 @@ A pomodoro app based around todoist tasks
 - [x] ~~create the site~~
 - [x] ~~update the dns to the bluehost dns~~
 - [x] ~~use github action to publish site~~
+
+## Swift Migration Plan
+
+1. **Foundation & Tooling**
+   - [ ] Install the latest Xcode toolchain, create bundle identifiers, and scaffold a SwiftUI App with MenuBarExtra + shared Swift Package modules for logic reuse.
+   - [ ] Establish a Git branch dedicated to the macOS/iOS rewrite, plus CI tasks for `swift test` and linting.
+2. **Reminders Integration**
+   - [ ] Implement EventKit authorization flow, graceful denial messaging, and list picker storage.
+   - [ ] Build a `RemindersService` that exposes Reminder-native properties (title, notes, due date/time, priority, flag, subtasks) and caches task snapshots for fast lookup.
+   - [ ] Surface list filtering + manual refresh UI inside a SwiftUI settings scene.
+3. **Pomodoro Engine**
+   - [ ] Recreate the existing timer rules (focus/break durations, long break cadence, pause/resume, statistics hooks) in a Swift module with Codable persistence.
+   - [ ] Wire Reminders completion updates (optionally mark done) and session logging to CoreData/AppStorage for future stats views.
+4. **Menu Bar Experience**
+   - [ ] Build the menubar UI that shows current task + countdown, offers quick start/stop/skip actions, and exposes a popover picker for choosing Reminder tasks.
+   - [ ] Add keyboard shortcuts + Now/Next workflows plus visual indicators mirroring the existing React behavior.
+   - [ ] Ensure timers survive relaunches by restoring active sessions when the menu bar app restarts.
+5. **Context & Share Sheet Entry Points**
+   - [ ] Create a macOS Share Extension that appears from Reminders (and other apps) so a user can send a reminder into the Pomodoro queue; pre-populate the active task and optionally auto-start the timer.
+   - [ ] Add a Reminders Quick Action / Shortcuts intent so users can trigger a timer directly from the Reminders context menu or via Siri.
+   - [ ] Expose the same entry point via the menubar picker: selecting a reminder from the popover instantly starts or schedules the next Pomodoro.
+6. **Notifications & Feedback**
+   - [ ] Integrate UserNotifications with actionable buttons (start break, skip) and respect Do Not Disturb.
+   - [ ] Port completion sounds/haptics options from the current settings.
+7. **Testing & Distribution**
+   - [ ] Unit-test the Pomodoro engine, Reminders service mocks, and share extension triggers.
+   - [ ] Add XCUITests for permission prompts, menubar flows, share sheet interactions, and context-menu/Shortcuts triggers.
+   - [ ] Prepare notarized DMG/App Store assets, README updates, and migration notes for existing users.

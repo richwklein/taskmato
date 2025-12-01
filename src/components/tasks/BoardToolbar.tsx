@@ -1,4 +1,6 @@
-import { RefreshButton, SidebarToggle, TaskSearch } from '@components/tasks'
+import { TaskSearch } from '@components/tasks'
+import { RefreshButton } from '@features/tasks/components/RefreshButton'
+import { SidebarToggle } from '@features/tasks/components/SidebarToggle'
 import { Toolbar } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
 
@@ -48,7 +50,7 @@ export function BoardToolbar({
       }}
     >
       <SidebarToggle
-        isDesktop={isDesktop}
+        isPersistent={isDesktop}
         isOpen={isSidebarOpen}
         onToggle={onSidebarToggle}
         sx={{ mr: 2 }}

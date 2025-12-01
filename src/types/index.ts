@@ -1,127 +1,143 @@
-import { SettingValue } from '@utils/settings'
-
 /**
  * Common type used to express the color on other objects
- *
- * @property id - The lowercase identifier of the color.
- * @property name - The readable display name.
- * @property hex - The hexadecimal color value.
  */
 export type Color = {
+  /** The lowercase identifier of the color. */
   id: string
+  /** The readable display name. */
   name: string
+  /** The hexadecimal color value. */
   hex: string
 }
 
 /**
  * The priority of tasks where the id is the order descending.
- *
- * @property id - The identifier of the priority.
- * @property name - The readable display name.
- * @property color - The assigned color of the priority.
  */
 export type Priority = {
+  /** The identifier of the priority. */
   id: number
+  /** The readable display name. */
   name: string
+  /** The assigned color of the priority. */
   color: Color
 }
 
 /**
- * The type of the project. Today and Inbox projects are treated specially.
+ * The type of the project. Today and inbox projects are treated specially.
  */
-export enum ProjectType {
-  Today = 0,
-  Inbox = 1,
-  Project = 2,
-}
+export const PROJECT_TYPE = {
+  Today: 'today',
+  Inbox: 'inbox',
+  Project: 'project',
+} as const
+
+export type ProjectType = (typeof PROJECT_TYPE)[keyof typeof PROJECT_TYPE]
 
 /**
  * A project that tasks are organized into.
- *
- * @property id - The identifier of the project.
- * @property name - The readable display name.
- * @property color - The assigned color of the priority.
- * @property type - The type of project. This is to identify special types.
- * @property parentId - Id of the parent project this project belongs under.
- * @property order - sort order of projects within a parent.
- * @property indent - Indentation level based on depth of parent.
  */
 export type Project = {
+  /** The identifier of the project. */
   id: string
+  /** The readable display name. */
   name: string
+  /** The assigned color of the priority. */
   color: Color
+  /** The type of project. This is to identify special types. */
   type: ProjectType
+  /** Id of the parent project this project belongs under. */
   parentId: string | null
+  /** Sort order of projects within a parent. */
   order: number
 }
 
 /**
  * The section underneath a project that a task is in.
- *
- * @property id - The identifier of the section.
- * @property name - The name of the section.
- * @property projectId - The identifier of the section
- * @property order - The sort order of the sections within the project.
  */
 export interface Section {
+  /** The identifier of the section. */
   id: string
+  /** The name of the section. */
   name: string
+  /** The identifier of the project the section belongs to. */
   projectId: string
+  /** The sort order of the sections within the project. */
   order: number
 }
 
 /**
  * A label that can be placed on a task.
- *
- * @property id - The identifier of the project.
- * @property name - The readable display name.
- * @property color - The assigned color of the priority.
- * @property order - The sort order of the labels.
  */
 export type Label = {
+  /** The identifier of the project. */
   id: string
+  /** The readable display name. */
   name: string
+  /** The assigned color of the priority. */
   color: Color
+  /** The sort order of the labels. */
   order: number
 }
 
 /**
  * The task that needs to be completed.
- *
- * @property id - The identifier of the task.
- * @property priority - The priority of the task.
- * @property content - Markdown content.
- * @property description - A long Markdown description.
- * @property labels - A list of labels associated with the task.
- * @property due - Optional due date when this should be completed.
- * @property isCompleted - If the work has been marked as completed.
- * @property parentId - Optional parent task of this work.
- * @property projectId - The project the task belongs to (today project is special).
- * @property sectionId - The optional section the task is in (treated special when null or today).
- * @property order - Order of the task within it's parent, section, and project.
- * @property dayOrder - The order to sort the task in the today view.
  */
 export type Task = {
+  /** The identifier of the task. */
   id: string
+  /** The priority of the task. */
   priority: Priority
+  /** Markdown content. */
   content: string
+  /** A long Markdown description. */
   description: string
+  /** A list of labels associated with the task. */
   labels: Label[]
+  /** Optional due date when this should be completed. */
   due: Date | null
+  /** If the work has been marked as completed. */
   isCompleted: boolean
+  /** Optional parent task of this work. */
   parentId: string | null
+  /** The project the task belongs to (today project is special). */
   projectId: string
+  /** Optional section the task is in (treated special when null or today). */
   sectionId: string | null
+  /** Order of the task within it's parent, section, and project. */
   order: number
+  /** The order to sort the task in the today view. */
   dayOrder: number
 }
 
-/**
- * A setting stored in the database.
- * @property key - The unique key of the setting.
- * @property value - The value of the setting which can be a string, number, or boolean.
- */
+/** Possible setting value types that can be stored in the database. */
+export type SettingsType = string | number | boolean | null
+
+/** The representation of a setting for storage. */
 export type Setting = {
+  /** The unique key of the setting. */
   key: string
-  value: SettingValue
+  /** The value of the setting which can be a string, number, or boolean. */
+  value: SettingsType
+}
+
+/** Session phases for a Pomodoro cycle. */
+export type SessionPhase = 'focus' | 'short-break' | 'long-break'
+
+/**
+ * Segment snapshot of a timer session (focus or break).
+ * Saved when a segment ends and later used to build task totals and statistics.
+ */
+export interface SessionSnapshot {
+  /** Primary key for storage of the record. */
+  id?: number
+  /** Task id the segment belongs to. */
+  taskId: string
+  /** Phase type (focus/break). */
+  phase: SessionPhase
+  /** Milliseconds spent during the segment. */
+  duration: number
+  /** Timestamp when the segment started. */
+  startTime: number
+  /** Optional label name snapshot at time of session. */
+  labels?: string[]
 }
