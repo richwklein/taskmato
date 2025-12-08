@@ -30,7 +30,7 @@
     "mui-markdown": "^2.0.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.3"
+    "react-router-dom": "^7.10.1"
   },
   "devDependencies": {
     "@eslint/compat": "^1.4.0",
