@@ -1,99 +1,87 @@
 # Taskmato TODO
 
-A pomodoro app based around todoist tasks
+This document captures the plan to transition Taskmato from a web app (Todoist integration) to a native macOS menu-bar Pomodoro app that integrates with Apple Reminders.
 
-## Project
+Goals
 
-- [ ] Add unit tests
-- [ ] Add recommended extensions
-- [x] Add a development server launch command
-- [ ] Get an icon and svg to use in the toolbar and favicon
-- [x] Look at switching to pnpm
-- [ ] script to sync versions between tools-version and packageManager
+- Ship a lightweight macOS menu-bar timer with a compact status item showing the current countdown.
+- Provide a Share/Shortcuts/App Intents entry so users can start a timer directly from Apple Reminders.
+- Clicking the menu-bar timer opens a larger window with controls, stats, and settings.
+- Persist sessions locally and optionally sync via iCloud.
 
-## Source Code
+Why
 
-- data sync
-  - use todoist [sync api](https://developer.todoist.com/sync/v9/#read-resources) to sync items:
-    - projects
-    - sections
-    - labels
-    - items,
-    - day_orders
-  - merge local data with the sync data when not a full sync
+- Apple Reminders is the user's primary task source now — tight integration improves UX.
+- Native menus, notifications, and background execution produce a more reliable timer experience.
 
-- objects synced with just id references, replace ids with objects being referenced when computing state for the views
+High-level Migration Plan
 
-- task list (home view)
-  - store the todoist api key somewhere secure
-  - first load retrieve a list of tasks from todoist using their api
-  - Have a project select dropdown on the task view toolbar to only show tasks from that project
-  - group task grids by section within that project
-  - sorting of the projects, sections, and tasks should be done in the view
-  - display the list of tasks as a grid of cards containing:
-    - avatar
-    - markdown rendered content
-    - optional markdown rendered description
-    - optional due date
-    - list of labels (colored and ordered by label properties)
-    - link to the task in todoist
-    - actions
-      - start timer (default duration)
-      - start timer (other durations)
-      - complete task
-  - allow searching to filter the grid
-  - have a refresh button to update the list
-  - color the card avatar based on the priority of the task
-  - allow marking a task as completed
-  - allow starting a pomodoro timer with default duration (button visible)
-  - on hover show additional timer durations
+- Research & decisions
+  - Evaluate implementation options for menu-bar apps: `MenuBarExtra` (SwiftUI, macOS 13+), `NSStatusItem` (AppKit) for broader macOS compatibility.
+  - Decide integration approach with Reminders: Share Extension vs App Intents / Shortcuts (prefer App Intents + Shortcuts for modern macOS workflows; Share Extension as fallback).
+  - Pick persistence: `Core Data` (with CloudKit for iCloud sync) or a lightweight SQLite wrapper depending on needs.
 
-- pomodoro timer (modal or view)
-  - show a timer bar on other views if a session is in progress
-  - show a circular progress countdown timer
-  - Allow swapping the task in the current session with another one
-  - Allow stopping or pausing the timer
-  - when stopping the timer
-    - get the previous durations of the task
-    - add the additional duration
-    - save the total duration in storage
-  - when timer auto-stops
-    - show notification
-    - play sound
-    - auto-start break if configured
-  - when timer is stopped allow
-    - manual start break (default duration configurable)
-    - start another time
-    - mark task as completed
-    - switch tasks without completing
+- MVP features
+  - Menu-bar compact timer (start/pause/stop quick actions).
+  - Large timer window with task name, controls, and remaining time.
+  - Start timer from Reminders via share/shortcut.
+  - Basic settings (durations, notifications, sound, auto-break) persisted in `UserDefaults` or Core Data.
+  - Session logging and a simple stats view (daily/weekly totals).
 
-- Statistics (view)
-  - stats broken down by project and / or label
-  - daily stats (task count, total duration, average duration, max duration)
-  - weekly stats (task count, total duration, average duration, max duration)
+- Extended features
+  - iCloud sync of sessions/settings (optional).
+  - Export stats (CSV) and reports UI.
+  - Theming and accessibility improvements.
 
-- Settings (view)
-  - [x] redirect to settings if api key is missing
-  - [x] prevent other pages if api key not set
-  - [x] input for api key used to sync data with todoist
-  - [ ] better storage and handling of the api key
-  - timer duration
-  - break duration
-  - play a sound when complete
+Actionable Tasks
 
-## Github
+- Project setup
+  - [ ] Create a new branch or repo for the macOS app (suggest: `platform/macos`).
+  - [ ] Create Xcode project using Swift + SwiftUI (macOS app template). Target macOS 13+ if using `MenuBarExtra`, otherwise support older versions with AppKit fallback.
 
-- [ ] Add a social preview
-- [x] Add a build action
-- [x] Add a deploy action see this [article](https://www.raulmelo.me/en/blog/deploying-netlify-github-actions-guide)
-- [ ] Add an action for deploying documentation
-- [ ] Setup issue and pull request templates
-- [x] Move common setup to a reusable workflow
-- [ ] Have deploy's be dependent on the workflow run of build and make build required.
-- [ ] Re-enable the github ruleset when I figure out how to bypass certain rules.
+- Menu bar + UI
+  - [ ] Implement menu-bar status item (compact timer + menu actions).
+  - [ ] Implement large timer window (SwiftUI view) opened by clicking the menu-bar item.
+  - [ ] Add quick actions: start/stop/pause, start standard durations (25/50/Custom).
 
-## Netlify
+- Reminders integration
+  - [ ] Prototype App Intents / Shortcuts action to start a timer from Reminders.
+  - [ ] Implement Share Extension fallback for Reminders share sheet (if App Intents cannot meet requirements).
 
-- [x] create the site
-- [x] update the dns to the bluehost dns
-- [ ] use github action to publish site
+- Persistence & background
+  - [ ] Add session model and persistence (Core Data or SQLite).
+  - [ ] Ensure timer continues reliably in background (use background tasks and notifications; test sleep/wake behavior).
+
+- Settings & Stats
+  - [ ] Settings UI for durations, sounds, notifications, and auto-break behavior.
+  - [ ] Implement statistics view summarizing sessions by day/week/project/tag.
+
+- Packaging & distribution
+  - [ ] Set up app icons, entitlements (iCloud if used), and provisioning.
+  - [ ] Add CI for building and notarizing the macOS app (optional App Store or GitHub Releases flow).
+
+- Migration & docs
+  - [ ] Update README and `TODO.md` with macOS roadmap and developer notes.
+  - [ ] Archive or mark web-specific features (Todoist sync) as deprecated in this repo unless you want to keep the web UI.
+
+Design & References
+
+- Reference implementation: https://github.com/ivoronin/TomatoBar (menu-bar behavior and UX inspiration).
+- Use `MenuBarExtra` for modern macOS SwiftUI menu-bar apps: it provides native integration and easy SwiftUI views.
+
+Developer notes
+
+- Keep the existing web repo for reference and any assets. Use a separate Xcode project and directory (or a parallel repo) for the native app.
+- Preserve the app name `Taskmato` and reuse icons where possible; prepare new macOS-sized icons.
+
+Acceptance criteria for MVP
+
+- Menu-bar shows running timer and basic actions work (start/pause/stop).
+- Can start a timer from Apple Reminders via a Shortcuts/App Intents/Share entry.
+- Large timer window shows when clicking the menu-bar item and can control the timer.
+- Settings persist across launches and a simple stats view shows recorded sessions.
+
+Next steps
+
+- Start by creating the Xcode project and prototyping the menu-bar timer and an App Intents action.
+- I can scaffold the SwiftUI project structure and a minimal menu-bar timer prototype if you want — say the word and I’ll generate the initial Xcode project files and code samples.
