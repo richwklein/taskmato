@@ -27,7 +27,7 @@
     "@mui/material": "^7.3.6",
     "axios": "^1.13.2",
     "dexie": "^4.2.1",
-    "mui-markdown": "^2.0.3",
+    "mui-markdown": "^2.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.10.1"
