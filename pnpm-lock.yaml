@@ -27,8 +27,8 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1
       mui-markdown:
-        specifier: ^2.0.3
-        version: 2.0.3(@mui/material@7.3.6(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(markdown-to-jsx@7.7.6(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^2.1.0
+        version: 2.1.0(@mui/material@7.3.6(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(markdown-to-jsx@7.7.6(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -4528,6 +4528,9 @@ packages:
   lodash-es@4.17.21:
     resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
 
+  lodash-es@4.17.22:
+    resolution: {integrity: sha512-XEawp1t0gxSi9x01glktRZ5HDy0HXqrM0x5pXQM98EaI0NxO6jVM7omDOxsuEo5UIASAnm2bRp1Jt/e0a2XU8Q==}
+
   lodash.includes@4.3.0:
     resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
 
@@ -4782,8 +4785,8 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  mui-markdown@2.0.3:
-    resolution: {integrity: sha512-wrQjH/7EedktFJn1TPaxIPi5/PwvTwWq6fSuY/lL7RsaCuG1JoSSwe1a4Kzwfr+OMvqtKZLVxuNDacDWW4xF6w==}
+  mui-markdown@2.1.0:
+    resolution: {integrity: sha512-94rN7hhvwOpeROkXFKqPu4moIYKLekw/rteCBYUoG0ymBdtq+cjPZHN2B2M2RNxzOcO2ojwcosRdH2ciQG9iaw==}
     peerDependencies:
       '@mui/material': '>=5.0.0'
       markdown-to-jsx: '>=7.0.0'
@@ -9234,7 +9237,7 @@ snapshots:
   chevrotain-allstar@0.3.1(chevrotain@11.0.3):
     dependencies:
       chevrotain: 11.0.3
-      lodash-es: 4.17.21
+      lodash-es: 4.17.22
     optional: true
 
   chevrotain@11.0.3:
@@ -9715,7 +9718,7 @@ snapshots:
   dagre-d3-es@7.0.13:
     dependencies:
       d3: 7.9.0
-      lodash-es: 4.17.21
+      lodash-es: 4.17.22
     optional: true
 
   damerau-levenshtein@1.0.8: {}
@@ -11484,6 +11487,9 @@ snapshots:
   lodash-es@4.17.21:
     optional: true
 
+  lodash-es@4.17.22:
+    optional: true
+
   lodash.includes@4.3.0: {}
 
   lodash.isboolean@3.0.3: {}
@@ -11627,7 +11633,7 @@ snapshots:
       dompurify: 3.3.1
       katex: 0.16.27
       khroma: 2.1.0
-      lodash-es: 4.17.21
+      lodash-es: 4.17.22
       marked: 16.4.2
       roughjs: 4.6.6
       stylis: 4.3.6
@@ -11715,7 +11721,7 @@ snapshots:
 
   ms@2.1.3: {}
 
-  mui-markdown@2.0.3(@mui/material@7.3.6(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(markdown-to-jsx@7.7.6(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+  mui-markdown@2.1.0(@mui/material@7.3.6(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(markdown-to-jsx@7.7.6(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
       '@mui/material': 7.3.6(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react@19.2.3))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       markdown-to-jsx: 7.7.6(react@19.2.3)
