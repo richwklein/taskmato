@@ -54,7 +54,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-testing-library": "^7.13.6",
     "jsdom": "^27.3.0",
-    "netlify-cli": "^23.12.3",
+    "netlify-cli": "^23.13.3",
     "prettier": "^3.7.4",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.49.0",
