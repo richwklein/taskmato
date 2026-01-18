@@ -4,7 +4,7 @@ Before you open an issue, please check if a similar issue already exists or has 
 
 - [ ] A descriptive title
 - [ ] An _isolated_ way to reproduce the behavior (example: GitHub repository with code isolated to the issue that anyone can clone to observe the problem)
-- [ ] What version of `agingdeveloper` you're using, and the platform(s) you're running it on
+- [ ] What version of `taskmato` you're using, and the platform(s) you're running it on
 - [ ] What packages or other dependencies you're using
 - [ ] The behavior you expect to see, and the actual behavior
 

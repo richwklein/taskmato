@@ -1,25 +1,3 @@
-# build output
-dist/
-
-# dependencies & cache
-node_modules/
-
-# logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# coverage files
-coverage/
-
-# environment variables
-.env
-.env.production
-
 # macOS-specific files
 .DS_Store
 Icon?
-
-# Local Netlify folder
-.netlify

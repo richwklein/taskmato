@@ -1,99 +1,61 @@
 # Taskmato TODO
 
-A pomodoro app based around todoist tasks
+An Apple Reminders-first pomodoro app with a menubar timer and a share sheet flow.
 
-## Project
+## Transition Plan
 
-- [ ] Add unit tests
-- [ ] Add recommended extensions
-- [x] Add a development server launch command
-- [ ] Get an icon and svg to use in the toolbar and favicon
-- [x] Look at switching to pnpm
-- [ ] script to sync versions between tools-version and packageManager
+- [ ] Define the new product scope and MVP for macOS + Reminders
+- [ ] Decide on app structure (menubar app + main window + share extension)
+- [ ] Create a new Xcode SwiftUI project in this repo
+- [ ] Replace web app artifacts with GitHub Pages marketing site
+- [ ] Document the development workflow (GitHub + VSCode + Xcode)
 
-## Source Code
+## macOS App
 
-- data sync
-  - use todoist [sync api](https://developer.todoist.com/sync/v9/#read-resources) to sync items:
-    - projects
-    - sections
-    - labels
-    - items,
-    - day_orders
-  - merge local data with the sync data when not a full sync
+- [ ] App shell
+  - menubar status item with live timer
+  - main window with full circular timer UI
+  - settings window for durations, sounds, and behavior
+- [ ] Share extension
+  - add a share sheet action that lists Reminders
+  - select a reminder and start a timer
+  - persist "last selected reminder" for quick resume
+- [ ] Reminders integration
+  - request Reminders access
+  - load reminders with title, due date, list name, and completion state
+  - filter and search reminders in the picker
+- [ ] Timer engine
+  - start, pause, stop, and swap reminder
+  - break flow and auto-start behavior
+  - save session history and per-reminder totals
+  - show notifications and play sound on completion
+- [ ] UI
+  - circular timer view with progress animation
+  - compact menubar menu with controls
+  - session summary and quick actions
+- [ ] Storage
+  - persist settings and sessions locally
+  - export basic stats for future views
 
-- objects synced with just id references, replace ids with objects being referenced when computing state for the views
+## Marketing Site (GitHub Pages)
 
-- task list (home view)
-  - store the todoist api key somewhere secure
-  - first load retrieve a list of tasks from todoist using their api
-  - Have a project select dropdown on the task view toolbar to only show tasks from that project
-  - group task grids by section within that project
-  - sorting of the projects, sections, and tasks should be done in the view
-  - display the list of tasks as a grid of cards containing:
-    - avatar
-    - markdown rendered content
-    - optional markdown rendered description
-    - optional due date
-    - list of labels (colored and ordered by label properties)
-    - link to the task in todoist
-    - actions
-      - start timer (default duration)
-      - start timer (other durations)
-      - complete task
-  - allow searching to filter the grid
-  - have a refresh button to update the list
-  - color the card avatar based on the priority of the task
-  - allow marking a task as completed
-  - allow starting a pomodoro timer with default duration (button visible)
-  - on hover show additional timer durations
+- [ ] Create a minimal Astro site for the landing page
+- [ ] Decide site location (repo root vs `site/`) and update tooling accordingly
+- [ ] Configure Astro for GitHub Pages (base path, asset paths, build output)
+- [ ] Replace current site with a static landing page
+- [ ] Add product copy, screenshots, and a "Join the beta" CTA
+- [ ] Add a social preview image
+- [ ] Remove Netlify CLI deploy steps and replace with GitHub Pages deploy
+- [ ] Update Bluehost DNS to point at GitHub Pages
+- [ ] Remove/retire the Netlify site once Pages is live
+- [ ] Configure GitHub Pages deploy workflow (Astro build)
+- [ ] Add release tagging workflow for the site
+- [ ] Publish site from tagged releases
+- [ ] Update Dependabot for Astro + new site directory
 
-- pomodoro timer (modal or view)
-  - show a timer bar on other views if a session is in progress
-  - show a circular progress countdown timer
-  - Allow swapping the task in the current session with another one
-  - Allow stopping or pausing the timer
-  - when stopping the timer
-    - get the previous durations of the task
-    - add the additional duration
-    - save the total duration in storage
-  - when timer auto-stops
-    - show notification
-    - play sound
-    - auto-start break if configured
-  - when timer is stopped allow
-    - manual start break (default duration configurable)
-    - start another time
-    - mark task as completed
-    - switch tasks without completing
+## GitHub
 
-- Statistics (view)
-  - stats broken down by project and / or label
-  - daily stats (task count, total duration, average duration, max duration)
-  - weekly stats (task count, total duration, average duration, max duration)
-
-- Settings (view)
-  - [x] redirect to settings if api key is missing
-  - [x] prevent other pages if api key not set
-  - [x] input for api key used to sync data with todoist
-  - [ ] better storage and handling of the api key
-  - timer duration
-  - break duration
-  - play a sound when complete
-
-## Github
-
-- [ ] Add a social preview
-- [x] Add a build action
-- [x] Add a deploy action see this [article](https://www.raulmelo.me/en/blog/deploying-netlify-github-actions-guide)
-- [ ] Add an action for deploying documentation
 - [ ] Setup issue and pull request templates
-- [x] Move common setup to a reusable workflow
-- [ ] Have deploy's be dependent on the workflow run of build and make build required.
-- [ ] Re-enable the github ruleset when I figure out how to bypass certain rules.
-
-## Netlify
-
-- [x] create the site
-- [x] update the dns to the bluehost dns
-- [ ] use github action to publish site
+- [ ] Add a documentation deploy action (if needed)
+- [ ] Make deploys dependent on build and require build checks
+- [ ] Re-enable the GitHub ruleset when rules are finalized
