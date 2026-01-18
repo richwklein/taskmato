@@ -7,12 +7,6 @@
   "editor.wordWrapColumn": 120,
   "editor.tabSize": 2,
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "prettier.configPath": "prettier.config.mjs",
-  "prettier.documentSelectors": ["**/*.{js,mjs,cjs,jsx,ts,tsx,jsonc,md,mdx}"],
-  "editor.codeActionsOnSave": { "source.fixAll.eslint": "always" },
-  "eslint.format.enable": false,
-  "eslint.lintTask.enable": true,
   "[markdown]": { "editor.wordWrap": "wordWrapColumn" },
-  "cSpell.words": ["taskmato", "pomodoro", "tsconfigs", "vitest"]
+  "cSpell.words": ["taskmato", "pomodoro"]
 }

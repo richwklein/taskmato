@@ -14,13 +14,12 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
 
-      - name: Setup tools & dependencies
-        uses: ./.github/actions/setup-code
-
       - name: Check formatting
         if: always()
-        run: pnpm format:check
+        run: |
+          echo "Skipping until new workflow is in place."
 
       - name: Check lint
         if: always()
-        run: pnpm lint:check
+        run: |
+          echo "Skipping until new workflow is in place."

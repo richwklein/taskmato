@@ -10,15 +10,6 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
 
-      - name: Setup tools & dependencies
-        uses: ./.github/actions/setup-code
-
-      - name: Build project
+      - name: Temporary noop build
         run: |
-          pnpm build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: "build-artifacts"
-          path: "dist"
+          echo "Skipping until new workflow is in place."

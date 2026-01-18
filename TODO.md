@@ -1,87 +1,61 @@
 # Taskmato TODO
 
-This document captures the plan to transition Taskmato from a web app (Todoist integration) to a native macOS menu-bar Pomodoro app that integrates with Apple Reminders.
+An Apple Reminders-first pomodoro app with a menubar timer and a share sheet flow.
 
-Goals
+## Transition Plan
 
-- Ship a lightweight macOS menu-bar timer with a compact status item showing the current countdown.
-- Provide a Share/Shortcuts/App Intents entry so users can start a timer directly from Apple Reminders.
-- Clicking the menu-bar timer opens a larger window with controls, stats, and settings.
-- Persist sessions locally and optionally sync via iCloud.
+- [ ] Define the new product scope and MVP for macOS + Reminders
+- [ ] Decide on app structure (menubar app + main window + share extension)
+- [ ] Create a new Xcode SwiftUI project in this repo
+- [ ] Replace web app artifacts with GitHub Pages marketing site
+- [ ] Document the development workflow (GitHub + VSCode + Xcode)
 
-Why
+## macOS App
 
-- Apple Reminders is the user's primary task source now — tight integration improves UX.
-- Native menus, notifications, and background execution produce a more reliable timer experience.
+- [ ] App shell
+  - menubar status item with live timer
+  - main window with full circular timer UI
+  - settings window for durations, sounds, and behavior
+- [ ] Share extension
+  - add a share sheet action that lists Reminders
+  - select a reminder and start a timer
+  - persist "last selected reminder" for quick resume
+- [ ] Reminders integration
+  - request Reminders access
+  - load reminders with title, due date, list name, and completion state
+  - filter and search reminders in the picker
+- [ ] Timer engine
+  - start, pause, stop, and swap reminder
+  - break flow and auto-start behavior
+  - save session history and per-reminder totals
+  - show notifications and play sound on completion
+- [ ] UI
+  - circular timer view with progress animation
+  - compact menubar menu with controls
+  - session summary and quick actions
+- [ ] Storage
+  - persist settings and sessions locally
+  - export basic stats for future views
 
-High-level Migration Plan
+## Marketing Site (GitHub Pages)
 
-- Research & decisions
-  - Evaluate implementation options for menu-bar apps: `MenuBarExtra` (SwiftUI, macOS 13+), `NSStatusItem` (AppKit) for broader macOS compatibility.
-  - Decide integration approach with Reminders: Share Extension vs App Intents / Shortcuts (prefer App Intents + Shortcuts for modern macOS workflows; Share Extension as fallback).
-  - Pick persistence: `Core Data` (with CloudKit for iCloud sync) or a lightweight SQLite wrapper depending on needs.
+- [ ] Create a minimal Astro site for the landing page
+- [ ] Decide site location (repo root vs `site/`) and update tooling accordingly
+- [ ] Configure Astro for GitHub Pages (base path, asset paths, build output)
+- [ ] Replace current site with a static landing page
+- [ ] Add product copy, screenshots, and a "Join the beta" CTA
+- [ ] Add a social preview image
+- [ ] Remove Netlify CLI deploy steps and replace with GitHub Pages deploy
+- [ ] Update Bluehost DNS to point at GitHub Pages
+- [ ] Remove/retire the Netlify site once Pages is live
+- [ ] Configure GitHub Pages deploy workflow (Astro build)
+- [ ] Add release tagging workflow for the site
+- [ ] Publish site from tagged releases
+- [ ] Update Dependabot for Astro + new site directory
 
-- MVP features
-  - Menu-bar compact timer (start/pause/stop quick actions).
-  - Large timer window with task name, controls, and remaining time.
-  - Start timer from Reminders via share/shortcut.
-  - Basic settings (durations, notifications, sound, auto-break) persisted in `UserDefaults` or Core Data.
-  - Session logging and a simple stats view (daily/weekly totals).
+## GitHub
 
-- Extended features
-  - iCloud sync of sessions/settings (optional).
-  - Export stats (CSV) and reports UI.
-  - Theming and accessibility improvements.
-
-Actionable Tasks
-
-- Project setup
-  - [ ] Create a new branch or repo for the macOS app (suggest: `platform/macos`).
-  - [ ] Create Xcode project using Swift + SwiftUI (macOS app template). Target macOS 13+ if using `MenuBarExtra`, otherwise support older versions with AppKit fallback.
-
-- Menu bar + UI
-  - [ ] Implement menu-bar status item (compact timer + menu actions).
-  - [ ] Implement large timer window (SwiftUI view) opened by clicking the menu-bar item.
-  - [ ] Add quick actions: start/stop/pause, start standard durations (25/50/Custom).
-
-- Reminders integration
-  - [ ] Prototype App Intents / Shortcuts action to start a timer from Reminders.
-  - [ ] Implement Share Extension fallback for Reminders share sheet (if App Intents cannot meet requirements).
-
-- Persistence & background
-  - [ ] Add session model and persistence (Core Data or SQLite).
-  - [ ] Ensure timer continues reliably in background (use background tasks and notifications; test sleep/wake behavior).
-
-- Settings & Stats
-  - [ ] Settings UI for durations, sounds, notifications, and auto-break behavior.
-  - [ ] Implement statistics view summarizing sessions by day/week/project/tag.
-
-- Packaging & distribution
-  - [ ] Set up app icons, entitlements (iCloud if used), and provisioning.
-  - [ ] Add CI for building and notarizing the macOS app (optional App Store or GitHub Releases flow).
-
-- Migration & docs
-  - [ ] Update README and `TODO.md` with macOS roadmap and developer notes.
-  - [ ] Archive or mark web-specific features (Todoist sync) as deprecated in this repo unless you want to keep the web UI.
-
-Design & References
-
-- Reference implementation: https://github.com/ivoronin/TomatoBar (menu-bar behavior and UX inspiration).
-- Use `MenuBarExtra` for modern macOS SwiftUI menu-bar apps: it provides native integration and easy SwiftUI views.
-
-Developer notes
-
-- Keep the existing web repo for reference and any assets. Use a separate Xcode project and directory (or a parallel repo) for the native app.
-- Preserve the app name `Taskmato` and reuse icons where possible; prepare new macOS-sized icons.
-
-Acceptance criteria for MVP
-
-- Menu-bar shows running timer and basic actions work (start/pause/stop).
-- Can start a timer from Apple Reminders via a Shortcuts/App Intents/Share entry.
-- Large timer window shows when clicking the menu-bar item and can control the timer.
-- Settings persist across launches and a simple stats view shows recorded sessions.
-
-Next steps
-
-- Start by creating the Xcode project and prototyping the menu-bar timer and an App Intents action.
-- I can scaffold the SwiftUI project structure and a minimal menu-bar timer prototype if you want — say the word and I’ll generate the initial Xcode project files and code samples.
+- [ ] Setup issue and pull request templates
+- [ ] Add a documentation deploy action (if needed)
+- [ ] Make deploys dependent on build and require build checks
+- [ ] Re-enable the GitHub ruleset when rules are finalized

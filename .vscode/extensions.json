@@ -1,4 +1,4 @@
 {
-  "recommendations": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "vitest.explorer"],
+  "recommendations": ["swiftlang.swift-vscode", "streetsidesoftware.code-spell-checker"],
   "unwantedRecommendations": []
 }
