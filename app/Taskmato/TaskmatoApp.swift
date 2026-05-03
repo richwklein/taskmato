@@ -62,6 +62,7 @@ struct TaskmatoApp: App {
             TimerView(
                 engine: engine,
                 settings: settings,
+                store: store,
                 nextStartPhase: engine.queuedPhase ?? store.nextPhaseToStart(longBreakAfter: settings.longBreakAfterSessions),
                 nextBreakPhase: store.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
             )

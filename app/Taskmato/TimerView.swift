@@ -12,6 +12,7 @@ struct TimerView: View {
 
     var engine: SessionEngine
     var settings: AppSettings
+    var store: SessionStore
     /// The phase to start when the user presses Start from idle.
     var nextStartPhase: SessionPhase
     /// The break type to use when skipping from a focus session.
@@ -46,7 +47,13 @@ struct TimerView: View {
             controls
                 .frame(height: 44)
                 .padding(.top, 16)
-                .padding(.bottom, 16)
+
+            Divider()
+                .padding(.horizontal, 16)
+
+            SessionStatsView(count: store.todayFocusCount(), minutes: store.todayFocusMinutes())
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
         }
         .frame(width: 280)
     }
@@ -203,10 +210,38 @@ private struct ControlButton: View {
     }
 }
 
+/// A compact summary row showing today's focus session count and total focused time.
+private struct SessionStatsView: View {
+
+    /// Number of completed focus sessions today.
+    let count: Int
+    /// Total minutes of completed focus time today.
+    let minutes: Int
+
+    var body: some View {
+        HStack {
+            Label(sessionLabel, systemImage: "timer")
+            Spacer()
+            Label(minuteLabel, systemImage: "clock")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
+    private var sessionLabel: String {
+        count == 1 ? "1 session today" : "\(count) sessions today"
+    }
+
+    private var minuteLabel: String {
+        "\(minutes) min focused"
+    }
+}
+
 #Preview {
     TimerView(
         engine: SessionEngine(),
         settings: AppSettings(),
+        store: SessionStore(),
         nextStartPhase: .focus,
         nextBreakPhase: .shortBreak
     )

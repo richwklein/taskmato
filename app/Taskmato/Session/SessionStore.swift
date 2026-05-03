@@ -75,6 +75,29 @@ final class SessionStore {
         return .longBreak
     }
 
+    /// Number of completed focus sessions that started today (calendar day, local time zone).
+    func todayFocusCount() -> Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return sessions.filter {
+            $0.phase == .focus &&
+            $0.wasCompleted &&
+            calendar.startOfDay(for: $0.startedAt) == today
+        }.count
+    }
+
+    /// Total elapsed minutes across all completed focus sessions that started today.
+    func todayFocusMinutes() -> Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let total = sessions.filter {
+            $0.phase == .focus &&
+            $0.wasCompleted &&
+            calendar.startOfDay(for: $0.startedAt) == today
+        }.reduce(0) { $0 + $1.duration }
+        return Int(total / 60)
+    }
+
     // MARK: - Private
 
     private func load() {
