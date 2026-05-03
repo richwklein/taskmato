@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
 
     permissions:
       contents: read
@@ -17,6 +17,16 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
 
-      - name: Run unit tests with coverage
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.3.app
+
+      - name: Run unit tests
         run: |
-          echo "Skipping until new workflow is in place."
+          xcodebuild test \
+            -project app/Taskmato.xcodeproj \
+            -scheme Taskmato \
+            -destination 'platform=macOS' \
+            -enableCodeCoverage YES \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
