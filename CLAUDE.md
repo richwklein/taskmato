@@ -1,4 +1,4 @@
-# AGENTS.md
+# CLAUDE.md
 
 ## Purpose
 
@@ -53,7 +53,8 @@ Unless explicitly instructed otherwise, Codex should assume:
   - AppKit (menu bar, status items, extensions)
   - EventKit (Apple Reminders)
 - **Concurrency:** Swift Concurrency (`async/await`)
-- **Persistence:** Lightweight local storage (JSON / SQLite / Core Data — choose the simplest viable option)
+- **Persistence:** JSON files (Codable) for MVP; revisit Core Data when session visualization requires richer querying
+- **Testing:** Swift Testing (`import Testing`, `@Test` macros)
 - **Repository:** GitHub
 - **Marketing site:** GitHub Pages
 - **Editor:** VS Code (primary), Xcode (secondary)
@@ -172,8 +173,9 @@ Agents should respect and reinforce a clean repository structure:
 ```
 /app/
   Taskmato.xcodeproj
-  Sources/
-  Tests/
+  Taskmato/          # app sources (SwiftUI, AppKit, services)
+  TaskmatoTests/     # Swift Testing unit tests
+  TaskmatoUITests/   # UI tests
 
 /site/
   (GitHub Pages marketing site)
@@ -221,6 +223,21 @@ Agents must:
 - Call out when Xcode is required (signing, entitlements, extensions)
 
 Prefer reproducible or command-line build steps where possible.
+
+---
+
+## Documentation Standards
+
+All public types, properties, and methods must have Swift doc comments (`///`).
+
+Rules:
+
+- Every `class`, `struct`, `enum`, and `protocol` gets a summary line describing its purpose
+- Every `enum` case gets a `///` comment explaining when it applies
+- Every public or internal method gets a summary line; add `- Parameter` and `- Returns` tags when the signature alone is not self-explanatory
+- Prefer one concise sentence over a multi-paragraph block — the goal is scannable, not exhaustive
+- Do not repeat the type name or method name verbatim in the comment
+- Internal implementation details (private helpers) do not require doc comments unless the logic is non-obvious
 
 ---
 

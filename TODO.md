@@ -4,38 +4,48 @@ An Apple Reminders-first pomodoro app with a menubar timer and a share sheet flo
 
 ## Transition Plan
 
-- [ ] Define the new product scope and MVP for macOS + Reminders
-- [ ] Decide on app structure (menubar app + main window + share extension)
-- [ ] Create a new Xcode SwiftUI project in this repo
+- [x] Define the new product scope and MVP for macOS + Reminders
+- [x] Decide on app structure (menubar app + main window + share extension)
+- [x] Create a new Xcode SwiftUI project in this repo
 - [ ] Replace web app artifacts with GitHub Pages marketing site
 - [ ] Document the development workflow (GitHub + VSCode + Xcode)
 
 ## macOS App
 
-- [ ] App shell
-  - menubar status item with live timer
-  - main window with full circular timer UI
-  - settings window for durations, sounds, and behavior
+- [x] App shell
+  - [x] Menu bar status item with live countdown
+  - [x] Popup window with circular timer UI
+  - [x] Settings panel (inline in popover) for focus and break durations
+  - [x] Settings for sounds and behavior (notifications)
+  - [ ] Sound picker for phase completion sound
 - [ ] Share extension
-  - add a share sheet action that lists Reminders
-  - select a reminder and start a timer
-  - persist "last selected reminder" for quick resume
+  - [ ] Add a share sheet action that lists Reminders
+  - [ ] Select a reminder and start a timer
+  - [ ] Persist "last selected reminder" for quick resume
 - [ ] Reminders integration
-  - request Reminders access
-  - load reminders with title, due date, list name, and completion state
-  - filter and search reminders in the picker
-- [ ] Timer engine
-  - start, pause, stop, and swap reminder
-  - break flow and auto-start behavior
-  - save session history and per-reminder totals
-  - show notifications and play sound on completion
-- [ ] UI
-  - circular timer view with progress animation
-  - compact menubar menu with controls
-  - session summary and quick actions
+  - [ ] Request Reminders access (EventKit)
+  - [ ] Load reminders with title, due date, list name, and completion state
+  - [ ] Filter and search reminders in the picker
+  - [ ] Associate a reminder with the active session
+- [x] Timer engine
+  - [x] Start, pause, resume, stop, and skip
+  - [x] Break flow (focus → short break → focus)
+  - [x] Long break after every N focus sessions
+  - [x] Auto-start break after focus completes
+  - [x] Auto-start focus after break completes
+  - [x] Show notifications on phase completion
+  - [x] Play sound on phase completion
+- [x] UI
+  - [x] Circular timer view with progress animation
+  - [x] Menu bar label with live countdown
+  - [x] Start / Pause / Resume / Stop / Skip controls
+  - [ ] Task label showing the active reminder
+  - [ ] Session summary and quick actions
 - [ ] Storage
-  - persist settings and sessions locally
-  - export basic stats for future views
+  - [x] Persist settings to UserDefaults
+  - [x] Persist completed sessions to JSON
+  - [ ] Per-reminder focus totals
+  - [ ] Export basic stats for future visualisation
 
 ## Marketing Site (GitHub Pages)
 
@@ -55,7 +65,7 @@ An Apple Reminders-first pomodoro app with a menubar timer and a share sheet flo
 
 ## GitHub
 
-- [ ] Setup issue and pull request templates
+- [x] Setup issue and pull request templates
 - [ ] Add a documentation deploy action (if needed)
 - [ ] Make deploys dependent on build and require build checks
 - [ ] Re-enable the GitHub ruleset when rules are finalized
