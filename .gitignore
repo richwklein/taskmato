@@ -9,4 +9,4 @@ xcuserdata/
 DerivedData/
 
 # claude code
-.claude/
+.claude/settings.local.json
