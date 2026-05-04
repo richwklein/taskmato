@@ -28,6 +28,7 @@ The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub m
 - [ ] Honor priority and due-date hints in the picker (sort and badge)
 - [ ] Always-on-top mode for the timer popover (detached floating window, toggle in popover header, persisted setting)
 - [ ] Per-provider list scoping (choose which lists each provider exposes in the picker; persisted per provider)
+- [ ] Render task notes/description as markdown where displayed (picker detail, active task label); add `NoteFormat` (.plainText / .markdown) to `TaskItem`
 
 ## Obsidian / Markdown provider (P3)
 
