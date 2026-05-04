@@ -39,23 +39,36 @@ jobs:
           python3 << 'EOF'
           import json, subprocess
 
-          result = subprocess.run(
+          report = subprocess.run(
               ['xcrun', 'xccov', 'view', '--report', '--json', 'TestResults.xcresult'],
               capture_output=True, text=True, check=True
           )
-          data = json.loads(result.stdout)
+          data = json.loads(report.stdout)
 
-          with open('coverage.lcov', 'w') as f:
+          with open('coverage.lcov', 'w') as lcov:
               for target in data.get('targets', []):
-                  for file in target.get('files', []):
-                      path = file.get('path', '')
-                      lines = file.get('lines', [])
+                  for file_info in target.get('files', []):
+                      path = file_info.get('path', '')
+                      if not path:
+                          continue
+                      # --report gives only aggregate metrics; fetch per-line data per file
+                      per_file = subprocess.run(
+                          ['xcrun', 'xccov', 'view', '--file', path, '--json', 'TestResults.xcresult'],
+                          capture_output=True, text=True
+                      )
+                      if per_file.returncode != 0:
+                          continue
+                      try:
+                          file_data = json.loads(per_file.stdout)
+                      except json.JSONDecodeError:
+                          continue
+                      lines = [l for l in file_data.get('lines', []) if l.get('isExecutable', False)]
                       if not lines:
                           continue
-                      f.write(f'SF:{path}\n')
+                      lcov.write(f'SF:{path}\n')
                       for line in lines:
-                          f.write(f'DA:{line["line"]},{line["executionCount"]}\n')
-                      f.write('end_of_record\n')
+                          lcov.write(f'DA:{line["line"]},{line["executionCount"]}\n')
+                      lcov.write('end_of_record\n')
           EOF
 
       - name: Upload coverage report
