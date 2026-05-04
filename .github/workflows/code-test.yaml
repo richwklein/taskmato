@@ -34,10 +34,55 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Inspect xcresult coverage data
+        if: always()
+        run: |
+          echo "=== xcresult bundle ==="
+          ls -la TestResults.xcresult 2>/dev/null || echo "NOT FOUND"
+          echo "=== xccov report JSON (truncated) ==="
+          xcrun xccov view --report --json TestResults.xcresult 2>&1 | python3 -c "
+          import json, sys
+          try:
+              data = json.load(sys.stdin)
+              targets = data.get('targets', [])
+              print(f'targets: {len(targets)}')
+              for t in targets:
+                  files = t.get('files', [])
+                  print(f'  {t.get(\"name\")}: {len(files)} files')
+                  for f in files[:3]:
+                      print(f'    {f.get(\"path\", \"?\")} — keys: {list(f.keys())}')
+                  if len(files) > 3:
+                      print(f'    ... and {len(files)-3} more')
+          except Exception as e:
+              print(f'parse error: {e}')
+              sys.stdin.seek(0)
+              print(sys.stdin.read()[:500])
+          " || true
+          echo "=== xccov per-file sample (first file, if any) ==="
+          FIRST_FILE=$(xcrun xccov view --report --json TestResults.xcresult 2>/dev/null \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print(next((f['path'] for t in d.get('targets',[]) for f in t.get('files',[])), ''))" 2>/dev/null || true)
+          if [ -n "$FIRST_FILE" ]; then
+            echo "Querying: $FIRST_FILE"
+            xcrun xccov view --file "$FIRST_FILE" --json TestResults.xcresult 2>&1 | python3 -c "
+          import json,sys
+          try:
+              data = json.load(sys.stdin)
+              print(f'keys: {list(data.keys())}')
+              lines = data.get('lines', [])
+              print(f'lines: {len(lines)}, first 3: {lines[:3]}')
+          except Exception as e:
+              print(f'error: {e}')
+              sys.stdin.seek(0)
+              print(sys.stdin.read()[:300])
+            " || true
+          else
+            echo "No files found in report"
+          fi
+
       - name: Convert coverage to lcov
         run: |
           python3 << 'EOF'
-          import json, subprocess
+          import json, subprocess, sys
 
           report = subprocess.run(
               ['xcrun', 'xccov', 'view', '--report', '--json', 'TestResults.xcresult'],
@@ -45,30 +90,35 @@ jobs:
           )
           data = json.loads(report.stdout)
 
+          written = 0
           with open('coverage.lcov', 'w') as lcov:
               for target in data.get('targets', []):
                   for file_info in target.get('files', []):
                       path = file_info.get('path', '')
                       if not path:
                           continue
-                      # --report gives only aggregate metrics; fetch per-line data per file
                       per_file = subprocess.run(
                           ['xcrun', 'xccov', 'view', '--file', path, '--json', 'TestResults.xcresult'],
                           capture_output=True, text=True
                       )
                       if per_file.returncode != 0:
+                          print(f'SKIP (rc={per_file.returncode}): {path}', file=sys.stderr)
                           continue
                       try:
                           file_data = json.loads(per_file.stdout)
-                      except json.JSONDecodeError:
+                      except json.JSONDecodeError as e:
+                          print(f'SKIP (json error {e}): {path}', file=sys.stderr)
                           continue
                       lines = [l for l in file_data.get('lines', []) if l.get('isExecutable', False)]
                       if not lines:
+                          print(f'SKIP (no executable lines): {path}', file=sys.stderr)
                           continue
                       lcov.write(f'SF:{path}\n')
                       for line in lines:
                           lcov.write(f'DA:{line["line"]},{line["executionCount"]}\n')
                       lcov.write('end_of_record\n')
+                      written += 1
+          print(f'Wrote {written} source files to coverage.lcov', file=sys.stderr)
           EOF
 
       - name: Upload coverage report
