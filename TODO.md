@@ -11,7 +11,7 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [x] Implement `TaskRegistry` supporting multiple concurrent providers
 - [x] Implement `TaskSelectionStore` (active task, last-used per provider)
 - [x] Migrate `Session.reminderID` → `Session.taskRef`
-- [ ] Update `TaskmatoApp.onPhaseEnded` to stamp `taskRef` onto persisted sessions
+- [x] Update `TaskmatoApp.onPhaseEnded` to stamp `taskRef` onto persisted sessions
 
 ## Built-in task provider (P1)
 
