@@ -28,22 +28,6 @@ jobs:
             -project app/Taskmato.xcodeproj \
             -scheme Taskmato \
             -destination 'platform=macOS' \
-            -enableCodeCoverage YES \
-            -resultBundlePath TestResults.xcresult \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
-
-      - name: Convert coverage to lcov
-        uses: sersoft-gmbh/swift-coverage-action@v5
-        with:
-          search-paths: .
-          output: .swiftcov
-          format: lcov
-
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: .swiftcov/

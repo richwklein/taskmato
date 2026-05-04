@@ -13,6 +13,7 @@ struct TaskmatoApp: App {
   @State private var engine: SessionEngine
   @State private var settings: AppSettings
   @State private var store: SessionStore
+  @State private var selectionStore: TaskSelectionStore
   @State private var notifications: NotificationService
   @State private var sounds: SoundService
 
@@ -20,6 +21,7 @@ struct TaskmatoApp: App {
     let engine = SessionEngine()
     let settings = AppSettings()
     let store = SessionStore()
+    let selectionStore = TaskSelectionStore()
     let notifications = NotificationService()
     let sounds = SoundService()
 
@@ -30,7 +32,8 @@ struct TaskmatoApp: App {
           phase: phase,
           startedAt: startedAt,
           endedAt: endedAt,
-          wasCompleted: wasCompleted
+          wasCompleted: wasCompleted,
+          taskRef: selectionStore.activeTask?.id
         ))
       if wasCompleted {
         if settings.soundEnabled { sounds.play() }
@@ -54,6 +57,7 @@ struct TaskmatoApp: App {
     _engine = State(initialValue: engine)
     _settings = State(initialValue: settings)
     _store = State(initialValue: store)
+    _selectionStore = State(initialValue: selectionStore)
     _notifications = State(initialValue: notifications)
     _sounds = State(initialValue: sounds)
   }
