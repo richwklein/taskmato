@@ -38,10 +38,20 @@ jobs:
       - name: Convert coverage to lcov
         run: |
           PROFDATA=$(find DerivedData/Build/ProfileData -name "Coverage.profdata" | head -1)
-          BINARY=$(find DerivedData/Build/Products -name "Taskmato" -type f | grep "MacOS/Taskmato$" | head -1)
-
           echo "profdata: $PROFDATA"
-          echo "binary:   $BINARY"
+
+          # Get the exact binary path recorded in the xcresult manifest — this
+          # matches the UUID the profdata was built against.
+          BINARY=$(xcrun xccov view --report --json TestResults.xcresult | \
+            python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for t in data.get('targets', []):
+    if t.get('name', '') == 'Taskmato.app':
+        print(t.get('executablePath', ''))
+        break
+")
+          echo "binary: $BINARY"
 
           mkdir -p coverage
           xcrun llvm-cov export \
