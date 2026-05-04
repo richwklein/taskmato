@@ -25,9 +25,10 @@ struct TimerView: View {
       HStack {
         Spacer()
         Button {
-          let popover = NSApplication.shared.keyWindow
+          let popover = NSApp.keyWindow
+          NSApp.activate(ignoringOtherApps: true)
           openSettings()
-          popover?.close()
+          DispatchQueue.main.async { popover?.close() }
         } label: {
           Image(systemName: "gearshape")
             .foregroundStyle(.secondary)
