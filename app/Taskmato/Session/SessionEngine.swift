@@ -177,7 +177,7 @@ final class SessionEngine {
       state = .running(phase: next, startedAt: now(), duration: dur)
       startTicking()
     } else {
-      state = .paused(phase: next, remaining: d)
+      state = .paused(phase: next, remaining: dur)
     }
   }
 
