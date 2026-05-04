@@ -40,7 +40,6 @@ jobs:
           search-paths: .
           output: .swiftcov
           format: lcov
-          target-name-filter: '^Taskmato$'
 
       - name: Upload coverage report
         if: always()
