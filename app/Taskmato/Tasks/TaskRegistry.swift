@@ -80,21 +80,21 @@ final class TaskRegistry {
     var merged: [TaskItem] = []
     var providerErrors: [ProviderFetchError] = []
 
-    await withTaskGroup(of: Result<[TaskItem], ProviderFetchError>.self) { group in
+    await withTaskGroup(of: (items: [TaskItem], fetchError: ProviderFetchError?).self) { group in
       for provider in active {
         let providerID = provider.id
         group.addTask {
           do {
-            return .success(try await provider.tasks(in: nil))
+            return (items: try await provider.tasks(in: nil), fetchError: nil)
           } catch {
-            return .failure((providerID: providerID, error: error))
+            return (items: [], fetchError: (providerID: providerID, error: error))
           }
         }
       }
       for await result in group {
-        switch result {
-        case .success(let items): merged.append(contentsOf: items)
-        case .failure(let fetchError): providerErrors.append(fetchError)
+        merged.append(contentsOf: result.items)
+        if let fetchError = result.fetchError {
+          providerErrors.append(fetchError)
         }
       }
     }
