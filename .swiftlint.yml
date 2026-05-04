@@ -9,6 +9,7 @@ excluded:
 
 disabled_rules:
   - todo
+  - trailing_comma
 
 opt_in_rules:
   - array_init
