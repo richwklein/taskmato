@@ -1,8 +1,8 @@
 # Taskmato TODO
 
-A macOS menu bar Pomodoro timer with pluggable task providers (Apple Reminders, Obsidian, CLI built-in; Todoist as a paid unlock).
+A macOS menu bar Pomodoro timer with pluggable task providers (built-in, Apple Reminders, Obsidian, CLI; Todoist as a paid unlock).
 
-The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub milestone. Each leaf bullet maps to one issue.
+The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub milestone. Each leaf bullet maps to one issue.
 
 ## Foundation (P0)
 
@@ -13,14 +13,21 @@ The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub m
 - [ ] Migrate `Session.reminderID` → `Session.taskRef` with Codable migration shim
 - [ ] Update `TaskmatoApp.onPhaseEnded` to stamp `taskRef` onto persisted sessions
 
-## Apple Reminders provider (P1)
+## Built-in task provider (P1)
+
+- [ ] `LocalTask` model (title, notes, priority, due date, list) persisted to JSON in App Support
+- [ ] `LocalProvider` conforming to `TaskProvider` + `MutableTaskProvider`; `entitlement = .free`; not the default provider
+- [ ] Inline task creation from the picker ("+" button: title, priority, optional due date, optional list)
+- [ ] User-managed lists (create, rename, delete)
+
+## Apple Reminders provider (P2)
 
 - [ ] Request Reminders access (EventKit) lazily with graceful denial UX
 - [ ] Implement `RemindersProvider` (lists, search, incomplete-only filter)
 - [ ] Implement close-back: `MutableTaskProvider.complete` marks the reminder done in EventKit
 - [ ] Live updates via `EKEventStoreChangedNotification`
 
-## Picker UI + close-back affordance (P2)
+## Picker UI + close-back affordance (P3)
 
 - [ ] Task picker view in popover (search across providers, grouped)
 - [ ] Active task label with explicit close (checkmark) and mid-session task swap (does not stop the timer)
@@ -29,7 +36,7 @@ The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub m
 - [ ] Per-provider list scoping (choose which lists each provider exposes in the picker; persisted per provider)
 - [ ] Render task notes/description as markdown where displayed (picker detail, active task label); add `NoteFormat` (.plainText / .markdown) to `TaskItem`
 
-## Obsidian / Markdown provider (P3)
+## Obsidian / Markdown provider (P4)
 
 - [ ] Vault root setting + folder access scoped bookmark
 - [ ] Parser for [obsidian-tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) emoji subset:
@@ -40,7 +47,7 @@ The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub m
 - [ ] FSEvents-based live updates with debouncing
 - [ ] `MutableTaskProvider.complete` rewrites `- [ ]` → `- [x]` and appends `✅ <today>`
 
-## CLI / URL scheme provider (P4)
+## CLI / URL scheme provider (P5)
 
 - [ ] Register `taskmato://` URL scheme
 - [ ] `taskmato://start?title=...&priority=...&due=...&list=...` handler
@@ -48,7 +55,7 @@ The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub m
 - [ ] In-memory + recently-used persistence for ad-hoc CLI tasks
 - [ ] (Stretch) defer share extension to 1.1 — it reuses this channel
 
-## Stats visualization (P5)
+## Stats visualization (P6)
 
 - [ ] `StatsView` reachable from popover footer
 - [ ] Today: per-task focus minutes (Swift Charts bar chart)
@@ -57,7 +64,7 @@ The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub m
 - [ ] Daily focus total and current streak in popover header
 - [ ] `SessionStore.focusTotals(by: TaskRef)` aggregation + tests
 
-## Monetization (P6)
+## Monetization (P7)
 
 - [ ] `ProviderEntitlement` enum (`.free` / `.paid(productID)`)
 - [ ] `ProviderEntitlementStore` (StoreKit 2 transactions, refresh, restore purchases)
@@ -65,7 +72,7 @@ The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub m
 - [ ] Lock paid providers from `TaskRegistry` until purchased
 - [ ] App Store Connect product configuration notes (in `/docs`)
 
-## Todoist provider (P7, paid unlock)
+## Todoist provider (P8, paid unlock)
 
 > Requires explicit go-ahead — adds a network dependency and OAuth flow.
 
