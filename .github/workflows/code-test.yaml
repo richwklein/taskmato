@@ -30,20 +30,32 @@ jobs:
             -destination 'platform=macOS' \
             -enableCodeCoverage YES \
             -resultBundlePath TestResults.xcresult \
+            -derivedDataPath DerivedData \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Convert coverage to lcov
-        uses: sersoft-gmbh/swift-coverage-action@v5
-        with:
-          search-paths: .
-          output: .swiftcov
-          format: lcov
+        run: |
+          PROFDATA=$(find TestResults.xcresult -name "*.profdata" | head -1)
+          BINARY=$(find DerivedData/Build/Products -name "Taskmato" -type f | grep "MacOS/Taskmato$" | head -1)
+
+          echo "profdata: $PROFDATA"
+          echo "binary:   $BINARY"
+
+          mkdir -p coverage
+          xcrun llvm-cov export \
+            -format=lcov \
+            -instr-profile="$PROFDATA" \
+            "$BINARY" \
+            --ignore-filename-regex='.*Tests.*' \
+            > coverage/coverage.lcov
+
+          wc -l coverage/coverage.lcov
 
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: .swiftcov/
+          path: coverage/

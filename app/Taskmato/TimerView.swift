@@ -48,6 +48,7 @@ struct TimerView: View {
       controls
         .frame(height: 44)
         .padding(.top, 16)
+        .padding(.bottom, 12)
 
       Divider()
         .padding(.horizontal, 16)
