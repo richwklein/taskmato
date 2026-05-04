@@ -23,9 +23,8 @@ struct Session: Codable, Identifiable {
   /// `true` if the phase ran to completion naturally; `false` if the user stopped it early.
   let wasCompleted: Bool
 
-  /// The EventKit reminder identifier associated with this session, if any.
-  /// Populated once Reminders integration is added.
-  var reminderID: String?
+  /// The task associated with this session, if one was selected when the phase ran.
+  var taskRef: TaskRef?
 
   /// Actual elapsed duration of this phase in seconds.
   var duration: TimeInterval { endedAt.timeIntervalSince(startedAt) }
