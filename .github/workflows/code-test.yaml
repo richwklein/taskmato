@@ -1,17 +1,19 @@
 name: Test
+
 on:
+  workflow_call:
   pull_request:
 
 concurrency:
   group: test-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: macos-15
-
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout source code
@@ -27,6 +29,38 @@ jobs:
             -scheme Taskmato \
             -destination 'platform=macOS' \
             -enableCodeCoverage YES \
+            -resultBundlePath TestResults.xcresult \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Convert coverage to lcov
+        run: |
+          python3 << 'EOF'
+          import json, subprocess
+
+          result = subprocess.run(
+              ['xcrun', 'xccov', 'view', '--report', '--json', 'TestResults.xcresult'],
+              capture_output=True, text=True, check=True
+          )
+          data = json.loads(result.stdout)
+
+          with open('coverage.lcov', 'w') as f:
+              for target in data.get('targets', []):
+                  for file in target.get('files', []):
+                      path = file.get('path', '')
+                      lines = file.get('lines', [])
+                      if not lines:
+                          continue
+                      f.write(f'SF:{path}\n')
+                      for line in lines:
+                          f.write(f'DA:{line["line"]},{line["executionCount"]}\n')
+                      f.write('end_of_record\n')
+          EOF
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.lcov
