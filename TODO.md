@@ -23,8 +23,7 @@ The numbered tracks below (P0–P7) become the **Provider Pivot (1.0)** GitHub m
 ## Picker UI + close-back affordance (P2)
 
 - [ ] Task picker view in popover (search across providers, grouped)
-- [ ] Active task label with tappable "mark complete" affordance
-- [ ] Setting: "Mark task complete when focus phase ends" (default off)
+- [ ] Active task label with explicit close (checkmark) and mid-session task swap (does not stop the timer)
 - [ ] Honor priority and due-date hints in the picker (sort and badge)
 - [ ] Always-on-top mode for the timer popover (detached floating window, toggle in popover header, persisted setting)
 - [ ] Per-provider list scoping (choose which lists each provider exposes in the picker; persisted per provider)
