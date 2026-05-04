@@ -224,6 +224,15 @@ Agents must:
 
 Prefer reproducible or command-line build steps where possible.
 
+**Before committing any source code change**, agents must run and pass both checks locally:
+
+```
+make lint    # SwiftLint — must report zero violations
+make format-check  # swift-format — must report zero issues
+```
+
+Fix all violations before committing. Do not suppress lint rules without explicit approval.
+
 ---
 
 ## Documentation Standards

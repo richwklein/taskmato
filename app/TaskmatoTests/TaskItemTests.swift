@@ -3,8 +3,8 @@
 //  TaskmatoTests
 //
 
-import Testing
 import Foundation
+import Testing
 @testable import Taskmato
 
 @Suite("TaskItem")
@@ -20,10 +20,10 @@ struct TaskItemTests {
   }
 
   @Test func taskRefHashableDistinguishesByProvider() {
-    let a = TaskRef(providerID: "reminders", nativeID: "1")
-    let b = TaskRef(providerID: "obsidian", nativeID: "1")
-    #expect(a != b)
-    #expect(Set([a, b]).count == 2)
+    let remindersRef = TaskRef(providerID: "reminders", nativeID: "1")
+    let obsidianRef = TaskRef(providerID: "obsidian", nativeID: "1")
+    #expect(remindersRef != obsidianRef)
+    #expect(Set([remindersRef, obsidianRef]).count == 2)
   }
 
   // MARK: - TaskPriority
