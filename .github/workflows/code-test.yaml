@@ -37,7 +37,7 @@ jobs:
 
       - name: Convert coverage to lcov
         run: |
-          PROFDATA=$(find TestResults.xcresult -name "*.profdata" | head -1)
+          PROFDATA=$(find DerivedData/Build/ProfileData -name "Coverage.profdata" | head -1)
           BINARY=$(find DerivedData/Build/Products -name "Taskmato" -type f | grep "MacOS/Taskmato$" | head -1)
 
           echo "profdata: $PROFDATA"
