@@ -1,0 +1,58 @@
+name: Report Coverage
+
+on:
+  workflow_run:
+    workflows: ['Test']
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          name: coverage
+          path: coverage
+
+      - name: Generate coverage report
+        uses: danielpalme/ReportGenerator-GitHub-Action@5
+        with:
+          reports: coverage/coverage.lcov
+          targetdir: coverage-report
+          reporttypes: MarkdownSummaryGithub
+          verbosity: Warning
+
+      - name: Get PR number
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.payload.workflow_run.head_repository.owner.login}:${context.payload.workflow_run.head_branch}`,
+              state: 'open'
+            });
+            return prs[0]?.number ?? '';
+
+      - name: Post coverage comment
+        if: steps.pr.outputs.result != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          number: ${{ steps.pr.outputs.result }}
+          path: coverage-report/SummaryGithub.md
+          header: coverage
