@@ -6,11 +6,11 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 ## Foundation (P0)
 
-- [ ] Define `TaskRef`, `TaskPriority`, `TaskList`, `TaskItem` value types
-- [ ] Define `TaskProvider` (read) and `MutableTaskProvider` (write/close-back) protocols
-- [ ] Implement `TaskRegistry` supporting multiple concurrent providers
-- [ ] Implement `TaskSelectionStore` (active task, last-used per provider)
-- [ ] Migrate `Session.reminderID` → `Session.taskRef` with Codable migration shim
+- [x] Define `TaskRef`, `TaskPriority`, `TaskList`, `TaskItem` value types
+- [x] Define `TaskProvider` (read) and `MutableTaskProvider` (write/close-back) protocols
+- [x] Implement `TaskRegistry` supporting multiple concurrent providers
+- [x] Implement `TaskSelectionStore` (active task, last-used per provider)
+- [x] Migrate `Session.reminderID` → `Session.taskRef`
 - [ ] Update `TaskmatoApp.onPhaseEnded` to stamp `taskRef` onto persisted sessions
 
 ## Built-in task provider (P1)
@@ -110,3 +110,5 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [x] Phase completion notifications and sounds
 - [x] Persist settings to UserDefaults; persist completed sessions to JSON
 - [x] Issue and pull request templates
+- [x] Settings window brought to foreground on open (MenuBarExtra activation fix)
+- [x] Spacing between transport controls and session stats in popover
