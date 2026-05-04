@@ -35,32 +35,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Convert coverage to lcov
-        run: |
-          python3 << 'EOF'
-          import json, subprocess
-
-          result = subprocess.run(
-              ['xcrun', 'xccov', 'view', '--report', '--json', 'TestResults.xcresult'],
-              capture_output=True, text=True, check=True
-          )
-          data = json.loads(result.stdout)
-
-          with open('coverage.lcov', 'w') as f:
-              for target in data.get('targets', []):
-                  for file in target.get('files', []):
-                      path = file.get('path', '')
-                      lines = file.get('lines', [])
-                      if not lines:
-                          continue
-                      f.write(f'SF:{path}\n')
-                      for line in lines:
-                          f.write(f'DA:{line["line"]},{line["executionCount"]}\n')
-                      f.write('end_of_record\n')
-          EOF
+        uses: sersoft-gmbh/swift-coverage-action@v5
+        with:
+          search-paths: .
+          output: .swiftcov
+          format: lcov
 
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: coverage.lcov
+          path: .swiftcov/

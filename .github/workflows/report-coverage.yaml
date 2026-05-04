@@ -30,7 +30,7 @@ jobs:
       - name: Generate coverage report
         uses: danielpalme/ReportGenerator-GitHub-Action@5
         with:
-          reports: coverage/coverage.lcov
+          reports: coverage/*.lcov
           targetdir: coverage-report
           reporttypes: MarkdownSummaryGithub
           verbosity: Warning
