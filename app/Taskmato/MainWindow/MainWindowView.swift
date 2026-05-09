@@ -14,6 +14,8 @@ struct MainWindowView: View {
   var engine: SessionEngine
   var settings: AppSettings
   var store: SessionStore
+  var selectionStore: TaskSelectionStore
+  var registry: TaskRegistry
 
   @Environment(\.openSettings) private var openSettings
 
@@ -24,9 +26,10 @@ struct MainWindowView: View {
           engine: engine,
           settings: settings,
           store: store,
-          nextStartPhase: engine.queuedPhase
-            ?? store.nextPhaseToStart(longBreakAfter: settings.longBreakAfterSessions),
-          nextBreakPhase: store.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
+          selectionStore: selectionStore,
+          registry: registry,
+          nextStartPhase: engine.queuedPhase ?? .focus,
+          nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
         )
       }
 
@@ -56,6 +59,8 @@ struct MainWindowView: View {
   MainWindowView(
     engine: SessionEngine(),
     settings: AppSettings(),
-    store: SessionStore()
+    store: SessionStore(),
+    selectionStore: TaskSelectionStore(),
+    registry: TaskRegistry()
   )
 }

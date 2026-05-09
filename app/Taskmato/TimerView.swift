@@ -15,6 +15,8 @@ struct TimerView: View {
   var engine: SessionEngine
   var settings: AppSettings
   var store: SessionStore
+  var selectionStore: TaskSelectionStore
+  var registry: TaskRegistry
   /// The phase to start when the user presses Start from idle.
   var nextStartPhase: SessionPhase
   /// The break type to use when skipping from a focus session.
@@ -65,6 +67,12 @@ struct TimerView: View {
         .frame(height: 44)
         .padding(.top, 16)
         .padding(.bottom, 12)
+
+      if selectionStore.activeTask != nil {
+        Divider()
+          .padding(.horizontal, 16)
+        ActiveTaskView(selectionStore: selectionStore, registry: registry)
+      }
 
       Divider()
         .padding(.horizontal, 16)
@@ -174,6 +182,8 @@ struct TimerView: View {
     engine: SessionEngine(),
     settings: AppSettings(),
     store: SessionStore(),
+    selectionStore: TaskSelectionStore(),
+    registry: TaskRegistry(),
     nextStartPhase: .focus,
     nextBreakPhase: .shortBreak
   )

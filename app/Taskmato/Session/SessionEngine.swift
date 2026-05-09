@@ -61,6 +61,12 @@ final class SessionEngine {
   /// Cleared whenever `start()` or `stop()` is called.
   private(set) var queuedPhase: SessionPhase?
 
+  /// Number of focus phases that have completed naturally in the current session cycle.
+  ///
+  /// Incremented on each natural focus completion; reset to zero when a long break completes
+  /// naturally. Manual stops and skips do not affect this counter.
+  private(set) var completedFocusCount: Int = 0
+
   /// Called whenever a phase ends — either naturally (time reaches zero) or via manual stop.
   /// - Parameters:
   ///   - phase: The phase that ended.
@@ -181,6 +187,18 @@ final class SessionEngine {
     }
   }
 
+  /// Returns the break phase that should follow the next completed focus session.
+  ///
+  /// Returns `.longBreak` when `completedFocusCount` is a non-zero multiple of `longBreakAfter`;
+  /// otherwise returns `.shortBreak`.
+  /// - Parameter longBreakAfter: Number of completed focus sessions before a long break is due.
+  func nextBreakPhase(longBreakAfter: Int) -> SessionPhase {
+    guard longBreakAfter > 0, completedFocusCount > 0,
+      completedFocusCount % longBreakAfter == 0
+    else { return .shortBreak }
+    return .longBreak
+  }
+
   /// Queues a phase to start next without beginning it. Only has effect when idle.
   func enqueuePhase(_ phase: SessionPhase) {
     guard case .idle = state else { return }
@@ -198,6 +216,11 @@ final class SessionEngine {
       stopTicking()
       state = .idle
       timeRemaining = focusDuration
+      switch phase {
+      case .focus: completedFocusCount += 1
+      case .longBreak: completedFocusCount = 0
+      case .shortBreak: break
+      }
       onPhaseEnded?(phase, startedAt, startedAt.addingTimeInterval(duration), true)
     }
   }

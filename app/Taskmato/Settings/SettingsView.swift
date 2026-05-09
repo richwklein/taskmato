@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsView: View {
 
   @Bindable var settings: AppSettings
+  var selectionStore: TaskSelectionStore
 
   var body: some View {
     Form {
@@ -38,6 +39,27 @@ struct SettingsView: View {
         Text("Task providers will appear here.")
           .foregroundStyle(.secondary)
       }
+
+      #if DEBUG
+        Section("Debug") {
+          if let task = selectionStore.activeTask {
+            LabeledContent("Active task", value: task.title)
+          }
+          Button("Set test task") {
+            selectionStore.select(
+              TaskItem(
+                id: TaskRef(providerID: "debug", nativeID: "1"),
+                title: "Write release notes",
+                notesFormat: .plainText,
+                priority: .high
+              ))
+          }
+          Button("Clear active task", role: .destructive) {
+            selectionStore.clearActiveTask()
+          }
+          .disabled(selectionStore.activeTask == nil)
+        }
+      #endif
     }
     .formStyle(.grouped)
     .navigationTitle("\(Bundle.main.appName) Settings")
@@ -95,5 +117,5 @@ private struct DurationField: View {
 }
 
 #Preview {
-  SettingsView(settings: AppSettings())
+  SettingsView(settings: AppSettings(), selectionStore: TaskSelectionStore())
 }

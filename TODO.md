@@ -30,7 +30,8 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 ## Picker UI + close-back affordance (P3)
 
 - [ ] Task picker view in main window Tasks tab (search across providers, grouped) ([#257](https://github.com/richwklein/taskmato/issues/257))
-- [ ] Active task label with explicit close (checkmark) and mid-session task swap (does not stop the timer) ([#258](https://github.com/richwklein/taskmato/issues/258))
+- [x] Active task label in popover and main window timer tab: provider-conditional complete (checkmark) button, always-visible clear button, hidden when no task active ([#258](https://github.com/richwklein/taskmato/issues/258))
+- [ ] Mid-session task swap (does not stop the timer) ([#258](https://github.com/richwklein/taskmato/issues/258))
 - [ ] Honor priority and due-date hints in the picker (sort and badge) ([#257](https://github.com/richwklein/taskmato/issues/257))
 - [ ] Always-on-top mode for the timer popover (detached floating window, toggle in popover header, persisted setting) ([#260](https://github.com/richwklein/taskmato/issues/260))
 - [ ] Per-provider list scoping (choose which lists each provider exposes in the picker; persisted per provider) ([#276](https://github.com/richwklein/taskmato/issues/276))
@@ -129,3 +130,6 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [x] User-controlled Dock icon setting (Show Dock icon toggle in Settings; applied on next launch)
 - [x] `Bundle.main.appName` extension for dynamic app name used throughout all UI
 - [x] Ad-hoc code signing in dev Makefile targets to prevent Gatekeeper "damaged" popup
+- [x] Active task label row wired into both popover and main window timer tab ([#258](https://github.com/richwklein/taskmato/issues/258))
+- [x] Session cycle state (`completedFocusCount`, `nextBreakPhase`) moved into `SessionEngine`; `SessionStore` is now stats-only; app always starts a fresh focus phase on launch
+- [x] Menu bar label shows the correct duration for the queued phase (focus / short break / long break) when idle
