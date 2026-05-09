@@ -30,6 +30,7 @@ struct TaskmatoApp: App {
   @State private var settings: AppSettings
   @State private var store: SessionStore
   @State private var selectionStore: TaskSelectionStore
+  @State private var registry: TaskRegistry
   @State private var notifications: NotificationService
   @State private var sounds: SoundService
 
@@ -38,6 +39,7 @@ struct TaskmatoApp: App {
     let settings = AppSettings()
     let store = SessionStore()
     let selectionStore = TaskSelectionStore()
+    let registry = TaskRegistry()
     let notifications = NotificationService()
     let sounds = SoundService()
 
@@ -59,7 +61,7 @@ struct TaskmatoApp: App {
         engine.longBreakDuration = settings.longBreakDuration
         let next: SessionPhase
         switch phase {
-        case .focus: next = store.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
+        case .focus: next = engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
         case .shortBreak, .longBreak: next = .focus
         }
         if settings.autoStartNextPhase {
@@ -74,6 +76,7 @@ struct TaskmatoApp: App {
     _settings = State(initialValue: settings)
     _store = State(initialValue: store)
     _selectionStore = State(initialValue: selectionStore)
+    _registry = State(initialValue: registry)
     _notifications = State(initialValue: notifications)
     _sounds = State(initialValue: sounds)
   }
@@ -84,21 +87,28 @@ struct TaskmatoApp: App {
         engine: engine,
         settings: settings,
         store: store,
-        nextStartPhase: engine.queuedPhase
-          ?? store.nextPhaseToStart(longBreakAfter: settings.longBreakAfterSessions),
-        nextBreakPhase: store.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
+        selectionStore: selectionStore,
+        registry: registry,
+        nextStartPhase: engine.queuedPhase ?? .focus,
+        nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
       )
     }
     .menuBarExtraStyle(.window)
 
     Window(Bundle.main.appName, id: "main") {
-      MainWindowView(engine: engine, settings: settings, store: store)
+      MainWindowView(
+        engine: engine,
+        settings: settings,
+        store: store,
+        selectionStore: selectionStore,
+        registry: registry
+      )
     }
     .defaultSize(width: 480, height: 520)
     .windowResizability(.contentMinSize)
 
     Settings {
-      SettingsView(settings: settings)
+      SettingsView(settings: settings, selectionStore: selectionStore)
     }
     .windowResizability(.contentSize)
   }
@@ -107,7 +117,12 @@ struct TaskmatoApp: App {
   private var menuBarLabel: String {
     let seconds: Int
     if case .idle = engine.state {
-      seconds = Int(settings.focusDuration)
+      let phase = engine.queuedPhase ?? SessionPhase.focus
+      switch phase {
+      case .focus: seconds = Int(settings.focusDuration)
+      case .shortBreak: seconds = Int(settings.shortBreakDuration)
+      case .longBreak: seconds = Int(settings.longBreakDuration)
+      }
     } else {
       seconds = Int(engine.timeRemaining)
     }

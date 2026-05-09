@@ -45,38 +45,6 @@ final class SessionStore {
     save()
   }
 
-  /// Returns the phase that should begin when the user presses Start from idle.
-  ///
-  /// Returns the appropriate break type after a completed focus session, or `.focus` otherwise.
-  /// - Parameter longBreakAfter: Number of completed focus sessions before a long break.
-  func nextPhaseToStart(longBreakAfter: Int) -> SessionPhase {
-    guard let last = sessions.last, last.wasCompleted else { return .focus }
-    switch last.phase {
-    case .focus: return nextBreakPhase(longBreakAfter: longBreakAfter)
-    case .shortBreak, .longBreak: return .focus
-    }
-  }
-
-  /// Returns the appropriate break phase for the next session based on the history.
-  ///
-  /// Counts completed focus sessions since the last completed long break.
-  /// Partial sessions and skipped phases are excluded from the count.
-  /// - Parameter longBreakAfter: Number of completed focus sessions before a long break.
-  func nextBreakPhase(longBreakAfter: Int) -> SessionPhase {
-    let completedFocusSinceLastLongBreak =
-      sessions
-      .reversed()
-      .prefix(while: { !($0.phase == .longBreak && $0.wasCompleted) })
-      .filter({ $0.phase == .focus && $0.wasCompleted })
-      .count
-    guard completedFocusSinceLastLongBreak > 0,
-      completedFocusSinceLastLongBreak % longBreakAfter == 0
-    else {
-      return .shortBreak
-    }
-    return .longBreak
-  }
-
   /// Number of completed focus sessions that started today (calendar day, local time zone).
   func todayFocusCount() -> Int {
     let calendar = Calendar.current
