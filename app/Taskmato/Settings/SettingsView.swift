@@ -28,10 +28,19 @@ struct SettingsView: View {
         Toggle("Play sound on phase completion", isOn: $settings.soundEnabled)
         Toggle("Show notification on phase completion", isOn: $settings.notificationsEnabled)
         Toggle("Auto-start next phase", isOn: $settings.autoStartNextPhase)
+        Toggle("Show Dock icon", isOn: $settings.showDockIcon)
+        Text("Takes effect the next time \(Bundle.main.appName) is launched.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
+      Section("Providers") {
+        Text("Task providers will appear here.")
+          .foregroundStyle(.secondary)
       }
     }
     .formStyle(.grouped)
-    .navigationTitle("Taskmato Settings")
+    .navigationTitle("\(Bundle.main.appName) Settings")
   }
 }
 
