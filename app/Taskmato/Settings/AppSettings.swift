@@ -48,6 +48,14 @@ final class AppSettings {
     didSet { defaults.set(autoStartNextPhase, forKey: Keys.autoStartNextPhase) }
   }
 
+  /// Whether the app icon appears in the Dock and CMD+Tab switcher.
+  ///
+  /// Defaults to `false` — the app starts as a menu bar–only accessory. The user can
+  /// enable the Dock icon in Settings to make the main window behave like a regular app.
+  var showDockIcon: Bool {
+    didSet { defaults.set(showDockIcon, forKey: Keys.showDockIcon) }
+  }
+
   /// `focusMinutes` expressed as a `TimeInterval` in seconds.
   var focusDuration: TimeInterval { TimeInterval(focusMinutes * 60) }
 
@@ -74,6 +82,7 @@ final class AppSettings {
     soundEnabled = defaults.object(forKey: Keys.soundEnabled) as? Bool ?? true
     notificationsEnabled = defaults.object(forKey: Keys.notificationsEnabled) as? Bool ?? true
     autoStartNextPhase = defaults.object(forKey: Keys.autoStartNextPhase) as? Bool ?? false
+    showDockIcon = defaults.object(forKey: Keys.showDockIcon) as? Bool ?? false
   }
 
   private enum Keys {
@@ -84,6 +93,7 @@ final class AppSettings {
     static let soundEnabled = "soundEnabled"
     static let notificationsEnabled = "notificationsEnabled"
     static let autoStartNextPhase = "autoStartNextPhase"
+    static let showDockIcon = "showDockIcon"
   }
 }
 

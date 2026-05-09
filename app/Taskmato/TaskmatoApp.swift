@@ -5,10 +5,26 @@
 //  Created by Richard Klein on 5/2/26.
 //
 
+import AppKit
 import SwiftUI
+
+/// Applies the dock icon activation policy once the application has fully launched.
+///
+/// `NSApp.setActivationPolicy` must not be called during `App.init()` — the launch
+/// sequence is incomplete at that point and the call traps on restart. Deferring to
+/// `applicationDidFinishLaunching` is the documented safe window.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    if UserDefaults.standard.bool(forKey: "showDockIcon") {
+      NSApp.setActivationPolicy(.regular)
+    }
+  }
+}
 
 @main
 struct TaskmatoApp: App {
+
+  @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
   @State private var engine: SessionEngine
   @State private var settings: AppSettings
@@ -74,6 +90,12 @@ struct TaskmatoApp: App {
       )
     }
     .menuBarExtraStyle(.window)
+
+    Window(Bundle.main.appName, id: "main") {
+      MainWindowView(engine: engine, settings: settings, store: store)
+    }
+    .defaultSize(width: 480, height: 520)
+    .windowResizability(.contentMinSize)
 
     Settings {
       SettingsView(settings: settings)

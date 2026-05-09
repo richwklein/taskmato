@@ -1,16 +1,12 @@
 //
-//  TimerView.swift
+//  TimerTabView.swift
 //  Taskmato
-//
-//  Created by Richard Klein on 5/2/26.
 //
 
 import SwiftUI
 
-/// The compact popover view shown when the user clicks the menu bar item.
-///
-/// Provides quick timer controls and a button to open the main application window.
-struct TimerView: View {
+/// The timer tab shown in the main application window.
+struct TimerTabView: View {
 
   var engine: SessionEngine
   var settings: AppSettings
@@ -20,40 +16,9 @@ struct TimerView: View {
   /// The break type to use when skipping from a focus session.
   var nextBreakPhase: SessionPhase
 
-  @Environment(\.openSettings) private var openSettings
-  @Environment(\.openWindow) private var openWindow
-
   var body: some View {
     VStack(spacing: 0) {
-      HStack {
-        Button {
-          let popover = NSApp.keyWindow
-          NSApp.activate(ignoringOtherApps: true)
-          openSettings()
-          DispatchQueue.main.async { popover?.close() }
-        } label: {
-          Image(systemName: "gearshape")
-            .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
-
-        Spacer()
-
-        Button {
-          let popover = NSApp.keyWindow
-          NSApp.activate(ignoringOtherApps: true)
-          openWindow(id: "main")
-          DispatchQueue.main.async { popover?.close() }
-        } label: {
-          Image(systemName: "arrow.up.forward.app")
-            .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
-        .help("Open \(Bundle.main.appName)")
-      }
-      .padding(.horizontal, 16)
-      .padding(.top, 12)
-      .padding(.bottom, 8)
+      Spacer()
 
       CircularTimerView(
         progress: progress,
@@ -63,17 +28,18 @@ struct TimerView: View {
 
       controls
         .frame(height: 44)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.top, 20)
+        .padding(.bottom, 24)
+
+      Spacer()
 
       Divider()
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 24)
 
       SessionStatsView(count: store.todayFocusCount(), minutes: store.todayFocusMinutes())
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
     }
-    .frame(width: 280)
   }
 
   // MARK: - Controls
@@ -170,7 +136,7 @@ struct TimerView: View {
 }
 
 #Preview {
-  TimerView(
+  TimerTabView(
     engine: SessionEngine(),
     settings: AppSettings(),
     store: SessionStore(),
