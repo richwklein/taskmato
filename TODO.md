@@ -8,17 +8,26 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 - [x] Define `TaskRef`, `TaskPriority`, `TaskList`, `TaskItem` value types ([#281](https://github.com/richwklein/taskmato/pull/281))
 - [x] Define `TaskProvider` (read) and `MutableTaskProvider` (write/close-back) protocols ([#281](https://github.com/richwklein/taskmato/pull/281))
+- [x] Add `completedTasks() async throws -> [TaskItem]` to `MutableTaskProvider`; default implementation returns `[]`
 - [x] Implement `TaskRegistry` supporting multiple concurrent providers ([#281](https://github.com/richwklein/taskmato/pull/281))
 - [x] Implement `TaskSelectionStore` (active task, last-used per provider) ([#281](https://github.com/richwklein/taskmato/pull/281))
 - [x] Migrate `Session.reminderID` → `Session.taskRef` ([#281](https://github.com/richwklein/taskmato/pull/281))
 - [x] Update `TaskmatoApp.onPhaseEnded` to stamp `taskRef` onto persisted sessions ([#281](https://github.com/richwklein/taskmato/pull/281))
+- [x] Session cycle state (`completedFocusCount`, `nextBreakPhase`) moved into `SessionEngine`; `SessionStore` is now stats-only; app always starts a fresh focus phase on launch
 
 ## Built-in task provider (P1)
 
-- [ ] `LocalTask` model (title, notes, priority, due date, list) persisted to JSON in App Support ([#279](https://github.com/richwklein/taskmato/issues/279))
-- [ ] `LocalProvider` conforming to `TaskProvider` + `MutableTaskProvider`; `entitlement = .free`; not the default provider ([#279](https://github.com/richwklein/taskmato/issues/279))
-- [ ] Inline task creation from the picker ("+" button: title, priority, optional due date, optional list) ([#279](https://github.com/richwklein/taskmato/issues/279))
-- [ ] User-managed lists (create, rename, delete) ([#279](https://github.com/richwklein/taskmato/issues/279))
+- [x] `LocalTask` model (title, notes, priority, due date, list) persisted to JSON in App Support ([#279](https://github.com/richwklein/taskmato/issues/279))
+- [x] `LocalProvider` conforming to `TaskProvider` + `MutableTaskProvider`; `entitlement = .free`; not the default provider ([#279](https://github.com/richwklein/taskmato/issues/279))
+- [x] Inline task creation from the picker ("+" button: title, priority, optional due date, list) ([#279](https://github.com/richwklein/taskmato/issues/279))
+- [x] User-managed lists ([#279](https://github.com/richwklein/taskmato/issues/279)):
+  - [x] Create list
+  - [x] Rename list (inline TextField in settings, committed on submit/blur)
+  - [x] Delete list (moves tasks to fallback; auto-creates "Default" if last list removed; trash button disabled when only one list)
+- [x] Implement `completedTasks() async throws -> [TaskItem]` on `LocalProvider` (returns soft-deleted tasks, sorted by completion date descending)
+- [x] `LocalProvider` unit tests (CRUD, default list creation, orphan reassignment, error paths)
+
+> All P1 items complete. [#279](https://github.com/richwklein/taskmato/issues/279) GH issue still open — needs closing.
 
 ## Apple Reminders provider (P2)
 
@@ -29,25 +38,30 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 ## Picker UI + close-back affordance (P3)
 
-- [ ] Task picker view in main window Tasks tab (search across providers, grouped) ([#257](https://github.com/richwklein/taskmato/issues/257))
+- [x] Main window with Timer, Tasks, and Stats tabs (TabView navigation skeleton) ([#294](https://github.com/richwklein/taskmato/issues/294))
+- [x] Task picker view in main window Tasks tab (search across providers, grouped by list) ([#257](https://github.com/richwklein/taskmato/issues/257) partial — provider section headers and priority badges remain)
+- [ ] Two-level picker grouping when multiple providers active: provider section header → list → tasks; "+" add-task button in local provider section header ([#298](https://github.com/richwklein/taskmato/issues/298))
+- [ ] List and grid view toggle for the task picker (list = current row layout, grid = card layout) ([#299](https://github.com/richwklein/taskmato/issues/299))
+- [ ] "View Completed" sheet in picker for any enabled `MutableTaskProvider`; calls `completedTasks()` with restore (`reopen`) and permanent-delete affordances ([#300](https://github.com/richwklein/taskmato/issues/300))
 - [x] Active task label in popover and main window timer tab: provider-conditional complete (checkmark) button, always-visible clear button, hidden when no task active ([#258](https://github.com/richwklein/taskmato/issues/258))
-- [ ] Mid-session task swap (does not stop the timer) ([#258](https://github.com/richwklein/taskmato/issues/258))
+- [ ] Mid-session task swap (does not stop the timer) ([#296](https://github.com/richwklein/taskmato/issues/296))
 - [ ] Honor priority and due-date hints in the picker (sort and badge) ([#257](https://github.com/richwklein/taskmato/issues/257))
 - [ ] Always-on-top mode for the timer popover (detached floating window, toggle in popover header, persisted setting) ([#260](https://github.com/richwklein/taskmato/issues/260))
 - [ ] Per-provider list scoping (choose which lists each provider exposes in the picker; persisted per provider) ([#276](https://github.com/richwklein/taskmato/issues/276))
-- [ ] Render task notes/description as markdown where displayed (picker detail, active task label); add `NoteFormat` (.plainText / .markdown) to `TaskItem` ([#278](https://github.com/richwklein/taskmato/issues/278))
+- [x] Render task notes/description as markdown where displayed (picker detail, active task label); add `NoteFormat` (.plainText / .markdown) to `TaskItem` ([#278](https://github.com/richwklein/taskmato/issues/278))
 - [ ] Explore full / minimized mode: minimized keeps the compact popover, full mode opens/focuses the main window on menu bar click and on session start ([#293](https://github.com/richwklein/taskmato/issues/293))
 
 ## Obsidian / Markdown provider (P4)
 
-- [ ] Vault root setting + folder access scoped bookmark ([#261](https://github.com/richwklein/taskmato/issues/261))
-- [ ] Parser for [obsidian-tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) emoji subset: ([#262](https://github.com/richwklein/taskmato/issues/262))
-  - [ ] Checkbox states `- [ ]`, `- [x]`, `- [-]`
-  - [ ] Priorities `🔺 ⏫ 🔼 🔽 ⏬`
-  - [ ] Dates `📅 ⏳ 🛫 ➕ ✅ ❌` (`YYYY-MM-DD`)
-  - [ ] Parse-tolerant for `🔁`, `🏁`, `🆔`, `⛔` (preserved on round-trip, not authoritative)
+- [x] Vault root setting + folder access scoped bookmark ([#261](https://github.com/richwklein/taskmato/issues/261) — GH issue still open, needs closing)
+- [x] Parser for [obsidian-tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) emoji subset: ([#262](https://github.com/richwklein/taskmato/issues/262))
+  - [x] Checkbox states `- [ ]`, `- [x]`, `- [-]`
+  - [x] Priorities `🔺 ⏫ 🔼 🔽 ⏬`
+  - [x] Dates `📅 ⏳ 🛫 ➕ ✅ ❌` (`YYYY-MM-DD`)
+  - [x] Parse-tolerant for `🔁`, `🏁`, `🆔`, `⛔` (preserved on round-trip, not authoritative)
 - [ ] FSEvents-based live updates with debouncing ([#263](https://github.com/richwklein/taskmato/issues/263))
-- [ ] `MutableTaskProvider.complete` rewrites `- [ ]` → `- [x]` and appends `✅ <today>` ([#263](https://github.com/richwklein/taskmato/issues/263))
+- [x] `MutableTaskProvider.complete` rewrites `- [ ]` → `- [x]` and appends `✅ <today>` ([#263](https://github.com/richwklein/taskmato/issues/263))
+- [ ] Implement `completedTasks()` for `ObsidianProvider` (scans vault for `- [x]` tasks) ([#301](https://github.com/richwklein/taskmato/issues/301))
 
 ## CLI / URL scheme provider (P5)
 
@@ -59,12 +73,17 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 ## Stats visualization (P6)
 
-- [ ] `StatsView` reachable from popover footer ([#269](https://github.com/richwklein/taskmato/issues/269))
-- [ ] Today: per-task focus minutes (Swift Charts bar chart) ([#270](https://github.com/richwklein/taskmato/issues/270))
+- [x] `StatsView` reachable from popover footer (tapping the session stats row opens the main window Stats tab) ([#269](https://github.com/richwklein/taskmato/issues/269) — GH issue still open, needs closing)
+- [x] Today: per-task focus time breakdown (donut/sector chart in main window Stats tab) ([#270](https://github.com/richwklein/taskmato/issues/270) partial — 7-day and all-time remain)
 - [ ] 7-day: focus minutes per day, stacked by provider ([#270](https://github.com/richwklein/taskmato/issues/270))
 - [ ] All-time: per-task table sortable by total focus ([#270](https://github.com/richwklein/taskmato/issues/270))
 - [ ] Daily focus total and current streak in popover header ([#271](https://github.com/richwklein/taskmato/issues/271))
-- [ ] `SessionStore.focusTotals(by: TaskRef)` aggregation + tests ([#268](https://github.com/richwklein/taskmato/issues/268))
+- [ ] `SessionStore` aggregation helpers + tests ([#268](https://github.com/richwklein/taskmato/issues/268)):
+  - [ ] `focusTotals(by ref: TaskRef) -> TimeInterval`
+  - [ ] `focusTotalsByTask(in range: DateInterval) -> [TaskRef: TimeInterval]`
+  - [ ] `focusTotalsByDay(in range: DateInterval) -> [Date: TimeInterval]` (keyed at start-of-day; needed for 7-day chart)
+  - [ ] `focusTotalsByProvider(in range: DateInterval) -> [String: TimeInterval]` (needed for 7-day stacked chart)
+  - [ ] `currentStreak(now: Date) -> Int` (needed for popover header)
 
 ## Monetization (P7)
 
@@ -92,6 +111,7 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [ ] Add GitHub Actions release workflow triggered on version tags (`v*`) ([#284](https://github.com/richwklein/taskmato/issues/284))
 - [ ] Configure App Store Connect for App Store distribution (separate from Developer ID path) ([#285](https://github.com/richwklein/taskmato/issues/285))
 - [ ] Update `Makefile` `SIGN_FLAGS` docs to clarify dev-only scope ([#282](https://github.com/richwklein/taskmato/issues/282))
+- [x] Ad-hoc code signing in dev Makefile targets to prevent Gatekeeper "damaged" popup
 
 ## Marketing Site (GitHub Pages)
 
@@ -111,25 +131,20 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 ## GitHub / CI
 
+- [x] Issue and pull request templates
 - [ ] Add a documentation deploy action (if needed) ([#290](https://github.com/richwklein/taskmato/issues/290))
 - [ ] Make deploys dependent on build and require build checks ([#291](https://github.com/richwklein/taskmato/issues/291))
 - [ ] Re-enable the GitHub ruleset when rules are finalized ([#292](https://github.com/richwklein/taskmato/issues/292))
 
-## Already shipped (reference)
+## General foundations (pre-pivot, already shipped)
 
-- [x] App shell, menu bar countdown, popover circular timer, settings panel
-- [x] Timer engine (start / pause / resume / stop / skip, breaks, long break, auto-start)
+- [x] App shell: menu bar countdown, popover circular timer, settings panel
+- [x] Timer engine: start / pause / resume / stop / skip, breaks, long break, auto-start
 - [x] Phase completion notifications and sounds
 - [x] Persist settings to UserDefaults; persist completed sessions to JSON
-- [x] Issue and pull request templates
 - [x] Settings window brought to foreground on open (MenuBarExtra activation fix)
 - [x] Spacing between transport controls and session stats in popover
-- [x] Task domain foundation: `TaskRef`, `TaskItem`, `TaskProvider`, `TaskRegistry`, `TaskSelectionStore`; `Session.taskRef` migration ([#281](https://github.com/richwklein/taskmato/pull/281))
-- [x] Main window with Timer, Tasks, and Stats tabs (TabView navigation skeleton)
 - [x] Compact menu bar popover with quick timer controls and "Open Taskmato" button
 - [x] User-controlled Dock icon setting (Show Dock icon toggle in Settings; applied on next launch)
 - [x] `Bundle.main.appName` extension for dynamic app name used throughout all UI
-- [x] Ad-hoc code signing in dev Makefile targets to prevent Gatekeeper "damaged" popup
-- [x] Active task label row wired into both popover and main window timer tab ([#258](https://github.com/richwklein/taskmato/issues/258))
-- [x] Session cycle state (`completedFocusCount`, `nextBreakPhase`) moved into `SessionEngine`; `SessionStore` is now stats-only; app always starts a fresh focus phase on launch
 - [x] Menu bar label shows the correct duration for the queued phase (focus / short break / long break) when idle
