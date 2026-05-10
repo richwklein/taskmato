@@ -21,8 +21,8 @@ struct TaskItem: Identifiable, Hashable, Codable, Sendable {
   /// Optional supplementary notes or description.
   var notes: String?
 
-  /// How `notes` should be rendered — plain text or markdown.
-  var notesFormat: NoteFormat
+  /// How `title` and `notes` should be rendered — plain text or markdown.
+  var format: NoteFormat
 
   /// Priority level, used for sorting and badging in the picker.
   var priority: TaskPriority
