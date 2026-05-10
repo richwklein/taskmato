@@ -13,6 +13,8 @@ struct ActiveTaskView: View {
 
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
+  /// When `true`, renders task notes and source link below the title.
+  var showNotes: Bool = false
 
   @State private var isCompletionHovered: Bool = false
 
@@ -27,14 +29,16 @@ struct ActiveTaskView: View {
             .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-          if let notes = task.notes {
-            TaskNoteView(notes: notes, format: task.format)
-          }
+          if showNotes {
+            if let notes = task.notes {
+              TaskNoteView(notes: notes, format: task.format)
+            }
 
-          if let url = task.sourceURL {
-            Link("Open in Obsidian", destination: url)
-              .font(.caption2)
-              .foregroundStyle(.secondary)
+            if let url = task.sourceURL {
+              Link("Open in Obsidian", destination: url)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
           }
         }
 

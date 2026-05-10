@@ -39,7 +39,7 @@ struct TimerTabView: View {
         .padding(.horizontal, 24)
 
       if selectionStore.activeTask != nil {
-        ActiveTaskView(selectionStore: selectionStore, registry: registry)
+        ActiveTaskView(selectionStore: selectionStore, registry: registry, showNotes: true)
           .padding(.horizontal, 8)
       } else {
         Button {
