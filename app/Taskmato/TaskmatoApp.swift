@@ -35,6 +35,7 @@ struct TaskmatoApp: App {
   @State private var sounds: SoundService
   @State private var obsidianProvider: ObsidianProvider
   @State private var localProvider: LocalProvider
+  @State private var urlHandler: URLSchemeHandler
 
   init() {
     let engine = SessionEngine()
@@ -46,8 +47,18 @@ struct TaskmatoApp: App {
     let sounds = SoundService()
     let obsidianProvider = ObsidianProvider()
     let localProvider = LocalProvider()
+    let cliProvider = URLSchemeProvider()
     registry.register(obsidianProvider)
     registry.register(localProvider)
+    registry.register(cliProvider)
+    registry.enable(cliProvider)
+    let urlHandler = URLSchemeHandler(
+      registry: registry,
+      selectionStore: selectionStore,
+      engine: engine,
+      localProvider: localProvider,
+      cliProvider: cliProvider
+    )
 
     engine.onPhaseEnded = { phase, startedAt, endedAt, wasCompleted in
       store.append(
@@ -88,6 +99,7 @@ struct TaskmatoApp: App {
     _sounds = State(initialValue: sounds)
     _obsidianProvider = State(initialValue: obsidianProvider)
     _localProvider = State(initialValue: localProvider)
+    _urlHandler = State(initialValue: urlHandler)
   }
 
   var body: some Scene {
@@ -101,6 +113,38 @@ struct TaskmatoApp: App {
         nextStartPhase: engine.queuedPhase ?? .focus,
         nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
       )
+      .onOpenURL { url in
+        Task { @MainActor in
+          await urlHandler.handle(url)
+        }
+      }
+      .confirmationDialog(
+        "Multiple tasks match — which one?",
+        isPresented: Binding(
+          get: { urlHandler.pendingDisambiguation != nil },
+          set: { if !$0 { urlHandler.pendingDisambiguation = nil } }
+        ),
+        titleVisibility: .visible,
+        presenting: urlHandler.pendingDisambiguation
+      ) { matches in
+        ForEach(matches.prefix(4)) { task in
+          Button(task.title) {
+            selectionStore.select(task)
+            urlHandler.pendingDisambiguation = nil
+          }
+        }
+        if let params = urlHandler.pendingAdHocParams {
+          Button("Create new \"\(params.title)\"") {
+            let task = urlHandler.makeAdHocTask(from: params)
+            selectionStore.select(task)
+            urlHandler.pendingDisambiguation = nil
+          }
+        }
+        Button("Cancel", role: .cancel) {
+          urlHandler.pendingDisambiguation = nil
+          urlHandler.pendingAdHocParams = nil
+        }
+      }
     }
     .menuBarExtraStyle(.window)
 
