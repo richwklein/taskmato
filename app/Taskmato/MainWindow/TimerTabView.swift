@@ -35,11 +35,23 @@ struct TimerTabView: View {
 
       Spacer()
 
+      Divider()
+        .padding(.horizontal, 24)
+
       if selectionStore.activeTask != nil {
-        Divider()
-          .padding(.horizontal, 24)
-        ActiveTaskView(selectionStore: selectionStore, registry: registry)
+        ActiveTaskView(selectionStore: selectionStore, registry: registry, showNotes: true)
           .padding(.horizontal, 8)
+      } else {
+        Button {
+          NotificationCenter.default.post(name: .showTasksTab, object: nil)
+        } label: {
+          Label("Browse Tasks…", systemImage: "checklist")
+            .font(.caption)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 6)
       }
 
       Divider()

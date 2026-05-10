@@ -67,7 +67,7 @@ private func makeItem(
     id: TaskRef(providerID: providerID, nativeID: nativeID),
     title: title,
     notes: nil,
-    notesFormat: .plainText,
+    format: .plainText,
     priority: priority,
     dueDate: dueDate,
     scheduledDate: nil,

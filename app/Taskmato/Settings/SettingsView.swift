@@ -11,6 +11,8 @@ struct SettingsView: View {
 
   @Bindable var settings: AppSettings
   var selectionStore: TaskSelectionStore
+  var registry: TaskRegistry
+  var obsidianProvider: ObsidianProvider
 
   var body: some View {
     Form {
@@ -36,8 +38,30 @@ struct SettingsView: View {
       }
 
       Section("Providers") {
-        Text("Task providers will appear here.")
-          .foregroundStyle(.secondary)
+        if registry.providers.isEmpty {
+          Text("No task providers are available.")
+            .foregroundStyle(.secondary)
+        } else {
+          ForEach(registry.providers, id: \.id) { provider in
+            Toggle(
+              provider.displayName,
+              isOn: Binding(
+                get: { registry.isEnabled(provider.id) },
+                set: { isOn in
+                  if isOn {
+                    registry.enable(provider)
+                  } else {
+                    registry.disable(providerID: provider.id)
+                  }
+                }
+              )
+            )
+            if provider.id == ObsidianProvider.providerID && registry.isEnabled(provider.id) {
+              ObsidianSettingsView(provider: obsidianProvider)
+                .padding(.leading, 16)
+            }
+          }
+        }
       }
 
       #if DEBUG
@@ -50,7 +74,7 @@ struct SettingsView: View {
               TaskItem(
                 id: TaskRef(providerID: "debug", nativeID: "1"),
                 title: "Write release notes",
-                notesFormat: .plainText,
+                format: .plainText,
                 priority: .high
               ))
           }
@@ -117,5 +141,10 @@ private struct DurationField: View {
 }
 
 #Preview {
-  SettingsView(settings: AppSettings(), selectionStore: TaskSelectionStore())
+  SettingsView(
+    settings: AppSettings(),
+    selectionStore: TaskSelectionStore(),
+    registry: TaskRegistry(),
+    obsidianProvider: ObsidianProvider()
+  )
 }

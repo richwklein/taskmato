@@ -33,6 +33,7 @@ struct TaskmatoApp: App {
   @State private var registry: TaskRegistry
   @State private var notifications: NotificationService
   @State private var sounds: SoundService
+  @State private var obsidianProvider: ObsidianProvider
 
   init() {
     let engine = SessionEngine()
@@ -42,6 +43,8 @@ struct TaskmatoApp: App {
     let registry = TaskRegistry()
     let notifications = NotificationService()
     let sounds = SoundService()
+    let obsidianProvider = ObsidianProvider()
+    registry.register(obsidianProvider)
 
     engine.onPhaseEnded = { phase, startedAt, endedAt, wasCompleted in
       store.append(
@@ -79,6 +82,7 @@ struct TaskmatoApp: App {
     _registry = State(initialValue: registry)
     _notifications = State(initialValue: notifications)
     _sounds = State(initialValue: sounds)
+    _obsidianProvider = State(initialValue: obsidianProvider)
   }
 
   var body: some Scene {
@@ -108,7 +112,12 @@ struct TaskmatoApp: App {
     .windowResizability(.contentMinSize)
 
     Settings {
-      SettingsView(settings: settings, selectionStore: selectionStore)
+      SettingsView(
+        settings: settings,
+        selectionStore: selectionStore,
+        registry: registry,
+        obsidianProvider: obsidianProvider
+      )
     }
     .windowResizability(.contentSize)
   }

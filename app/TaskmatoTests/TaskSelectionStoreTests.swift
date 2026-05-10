@@ -13,7 +13,7 @@ private func makeItem(providerID: String, nativeID: String, title: String) -> Ta
     id: TaskRef(providerID: providerID, nativeID: nativeID),
     title: title,
     notes: nil,
-    notesFormat: .plainText,
+    format: .plainText,
     priority: .none,
     dueDate: nil,
     scheduledDate: nil,
