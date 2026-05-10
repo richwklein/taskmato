@@ -25,8 +25,7 @@ struct AdHocTaskParams {
 /// 2. `id` only — cross-provider fan-out by native ID across all enabled providers
 /// 3. `provider` + `title` — first case-insensitive title match within the named provider
 /// 4. `title` only — cross-provider search; one match → select; two-or-more →
-///    disambiguation dialog; zero matches → ad-hoc task written to `LocalProvider`
-///    (if enabled) or the CLI recents store
+///    disambiguation dialog; zero matches → create a transient ad-hoc task and select it
 @Observable
 @MainActor
 final class URLSchemeHandler {
@@ -43,21 +42,11 @@ final class URLSchemeHandler {
   private let registry: TaskRegistry
   private let selectionStore: TaskSelectionStore
   private let engine: SessionEngine
-  private let localProvider: LocalProvider
-  private let cliProvider: URLSchemeProvider
 
-  init(
-    registry: TaskRegistry,
-    selectionStore: TaskSelectionStore,
-    engine: SessionEngine,
-    localProvider: LocalProvider,
-    cliProvider: URLSchemeProvider
-  ) {
+  init(registry: TaskRegistry, selectionStore: TaskSelectionStore, engine: SessionEngine) {
     self.registry = registry
     self.selectionStore = selectionStore
     self.engine = engine
-    self.localProvider = localProvider
-    self.cliProvider = cliProvider
   }
 
   /// Handles the given URL, selecting the resolved task and starting a focus session if idle.
@@ -76,29 +65,28 @@ final class URLSchemeHandler {
     }
   }
 
-  /// Creates and persists an ad-hoc task from the given params.
-  ///
-  /// If ``LocalProvider`` is enabled, the task is written to its default list (or to the
-  /// local list whose name matches `adHocParams.listName`, if one exists). If LocalProvider
-  /// is not enabled, a transient task is stored in the CLI recents list instead.
+  /// Builds a transient ad-hoc ``TaskItem`` from the given params without persisting it to any provider.
   func makeAdHocTask(from adHocParams: AdHocTaskParams) -> TaskItem {
-    if registry.isEnabled(LocalProvider.providerID) {
-      var draft = TaskDraft()
-      draft.title = adHocParams.title
-      draft.priority = adHocParams.priority
-      draft.dueDate = adHocParams.dueDate
-      if let name = adHocParams.listName {
-        draft.listID =
-          localProvider.taskLists.first {
-            $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
-          }?.id
-      }
-      return localProvider.addTask(draft)
-    } else {
-      let task = buildCLITask(from: adHocParams)
-      cliProvider.add(task)
-      return task
+    let list = adHocParams.listName.map { name in
+      TaskList(
+        id: name.lowercased().replacingOccurrences(of: " ", with: "-"),
+        providerID: "adhoc",
+        name: name
+      )
     }
+    return TaskItem(
+      id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
+      title: adHocParams.title,
+      notes: nil,
+      format: .plainText,
+      priority: adHocParams.priority,
+      dueDate: adHocParams.dueDate,
+      scheduledDate: nil,
+      startDate: nil,
+      list: list,
+      section: nil,
+      sourceURL: nil
+    )
   }
 
   // MARK: - Resolution
@@ -129,28 +117,17 @@ final class URLSchemeHandler {
       }
     }
 
-    // 4. Cross-provider title search, then disambiguation or ad-hoc fallback
+    // 4. Cross-provider title search, then disambiguation or transient ad-hoc fallback
     if let title {
       let matches = await crossProviderTitleSearch(title: title)
       if matches.count == 1 {
         return matches[0]
       } else if matches.count > 1 {
         pendingDisambiguation = matches
-        pendingAdHocParams = AdHocTaskParams(
-          title: title,
-          priority: params["priority"].flatMap(TaskPriority.init(urlParam:)) ?? .none,
-          dueDate: params["due"].flatMap(parseDate(_:)),
-          listName: params["list"]
-        )
+        pendingAdHocParams = buildAdHocParams(from: params, title: title)
         return nil
       }
-      return makeAdHocTask(
-        from: AdHocTaskParams(
-          title: title,
-          priority: params["priority"].flatMap(TaskPriority.init(urlParam:)) ?? .none,
-          dueDate: params["due"].flatMap(parseDate(_:)),
-          listName: params["list"]
-        ))
+      return makeAdHocTask(from: buildAdHocParams(from: params, title: title))
     }
 
     return nil
@@ -180,32 +157,17 @@ final class URLSchemeHandler {
     return all.first { $0.title.localizedCaseInsensitiveContains(title) }
   }
 
-  /// Returns title-matching tasks across all enabled non-CLI providers.
   private func crossProviderTitleSearch(title: String) async -> [TaskItem] {
     let (tasks, _) = await registry.tasks(matching: title)
-    return tasks.filter { $0.id.providerID != URLSchemeProvider.providerID }
+    return tasks
   }
 
-  private func buildCLITask(from params: AdHocTaskParams) -> TaskItem {
-    let list = params.listName.map { name in
-      TaskList(
-        id: name.lowercased().replacingOccurrences(of: " ", with: "-"),
-        providerID: URLSchemeProvider.providerID,
-        name: name
-      )
-    }
-    return TaskItem(
-      id: TaskRef(providerID: URLSchemeProvider.providerID, nativeID: UUID().uuidString),
-      title: params.title,
-      notes: nil,
-      format: .plainText,
-      priority: params.priority,
-      dueDate: params.dueDate,
-      scheduledDate: nil,
-      startDate: nil,
-      list: list,
-      section: nil,
-      sourceURL: nil
+  private func buildAdHocParams(from params: [String: String], title: String) -> AdHocTaskParams {
+    AdHocTaskParams(
+      title: title,
+      priority: params["priority"].flatMap(TaskPriority.init(urlParam:)) ?? .none,
+      dueDate: params["due"].flatMap(parseDate(_:)),
+      listName: params["list"]
     )
   }
 

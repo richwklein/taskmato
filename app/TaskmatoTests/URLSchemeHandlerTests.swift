@@ -13,8 +13,6 @@ import Testing
 private struct HandlerContext {
   let handler: URLSchemeHandler
   let selectionStore: TaskSelectionStore
-  let localProvider: LocalProvider
-  let cliProvider: URLSchemeProvider
 }
 
 // MARK: - Fakes
@@ -44,30 +42,11 @@ struct URLSchemeHandlerTests {
 
   // MARK: - Helpers
 
-  private func makeTempURL() -> URL {
-    FileManager.default.temporaryDirectory
-      .appendingPathComponent(UUID().uuidString)
-      .appendingPathExtension("json")
-  }
-
-  /// Builds a fully wired handler. Pass `enableLocalProvider: false` to test the CLI-only path.
-  private func makeHandler(
-    stubProviderTasks: [TaskItem] = [],
-    enableLocalProvider: Bool = true
-  ) -> HandlerContext {
+  private func makeHandler(stubProviderTasks: [TaskItem] = []) -> HandlerContext {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let selectionStore = TaskSelectionStore(defaults: defaults)
     let engine = SessionEngine()
     let registry = TaskRegistry(defaults: defaults)
-    let localProvider = LocalProvider(fileURL: makeTempURL())
-    let cliProvider = URLSchemeProvider(persistenceURL: makeTempURL())
-
-    registry.register(cliProvider)
-    registry.enable(cliProvider)
-    registry.register(localProvider)
-    if enableLocalProvider {
-      registry.enable(localProvider)
-    }
 
     if !stubProviderTasks.isEmpty {
       let stub = StubTaskProvider(id: "stub", tasks: stubProviderTasks)
@@ -78,16 +57,9 @@ struct URLSchemeHandlerTests {
     let handler = URLSchemeHandler(
       registry: registry,
       selectionStore: selectionStore,
-      engine: engine,
-      localProvider: localProvider,
-      cliProvider: cliProvider
+      engine: engine
     )
-    return HandlerContext(
-      handler: handler,
-      selectionStore: selectionStore,
-      localProvider: localProvider,
-      cliProvider: cliProvider
-    )
+    return HandlerContext(handler: handler, selectionStore: selectionStore)
   }
 
   private func makeTask(title: String, providerID: String = "stub") -> TaskItem {
@@ -106,41 +78,13 @@ struct URLSchemeHandlerTests {
     )
   }
 
-  // MARK: - Ad-hoc task creation (LocalProvider enabled)
+  // MARK: - Ad-hoc task creation (transient)
 
-  @Test func adHocTaskWrittenToLocalProviderWhenEnabled() async throws {
-    let ctx = makeHandler(enableLocalProvider: true)
+  @Test func adHocTaskSelectedWithAdhocProviderID() async {
+    let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=Buy%20groceries")!)
     #expect(ctx.selectionStore.activeTask?.title == "Buy groceries")
-    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
-    let items = try await ctx.localProvider.tasks(in: nil)
-    #expect(items.first?.title == "Buy groceries")
-  }
-
-  @Test func adHocTaskMatchesLocalListByName() async throws {
-    let ctx = makeHandler(enableLocalProvider: true)
-    ctx.localProvider.createList(name: "Work")
-    await ctx.handler.handle(URL(string: "taskmato://start?title=Meeting&list=Work")!)
-    let tasks = try await ctx.localProvider.tasks(in: nil)
-    #expect(tasks.first?.list?.name == "Work")
-  }
-
-  @Test func adHocTaskFallsBackToDefaultListWhenListNotFound() async throws {
-    let ctx = makeHandler(enableLocalProvider: true)
-    await ctx.handler.handle(URL(string: "taskmato://start?title=Misc&list=Nonexistent")!)
-    let tasks = try await ctx.localProvider.tasks(in: nil)
-    // Assigned to the default list, not left orphaned
-    #expect(tasks.first?.list != nil)
-  }
-
-  // MARK: - Ad-hoc task creation (LocalProvider disabled)
-
-  @Test func adHocTaskStoredInCLIProviderWhenLocalDisabled() async throws {
-    let ctx = makeHandler(enableLocalProvider: false)
-    await ctx.handler.handle(URL(string: "taskmato://start?title=CLI+Only")!)
-    #expect(ctx.selectionStore.activeTask?.id.providerID == URLSchemeProvider.providerID)
-    let items = try await ctx.cliProvider.tasks(in: nil)
-    #expect(items.first?.title == "CLI Only")
+    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
   }
 
   @Test func adHocTaskWithHighPriority() async {
@@ -155,16 +99,20 @@ struct URLSchemeHandlerTests {
     #expect(ctx.selectionStore.activeTask?.dueDate != nil)
   }
 
-  // MARK: - Step 1: Lookup by provider + ID
-
-  @Test func lookupByIDInCLIProvider() async throws {
+  @Test func adHocTaskWithList() async {
     let ctx = makeHandler()
-    let existing = makeTask(title: "Existing", providerID: URLSchemeProvider.providerID)
-    ctx.cliProvider.add(existing)
-    let urlString = "taskmato://start?provider=cli&id=\(existing.id.nativeID)"
-    await ctx.handler.handle(URL(string: urlString)!)
-    #expect(ctx.selectionStore.activeTask?.id == existing.id)
+    await ctx.handler.handle(URL(string: "taskmato://start?title=Listed&list=Work")!)
+    #expect(ctx.selectionStore.activeTask?.list?.name == "Work")
   }
+
+  @Test func adHocTaskIsTransientNotInRegistry() async {
+    let ctx = makeHandler()
+    await ctx.handler.handle(URL(string: "taskmato://start?title=Transient+Task")!)
+    // Task is active but lives only in the selection store, not a provider
+    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
+  }
+
+  // MARK: - Step 1: Lookup by provider + ID
 
   @Test func lookupByIDInStubProvider() async {
     let existing = makeTask(title: "Stub Task", providerID: "stub")
@@ -185,15 +133,6 @@ struct URLSchemeHandlerTests {
   @Test func idOnlyFanOutFindsTaskInStubProvider() async {
     let existing = makeTask(title: "Cross Provider", providerID: "stub")
     let ctx = makeHandler(stubProviderTasks: [existing])
-    let urlString = "taskmato://start?id=\(existing.id.nativeID)"
-    await ctx.handler.handle(URL(string: urlString)!)
-    #expect(ctx.selectionStore.activeTask?.id == existing.id)
-  }
-
-  @Test func idOnlyFanOutFindsTaskInCLIProvider() async {
-    let ctx = makeHandler()
-    let existing = makeTask(title: "CLI Task", providerID: URLSchemeProvider.providerID)
-    ctx.cliProvider.add(existing)
     let urlString = "taskmato://start?id=\(existing.id.nativeID)"
     await ctx.handler.handle(URL(string: urlString)!)
     #expect(ctx.selectionStore.activeTask?.id == existing.id)
@@ -230,12 +169,11 @@ struct URLSchemeHandlerTests {
     #expect(ctx.selectionStore.activeTask?.id.providerID == "stub")
   }
 
-  @Test func crossProviderNoMatchCreatesAdHoc() async throws {
-    let ctx = makeHandler(enableLocalProvider: true)
+  @Test func crossProviderNoMatchCreatesTransientAdHoc() async {
+    let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=Brand+New+Task")!)
-    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
-    let items = try await ctx.localProvider.tasks(in: nil)
-    #expect(items.first?.title == "Brand New Task")
+    #expect(ctx.selectionStore.activeTask?.title == "Brand New Task")
+    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
   }
 
   @Test func disambiguationSetWhenMultipleMatches() async {
@@ -256,16 +194,15 @@ struct URLSchemeHandlerTests {
     #expect(ctx.handler.pendingAdHocParams?.priority == .high)
   }
 
-  @Test func makeAdHocTaskFromDisambiguationUsesLocalProvider() async throws {
+  @Test func makeAdHocTaskFromDisambiguationIsTransient() async {
     let task1 = makeTask(title: "Deploy")
     let task2 = makeTask(title: "Deploy")
-    let ctx = makeHandler(stubProviderTasks: [task1, task2], enableLocalProvider: true)
+    let ctx = makeHandler(stubProviderTasks: [task1, task2])
     await ctx.handler.handle(URL(string: "taskmato://start?title=Deploy")!)
     let params = ctx.handler.pendingAdHocParams!
     let task = ctx.handler.makeAdHocTask(from: params)
-    #expect(task.id.providerID == LocalProvider.providerID)
-    let localItems = try await ctx.localProvider.tasks(in: nil)
-    #expect(localItems.map(\.title).contains("Deploy"))
+    #expect(task.id.providerID == "adhoc")
+    #expect(task.title == "Deploy")
   }
 
   // MARK: - Invalid / noop cases

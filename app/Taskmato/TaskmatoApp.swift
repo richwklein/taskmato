@@ -8,7 +8,9 @@
 import AppKit
 import SwiftUI
 
-/// Applies the dock icon activation policy once the application has fully launched.
+/// Applies the dock icon activation policy once the application has fully launched,
+/// and routes URL scheme events into `NotificationCenter` so menu bar content can
+/// receive them regardless of window focus state.
 ///
 /// `NSApp.setActivationPolicy` must not be called during `App.init()` — the launch
 /// sequence is incomplete at that point and the call traps on restart. Deferring to
@@ -17,6 +19,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   func applicationDidFinishLaunching(_ notification: Notification) {
     if UserDefaults.standard.bool(forKey: "showDockIcon") {
       NSApp.setActivationPolicy(.regular)
+    }
+  }
+
+  func application(_ application: NSApplication, open urls: [URL]) {
+    for url in urls {
+      NotificationCenter.default.post(name: .openURL, object: url)
     }
   }
 }
@@ -47,17 +55,12 @@ struct TaskmatoApp: App {
     let sounds = SoundService()
     let obsidianProvider = ObsidianProvider()
     let localProvider = LocalProvider()
-    let cliProvider = URLSchemeProvider()
     registry.register(obsidianProvider)
     registry.register(localProvider)
-    registry.register(cliProvider)
-    registry.enable(cliProvider)
     let urlHandler = URLSchemeHandler(
       registry: registry,
       selectionStore: selectionStore,
-      engine: engine,
-      localProvider: localProvider,
-      cliProvider: cliProvider
+      engine: engine
     )
 
     engine.onPhaseEnded = { phase, startedAt, endedAt, wasCompleted in
@@ -113,7 +116,8 @@ struct TaskmatoApp: App {
         nextStartPhase: engine.queuedPhase ?? .focus,
         nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
       )
-      .onOpenURL { url in
+      .onReceive(NotificationCenter.default.publisher(for: .openURL)) { notification in
+        guard let url = notification.object as? URL else { return }
         Task { @MainActor in
           await urlHandler.handle(url)
         }
