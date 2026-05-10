@@ -115,8 +115,6 @@ struct TaskmatoApp: App {
     _obsidianProvider = State(initialValue: obsidianProvider)
     _localProvider = State(initialValue: localProvider)
     _urlHandler = State(initialValue: urlHandler)
-    // Wire AppDelegate so URL events reach the handler regardless of window focus.
-    _appDelegate.wrappedValue.urlHandler = urlHandler
   }
 
   var body: some Scene {
@@ -130,6 +128,7 @@ struct TaskmatoApp: App {
         nextStartPhase: engine.queuedPhase ?? .focus,
         nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
       )
+      .task { appDelegate.urlHandler = urlHandler }
       .confirmationDialog(
         "Multiple tasks match — which one?",
         isPresented: Binding(
