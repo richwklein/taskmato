@@ -24,7 +24,7 @@ struct TaskRowView: View {
   }
 
   var body: some View {
-    HStack(spacing: 8) {
+    HStack(alignment: .top, spacing: 8) {
       if let complete = onComplete {
         Button(action: complete) {
           Image(systemName: isHovering ? "checkmark.circle" : "circle")
@@ -35,15 +35,23 @@ struct TaskRowView: View {
         .help("Mark done")
       }
 
-      Text(displayTitle)
-        .font(.callout)
-        .lineLimit(2)
-        .frame(maxWidth: .infinity, alignment: .leading)
+      VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .firstTextBaseline) {
+          Text(displayTitle)
+            .font(.callout)
+            .lineLimit(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-      if let due = task.dueDate {
-        Text(due, format: .dateTime.month(.abbreviated).day())
-          .font(.caption2)
-          .foregroundStyle(.secondary)
+          if let due = task.dueDate {
+            Text(due, format: .dateTime.month(.abbreviated).day())
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+        }
+
+        if let notes = task.notes {
+          TaskNoteView(notes: notes, format: task.format)
+        }
       }
     }
     .padding(.vertical, 4)

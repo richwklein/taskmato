@@ -18,13 +18,25 @@ struct ActiveTaskView: View {
 
   var body: some View {
     if let task = selectionStore.activeTask {
-      HStack(spacing: 8) {
+      HStack(alignment: .top, spacing: 8) {
         leadingIndicator(for: task)
 
-        Text(markdownTitle(for: task))
-          .font(.callout)
-          .lineLimit(1)
-          .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(markdownTitle(for: task))
+            .font(.callout)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+          if let notes = task.notes {
+            TaskNoteView(notes: notes, format: task.format)
+          }
+
+          if let url = task.sourceURL {
+            Link("Open in Obsidian", destination: url)
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+        }
 
         Button {
           selectionStore.clearActiveTask()
