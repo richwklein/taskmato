@@ -43,12 +43,15 @@ struct MainWindowView: View {
       }
 
       Tab("Stats", systemImage: "chart.bar", value: 2) {
-        StatsTabView()
+        StatsTabView(store: store)
       }
     }
     .frame(minWidth: 480, minHeight: 400)
     .onReceive(NotificationCenter.default.publisher(for: .showTasksTab)) { _ in
       selectedTab = 1
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .showStatsTab)) { _ in
+      selectedTab = 2
     }
     .toolbar {
       ToolbarItem(placement: .automatic) {
