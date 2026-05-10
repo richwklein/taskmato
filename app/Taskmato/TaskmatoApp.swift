@@ -34,6 +34,7 @@ struct TaskmatoApp: App {
   @State private var notifications: NotificationService
   @State private var sounds: SoundService
   @State private var obsidianProvider: ObsidianProvider
+  @State private var localProvider: LocalProvider
 
   init() {
     let engine = SessionEngine()
@@ -44,7 +45,9 @@ struct TaskmatoApp: App {
     let notifications = NotificationService()
     let sounds = SoundService()
     let obsidianProvider = ObsidianProvider()
+    let localProvider = LocalProvider()
     registry.register(obsidianProvider)
+    registry.register(localProvider)
 
     engine.onPhaseEnded = { phase, startedAt, endedAt, wasCompleted in
       store.append(
@@ -54,7 +57,8 @@ struct TaskmatoApp: App {
           startedAt: startedAt,
           endedAt: endedAt,
           wasCompleted: wasCompleted,
-          taskRef: selectionStore.activeTask?.id
+          taskRef: selectionStore.activeTask?.id,
+          taskTitle: selectionStore.activeTask?.title
         ))
       if wasCompleted {
         if settings.soundEnabled { sounds.play() }
@@ -83,6 +87,7 @@ struct TaskmatoApp: App {
     _notifications = State(initialValue: notifications)
     _sounds = State(initialValue: sounds)
     _obsidianProvider = State(initialValue: obsidianProvider)
+    _localProvider = State(initialValue: localProvider)
   }
 
   var body: some Scene {
@@ -116,7 +121,8 @@ struct TaskmatoApp: App {
         settings: settings,
         selectionStore: selectionStore,
         registry: registry,
-        obsidianProvider: obsidianProvider
+        obsidianProvider: obsidianProvider,
+        localProvider: localProvider
       )
     }
     .windowResizability(.contentSize)
