@@ -8,5 +8,8 @@ xcuserdata/
 *.xcuserstate
 DerivedData/
 
+# git worktrees
+.worktrees/
+
 # claude code
-.claude/settings.local.json
+.claude/
