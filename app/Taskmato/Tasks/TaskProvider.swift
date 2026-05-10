@@ -49,4 +49,14 @@ protocol MutableTaskProvider: TaskProvider {
   /// Reopens a previously completed task in the source system.
   /// - Parameter ref: The stable reference to the task to reopen.
   func reopen(_ ref: TaskRef) async throws
+
+  /// Returns tasks that have been marked complete, for display in a "View Completed" sheet.
+  ///
+  /// The default implementation returns an empty array. Override when the provider
+  /// supports surfacing completed tasks (e.g. a local JSON store or an Obsidian vault).
+  func completedTasks() async throws -> [TaskItem]
+}
+
+extension MutableTaskProvider {
+  func completedTasks() async throws -> [TaskItem] { [] }
 }
