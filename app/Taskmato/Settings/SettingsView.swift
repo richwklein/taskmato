@@ -13,6 +13,7 @@ struct SettingsView: View {
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
   var obsidianProvider: ObsidianProvider
+  var localProvider: LocalProvider
 
   var body: some View {
     Form {
@@ -58,6 +59,10 @@ struct SettingsView: View {
             )
             if provider.id == ObsidianProvider.providerID && registry.isEnabled(provider.id) {
               ObsidianSettingsView(provider: obsidianProvider)
+                .padding(.leading, 16)
+            }
+            if provider.id == LocalProvider.providerID && registry.isEnabled(provider.id) {
+              LocalSettingsView(provider: localProvider)
                 .padding(.leading, 16)
             }
           }
@@ -145,6 +150,7 @@ private struct DurationField: View {
     settings: AppSettings(),
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
-    obsidianProvider: ObsidianProvider()
+    obsidianProvider: ObsidianProvider(),
+    localProvider: LocalProvider()
   )
 }
