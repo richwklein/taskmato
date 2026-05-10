@@ -35,11 +35,34 @@ struct TimerTabView: View {
 
       Spacer()
 
-      if selectionStore.activeTask != nil {
-        Divider()
-          .padding(.horizontal, 24)
+      Divider()
+        .padding(.horizontal, 24)
+
+      if let task = selectionStore.activeTask {
         ActiveTaskView(selectionStore: selectionStore, registry: registry)
           .padding(.horizontal, 8)
+        if let notes = task.notes {
+          TaskNoteView(notes: notes, format: task.format)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 4)
+        }
+        if let url = task.sourceURL {
+          Link("Open in Obsidian", destination: url)
+            .font(.caption2)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 4)
+        }
+      } else {
+        Button {
+          NotificationCenter.default.post(name: .showTasksTab, object: nil)
+        } label: {
+          Label("Browse Tasks…", systemImage: "checklist")
+            .font(.caption)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 6)
       }
 
       Divider()

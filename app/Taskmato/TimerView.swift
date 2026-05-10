@@ -68,10 +68,26 @@ struct TimerView: View {
         .padding(.top, 16)
         .padding(.bottom, 12)
 
+      Divider()
+        .padding(.horizontal, 16)
+
       if selectionStore.activeTask != nil {
-        Divider()
-          .padding(.horizontal, 16)
         ActiveTaskView(selectionStore: selectionStore, registry: registry)
+      } else {
+        Button {
+          let popover = NSApp.keyWindow
+          NSApp.activate(ignoringOtherApps: true)
+          openWindow(id: "main")
+          NotificationCenter.default.post(name: .showTasksTab, object: nil)
+          DispatchQueue.main.async { popover?.close() }
+        } label: {
+          Label("Browse Tasks…", systemImage: "checklist")
+            .font(.caption)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
       }
 
       Divider()

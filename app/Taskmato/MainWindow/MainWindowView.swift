@@ -18,10 +18,11 @@ struct MainWindowView: View {
   var registry: TaskRegistry
 
   @Environment(\.openSettings) private var openSettings
+  @State private var selectedTab: Int = 0
 
   var body: some View {
-    TabView {
-      Tab("Timer", systemImage: "timer") {
+    TabView(selection: $selectedTab) {
+      Tab("Timer", systemImage: "timer", value: 0) {
         TimerTabView(
           engine: engine,
           settings: settings,
@@ -33,15 +34,22 @@ struct MainWindowView: View {
         )
       }
 
-      Tab("Tasks", systemImage: "checklist") {
-        TasksTabView()
+      Tab("Tasks", systemImage: "checklist", value: 1) {
+        TasksTabView(
+          selectionStore: selectionStore,
+          registry: registry,
+          selectedTab: $selectedTab
+        )
       }
 
-      Tab("Stats", systemImage: "chart.bar") {
+      Tab("Stats", systemImage: "chart.bar", value: 2) {
         StatsTabView()
       }
     }
     .frame(minWidth: 480, minHeight: 400)
+    .onReceive(NotificationCenter.default.publisher(for: .showTasksTab)) { _ in
+      selectedTab = 1
+    }
     .toolbar {
       ToolbarItem(placement: .automatic) {
         Button {
