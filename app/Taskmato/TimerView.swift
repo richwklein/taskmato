@@ -93,9 +93,18 @@ struct TimerView: View {
       Divider()
         .padding(.horizontal, 16)
 
-      SessionStatsView(count: store.todayFocusCount(), minutes: store.todayFocusMinutes())
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+      Button {
+        let popover = NSApp.keyWindow
+        NSApp.activate(ignoringOtherApps: true)
+        openWindow(id: "main")
+        NotificationCenter.default.post(name: .showStatsTab, object: nil)
+        DispatchQueue.main.async { popover?.close() }
+      } label: {
+        SessionStatsView(count: store.todayFocusCount(), minutes: store.todayFocusMinutes())
+      }
+      .buttonStyle(.plain)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 10)
     }
     .frame(width: 280)
   }

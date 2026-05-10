@@ -26,6 +26,12 @@ struct Session: Codable, Identifiable {
   /// The task associated with this session, if one was selected when the phase ran.
   var taskRef: TaskRef?
 
+  /// The display title of the associated task, captured at session end.
+  ///
+  /// Stored alongside `taskRef` so stats can show task names even after a task is
+  /// renamed or deleted from its provider.
+  var taskTitle: String?
+
   /// Actual elapsed duration of this phase in seconds.
   var duration: TimeInterval { endedAt.timeIntervalSince(startedAt) }
 }

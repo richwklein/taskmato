@@ -19,6 +19,17 @@ struct TasksTabView: View {
   @State private var groupedLists: [TaskGroup] = []
   @State private var isLoading: Bool = false
   @State private var expandedGroups: [String: Bool] = [:]
+  @State private var isAddingTask = false
+
+  /// The local provider instance looked up from the registry, if registered.
+  private var localProvider: LocalProvider? {
+    registry.providers.first(where: { $0 is LocalProvider }) as? LocalProvider
+  }
+
+  /// `true` when the local provider is registered and currently enabled.
+  private var localProviderEnabled: Bool {
+    localProvider.map { registry.isEnabled($0.id) } ?? false
+  }
 
   var body: some View {
     Group {
@@ -48,6 +59,26 @@ struct TasksTabView: View {
     .searchable(text: $query, prompt: "Search tasks")
     .task(id: query) { await loadTasks() }
     .onAppear { Task { await loadTasks() } }
+    .onChange(of: isAddingTask) { _, adding in
+      if !adding { Task { await loadTasks() } }
+    }
+    .sheet(isPresented: $isAddingTask) {
+      if let provider = localProvider {
+        AddTaskView(provider: provider, isPresented: $isAddingTask)
+      }
+    }
+    .toolbar {
+      if localProviderEnabled {
+        ToolbarItem(placement: .automatic) {
+          Button {
+            isAddingTask = true
+          } label: {
+            Label("Add Task", systemImage: "plus")
+          }
+          .help("Add a local task")
+        }
+      }
+    }
   }
 
   // MARK: - Task list

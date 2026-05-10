@@ -10,4 +10,9 @@ extension Notification.Name {
   ///
   /// `MainWindowView` listens for this and switches to the Tasks tab.
   static let showTasksTab = Notification.Name("Taskmato.showTasksTab")
+
+  /// Posted by the compact popover when the user taps the session stats row.
+  ///
+  /// `MainWindowView` listens for this and switches to the Stats tab.
+  static let showStatsTab = Notification.Name("Taskmato.showStatsTab")
 }
