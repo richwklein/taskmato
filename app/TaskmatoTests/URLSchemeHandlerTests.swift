@@ -13,6 +13,7 @@ import Testing
 private struct HandlerContext {
   let handler: URLSchemeHandler
   let selectionStore: TaskSelectionStore
+  let localProvider: LocalProvider
 }
 
 // MARK: - Fakes
@@ -42,11 +43,27 @@ struct URLSchemeHandlerTests {
 
   // MARK: - Helpers
 
-  private func makeHandler(stubProviderTasks: [TaskItem] = []) -> HandlerContext {
+  private func makeTempURL() -> URL {
+    FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString)
+      .appendingPathExtension("json")
+  }
+
+  /// Builds a fully wired handler. Pass `enableLocalProvider: false` to test the transient path.
+  private func makeHandler(
+    stubProviderTasks: [TaskItem] = [],
+    enableLocalProvider: Bool = true
+  ) -> HandlerContext {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let selectionStore = TaskSelectionStore(defaults: defaults)
     let engine = SessionEngine()
     let registry = TaskRegistry(defaults: defaults)
+    let localProvider = LocalProvider(fileURL: makeTempURL())
+
+    registry.register(localProvider)
+    if enableLocalProvider {
+      registry.enable(localProvider)
+    }
 
     if !stubProviderTasks.isEmpty {
       let stub = StubTaskProvider(id: "stub", tasks: stubProviderTasks)
@@ -57,9 +74,12 @@ struct URLSchemeHandlerTests {
     let handler = URLSchemeHandler(
       registry: registry,
       selectionStore: selectionStore,
-      engine: engine
+      engine: engine,
+      settings: AppSettings(),
+      localProvider: localProvider
     )
-    return HandlerContext(handler: handler, selectionStore: selectionStore)
+    return HandlerContext(
+      handler: handler, selectionStore: selectionStore, localProvider: localProvider)
   }
 
   private func makeTask(title: String, providerID: String = "stub") -> TaskItem {
@@ -78,12 +98,38 @@ struct URLSchemeHandlerTests {
     )
   }
 
-  // MARK: - Ad-hoc task creation (transient)
+  // MARK: - Ad-hoc task creation (LocalProvider enabled)
 
-  @Test func adHocTaskSelectedWithAdhocProviderID() async {
-    let ctx = makeHandler()
+  @Test func adHocTaskWrittenToLocalProviderWhenEnabled() async throws {
+    let ctx = makeHandler(enableLocalProvider: true)
     await ctx.handler.handle(URL(string: "taskmato://start?title=Buy%20groceries")!)
     #expect(ctx.selectionStore.activeTask?.title == "Buy groceries")
+    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
+    let items = try await ctx.localProvider.tasks(in: nil)
+    #expect(items.first?.title == "Buy groceries")
+  }
+
+  @Test func adHocTaskMatchesLocalListByName() async throws {
+    let ctx = makeHandler(enableLocalProvider: true)
+    ctx.localProvider.createList(name: "Work")
+    await ctx.handler.handle(URL(string: "taskmato://start?title=Meeting&list=Work")!)
+    let tasks = try await ctx.localProvider.tasks(in: nil)
+    #expect(tasks.first?.list?.name == "Work")
+  }
+
+  @Test func adHocTaskFallsBackToDefaultListWhenListNotFound() async throws {
+    let ctx = makeHandler(enableLocalProvider: true)
+    await ctx.handler.handle(URL(string: "taskmato://start?title=Misc&list=Nonexistent")!)
+    let tasks = try await ctx.localProvider.tasks(in: nil)
+    #expect(tasks.first?.list != nil)
+  }
+
+  // MARK: - Ad-hoc task creation (LocalProvider disabled — transient)
+
+  @Test func adHocTaskIsTransientWhenLocalDisabled() async {
+    let ctx = makeHandler(enableLocalProvider: false)
+    await ctx.handler.handle(URL(string: "taskmato://start?title=Transient+Task")!)
+    #expect(ctx.selectionStore.activeTask?.title == "Transient Task")
     #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
   }
 
@@ -97,19 +143,6 @@ struct URLSchemeHandlerTests {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=Due+Task&due=2026-12-01")!)
     #expect(ctx.selectionStore.activeTask?.dueDate != nil)
-  }
-
-  @Test func adHocTaskWithList() async {
-    let ctx = makeHandler()
-    await ctx.handler.handle(URL(string: "taskmato://start?title=Listed&list=Work")!)
-    #expect(ctx.selectionStore.activeTask?.list?.name == "Work")
-  }
-
-  @Test func adHocTaskIsTransientNotInRegistry() async {
-    let ctx = makeHandler()
-    await ctx.handler.handle(URL(string: "taskmato://start?title=Transient+Task")!)
-    // Task is active but lives only in the selection store, not a provider
-    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
   }
 
   // MARK: - Step 1: Lookup by provider + ID
@@ -169,13 +202,6 @@ struct URLSchemeHandlerTests {
     #expect(ctx.selectionStore.activeTask?.id.providerID == "stub")
   }
 
-  @Test func crossProviderNoMatchCreatesTransientAdHoc() async {
-    let ctx = makeHandler()
-    await ctx.handler.handle(URL(string: "taskmato://start?title=Brand+New+Task")!)
-    #expect(ctx.selectionStore.activeTask?.title == "Brand New Task")
-    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
-  }
-
   @Test func disambiguationSetWhenMultipleMatches() async {
     let task1 = makeTask(title: "Write docs")
     let task2 = makeTask(title: "Write docs")
@@ -194,15 +220,16 @@ struct URLSchemeHandlerTests {
     #expect(ctx.handler.pendingAdHocParams?.priority == .high)
   }
 
-  @Test func makeAdHocTaskFromDisambiguationIsTransient() async {
+  @Test func makeAdHocTaskFromDisambiguationUsesLocalProvider() async throws {
     let task1 = makeTask(title: "Deploy")
     let task2 = makeTask(title: "Deploy")
-    let ctx = makeHandler(stubProviderTasks: [task1, task2])
+    let ctx = makeHandler(stubProviderTasks: [task1, task2], enableLocalProvider: true)
     await ctx.handler.handle(URL(string: "taskmato://start?title=Deploy")!)
     let params = ctx.handler.pendingAdHocParams!
     let task = ctx.handler.makeAdHocTask(from: params)
-    #expect(task.id.providerID == "adhoc")
-    #expect(task.title == "Deploy")
+    #expect(task.id.providerID == LocalProvider.providerID)
+    let localItems = try await ctx.localProvider.tasks(in: nil)
+    #expect(localItems.map(\.title).contains("Deploy"))
   }
 
   // MARK: - Invalid / noop cases

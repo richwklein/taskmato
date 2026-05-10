@@ -9,13 +9,20 @@ import AppKit
 import SwiftUI
 
 /// Applies the dock icon activation policy once the application has fully launched,
-/// and routes URL scheme events into `NotificationCenter` so menu bar content can
-/// receive them regardless of window focus state.
+/// and forwards URL scheme events directly to ``URLSchemeHandler``.
 ///
 /// `NSApp.setActivationPolicy` must not be called during `App.init()` — the launch
 /// sequence is incomplete at that point and the call traps on restart. Deferring to
 /// `applicationDidFinishLaunching` is the documented safe window.
+///
+/// URL events are handled here rather than via `.onOpenURL` on SwiftUI views because
+/// `MenuBarExtra` content is not in the main window responder chain and misses URL events
+/// when the popover is collapsed.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+
+  /// Set by `TaskmatoApp.init()` so URL events can be forwarded without view subscriptions.
+  var urlHandler: URLSchemeHandler?
+
   func applicationDidFinishLaunching(_ notification: Notification) {
     if UserDefaults.standard.bool(forKey: "showDockIcon") {
       NSApp.setActivationPolicy(.regular)
@@ -23,8 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func application(_ application: NSApplication, open urls: [URL]) {
+    guard let urlHandler else { return }
     for url in urls {
-      NotificationCenter.default.post(name: .openURL, object: url)
+      Task { @MainActor in
+        await urlHandler.handle(url)
+      }
     }
   }
 }
@@ -60,7 +70,9 @@ struct TaskmatoApp: App {
     let urlHandler = URLSchemeHandler(
       registry: registry,
       selectionStore: selectionStore,
-      engine: engine
+      engine: engine,
+      settings: settings,
+      localProvider: localProvider
     )
 
     engine.onPhaseEnded = { phase, startedAt, endedAt, wasCompleted in
@@ -103,6 +115,8 @@ struct TaskmatoApp: App {
     _obsidianProvider = State(initialValue: obsidianProvider)
     _localProvider = State(initialValue: localProvider)
     _urlHandler = State(initialValue: urlHandler)
+    // Wire AppDelegate so URL events reach the handler regardless of window focus.
+    _appDelegate.wrappedValue.urlHandler = urlHandler
   }
 
   var body: some Scene {
@@ -116,12 +130,6 @@ struct TaskmatoApp: App {
         nextStartPhase: engine.queuedPhase ?? .focus,
         nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
       )
-      .onReceive(NotificationCenter.default.publisher(for: .openURL)) { notification in
-        guard let url = notification.object as? URL else { return }
-        Task { @MainActor in
-          await urlHandler.handle(url)
-        }
-      }
       .confirmationDialog(
         "Multiple tasks match — which one?",
         isPresented: Binding(

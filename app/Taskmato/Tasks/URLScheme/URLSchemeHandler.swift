@@ -42,11 +42,21 @@ final class URLSchemeHandler {
   private let registry: TaskRegistry
   private let selectionStore: TaskSelectionStore
   private let engine: SessionEngine
+  private let settings: AppSettings
+  private let localProvider: LocalProvider
 
-  init(registry: TaskRegistry, selectionStore: TaskSelectionStore, engine: SessionEngine) {
+  init(
+    registry: TaskRegistry,
+    selectionStore: TaskSelectionStore,
+    engine: SessionEngine,
+    settings: AppSettings,
+    localProvider: LocalProvider
+  ) {
     self.registry = registry
     self.selectionStore = selectionStore
     self.engine = engine
+    self.settings = settings
+    self.localProvider = localProvider
   }
 
   /// Handles the given URL, selecting the resolved task and starting a focus session if idle.
@@ -61,12 +71,32 @@ final class URLSchemeHandler {
 
     selectionStore.select(task)
     if case .idle = engine.state {
+      engine.focusDuration = settings.focusDuration
+      engine.shortBreakDuration = settings.shortBreakDuration
+      engine.longBreakDuration = settings.longBreakDuration
       engine.start(phase: .focus)
     }
   }
 
-  /// Builds a transient ad-hoc ``TaskItem`` from the given params without persisting it to any provider.
+  /// Creates an ad-hoc task from the given params.
+  ///
+  /// If ``LocalProvider`` is enabled, the task is written to its default list (or to the
+  /// local list whose name matches `adHocParams.listName`, if one exists). Otherwise a
+  /// transient ``TaskItem`` is returned without persisting it to any provider.
   func makeAdHocTask(from adHocParams: AdHocTaskParams) -> TaskItem {
+    if registry.isEnabled(LocalProvider.providerID) {
+      var draft = TaskDraft()
+      draft.title = adHocParams.title
+      draft.priority = adHocParams.priority
+      draft.dueDate = adHocParams.dueDate
+      if let name = adHocParams.listName {
+        draft.listID =
+          localProvider.taskLists.first {
+            $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
+          }?.id
+      }
+      return localProvider.addTask(draft)
+    }
     let list = adHocParams.listName.map { name in
       TaskList(
         id: name.lowercased().replacingOccurrences(of: " ", with: "-"),
