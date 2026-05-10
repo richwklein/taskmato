@@ -45,6 +45,28 @@ final class SessionStore {
     save()
   }
 
+  /// Returns a ``SessionSummary`` for sessions whose `startedAt` falls within `interval`.
+  /// - Parameter interval: The date range to scope results to.
+  func summary(for interval: DateInterval) -> SessionSummary {
+    SessionSummary(sessions: sessions, over: interval)
+  }
+
+  /// Returns a summary scoped to the current calendar day (local time zone).
+  func todaySummary() -> SessionSummary {
+    let calendar = Calendar.current
+    let start = calendar.startOfDay(for: Date())
+    let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+    return summary(for: DateInterval(start: start, end: end))
+  }
+
+  /// Returns a summary scoped to a rolling seven-day window ending now.
+  func thisWeekSummary() -> SessionSummary {
+    let calendar = Calendar.current
+    let todayStart = calendar.startOfDay(for: Date())
+    let start = calendar.date(byAdding: .day, value: -6, to: todayStart) ?? todayStart
+    return summary(for: DateInterval(start: start, end: Date()))
+  }
+
   /// Number of completed focus sessions that started today (calendar day, local time zone).
   func todayFocusCount() -> Int {
     let calendar = Calendar.current
