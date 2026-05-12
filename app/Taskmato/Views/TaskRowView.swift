@@ -45,7 +45,7 @@ struct TaskRowView: View {
           if let due = task.dueDate {
             Text(due, format: .dateTime.month(.abbreviated).day())
               .font(.caption2)
-              .foregroundStyle(.secondary)
+              .foregroundStyle(dueDateColor(for: due))
           }
         }
 
@@ -82,6 +82,13 @@ struct TaskRowView: View {
     case .medium: return "!"
     case .low, .lowest, .none: return ""
     }
+  }
+
+  private func dueDateColor(for due: Date) -> Color {
+    let today = Calendar.current.startOfDay(for: Date())
+    if Calendar.current.isDateInToday(due) { return .orange }
+    if due < today { return .red }
+    return .secondary
   }
 
   private var priorityColor: Color {
