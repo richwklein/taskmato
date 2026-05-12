@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+#
+# taskmato — start a Pomodoro session via the taskmato:// URL scheme
+#
+# Usage:
+#   taskmato <title>
+#   taskmato --title <title> [--priority none|lowest|low|medium|high|highest]
+#             [--due YYYY-MM-DD] [--list <name>]
+#   taskmato --provider <id> --id <native-id>
+#   taskmato --provider <id> --title <title>
+
+set -euo pipefail
+
+# Pure-bash percent-encoding for URL query values.
+urlencode() {
+  local string="$1"
+  local encoded=""
+  local i c
+  for (( i = 0; i < ${#string}; i++ )); do
+    c="${string:$i:1}"
+    case "$c" in
+      [a-zA-Z0-9.~_-]) encoded+="$c" ;;
+      ' ') encoded+="+" ;;
+      *) encoded+=$(printf '%%%02X' "'$c") ;;
+    esac
+  done
+  printf '%s' "$encoded"
+}
+
+add_param() {
+  local key="$1" value="$2"
+  local encoded
+  encoded=$(urlencode "$value")
+  if [[ -n "$QUERY" ]]; then
+    QUERY="${QUERY}&${key}=${encoded}"
+  else
+    QUERY="${key}=${encoded}"
+  fi
+}
+
+usage() {
+  cat <<EOF
+Usage: taskmato [OPTIONS] [TITLE]
+
+Start a Pomodoro session in Taskmato.app for the given task.
+
+Positional:
+  TITLE                   Shorthand for --title
+
+Options:
+  --title <title>         Task title (creates ad-hoc or searches providers)
+  --provider <id>         Scope lookup to a specific provider
+  --id <native-id>        Look up task by its native provider ID (requires --provider)
+  --priority <level>      Priority: none, lowest, low, medium, high, highest
+  --due <YYYY-MM-DD>      Due date for ad-hoc task creation
+  --list <name>           List name for ad-hoc task creation
+  -h, --help              Show this help
+EOF
+}
+
+PROVIDER=""
+NATIVE_ID=""
+TITLE=""
+PRIORITY=""
+DUE=""
+LIST=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --provider) PROVIDER="$2"; shift 2 ;;
+    --id)       NATIVE_ID="$2"; shift 2 ;;
+    --title)    TITLE="$2"; shift 2 ;;
+    --priority) PRIORITY="$2"; shift 2 ;;
+    --due)      DUE="$2"; shift 2 ;;
+    --list)     LIST="$2"; shift 2 ;;
+    -h|--help)  usage; exit 0 ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      if [[ -z "$TITLE" ]]; then
+        TITLE="$1"
+      else
+        echo "Unexpected argument: $1" >&2
+        usage >&2
+        exit 1
+      fi
+      shift
+      ;;
+  esac
+done
+
+QUERY=""
+[[ -n "$PROVIDER"  ]] && add_param "provider" "$PROVIDER"
+[[ -n "$NATIVE_ID" ]] && add_param "id"       "$NATIVE_ID"
+[[ -n "$TITLE"     ]] && add_param "title"    "$TITLE"
+[[ -n "$PRIORITY"  ]] && add_param "priority" "$PRIORITY"
+[[ -n "$DUE"       ]] && add_param "due"      "$DUE"
+[[ -n "$LIST"      ]] && add_param "list"     "$LIST"
+
+if [[ -z "$QUERY" ]]; then
+  echo "Error: at least --title or --provider + --id is required." >&2
+  usage >&2
+  exit 1
+fi
+
+open "taskmato://start?${QUERY}"

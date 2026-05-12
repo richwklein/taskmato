@@ -110,16 +110,19 @@ final class LocalProvider: MutableTaskProvider {
 
   // MARK: - Task CRUD
 
-  /// Appends a new task built from `draft` to the store.
+  /// Appends a new task built from `draft` to the store and returns the created ``TaskItem``.
   ///
   /// If `draft.listID` is `nil`, the task is assigned to the first available list.
-  func addTask(_ draft: TaskDraft) {
+  @discardableResult
+  func addTask(_ draft: TaskDraft) -> TaskItem {
     var resolved = draft
     if resolved.listID == nil {
       resolved.listID = taskLists.first?.id
     }
-    allTasks.append(LocalTask(from: resolved))
+    let newTask = LocalTask(from: resolved)
+    allTasks.append(newTask)
     save()
+    return newTask.asTaskItem(lists: taskLists)
   }
 
   /// Applies `draft` to the task identified by `ref`.

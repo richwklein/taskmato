@@ -65,10 +65,11 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 ## CLI / URL scheme provider (P5)
 
-- [ ] Register `taskmato://` URL scheme ([#265](https://github.com/richwklein/taskmato/issues/265))
-- [ ] `taskmato://start?title=...&priority=...&due=...&list=...` handler ([#265](https://github.com/richwklein/taskmato/issues/265))
-- [ ] `scripts/taskmato` shell wrapper that invokes `open "taskmato://..."` ([#266](https://github.com/richwklein/taskmato/issues/266))
-- [ ] In-memory + recently-used persistence for ad-hoc CLI tasks ([#267](https://github.com/richwklein/taskmato/issues/267))
+- [x] Register `taskmato://` URL scheme ([#265](https://github.com/richwklein/taskmato/issues/265))
+- [x] `taskmato://start?title=...&priority=...&due=...&list=...` handler with 4-step resolution (provider+id, id-only fan-out, provider+title, cross-provider title + disambiguation dialog) ([#265](https://github.com/richwklein/taskmato/issues/265))
+- [x] `scripts/taskmato` shell wrapper that invokes `open "taskmato://..."` ([#266](https://github.com/richwklein/taskmato/issues/266))
+- [x] Ad-hoc tasks written to LocalProvider (if enabled) or CLI recents store; survive relaunch ([#267](https://github.com/richwklein/taskmato/issues/267))
+- [ ] Explore: let URL scheme create ad-hoc tasks in any enabled `MutableTaskProvider` ([#303](https://github.com/richwklein/taskmato/issues/303))
 - [ ] (Stretch) defer share extension to 1.1 — it reuses this channel ([#267](https://github.com/richwklein/taskmato/issues/267))
 
 ## Stats visualization (P6)

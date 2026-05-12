@@ -39,8 +39,10 @@ struct TimerTabView: View {
         .padding(.horizontal, 24)
 
       if selectionStore.activeTask != nil {
-        ActiveTaskView(selectionStore: selectionStore, registry: registry, showNotes: true)
-          .padding(.horizontal, 8)
+        ActiveTaskView(
+          engine: engine, selectionStore: selectionStore, registry: registry, showNotes: true
+        )
+        .padding(.horizontal, 8)
       } else {
         Button {
           NotificationCenter.default.post(name: .showTasksTab, object: nil)

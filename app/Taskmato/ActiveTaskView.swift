@@ -7,10 +7,12 @@ import SwiftUI
 
 /// A label row displaying the currently selected task with provider-conditional action buttons.
 ///
-/// Hidden entirely when no task is selected.
+/// Hidden entirely when no task is selected. The clear and complete buttons are disabled
+/// while a session is running so the active task cannot be changed mid-session.
 @MainActor
 struct ActiveTaskView: View {
 
+  var engine: SessionEngine
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
   /// When `true`, renders task notes and source link below the title.
@@ -18,13 +20,15 @@ struct ActiveTaskView: View {
 
   @State private var isCompletionHovered: Bool = false
 
+  private var sessionIsActive: Bool { engine.state != .idle }
+
   var body: some View {
     if let task = selectionStore.activeTask {
       HStack(alignment: .top, spacing: 8) {
         leadingIndicator(for: task)
 
         VStack(alignment: .leading, spacing: 2) {
-          Text(markdownTitle(for: task))
+          Text(displayTitle(for: task))
             .font(.callout)
             .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -50,14 +54,22 @@ struct ActiveTaskView: View {
             .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
-        .help("Clear task")
+        .disabled(sessionIsActive)
+        .help(sessionIsActive ? "Cannot clear task during an active session" : "Clear task")
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 8)
     }
   }
 
-  /// Returns the task title rendered as inline markdown when the task format is `.markdown`.
+  private func displayTitle(for task: TaskItem) -> AttributedString {
+    let mark = priorityMark(for: task.priority)
+    guard !mark.isEmpty else { return markdownTitle(for: task) }
+    var prefix = AttributedString(mark + " ")
+    prefix.swiftUI.foregroundColor = priorityColor(for: task.priority)
+    return prefix + markdownTitle(for: task)
+  }
+
   private func markdownTitle(for task: TaskItem) -> AttributedString {
     guard task.format == .markdown else { return AttributedString(task.title) }
     let options = AttributedString.MarkdownParsingOptions(
@@ -65,6 +77,23 @@ struct ActiveTaskView: View {
     )
     return (try? AttributedString(markdown: task.title, options: options))
       ?? AttributedString(task.title)
+  }
+
+  private func priorityMark(for priority: TaskPriority) -> String {
+    switch priority {
+    case .highest: return "!!!"
+    case .high: return "!!"
+    case .medium: return "!"
+    case .low, .lowest, .none: return ""
+    }
+  }
+
+  private func priorityColor(for priority: TaskPriority) -> Color {
+    switch priority {
+    case .highest, .high: return .red
+    case .medium: return .orange
+    case .low, .lowest, .none: return .primary
+    }
   }
 
   /// Returns a complete button when the provider supports mutation, or a static dot indicator otherwise.
@@ -83,8 +112,9 @@ struct ActiveTaskView: View {
           .foregroundStyle(Color.accentColor)
       }
       .buttonStyle(.plain)
-      .onHover { isCompletionHovered = $0 }
-      .help("Mark done")
+      .disabled(sessionIsActive)
+      .onHover { isCompletionHovered = $0 && !sessionIsActive }
+      .help(sessionIsActive ? "Cannot complete task during an active session" : "Mark done")
     } else {
       Image(systemName: "circle.fill")
         .font(.caption2)
