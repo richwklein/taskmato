@@ -75,6 +75,8 @@ struct TimerTabView: View {
         ControlButton(label: "Resume", icon: "play.fill") { engine.resume() }
       } else {
         ControlButton(label: "Start", icon: "play.fill") { startSession() }
+          .disabled(selectionStore.activeTask == nil)
+          .help(selectionStore.activeTask == nil ? "Select a task before starting" : "")
       }
 
       ControlButton(label: "Skip", icon: "forward.fill") { skipPhase() }

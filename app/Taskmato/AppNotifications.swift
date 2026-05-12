@@ -15,4 +15,11 @@ extension Notification.Name {
   ///
   /// `MainWindowView` listens for this and switches to the Stats tab.
   static let showStatsTab = Notification.Name("Taskmato.showStatsTab")
+
+  /// Posted when a task is selected programmatically (URL handler, disambiguation) so the main
+  /// window switches to the Timer tab and surfaces the selected task.
+  static let showTimerTab = Notification.Name("Taskmato.showTimerTab")
+
+  /// Posted by the URL handler to request that the main window be opened and brought to front.
+  static let openMainWindow = Notification.Name("Taskmato.openMainWindow")
 }

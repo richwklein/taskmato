@@ -159,6 +159,7 @@ struct TaskmatoApp: App {
           Button(task.title) {
             selectionStore.select(task)
             urlHandler.pendingDisambiguation = nil
+            NotificationCenter.default.post(name: .showTimerTab, object: nil)
           }
         }
         if let params = urlHandler.pendingAdHocParams {
@@ -166,6 +167,7 @@ struct TaskmatoApp: App {
             let task = urlHandler.makeAdHocTask(from: params)
             selectionStore.select(task)
             urlHandler.pendingDisambiguation = nil
+            NotificationCenter.default.post(name: .showTimerTab, object: nil)
           }
         }
         Button("Cancel", role: .cancel) {

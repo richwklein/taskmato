@@ -7,8 +7,9 @@ import SwiftUI
 
 /// A label row displaying the currently selected task with provider-conditional action buttons.
 ///
-/// Hidden entirely when no task is selected. The clear and complete buttons are disabled
-/// while a session is running so the active task cannot be changed mid-session.
+/// Hidden when no task is selected. Clearing or completing mid-session shows a confirmation
+/// that stops the timer and routes to the task picker. A swap button (active-session only)
+/// pauses the timer and opens the task picker without stopping the session.
 @MainActor
 struct ActiveTaskView: View {
 
@@ -18,7 +19,11 @@ struct ActiveTaskView: View {
   /// When `true`, renders task notes and source link below the title.
   var showNotes: Bool = false
 
+  @Environment(\.openWindow) private var openWindow
+
   @State private var isCompletionHovered: Bool = false
+  @State private var confirmClear: Bool = false
+  @State private var confirmComplete: Bool = false
 
   private var sessionIsActive: Bool { engine.state != .idle }
 
@@ -46,19 +51,72 @@ struct ActiveTaskView: View {
           }
         }
 
+        if sessionIsActive {
+          Button {
+            if engine.isRunning { engine.pause() }
+            NSApp.activate(ignoringOtherApps: true)
+            openWindow(id: "main")
+            NotificationCenter.default.post(name: .showTasksTab, object: nil)
+          } label: {
+            Image(systemName: "arrow.triangle.swap")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+          .buttonStyle(.plain)
+          .help("Swap task — pauses the session and opens the task list")
+        }
+
         Button {
-          selectionStore.clearActiveTask()
+          if sessionIsActive {
+            confirmClear = true
+          } else {
+            selectionStore.clearActiveTask()
+          }
         } label: {
           Image(systemName: "xmark")
             .font(.caption2)
             .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
-        .disabled(sessionIsActive)
-        .help(sessionIsActive ? "Cannot clear task during an active session" : "Clear task")
+        .help("Clear task")
+        .confirmationDialog(
+          "End the current session?",
+          isPresented: $confirmClear,
+          titleVisibility: .visible
+        ) {
+          Button("Stop & Clear", role: .destructive) {
+            engine.stop()
+            selectionStore.clearActiveTask()
+            NotificationCenter.default.post(name: .showTasksTab, object: nil)
+          }
+          Button("Cancel", role: .cancel) {}
+        } message: {
+          Text("Clearing the task will stop the timer.")
+        }
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 8)
+      .confirmationDialog(
+        "End the current session?",
+        isPresented: $confirmComplete,
+        titleVisibility: .visible
+      ) {
+        Button("Stop & Complete", role: .destructive) {
+          guard let task = selectionStore.activeTask,
+            let provider = registry.mutableProvider(for: task.id)
+          else { return }
+          let ref = task.id
+          engine.stop()
+          Task {
+            try? await provider.complete(ref)
+            selectionStore.clearActiveTask()
+            NotificationCenter.default.post(name: .showTasksTab, object: nil)
+          }
+        }
+        Button("Cancel", role: .cancel) {}
+      } message: {
+        Text("Completing the task will stop the timer and mark it done.")
+      }
     }
   }
 
@@ -101,10 +159,14 @@ struct ActiveTaskView: View {
   private func leadingIndicator(for task: TaskItem) -> some View {
     if let provider = registry.mutableProvider(for: task.id) {
       Button {
-        let ref = task.id
-        Task {
-          try? await provider.complete(ref)
-          selectionStore.clearActiveTask()
+        if sessionIsActive {
+          confirmComplete = true
+        } else {
+          let ref = task.id
+          Task {
+            try? await provider.complete(ref)
+            selectionStore.clearActiveTask()
+          }
         }
       } label: {
         Image(systemName: isCompletionHovered ? "checkmark.circle" : "circle")
@@ -112,9 +174,8 @@ struct ActiveTaskView: View {
           .foregroundStyle(Color.accentColor)
       }
       .buttonStyle(.plain)
-      .disabled(sessionIsActive)
-      .onHover { isCompletionHovered = $0 && !sessionIsActive }
-      .help(sessionIsActive ? "Cannot complete task during an active session" : "Mark done")
+      .onHover { isCompletionHovered = $0 }
+      .help(sessionIsActive ? "Complete task (will stop timer)" : "Mark done")
     } else {
       Image(systemName: "circle.fill")
         .font(.caption2)
