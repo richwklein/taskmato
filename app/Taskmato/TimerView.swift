@@ -72,7 +72,7 @@ struct TimerView: View {
         .padding(.horizontal, 16)
 
       if selectionStore.activeTask != nil {
-        ActiveTaskView(selectionStore: selectionStore, registry: registry)
+        ActiveTaskView(engine: engine, selectionStore: selectionStore, registry: registry)
       } else {
         Button {
           let popover = NSApp.keyWindow
