@@ -149,6 +149,34 @@ final class ObsidianProvider: MutableTaskProvider {
     try await rewrite(ref: ref, from: "- [x] ", to: "- [ ] ", fallbackFrom: "- [X] ")
   }
 
+  /// Returns all completed (`- [x]`) tasks across the vault, in source file and line order.
+  func completedTasks() async throws -> [TaskItem] {
+    guard let vaultURL else { return [] }
+    let patterns = filePatterns.map { resolver.resolve($0) }
+    return try await Task.detached(priority: .userInitiated) { [weak self] in
+      guard let self else { return [] }
+      return try self.withVaultAccess(vaultURL) { url in
+        self.scanMarkdownFiles(in: url, patterns: patterns).flatMap { fileURL -> [TaskItem] in
+          let relPath = self.relativePath(for: fileURL, relativeTo: url)
+          let vaultName = url.lastPathComponent
+          let content = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+          let taskList = TaskList(
+            id: relPath,
+            providerID: Self.providerID,
+            name: fileURL.deletingPathExtension().lastPathComponent
+          )
+          return self.parser.parse(
+            content: content,
+            providerID: Self.providerID,
+            fileRelativePath: relPath,
+            vaultName: vaultName,
+            list: taskList
+          ).completedItems
+        }
+      }
+    }.value
+  }
+
   // MARK: - Vault bookmark management
 
   /// Stores a security-scoped bookmark for `url` and sets it as the current vault.

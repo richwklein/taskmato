@@ -25,6 +25,16 @@ struct ObsidianTaskParserTests {
     ).items
   }
 
+  private func parseCompleted(_ content: String, relativePath: String = "tasks.md") -> [TaskItem] {
+    parser.parse(
+      content: content,
+      providerID: providerID,
+      fileRelativePath: relativePath,
+      vaultName: "MyVault",
+      list: dummyList
+    ).completedItems
+  }
+
   // MARK: - Basic parsing
 
   @Test func parsesSimpleIncompleteTask() {
@@ -35,14 +45,21 @@ struct ObsidianTaskParserTests {
     #expect(tasks[0].dueDate == nil)
   }
 
-  @Test func skipsCompletedTaskLowercaseX() {
-    let tasks = parse("- [x] Finished already")
-    #expect(tasks.isEmpty)
+  @Test func completedTaskNotInIncompleteItems() {
+    #expect(parse("- [x] Finished already").isEmpty)
+    #expect(parse("- [X] Also finished").isEmpty)
   }
 
-  @Test func skipsCompletedTaskUppercaseX() {
-    let tasks = parse("- [X] Also finished")
-    #expect(tasks.isEmpty)
+  @Test func completedTaskAppearsInCompletedItems() {
+    let items = parseCompleted("- [x] Finished already")
+    #expect(items.count == 1)
+    #expect(items[0].title == "Finished already")
+  }
+
+  @Test func completedTaskUppercaseXAppearsInCompletedItems() {
+    let items = parseCompleted("- [X] Also finished")
+    #expect(items.count == 1)
+    #expect(items[0].title == "Also finished")
   }
 
   @Test func parsesMultipleTasks() {
@@ -55,6 +72,7 @@ struct ObsidianTaskParserTests {
     #expect(tasks.count == 2)
     #expect(tasks[0].title == "First task")
     #expect(tasks[1].title == "Third task")
+    #expect(parseCompleted(content).count == 1)
   }
 
   @Test func ignoresNonTaskLines() {
@@ -73,9 +91,10 @@ struct ObsidianTaskParserTests {
     #expect(parse("").isEmpty)
   }
 
-  @Test func fileWithOnlyCompletedTasksYieldsEmpty() {
+  @Test func fileWithOnlyCompletedTasksYieldsEmptyIncompleteList() {
     let content = "- [x] Done\n- [X] Also done"
     #expect(parse(content).isEmpty)
+    #expect(parseCompleted(content).count == 2)
   }
 
   // MARK: - Priority
