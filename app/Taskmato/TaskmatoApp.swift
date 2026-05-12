@@ -20,8 +20,16 @@ import SwiftUI
 /// when the popover is collapsed.
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
-  /// Set by `TaskmatoApp.init()` so URL events can be forwarded without view subscriptions.
-  var urlHandler: URLSchemeHandler?
+  /// Injected by `TaskmatoApp.init()`. Called from `applicationWillFinishLaunching`,
+  /// which fires before the system delivers any queued `taskmato://` Apple events —
+  /// guaranteeing the handler is wired before the first URL arrives.
+  var bootstrap: (() -> Void)?
+
+  private(set) var urlHandler: URLSchemeHandler?
+
+  func applicationWillFinishLaunching(_ notification: Notification) {
+    bootstrap?()
+  }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     if UserDefaults.standard.bool(forKey: "showDockIcon") {
@@ -36,6 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         await urlHandler.handle(url)
       }
     }
+  }
+
+  /// Called by the bootstrap closure to complete dependency injection.
+  fileprivate func wire(urlHandler: URLSchemeHandler) {
+    self.urlHandler = urlHandler
   }
 }
 
@@ -115,6 +128,11 @@ struct TaskmatoApp: App {
     _obsidianProvider = State(initialValue: obsidianProvider)
     _localProvider = State(initialValue: localProvider)
     _urlHandler = State(initialValue: urlHandler)
+
+    // Capture the delegate so the closure doesn't retain _appDelegate's storage.
+    // App.init() runs once; this local IS the @State-managed handler for the app's lifetime.
+    let appDel = _appDelegate.wrappedValue
+    appDel.bootstrap = { appDel.wire(urlHandler: urlHandler) }
   }
 
   var body: some Scene {
@@ -128,7 +146,6 @@ struct TaskmatoApp: App {
         nextStartPhase: engine.queuedPhase ?? .focus,
         nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
       )
-      .task { appDelegate.urlHandler = urlHandler }
       .confirmationDialog(
         "Multiple tasks match — which one?",
         isPresented: Binding(
