@@ -27,12 +27,17 @@ struct ObsidianSettingsView: View {
         Button("Change Vault…", action: selectVault)
 
         LabeledContent("File patterns") {
-          TextField("e.g. **/*.md", text: $patternText)
-            .focused($isPatternFocused)
-            .onSubmit { commitPatterns() }
-            .onChange(of: isPatternFocused) { _, focused in
-              if !focused { commitPatterns() }
-            }
+          VStack(alignment: .leading, spacing: 4) {
+            TextField("e.g. **/*.md", text: $patternText)
+              .focused($isPatternFocused)
+              .onSubmit { commitPatterns() }
+              .onChange(of: isPatternFocused) { _, focused in
+                if !focused { commitPatterns() }
+              }
+            Text("Use {week}, {year}, {month}, {day} — e.g. W{week}.md → W18.md")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
         }
 
         Button("Remove Vault", role: .destructive) {

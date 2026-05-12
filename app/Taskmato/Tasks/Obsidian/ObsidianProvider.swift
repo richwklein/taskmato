@@ -40,6 +40,7 @@ final class ObsidianProvider: MutableTaskProvider {
 
   private let defaults: UserDefaults
   private let parser = ObsidianTaskParser()
+  private let resolver = ObsidianGlobResolver()
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
   private var fsEventStream: FSEventStream?
 
@@ -64,7 +65,7 @@ final class ObsidianProvider: MutableTaskProvider {
   /// The list name is the file's H1 heading if present, otherwise the filename without extension.
   func lists() async throws -> [TaskList] {
     guard let vaultURL else { return [] }
-    let patterns = filePatterns
+    let patterns = filePatterns.map { resolver.resolve($0) }
     return try await Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else { return [] }
       return try self.withVaultAccess(vaultURL) { url in
@@ -89,7 +90,7 @@ final class ObsidianProvider: MutableTaskProvider {
   /// Returns incomplete tasks from all matching files, or from a single file if `list` is provided.
   func tasks(in list: TaskList?) async throws -> [TaskItem] {
     guard let vaultURL else { return [] }
-    let patterns = filePatterns
+    let patterns = filePatterns.map { resolver.resolve($0) }
     return try await Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else { return [] }
       return try self.withVaultAccess(vaultURL) { url in
