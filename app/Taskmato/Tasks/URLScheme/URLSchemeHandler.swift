@@ -18,7 +18,8 @@ struct AdHocTaskParams {
   let listName: String?
 }
 
-/// Parses and dispatches `taskmato://` deep links to select a task and optionally start a session.
+/// Parses and dispatches `taskmato://` deep links to select a task and, when auto-start is
+/// enabled, start a focus session.
 ///
 /// Resolution precedence for `taskmato://start`:
 /// 1. `provider` + `id` — exact native-ID lookup within the named provider
@@ -59,7 +60,8 @@ final class URLSchemeHandler {
     self.localProvider = localProvider
   }
 
-  /// Handles the given URL, selecting the resolved task and starting a focus session if idle.
+  /// Handles the given URL, selecting the resolved task and starting a focus session if
+  /// the engine is idle and auto-start is enabled.
   func handle(_ url: URL) async {
     guard url.scheme?.lowercased() == "taskmato",
       url.host?.lowercased() == "start",
@@ -70,7 +72,9 @@ final class URLSchemeHandler {
     guard let task = await resolve(params: params) else { return }
 
     selectionStore.select(task)
-    if case .idle = engine.state {
+    NotificationCenter.default.post(name: .openMainWindow, object: nil)
+    NotificationCenter.default.post(name: .showTimerTab, object: nil)
+    if case .idle = engine.state, settings.autoStartNextPhase {
       engine.focusDuration = settings.focusDuration
       engine.shortBreakDuration = settings.shortBreakDuration
       engine.longBreakDuration = settings.longBreakDuration

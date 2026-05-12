@@ -107,6 +107,10 @@ struct TimerView: View {
       .padding(.vertical, 10)
     }
     .frame(width: 280)
+    .onReceive(NotificationCenter.default.publisher(for: .openMainWindow)) { _ in
+      NSApp.activate(ignoringOtherApps: true)
+      openWindow(id: "main")
+    }
   }
 
   // MARK: - Controls
@@ -119,6 +123,8 @@ struct TimerView: View {
         ControlButton(label: "Resume", icon: "play.fill") { engine.resume() }
       } else {
         ControlButton(label: "Start", icon: "play.fill") { startSession() }
+          .disabled(selectionStore.activeTask == nil)
+          .help(selectionStore.activeTask == nil ? "Select a task before starting" : "")
       }
 
       ControlButton(label: "Skip", icon: "forward.fill") { skipPhase() }

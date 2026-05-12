@@ -47,6 +47,9 @@ struct MainWindowView: View {
       }
     }
     .frame(minWidth: 480, minHeight: 400)
+    .onReceive(NotificationCenter.default.publisher(for: .showTimerTab)) { _ in
+      selectedTab = 0
+    }
     .onReceive(NotificationCenter.default.publisher(for: .showTasksTab)) { _ in
       selectedTab = 1
     }
