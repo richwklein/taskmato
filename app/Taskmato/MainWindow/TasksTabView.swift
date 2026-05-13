@@ -24,6 +24,7 @@ struct TasksTabView: View {
   @State private var expandedProviders: [String: Bool] = [:]
   @State private var isAddingTask = false
   @State private var isViewingCompleted = false
+  @AppStorage("tasksViewMode") private var viewMode: TaskViewMode = .list
 
   /// The local provider instance looked up from the registry, if registered.
   private var localProvider: LocalProvider? {
@@ -67,8 +68,10 @@ struct TasksTabView: View {
               : "No tasks match \"\(query)\"."
           )
         )
-      } else {
+      } else if viewMode == .list {
         taskList
+      } else {
+        taskGrid
       }
     }
     .searchable(text: $query, prompt: "Search tasks")
@@ -109,6 +112,14 @@ struct TasksTabView: View {
           .help("View completed tasks")
         }
       }
+      ToolbarItem(placement: .automatic) {
+        Picker("View", selection: $viewMode) {
+          Image(systemName: "list.bullet").tag(TaskViewMode.list)
+          Image(systemName: "square.grid.2x2").tag(TaskViewMode.grid)
+        }
+        .pickerStyle(.segmented)
+        .help("Switch between list and grid view")
+      }
     }
   }
 
@@ -129,6 +140,56 @@ struct TasksTabView: View {
       } else {
         ForEach(providerGroups.first?.lists ?? []) { group in
           listDisclosureGroup(for: group)
+        }
+      }
+    }
+  }
+
+  private var taskGrid: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 16) {
+        if enabledProviderCount > 1 {
+          ForEach(providerGroups) { provider in
+            Text(provider.displayName)
+              .font(.subheadline)
+              .fontWeight(.semibold)
+              .foregroundStyle(.secondary)
+            ForEach(provider.lists) { group in
+              gridListGroup(for: group)
+            }
+          }
+        } else {
+          ForEach(providerGroups.first?.lists ?? []) { group in
+            gridListGroup(for: group)
+          }
+        }
+      }
+      .padding()
+    }
+  }
+
+  @ViewBuilder
+  private func gridListGroup(for group: TaskGroup) -> some View {
+    Text(group.listName)
+      .font(.caption2)
+      .foregroundStyle(.secondary)
+      .textCase(.uppercase)
+    ForEach(group.sections) { section in
+      if let sectionName = section.name {
+        Text(sectionName)
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .italic()
+      }
+      LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 8) {
+        ForEach(section.tasks) { task in
+          TaskCardView(
+            task: task,
+            onComplete: registry.mutableProvider(for: task.id) != nil
+              ? { handleComplete(task) }
+              : nil
+          )
+          .onTapGesture { select(task) }
         }
       }
     }
@@ -184,11 +245,7 @@ struct TasksTabView: View {
   }
 
   private func providerIcon(for providerID: String) -> String {
-    switch providerID {
-    case "local": return "folder"
-    case "obsidian": return "note.text"
-    default: return "server.rack"
-    }
+    ["local": "folder", "obsidian": "note.text"][providerID] ?? "server.rack"
   }
 
   /// A non-interactive visual separator row showing the section heading.
@@ -319,6 +376,12 @@ private struct TaskSection: Identifiable {
   let id: String
   let name: String?
   let tasks: [TaskItem]
+}
+
+/// The display mode for the task picker — list rows or an adaptive card grid.
+private enum TaskViewMode: String {
+  case list
+  case grid
 }
 
 #Preview {
