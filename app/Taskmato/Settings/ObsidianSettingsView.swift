@@ -15,8 +15,10 @@ import SwiftUI
 struct ObsidianSettingsView: View {
 
   var provider: ObsidianProvider
+  var scopeStore: TaskListScopeStore?
 
   @State private var patternText: String = ""
+  @State private var vaultLists: [TaskList] = []
   @FocusState private var isPatternFocused: Bool
 
   var body: some View {
@@ -49,10 +51,40 @@ struct ObsidianSettingsView: View {
 
         Button("Select Vault…", action: selectVault)
       }
+
+      scopeSection
     }
     .onAppear { patternText = provider.filePatterns.joined(separator: ", ") }
     .onChange(of: provider.vaultURL) { _, _ in
       patternText = provider.filePatterns.joined(separator: ", ")
+      vaultLists = []
+    }
+    .task(id: provider.vaultURL) {
+      guard provider.isConfigured else { return }
+      vaultLists = (try? await provider.lists()) ?? []
+    }
+  }
+
+  @ViewBuilder
+  private var scopeSection: some View {
+    if let scopeStore, !vaultLists.isEmpty {
+      Divider()
+      Text("Visible Files")
+        .font(.subheadline)
+        .fontWeight(.semibold)
+      ForEach(vaultLists) { list in
+        Toggle(
+          list.name,
+          isOn: Binding(
+            get: {
+              scopeStore.isListEnabled(list.id, for: ObsidianProvider.providerID)
+            },
+            set: { _ in
+              scopeStore.toggleList(list.id, for: ObsidianProvider.providerID)
+            }
+          )
+        )
+      }
     }
   }
 
