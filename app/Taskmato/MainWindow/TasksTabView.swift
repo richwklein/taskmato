@@ -23,6 +23,7 @@ struct TasksTabView: View {
   @State private var expandedGroups: [String: Bool] = [:]
   @State private var expandedProviders: [String: Bool] = [:]
   @State private var isAddingTask = false
+  @State private var isViewingCompleted = false
 
   /// The local provider instance looked up from the registry, if registered.
   private var localProvider: LocalProvider? {
@@ -36,6 +37,13 @@ struct TasksTabView: View {
 
   private var enabledProviderCount: Int {
     registry.providers.filter { registry.isEnabled($0.id) }.count
+  }
+
+  /// `true` when at least one enabled provider supports task mutation.
+  private var hasMutableProvider: Bool {
+    registry.providers.contains { provider in
+      (provider as? any MutableTaskProvider) != nil && registry.isEnabled(provider.id)
+    }
   }
 
   var body: some View {
@@ -74,6 +82,12 @@ struct TasksTabView: View {
         AddTaskView(provider: provider, isPresented: $isAddingTask)
       }
     }
+    .sheet(isPresented: $isViewingCompleted) {
+      CompletedTasksView(registry: registry, isPresented: $isViewingCompleted)
+    }
+    .onChange(of: isViewingCompleted) { _, showing in
+      if !showing { Task { await loadTasks() } }
+    }
     .toolbar {
       if localProviderEnabled && enabledProviderCount <= 1 {
         ToolbarItem(placement: .automatic) {
@@ -83,6 +97,16 @@ struct TasksTabView: View {
             Label("Add Task", systemImage: "plus")
           }
           .help("Add a local task")
+        }
+      }
+      if hasMutableProvider {
+        ToolbarItem(placement: .automatic) {
+          Button {
+            isViewingCompleted = true
+          } label: {
+            Label("Completed", systemImage: "clock.badge.checkmark")
+          }
+          .help("View completed tasks")
         }
       }
     }
