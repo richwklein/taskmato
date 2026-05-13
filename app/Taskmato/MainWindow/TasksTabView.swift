@@ -24,6 +24,7 @@ struct TasksTabView: View {
   @State private var expandedProviders: [String: Bool] = [:]
   @State private var isAddingTask = false
   @State private var isViewingCompleted = false
+  @State private var isManagingLists = false
   @AppStorage("tasksViewMode") private var viewMode: TaskViewMode = .list
 
   /// The local provider instance looked up from the registry, if registered.
@@ -91,6 +92,25 @@ struct TasksTabView: View {
     .onChange(of: isViewingCompleted) { _, showing in
       if !showing { Task { await loadTasks() } }
     }
+    .sheet(isPresented: $isManagingLists) {
+      if let provider = localProvider {
+        NavigationStack {
+          Form {
+            LocalSettingsView(provider: provider, scopeStore: registry.scopeStore)
+          }
+          .navigationTitle("Manage Lists")
+          .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Done") { isManagingLists = false }
+            }
+          }
+        }
+        .frame(minWidth: 320, minHeight: 240)
+      }
+    }
+    .onChange(of: isManagingLists) { _, managing in
+      if !managing { Task { await loadTasks() } }
+    }
     .toolbar {
       if localProviderEnabled && enabledProviderCount <= 1 {
         ToolbarItem(placement: .automatic) {
@@ -100,6 +120,14 @@ struct TasksTabView: View {
             Label("Add Task", systemImage: "plus")
           }
           .help("Add a local task")
+        }
+        ToolbarItem(placement: .automatic) {
+          Button {
+            isManagingLists = true
+          } label: {
+            Label("Lists", systemImage: "list.bullet.rectangle")
+          }
+          .help("Manage local lists")
         }
       }
       if hasMutableProvider {
@@ -230,6 +258,13 @@ struct TasksTabView: View {
           .fontWeight(.semibold)
         Spacer()
         Button {
+          isManagingLists = true
+        } label: {
+          Image(systemName: "list.bullet.rectangle")
+        }
+        .buttonStyle(.plain)
+        .help("Manage lists")
+        Button {
           isAddingTask = true
         } label: {
           Image(systemName: "plus.circle")
@@ -300,9 +335,12 @@ struct TasksTabView: View {
     }
   }
 
-  // MARK: - Grouping
+}
 
-  private func buildGroups(from tasks: [TaskItem]) -> [ProviderGroup] {
+// MARK: - Grouping helpers
+
+extension TasksTabView {
+  fileprivate func buildGroups(from tasks: [TaskItem]) -> [ProviderGroup] {
     var providerOrder: [String] = []
     var byProvider: [String: [TaskItem]] = [:]
 
@@ -319,7 +357,7 @@ struct TasksTabView: View {
     }
   }
 
-  private func buildListGroups(from tasks: [TaskItem]) -> [TaskGroup] {
+  fileprivate func buildListGroups(from tasks: [TaskItem]) -> [TaskGroup] {
     var ordered: [String] = []
     var byKey: [String: [TaskItem]] = [:]
 
@@ -335,7 +373,7 @@ struct TasksTabView: View {
     }
   }
 
-  private func buildSections(from tasks: [TaskItem]) -> [TaskSection] {
+  fileprivate func buildSections(from tasks: [TaskItem]) -> [TaskSection] {
     var ordered: [String?] = []
     var bySection: [String?: [TaskItem]] = [:]
 
