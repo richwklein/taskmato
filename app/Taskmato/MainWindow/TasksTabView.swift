@@ -27,6 +27,8 @@ struct TasksTabView: View {
   @State private var isManagingLists = false
   @AppStorage("tasksViewMode") private var viewMode: TaskViewMode = .list
 
+  @Environment(\.openSettings) private var openSettings
+
   /// The local provider instance looked up from the registry, if registered.
   private var localProvider: LocalProvider? {
     registry.providers.first(where: { $0 is LocalProvider }) as? LocalProvider
@@ -147,6 +149,14 @@ struct TasksTabView: View {
         }
         .pickerStyle(.segmented)
         .help("Switch between list and grid view")
+      }
+      ToolbarItem(placement: .automatic) {
+        Button {
+          openSettings()
+        } label: {
+          Label("Settings", systemImage: "gearshape")
+        }
+        .help("Open Settings (⌘,)")
       }
     }
   }
