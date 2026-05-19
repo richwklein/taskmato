@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this for a new feature or a meaningful enhancement to the site or workflow.
+        Use this for a new feature or a meaningful enhancement.
 
   - type: textarea
     id: problem

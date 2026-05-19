@@ -1,4 +1,13 @@
 {
-  "recommendations": ["swiftlang.swift-vscode", "sweetpad.sweetpad", "vadimcn.vscode-lldb", "streetsidesoftware.code-spell-checker", "ms-vscode.makefile-tools"],
+  "recommendations": [
+    "editorconfig.editorconfig",
+    "davidanson.vscode-markdownlint",
+    "github.vscode-github-actions",
+    "streetsidesoftware.code-spell-checker",
+    "swiftlang.swift-vscode",
+    "sweetpad.sweetpad",
+    "vadimcn.vscode-lldb",
+    "ms-vscode.makefile-tools"
+  ],
   "unwantedRecommendations": []
 }

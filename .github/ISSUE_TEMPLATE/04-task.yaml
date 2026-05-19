@@ -40,8 +40,8 @@ body:
     id: scope
     attributes:
       label: Scope
-      description: What parts of the repo, site, process, or content are affected?
-      placeholder: e.g. tests, sitemap, docs, image pipeline, CI
+      description: What parts of the repo, process, or content are affected?
+      placeholder: e.g. tests, docs, image pipeline, CI
     validations:
       required: false
 
