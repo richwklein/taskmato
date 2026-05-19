@@ -13,8 +13,8 @@ import SwiftUI
 /// The provider is read-write: `complete(_:)` rewrites the task line from `- [ ]` to `- [x]`
 /// in place; `reopen(_:)` reverses the operation.
 ///
-/// - Note: `observe()` watches the vault root directory via `DispatchSource`. Changes to
-///   files inside subdirectories are not detected until a future update uses `FSEventStreamCreate`.
+/// `observe()` uses FSEvents to watch the entire vault tree recursively; any file change
+/// anywhere in the vault triggers a reload after a short coalescing window.
 @Observable
 @MainActor
 final class ObsidianProvider: MutableTaskProvider {
@@ -40,9 +40,9 @@ final class ObsidianProvider: MutableTaskProvider {
 
   private let defaults: UserDefaults
   private let parser = ObsidianTaskParser()
+  private let resolver = ObsidianGlobResolver()
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
-  private var fsEventSource: DispatchSourceFileSystemObject?
-  private var vaultFD: Int32 = -1
+  private var fsEventStream: FSEventStream?
 
   private static let bookmarkKey = "obsidian.vaultBookmark"
   private static let patternsKey = "obsidian.filePatterns"
@@ -65,7 +65,7 @@ final class ObsidianProvider: MutableTaskProvider {
   /// The list name is the file's H1 heading if present, otherwise the filename without extension.
   func lists() async throws -> [TaskList] {
     guard let vaultURL else { return [] }
-    let patterns = filePatterns
+    let patterns = filePatterns.map { resolver.resolve($0) }
     return try await Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else { return [] }
       return try self.withVaultAccess(vaultURL) { url in
@@ -90,7 +90,7 @@ final class ObsidianProvider: MutableTaskProvider {
   /// Returns incomplete tasks from all matching files, or from a single file if `list` is provided.
   func tasks(in list: TaskList?) async throws -> [TaskItem] {
     guard let vaultURL else { return [] }
-    let patterns = filePatterns
+    let patterns = filePatterns.map { resolver.resolve($0) }
     return try await Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else { return [] }
       return try self.withVaultAccess(vaultURL) { url in
@@ -122,9 +122,9 @@ final class ObsidianProvider: MutableTaskProvider {
     }.value
   }
 
-  /// Returns a live stream that emits updated task arrays whenever the vault root directory changes.
+  /// Returns a live stream that emits updated task arrays whenever any file in the vault changes.
   ///
-  /// Changes inside subdirectories are not detected (watches vault root only).
+  /// Uses FSEvents to watch the vault tree recursively. Returns `nil` if no vault is configured.
   func observe() -> AsyncStream<[TaskItem]>? {
     guard let vaultURL else { return nil }
     let (stream, continuation) = AsyncStream<[TaskItem]>.makeStream()
@@ -147,6 +147,34 @@ final class ObsidianProvider: MutableTaskProvider {
   /// Rewrites the task line from `- [x]` to `- [ ]` in the vault file.
   func reopen(_ ref: TaskRef) async throws {
     try await rewrite(ref: ref, from: "- [x] ", to: "- [ ] ", fallbackFrom: "- [X] ")
+  }
+
+  /// Returns all completed (`- [x]`) tasks across the vault, in source file and line order.
+  func completedTasks() async throws -> [TaskItem] {
+    guard let vaultURL else { return [] }
+    let patterns = filePatterns.map { resolver.resolve($0) }
+    return try await Task.detached(priority: .userInitiated) { [weak self] in
+      guard let self else { return [] }
+      return try self.withVaultAccess(vaultURL) { url in
+        self.scanMarkdownFiles(in: url, patterns: patterns).flatMap { fileURL -> [TaskItem] in
+          let relPath = self.relativePath(for: fileURL, relativeTo: url)
+          let vaultName = url.lastPathComponent
+          let content = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+          let taskList = TaskList(
+            id: relPath,
+            providerID: Self.providerID,
+            name: fileURL.deletingPathExtension().lastPathComponent
+          )
+          return self.parser.parse(
+            content: content,
+            providerID: Self.providerID,
+            fileRelativePath: relPath,
+            vaultName: vaultName,
+            list: taskList
+          ).completedItems
+        }
+      }
+    }.value
   }
 
   // MARK: - Vault bookmark management
@@ -297,32 +325,18 @@ final class ObsidianProvider: MutableTaskProvider {
     vaultURL: URL,
     continuation: AsyncStream<[TaskItem]>.Continuation
   ) {
-    let fileDescriptor = open(vaultURL.path, O_EVTONLY)
-    guard fileDescriptor >= 0 else { return }
-    vaultFD = fileDescriptor
-
-    let source = DispatchSource.makeFileSystemObjectSource(
-      fileDescriptor: fileDescriptor,
-      eventMask: [.write, .rename, .delete, .link],
-      queue: .global(qos: .utility)
-    )
-    source.setEventHandler { [weak self] in
+    fsEventStream = FSEventStream(path: vaultURL.path) { [weak self] in
       Task { @MainActor [weak self] in
-        guard let self, let vaultURL = self.vaultURL else { return }
-        try? await Task.sleep(for: .milliseconds(250))
+        guard let self else { return }
         let updated = (try? await self.tasks(in: nil)) ?? []
-        _ = vaultURL  // keep vaultURL alive across the sleep
         continuation.yield(updated)
       }
     }
-    source.setCancelHandler { close(fileDescriptor) }
-    source.resume()
-    fsEventSource = source
   }
 
   private func stopWatching() {
-    fsEventSource?.cancel()
-    fsEventSource = nil
+    fsEventStream?.invalidate()
+    fsEventStream = nil
     streamContinuation?.finish()
     streamContinuation = nil
   }

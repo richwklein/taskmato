@@ -31,19 +31,6 @@ struct TimerView: View {
         Button {
           let popover = NSApp.keyWindow
           NSApp.activate(ignoringOtherApps: true)
-          openSettings()
-          DispatchQueue.main.async { popover?.close() }
-        } label: {
-          Image(systemName: "gearshape")
-            .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
-
-        Spacer()
-
-        Button {
-          let popover = NSApp.keyWindow
-          NSApp.activate(ignoringOtherApps: true)
           openWindow(id: "main")
           DispatchQueue.main.async { popover?.close() }
         } label: {
@@ -52,6 +39,20 @@ struct TimerView: View {
         }
         .buttonStyle(.plain)
         .help("Open \(Bundle.main.appName)")
+
+        Spacer()
+
+        Button {
+          let popover = NSApp.keyWindow
+          NSApp.activate(ignoringOtherApps: true)
+          openSettings()
+          DispatchQueue.main.async { popover?.close() }
+        } label: {
+          Image(systemName: "gearshape")
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .help("Open Settings")
       }
       .padding(.horizontal, 16)
       .padding(.top, 12)

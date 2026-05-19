@@ -17,6 +17,8 @@ struct ObsidianTaskParser {
   struct ParseResult {
     /// Incomplete tasks found in the file, in source order.
     let items: [TaskItem]
+    /// Completed tasks found in the file, in source order.
+    let completedItems: [TaskItem]
     /// Text of the first H1 heading in the file, if any — used to name the ``TaskList``.
     let listName: String?
   }
@@ -46,6 +48,7 @@ struct ObsidianTaskParser {
       list: list
     )
     var items: [TaskItem] = []
+    var completedItems: [TaskItem] = []
     var listName: String?
 
     // Mutable parse state
@@ -53,6 +56,7 @@ struct ObsidianTaskParser {
     var pendingLine: Int?
     var pendingRaw: String?
     var pendingSection: String?
+    var pendingIsCompleted: Bool = false
     var notesBuffer: [String] = []
 
     func finalizeTask() {
@@ -66,16 +70,14 @@ struct ObsidianTaskParser {
         notes: notes.isEmpty ? nil : notes,
         context: context
       )
-      items.append(item)
-      pendingLine = nil
-      pendingRaw = nil
-      pendingSection = nil
-      notesBuffer = []
+      if pendingIsCompleted { completedItems.append(item) } else { items.append(item) }
+      (pendingLine, pendingRaw, pendingSection, pendingIsCompleted, notesBuffer) = (
+        nil, nil, nil, false, []
+      )
     }
 
     for (zeroIndex, line) in lines.enumerated() {
       let lineNumber = zeroIndex + 1
-
       if let headingText = h1(line) {
         finalizeTask()
         if listName == nil { listName = headingText }
@@ -84,12 +86,12 @@ struct ObsidianTaskParser {
         currentSection = headingText
       } else if isIncompleteTask(line) {
         finalizeTask()
-        pendingLine = lineNumber
-        pendingRaw = line
-        pendingSection = currentSection
+        (pendingLine, pendingRaw, pendingSection) = (lineNumber, line, currentSection)
       } else if isCompletedTask(line) {
         finalizeTask()
-        // completed tasks are discarded
+        (pendingLine, pendingRaw, pendingSection, pendingIsCompleted) = (
+          lineNumber, line, currentSection, true
+        )
       } else if pendingLine != nil, isIndented(line) {
         notesBuffer.append(stripIndent(line))
       } else if !line.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -99,7 +101,7 @@ struct ObsidianTaskParser {
 
     finalizeTask()
 
-    return ParseResult(items: items, listName: listName)
+    return ParseResult(items: items, completedItems: completedItems, listName: listName)
   }
 
   // MARK: - Line classification
@@ -155,7 +157,7 @@ struct ObsidianTaskParser {
     notes: String?,
     context: FileContext
   ) -> TaskItem {
-    var text = String(rawLine.dropFirst(6))  // strip "- [ ] "
+    var text = String(rawLine.dropFirst(6))  // strip "- [ ] " or "- [x] " (both 6 chars)
 
     let priority = extractPriority(from: &text)
     let dueDate = extractDate(emoji: "📅", from: &text)

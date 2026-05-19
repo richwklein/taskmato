@@ -17,7 +17,6 @@ struct MainWindowView: View {
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
 
-  @Environment(\.openSettings) private var openSettings
   @State private var selectedTab: Int = 0
 
   var body: some View {
@@ -55,16 +54,6 @@ struct MainWindowView: View {
     }
     .onReceive(NotificationCenter.default.publisher(for: .showStatsTab)) { _ in
       selectedTab = 2
-    }
-    .toolbar {
-      ToolbarItem(placement: .automatic) {
-        Button {
-          openSettings()
-        } label: {
-          Label("Settings", systemImage: "gearshape")
-        }
-        .help("Open Settings (⌘,)")
-      }
     }
   }
 }

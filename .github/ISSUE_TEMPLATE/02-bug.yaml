@@ -51,7 +51,7 @@ body:
   - type: textarea
     id: scope
     attributes:
-      label: Affected page(s) or area
+      label: Affected area
       description: What page, route, component, workflow, or content is affected?
       placeholder: e.g. homepage, article page, sitemap generation, RSS feed
     validations:
@@ -61,7 +61,7 @@ body:
     id: evidence
     attributes:
       label: Evidence
-      description: Include screenshots, links, logs, Lighthouse output, browser details, or anything else useful.
+      description: Include screenshots, links, logs, browser details, or anything else useful.
       placeholder: Paste relevant context here.
       render: shell
     validations:

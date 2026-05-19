@@ -14,6 +14,7 @@ import SwiftUI
 struct LocalSettingsView: View {
 
   var provider: LocalProvider
+  var scopeStore: TaskListScopeStore?
 
   @State private var newListName = ""
   @State private var pendingNames: [UUID: String] = [:]
@@ -31,6 +32,22 @@ struct LocalSettingsView: View {
           .onSubmit { addList() }
         Button("Add") { addList() }
           .disabled(newListName.trimmingCharacters(in: .whitespaces).isEmpty)
+      }
+
+      if let scopeStore, provider.taskLists.count > 1 {
+        Divider()
+        Text("Visible Lists")
+          .font(.subheadline)
+          .fontWeight(.semibold)
+        ForEach(provider.taskLists) { list in
+          Toggle(
+            list.name,
+            isOn: Binding(
+              get: { scopeStore.isListEnabled(list.id.uuidString, for: LocalProvider.providerID) },
+              set: { _ in scopeStore.toggleList(list.id.uuidString, for: LocalProvider.providerID) }
+            )
+          )
+        }
       }
     }
   }

@@ -19,15 +19,21 @@ _Put an `x` in the boxes that apply._
 ## Details
 
 Call out the important implementation details, tradeoffs, or areas reviewers should focus on.
-Include screenshots or a short recording for visible UI changes.
+
+## Release / deploy impact
+
+_Put an `x` in the boxes that apply._
+
+- [ ] Preview deploy is useful for reviewing this change
+- [ ] Safe to label `no-deploy`
+- [ ] This PR intentionally updates the version
 
 ## Validation
 
 _Put an `x` in the boxes that apply._
 
-- [ ] Built the app locally
+- [ ] Lint passes locally
 - [ ] Unit tests pass locally
-- [ ] UI tests pass locally, if applicable
 - [ ] Added or updated tests where appropriate
 - [ ] Manually verified changes
 - [ ] Documentation updated where appropriate

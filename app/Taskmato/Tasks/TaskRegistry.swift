@@ -23,12 +23,16 @@ final class TaskRegistry {
   /// IDs of providers currently enabled by the user.
   private(set) var enabledIDs: Set<String>
 
+  /// Per-provider list visibility filter applied during task fetches.
+  let scopeStore: TaskListScopeStore
+
   private let defaults: UserDefaults
   private static let defaultsKey = "taskRegistry.enabledProviderIDs"
 
   /// - Parameter defaults: `UserDefaults` store for enabled-state persistence. Override in tests.
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
+    self.scopeStore = TaskListScopeStore(defaults: defaults)
     let stored = defaults.stringArray(forKey: Self.defaultsKey) ?? []
     self.enabledIDs = Set(stored)
   }
@@ -97,6 +101,10 @@ final class TaskRegistry {
           providerErrors.append(fetchError)
         }
       }
+    }
+
+    merged = merged.filter { item in
+      scopeStore.isListEnabled(item.list?.id ?? "", for: item.id.providerID)
     }
 
     if !query.isEmpty {
