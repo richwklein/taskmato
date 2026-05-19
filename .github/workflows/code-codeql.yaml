@@ -16,19 +16,22 @@ permissions:
 jobs:
   analyze:
     name: analyze
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        # Override the matrix per-repo. 'actions' analyzes the workflow files
-        # themselves and is always safe. Add languages this repo actually contains:
-        #   actions, javascript-typescript, python, swift, ruby, go, java-kotlin, csharp, c-cpp
-        # Note: each matrix value registers its own status check (e.g. `analyze (actions)`).
-        # Update branch protection rulesets to match the values you list here.
-        language: ['actions', 'swift']
+        include:
+          - language: actions
+            runner: ubuntu-latest
+          - language: swift
+            runner: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Select Xcode
+        if: matrix.language == 'swift'
+        run: sudo xcode-select -s /Applications/Xcode_16.3.app
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4.35.4
