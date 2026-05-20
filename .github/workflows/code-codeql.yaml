@@ -38,6 +38,18 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
+      - name: Build Swift project (for CodeQL extraction)
+        if: matrix.language == 'swift'
+        run: |
+          xcodebuild build \
+            -project app/Taskmato.xcodeproj \
+            -scheme Taskmato \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4.35.4
         with:
