@@ -239,7 +239,9 @@ Stop and ask for guidance if:
 
 ## Drift audit
 
-Run `/repo-template-audit` from this repo's directory to check that template-tracked files and GitHub repo settings still match the canonical sources in `richwklein/repo-template-base`.
+Install the audit skill: `npx skills add richwklein/skills`
+
+Run `/repo-template-audit richwklein/repo-template-base` to check that template-tracked files and GitHub repo settings still match the template.
 
 ## Tone & Collaboration
 
