@@ -18,6 +18,9 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.3.app
 
+      - name: Sync version
+        run: bash scripts/sync-version.sh
+
       - name: Build
         run: |
           xcodebuild build \

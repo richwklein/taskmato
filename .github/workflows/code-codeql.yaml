@@ -38,6 +38,10 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
+      - name: Sync version
+        if: matrix.language == 'swift'
+        run: bash scripts/sync-version.sh
+
       - name: Build Swift project (for CodeQL extraction)
         if: matrix.language == 'swift'
         run: |
