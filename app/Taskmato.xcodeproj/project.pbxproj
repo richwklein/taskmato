@@ -27,6 +27,7 @@
 		79ED8D092FA62D8300554240 /* Taskmato.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Taskmato.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		79ED8D162FA62D8400554240 /* TaskmatoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TaskmatoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		79ED8D202FA62D8400554240 /* TaskmatoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TaskmatoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		79ED8D332FA62D8500554240 /* Version.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Version.xcconfig; path = Taskmato/Config/Version.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -79,6 +80,7 @@
 				79ED8D192FA62D8400554240 /* TaskmatoTests */,
 				79ED8D232FA62D8400554240 /* TaskmatoUITests */,
 				79ED8D0A2FA62D8300554240 /* Products */,
+				79ED8D332FA62D8500554240 /* Version.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -391,12 +393,12 @@
 		};
 		79ED8D2B2FA62D8400554240 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 79ED8D332FA62D8500554240 /* Version.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 43757RE978;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -417,7 +419,6 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.richwklein.Taskmato;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -432,12 +433,12 @@
 		};
 		79ED8D2C2FA62D8400554240 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 79ED8D332FA62D8500554240 /* Version.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 43757RE978;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -458,7 +459,6 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.richwklein.Taskmato;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

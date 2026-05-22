@@ -7,12 +7,15 @@ SIGN_FLAGS  = CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=YES CODE_SIGNING_ALLO
 
 SOURCE_DIRS = app/Taskmato app/TaskmatoTests app/TaskmatoUITests
 
-.PHONY: help build test lint format clean
+.PHONY: help sync-version build test lint format clean
 
 help: ## List the available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build the app in Debug configuration
+sync-version: ## Sync version.txt into app/Taskmato/Config/Version.xcconfig
+	bash scripts/sync-version.sh
+
+build: sync-version ## Build the app in Debug configuration
 	xcodebuild build \
 		-project $(PROJECT) \
 		-scheme $(SCHEME) \
