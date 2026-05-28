@@ -10,6 +10,7 @@
       "bump-minor-pre-major": false,
       "draft": false,
       "prerelease": true,
+      "prerelease-type": "alpha",
       "extra-files": ["version.txt"]
     }
   }
