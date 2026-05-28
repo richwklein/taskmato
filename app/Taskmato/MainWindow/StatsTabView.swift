@@ -15,6 +15,7 @@ struct StatsTabView: View {
   var store: SessionStore
 
   @State private var scope: StatScope = .today
+  @Environment(\.openSettings) private var openSettings
 
   var body: some View {
     VStack(spacing: 0) {
@@ -37,6 +38,16 @@ struct StatsTabView: View {
           }
           .padding()
         }
+      }
+    }
+    .toolbar {
+      ToolbarItem(placement: .automatic) {
+        Button {
+          openSettings()
+        } label: {
+          Label("Settings", systemImage: "gearshape")
+        }
+        .help("Open Settings (⌘,)")
       }
     }
   }

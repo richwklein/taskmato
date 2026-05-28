@@ -5,20 +5,24 @@
 
 import SwiftUI
 
-/// The task picker tab, showing tasks grouped by list and section with live search.
+/// The task picker tab, showing tasks grouped into sections with live search.
 ///
 /// Selecting a task sets it as the active task and switches to the Timer tab.
-/// Each list group is collapsible via a `DisclosureGroup` with a document icon.
+/// Section headers are formatted as "List: Section" when multiple lists are active,
+/// or just "Section" when only one list is active. Supports toggling between a list
+/// and an adaptive card grid layout.
 struct TasksTabView: View {
 
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
   @Binding var selectedTab: Int
+  @Bindable var settings: AppSettings
+
+  @Environment(\.openSettings) private var openSettings
 
   @State private var query: String = ""
   @State private var groupedLists: [TaskGroup] = []
   @State private var isLoading: Bool = false
-  @State private var expandedGroups: [String: Bool] = [:]
   @State private var isAddingTask = false
 
   /// The local provider instance looked up from the registry, if registered.
@@ -29,6 +33,29 @@ struct TasksTabView: View {
   /// `true` when the local provider is registered and currently enabled.
   private var localProviderEnabled: Bool {
     localProvider.map { registry.isEnabled($0.id) } ?? false
+  }
+
+  /// Flat display sections derived from `groupedLists`.
+  ///
+  /// Header labels collapse list and section names following these rules:
+  /// - Multiple lists + has section → "List: Section"
+  /// - Multiple lists + no section → "List"
+  /// - Single list + has section → "Section"
+  /// - Single list + no section → "List"
+  private var flatSections: [FlatSection] {
+    let multipleGroups = groupedLists.count > 1
+    return groupedLists.flatMap { group in
+      group.sections.map { section in
+        let header: String
+        switch (multipleGroups, section.name) {
+        case (true, let name?): header = "\(group.listName): \(name)"
+        case (true, nil): header = group.listName
+        case (false, let name?): header = name
+        case (false, nil): header = group.listName
+        }
+        return FlatSection(id: "\(group.id).\(section.id)", header: header, tasks: section.tasks)
+      }
+    }
   }
 
   var body: some View {
@@ -52,6 +79,8 @@ struct TasksTabView: View {
               : "No tasks match \"\(query)\"."
           )
         )
+      } else if settings.taskPickerLayout == .grid {
+        taskGrid
       } else {
         taskList
       }
@@ -78,33 +107,44 @@ struct TasksTabView: View {
           .help("Add a local task")
         }
       }
+
+      ToolbarItem(placement: .automatic) {
+        Picker("Layout", selection: $settings.taskPickerLayout) {
+          Label("List", systemImage: "list.bullet").tag(TaskPickerLayout.list)
+          Label("Grid", systemImage: "square.grid.2x2").tag(TaskPickerLayout.grid)
+        }
+        .pickerStyle(.segmented)
+        .help("Toggle between list and grid view")
+      }
+
+      ToolbarItem(placement: .automatic) {
+        Button {
+          openSettings()
+        } label: {
+          Label("Settings", systemImage: "gearshape")
+        }
+        .help("Open Settings (⌘,)")
+      }
     }
   }
 
-  // MARK: - Task list
+  // MARK: - List layout
 
   private var taskList: some View {
     List {
-      ForEach(groupedLists) { group in
-        DisclosureGroup(
-          isExpanded: groupExpansion(for: group.id)
-        ) {
-          ForEach(group.sections) { section in
-            if let sectionName = section.name {
-              sectionSeparator(sectionName)
-            }
-            ForEach(section.tasks) { task in
-              TaskRowView(
-                task: task,
-                onComplete: registry.mutableProvider(for: task.id) != nil
-                  ? { handleComplete(task) }
-                  : nil
-              )
-              .onTapGesture { select(task) }
-            }
+      ForEach(flatSections) { section in
+        Section {
+          ForEach(section.tasks) { task in
+            TaskRowView(
+              task: task,
+              onComplete: registry.mutableProvider(for: task.id) != nil
+                ? { handleComplete(task) }
+                : nil
+            )
+            .onTapGesture { select(task) }
           }
-        } label: {
-          Label(group.listName, systemImage: "doc.text")
+        } header: {
+          Text(section.header)
             .font(.subheadline)
             .fontWeight(.semibold)
         }
@@ -112,23 +152,35 @@ struct TasksTabView: View {
     }
   }
 
-  /// A non-interactive visual separator row showing the section heading.
-  @ViewBuilder
-  private func sectionSeparator(_ name: String) -> some View {
-    Text(name)
-      .font(.caption2)
-      .foregroundStyle(.secondary)
-      .textCase(.uppercase)
-      .listRowBackground(Color.clear)
-      .padding(.top, 4)
-  }
+  // MARK: - Grid layout
 
-  /// Returns a stable ``Binding`` for the expanded state of the given group.
-  private func groupExpansion(for id: String) -> Binding<Bool> {
-    Binding(
-      get: { expandedGroups[id] ?? true },
-      set: { expandedGroups[id] = $0 }
-    )
+  private var taskGrid: some View {
+    let columns = [GridItem(.adaptive(minimum: 180), spacing: 10)]
+    return ScrollView {
+      LazyVGrid(columns: columns, spacing: 10) {
+        ForEach(flatSections) { section in
+          Section {
+            ForEach(section.tasks) { task in
+              TaskCardView(
+                task: task,
+                onComplete: registry.mutableProvider(for: task.id) != nil
+                  ? { handleComplete(task) }
+                  : nil
+              )
+              .onTapGesture { select(task) }
+            }
+          } header: {
+            Text(section.header)
+              .font(.subheadline)
+              .fontWeight(.semibold)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.top, 4)
+              .padding(.bottom, 2)
+          }
+        }
+      }
+      .padding(10)
+    }
   }
 
   // MARK: - Data loading
@@ -211,10 +263,18 @@ private struct TaskSection: Identifiable {
   let tasks: [TaskItem]
 }
 
+/// A flattened display section with a computed header label and its tasks.
+private struct FlatSection: Identifiable {
+  let id: String
+  let header: String
+  let tasks: [TaskItem]
+}
+
 #Preview {
   TasksTabView(
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
-    selectedTab: .constant(1)
+    selectedTab: .constant(1),
+    settings: AppSettings()
   )
 }
