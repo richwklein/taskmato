@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0-alpha.14](https://github.com/richwklein/taskmato/compare/v1.0.0-alpha.14...v1.1.0-alpha.14) (2026-05-28)
+
+
+### Features
+
+* macOS app foundation ([#247](https://github.com/richwklein/taskmato/issues/247)) ([697ec9a](https://github.com/richwklein/taskmato/commit/697ec9ae2e5b84dd6ff3a37bd8ebc6a3ab3ff7c5))
+* **release:** use GitHub App token so release PRs trigger checks ([#310](https://github.com/richwklein/taskmato/issues/310)) ([e2af6e9](https://github.com/richwklein/taskmato/commit/e2af6e9898a5a99455ac02d7c74259768cbafbf8))
+* wire version.txt into Xcode build via xcconfig ([#313](https://github.com/richwklein/taskmato/issues/313)) ([63bd480](https://github.com/richwklein/taskmato/commit/63bd480942b271c6a1c5da9ed9f93faea6177d8c))
+
+
+### Bug Fixes
+
+* **release:** add v prefix to release-please tags ([#314](https://github.com/richwklein/taskmato/issues/314)) ([8e60231](https://github.com/richwklein/taskmato/commit/8e60231fd1ab363741965053630e59fec6ef4cec))
+
 ## [1.0.0-alpha.14](https://github.com/richwklein/taskmato/compare/v1.0.0-alpha.13...v1.0.0-alpha.14) (2025-10-08)
 
 ### Bug Fixes
