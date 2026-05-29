@@ -25,6 +25,9 @@ final class RemindersProvider: MutableTaskProvider {
   private(set) var isAuthorized = false
 
   private let store: any RemindersEventStore
+  private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
+  private var observer: NSObjectProtocol?
+  private var debounceTask: Task<Void, Never>?
 
   /// Production initializer using live EventKit.
   convenience init() {
@@ -89,7 +92,43 @@ final class RemindersProvider: MutableTaskProvider {
   }
 
   func observe() -> AsyncStream<[TaskItem]>? {
-    nil
+    guard isAuthorized else { return nil }
+    let (stream, continuation) = AsyncStream<[TaskItem]>.makeStream()
+    streamContinuation = continuation
+    observer = store.addObserver(
+      forName: .EKEventStoreChanged
+    ) { [weak self] in
+      Task { @MainActor [weak self] in
+        self?.scheduleDebounce()
+      }
+    }
+    continuation.onTermination = { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.stopObserving()
+      }
+    }
+    return stream
+  }
+
+  private func scheduleDebounce() {
+    debounceTask?.cancel()
+    debounceTask = Task { [weak self] in
+      try? await Task.sleep(for: .milliseconds(250))
+      guard !Task.isCancelled, let self else { return }
+      let updated = (try? await self.tasks(in: nil)) ?? []
+      self.streamContinuation?.yield(updated)
+    }
+  }
+
+  private func stopObserving() {
+    debounceTask?.cancel()
+    debounceTask = nil
+    if let observer {
+      store.removeObserver(observer)
+      self.observer = nil
+    }
+    streamContinuation?.finish()
+    streamContinuation = nil
   }
 
   // MARK: - MutableTaskProvider
