@@ -94,6 +94,19 @@ final class RemindersProvider: MutableTaskProvider {
 
   // MARK: - MutableTaskProvider
 
+  func completedTasks() async throws -> [TaskItem] {
+    guard isAuthorized else { return [] }
+    let now = Date()
+    let sevenDaysAgo = Calendar.current.date(
+      byAdding: .day, value: -7, to: now
+    )!
+    let interval = DateInterval(start: sevenDaysAgo, end: now)
+    let reminders = try await store.fetchCompletedReminders(
+      in: nil, within: interval
+    )
+    return reminders.map { mapToTaskItem($0) }
+  }
+
   func complete(_ ref: TaskRef) async throws {
     guard let reminder = store.reminder(withIdentifier: ref.nativeID) else {
       throw RemindersProviderError.reminderNotFound(ref.nativeID)

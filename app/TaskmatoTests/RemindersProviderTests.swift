@@ -12,6 +12,7 @@ import Testing
 // MARK: - Fake store tests
 
 @Suite("RemindersEventStore protocol")
+
 @MainActor
 struct RemindersEventStoreTests {
 
@@ -48,7 +49,6 @@ struct RemindersEventStoreTests {
 }
 
 // MARK: - Authorization tests
-
 @Suite("RemindersProvider — authorization")
 @MainActor
 struct RemindersProviderAuthorizationTests {
@@ -139,7 +139,6 @@ struct RemindersProviderAuthorizationTests {
 }
 
 // MARK: - Lists tests
-
 @Suite("RemindersProvider — lists")
 @MainActor
 struct RemindersProviderListTests {
@@ -195,7 +194,6 @@ struct RemindersProviderListTests {
 }
 
 // MARK: - Tasks tests
-
 @Suite("RemindersProvider — tasks")
 @MainActor
 struct RemindersProviderTaskTests {
@@ -349,7 +347,6 @@ struct RemindersProviderTaskTests {
 }
 
 // MARK: - Mutation tests
-
 @Suite("RemindersProvider — mutations")
 @MainActor
 struct RemindersProviderMutationTests {
@@ -449,5 +446,55 @@ struct RemindersProviderMutationTests {
     await #expect(throws: RemindersProviderError.self) {
       try await provider.reopen(ref)
     }
+  }
+}
+
+// MARK: - completedTasks
+
+@Suite("RemindersProvider — completedTasks")
+@MainActor
+struct RemindersProviderCompletedTasksTests {
+
+  private func makeAuthorizedProvider() async throws -> (
+    provider: RemindersProvider, store: FakeRemindersEventStore
+  ) {
+    let store = FakeRemindersEventStore()
+    store.grantAccess = true
+    let provider = RemindersProvider(store: store)
+    try await provider.authorize()
+    return (provider, store)
+  }
+
+  @Test func completedTasksReturnsEmptyWhenNone() async throws {
+    let (provider, _) = try await makeAuthorizedProvider()
+    let tasks = try await provider.completedTasks()
+    #expect(tasks.isEmpty)
+  }
+
+  @Test func completedTasksReturnsCompletedReminders() async throws {
+    let (provider, store) = try await makeAuthorizedProvider()
+    let cal = store.makeCalendar(title: "Work")
+    store.stubbedCalendars = [cal]
+    store.stubbedReminders = [
+      store.makeReminder(
+        title: "Done Task", isCompleted: true, calendar: cal
+      ),
+      store.makeReminder(
+        title: "Open Task", isCompleted: false, calendar: cal
+      ),
+    ]
+    let tasks = try await provider.completedTasks()
+    #expect(tasks.count == 1)
+    #expect(tasks.first?.title == "Done Task")
+  }
+
+  @Test func completedTasksReturnsEmptyWhenNotAuthorized() async throws {
+    let store = FakeRemindersEventStore()
+    store.stubbedReminders = [
+      store.makeReminder(title: "Done", isCompleted: true)
+    ]
+    let provider = RemindersProvider(store: store)
+    let tasks = try await provider.completedTasks()
+    #expect(tasks.isEmpty)
   }
 }
