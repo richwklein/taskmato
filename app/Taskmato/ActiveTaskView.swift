@@ -148,8 +148,7 @@ struct ActiveTaskView: View {
 
   private func priorityColor(for priority: TaskPriority) -> Color {
     switch priority {
-    case .highest, .high: return .red
-    case .medium: return .orange
+    case .highest, .high, .medium: return .orange
     case .low, .lowest, .none: return .primary
     }
   }

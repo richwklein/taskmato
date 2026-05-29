@@ -23,36 +23,36 @@ struct TaskCardView: View {
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .top, spacing: 6) {
-        if let complete = onComplete {
-          Button(action: complete) {
-            Image(systemName: isHovering ? "checkmark.circle" : "circle")
-              .foregroundStyle(Color.accentColor)
-          }
-          .buttonStyle(.plain)
-          .onHover { isHovering = $0 }
-          .help("Mark done")
+    HStack(alignment: .top, spacing: 6) {
+      if let complete = onComplete {
+        Button(action: complete) {
+          Image(systemName: isHovering ? "checkmark.circle" : "circle")
+            .foregroundStyle(Color.accentColor)
         }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .help("Mark done")
+      }
 
+      VStack(alignment: .leading, spacing: 4) {
         Text(displayTitle)
           .font(.callout)
           .lineLimit(3)
           .frame(maxWidth: .infinity, alignment: .leading)
-      }
 
-      if let due = task.dueDate {
-        Text(due, format: .dateTime.month(.abbreviated).day().year())
-          .font(.caption2)
-          .foregroundStyle(isUrgent(due) ? Color.red : Color.secondary)
-      }
+        if let due = task.dueDate {
+          Text(due, format: .dateTime.month(.abbreviated).day().year())
+            .font(.caption2)
+            .foregroundStyle(isUrgent(due) ? Color.red : Color.secondary)
+        }
 
-      if let notes = task.notes {
-        TaskNoteView(notes: notes, format: task.format)
-          .lineLimit(2)
-      }
+        if let notes = task.notes {
+          TaskNoteView(notes: notes, format: task.format)
+            .lineLimit(2)
+        }
 
-      Spacer(minLength: 0)
+        Spacer(minLength: 0)
+      }
     }
     .padding(10)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -96,8 +96,7 @@ struct TaskCardView: View {
 
   private var priorityColor: Color {
     switch task.priority {
-    case .highest, .high: return .red
-    case .medium: return .orange
+    case .highest, .high, .medium: return .orange
     case .low, .lowest, .none: return .primary
     }
   }

@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import CoreServices
 import Foundation
 import SwiftUI
 
@@ -11,10 +12,11 @@ import SwiftUI
 ///
 /// Vault directory access uses a security-scoped bookmark persisted in ``UserDefaults``.
 /// The provider is read-write: `complete(_:)` rewrites the task line from `- [ ]` to `- [x]`
-/// in place; `reopen(_:)` reverses the operation.
+/// in place; `reopen(_:)` reverses the operation; `completedTasks()` scans the vault for
+/// `- [x]` lines and returns them sorted by their `✅` completion date.
 ///
-/// - Note: `observe()` watches the vault root directory via `DispatchSource`. Changes to
-///   files inside subdirectories are not detected until a future update uses `FSEventStreamCreate`.
+/// - Note: `observe()` watches the vault recursively using `FSEventStreamCreate`. Rapid
+///   change notifications are coalesced by a 250 ms debounce before a rescan is triggered.
 @Observable
 @MainActor
 final class ObsidianProvider: MutableTaskProvider {
@@ -30,6 +32,7 @@ final class ObsidianProvider: MutableTaskProvider {
   private(set) var vaultURL: URL?
 
   /// Glob patterns (relative to vault root) used to select which markdown files are scanned.
+  /// Supports `{year}`, `{YYYY}`, `{month}`, `{MM}`, `{week}`, `{ww}`, `{day}`, `{DD}` tokens.
   private(set) var filePatterns: [String]
 
   /// Human-readable vault name derived from the last path component of `vaultURL`.
@@ -41,8 +44,8 @@ final class ObsidianProvider: MutableTaskProvider {
   private let defaults: UserDefaults
   private let parser = ObsidianTaskParser()
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
-  private var fsEventSource: DispatchSourceFileSystemObject?
-  private var vaultFD: Int32 = -1
+  private var fsEventStream: FSEventStreamRef?
+  private var debounceWorkItem: DispatchWorkItem?
 
   private static let bookmarkKey = "obsidian.vaultBookmark"
   private static let patternsKey = "obsidian.filePatterns"
@@ -53,6 +56,17 @@ final class ObsidianProvider: MutableTaskProvider {
     self.filePatterns =
       defaults.array(forKey: Self.patternsKey) as? [String] ?? Self.defaultPatterns
     restoreVaultBookmark()
+  }
+
+  /// Creates a pre-configured provider for unit tests, bypassing the UserDefaults bookmark lookup.
+  init(
+    defaults: UserDefaults,
+    vaultURL: URL?,
+    filePatterns: [String] = ObsidianProvider.defaultPatterns
+  ) {
+    self.defaults = defaults
+    self.filePatterns = filePatterns
+    self.vaultURL = vaultURL
   }
 
   // MARK: - TaskProvider
@@ -122,9 +136,10 @@ final class ObsidianProvider: MutableTaskProvider {
     }.value
   }
 
-  /// Returns a live stream that emits updated task arrays whenever the vault root directory changes.
+  /// Returns a live stream that emits updated task arrays whenever any file in the vault changes.
   ///
-  /// Changes inside subdirectories are not detected (watches vault root only).
+  /// Uses `FSEventStreamCreate` for recursive directory watching. Rapid bursts of events are
+  /// coalesced by a 250 ms debounce before a full rescan is triggered.
   func observe() -> AsyncStream<[TaskItem]>? {
     guard let vaultURL else { return nil }
     let (stream, continuation) = AsyncStream<[TaskItem]>.makeStream()
@@ -135,18 +150,52 @@ final class ObsidianProvider: MutableTaskProvider {
 
   // MARK: - MutableTaskProvider
 
-  /// Rewrites the task line from `- [ ]` to `- [x]` in the vault file.
+  /// Rewrites the task checkbox from `[ ]` to `[x]` in the vault file, supporting both
+  /// unordered (`- [ ] `) and ordered (`1. [ ] `) list formats.
   ///
-  /// The line is validated against the stored task title before writing to guard against
-  /// stale ``TaskRef`` line numbers. If the expected line no longer matches, a title search
-  /// is performed as a fallback.
+  /// The stored line number is tried first; a file-wide search is the fallback for stale refs.
   func complete(_ ref: TaskRef) async throws {
-    try await rewrite(ref: ref, from: "- [ ] ", to: "- [x] ")
+    try await rewrite(ref: ref, from: " ", to: "x")
   }
 
-  /// Rewrites the task line from `- [x]` to `- [ ]` in the vault file.
+  /// Rewrites the task checkbox from `[x]` / `[X]` back to `[ ]` in the vault file.
   func reopen(_ ref: TaskRef) async throws {
-    try await rewrite(ref: ref, from: "- [x] ", to: "- [ ] ", fallbackFrom: "- [X] ")
+    try await rewrite(ref: ref, from: "x", to: " ", fallbackFrom: "X")
+  }
+
+  /// Scans the vault for all completed (`- [x]`) tasks, sorted by `✅` completion date descending.
+  ///
+  /// Tasks with no `✅` date appear after all dated tasks, in file-scan order.
+  func completedTasks() async throws -> [TaskItem] {
+    guard let vaultURL else { return [] }
+    let patterns = filePatterns
+    let entries: [(item: TaskItem, completedAt: Date?)] = try await Task.detached(
+      priority: .userInitiated
+    ) { [weak self] in
+      guard let self else { return [] }
+      return try self.withVaultAccess(vaultURL) { url in
+        self.scanMarkdownFiles(in: url, patterns: patterns).flatMap { fileURL in
+          let relPath = self.relativePath(for: fileURL, relativeTo: url)
+          let content = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+          let taskList = TaskList(
+            id: relPath,
+            providerID: Self.providerID,
+            name: fileURL.deletingPathExtension().lastPathComponent
+          )
+          return self.parser.parseCompleted(
+            content: content,
+            providerID: Self.providerID,
+            fileRelativePath: relPath,
+            vaultName: url.lastPathComponent,
+            list: taskList
+          ).entries
+        }
+      }
+    }.value
+    return
+      entries
+      .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
+      .map(\.item)
   }
 
   // MARK: - Vault bookmark management
@@ -203,8 +252,34 @@ final class ObsidianProvider: MutableTaskProvider {
     return try perform(url)
   }
 
-  /// Returns all `.md` files under `vaultURL` that match `patterns`, skipping hidden files.
+  /// Expands date tokens in a file-pattern string using the ISO 8601 calendar.
+  ///
+  /// Supported tokens: `{year}` / `{YYYY}` → 4-digit year, `{month}` / `{MM}` → zero-padded month,
+  /// `{week}` / `{ww}` → ISO week number, `{day}` / `{DD}` → zero-padded day of month.
+  nonisolated func expandTokens(_ pattern: String, now: Date = Date()) -> String {
+    let cal = Calendar(identifier: .iso8601)
+    let year = cal.component(.year, from: now)
+    let month = cal.component(.month, from: now)
+    let week = cal.component(.weekOfYear, from: now)
+    let day = cal.component(.day, from: now)
+    let opts: String.CompareOptions = [.caseInsensitive]
+    return
+      pattern
+      .replacingOccurrences(of: "{year}", with: String(format: "%04d", year), options: opts)
+      .replacingOccurrences(of: "{YYYY}", with: String(format: "%04d", year), options: opts)
+      .replacingOccurrences(of: "{month}", with: String(format: "%02d", month), options: opts)
+      .replacingOccurrences(of: "{MM}", with: String(format: "%02d", month), options: opts)
+      .replacingOccurrences(of: "{week}", with: String(format: "%02d", week), options: opts)
+      .replacingOccurrences(of: "{ww}", with: String(format: "%02d", week), options: opts)
+      .replacingOccurrences(of: "{day}", with: String(format: "%02d", day), options: opts)
+      .replacingOccurrences(of: "{DD}", with: String(format: "%02d", day), options: opts)
+  }
+
+  /// Returns all `.md` files under `vaultURL` that match `patterns` (after token expansion),
+  /// skipping hidden files and directories.
   private nonisolated func scanMarkdownFiles(in vaultURL: URL, patterns: [String]) -> [URL] {
+    let now = Date()
+    let expandedPatterns = patterns.map { expandTokens($0, now: now) }
     guard
       let enumerator = FileManager.default.enumerator(
         at: vaultURL,
@@ -219,7 +294,7 @@ final class ObsidianProvider: MutableTaskProvider {
       .filter { $0.pathExtension == "md" }
       .filter { fileURL in
         let rel = relativePath(for: fileURL, relativeTo: vaultURL)
-        return Self.matchesPattern(rel, patterns: patterns)
+        return Self.matchesPattern(rel, patterns: expandedPatterns)
       }
   }
 
@@ -250,8 +325,8 @@ final class ObsidianProvider: MutableTaskProvider {
 
   private func rewrite(
     ref: TaskRef,
-    from sourcePrefix: String,
-    to targetPrefix: String,
+    from fromCheckbox: String,
+    to toCheckbox: String,
     fallbackFrom: String? = nil
   ) async throws {
     guard let vaultURL else {
@@ -271,58 +346,120 @@ final class ObsidianProvider: MutableTaskProvider {
           .components(separatedBy: "\n")
         let index = lineNumber - 1
 
-        // Locate the target line: stored line number first, then title search as fallback.
-        let (targetIndex, matchedPrefix): (Int, String) = try {
-          if index < lines.count, lines[index].hasPrefix(sourcePrefix) {
-            return (index, sourcePrefix)
+        // Try the stored line number first; fall back to a file-wide search for stale refs.
+        let (targetIndex, rewritten): (Int, String) = try {
+          if index < lines.count {
+            if let rewrite = Self.rewriteLine(lines[index], from: fromCheckbox, to: toCheckbox) {
+              return (index, rewrite)
+            }
+            if let alt = fallbackFrom {
+              if let rewrite = Self.rewriteLine(lines[index], from: alt, to: toCheckbox) {
+                return (index, rewrite)
+              }
+            }
           }
-          if let alt = fallbackFrom, index < lines.count, lines[index].hasPrefix(alt) {
-            return (index, alt)
-          }
-          if let found = lines.firstIndex(where: { $0.hasPrefix(sourcePrefix) }) {
-            return (found, sourcePrefix)
+          for (idx, line) in lines.enumerated() {
+            if let rewrite = Self.rewriteLine(line, from: fromCheckbox, to: toCheckbox) {
+              return (idx, rewrite)
+            }
           }
           throw ObsidianProviderError.taskNotFound(ref.nativeID)
         }()
-        lines[targetIndex] = targetPrefix + lines[targetIndex].dropFirst(matchedPrefix.count)
+        lines[targetIndex] = rewritten
         let updated = lines.joined(separator: "\n")
         try Data(updated.utf8).write(to: fileURL, options: [])
       }
     }.value
   }
 
-  // MARK: - File-system watching
+  /// Swaps the checkbox in `line` from `fromCheckbox` to `toCheckbox`, handling both
+  /// unordered (`- [checkbox] `) and ordered (`N. [checkbox] `) list formats.
+  /// Returns the rewritten line, or `nil` if no matching checkbox was found.
+  private nonisolated static func rewriteLine(
+    _ line: String,
+    from fromCheckbox: String,
+    to toCheckbox: String
+  ) -> String? {
+    let unordered = "- [\(fromCheckbox)] "
+    if line.hasPrefix(unordered) {
+      return "- [\(toCheckbox)] " + line.dropFirst(unordered.count)
+    }
+    var idx = line.startIndex
+    while idx < line.endIndex, line[idx].isNumber {
+      idx = line.index(after: idx)
+    }
+    guard idx > line.startIndex else { return nil }
+    let numPart = String(line[..<idx])
+    let remainder = String(line[idx...])
+    let orderedSuffix = ". [\(fromCheckbox)] "
+    guard remainder.hasPrefix(orderedSuffix) else { return nil }
+    return numPart + ". [\(toCheckbox)] " + remainder.dropFirst(orderedSuffix.count)
+  }
+
+  // MARK: - File-system watching (FSEventStream)
 
   private func startWatching(
     vaultURL: URL,
     continuation: AsyncStream<[TaskItem]>.Continuation
   ) {
-    let fileDescriptor = open(vaultURL.path, O_EVTONLY)
-    guard fileDescriptor >= 0 else { return }
-    vaultFD = fileDescriptor
-
-    let source = DispatchSource.makeFileSystemObjectSource(
-      fileDescriptor: fileDescriptor,
-      eventMask: [.write, .rename, .delete, .link],
-      queue: .global(qos: .utility)
+    let paths = [vaultURL.path] as CFArray
+    // Pass an unretained pointer to self; safe because the stream is always stopped before
+    // the provider is released (ObsidianProvider is a long-lived app singleton).
+    var ctx = FSEventStreamContext(
+      version: 0,
+      info: Unmanaged.passUnretained(self).toOpaque(),
+      retain: nil,
+      release: nil,
+      copyDescription: nil
     )
-    source.setEventHandler { [weak self] in
+    let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+      guard let info else { return }
+      let provider = Unmanaged<ObsidianProvider>.fromOpaque(info).takeUnretainedValue()
+      Task { @MainActor in provider.handleFSEvent() }
+    }
+    guard
+      let stream = FSEventStreamCreate(
+        kCFAllocatorDefault,
+        callback,
+        &ctx,
+        paths,
+        FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+        0.0,
+        UInt32(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes)
+      )
+    else { return }
+    FSEventStreamSetDispatchQueue(stream, .global(qos: .utility))
+    FSEventStreamStart(stream)
+    fsEventStream = stream
+  }
+
+  /// Called on `@MainActor` each time the FSEventStream fires; starts (or restarts) the debounce timer.
+  private func handleFSEvent() {
+    scheduleDebounce()
+  }
+
+  /// Cancels any pending rescan and schedules a new one 250 ms from now.
+  private func scheduleDebounce() {
+    debounceWorkItem?.cancel()
+    let item = DispatchWorkItem { [weak self] in
       Task { @MainActor [weak self] in
-        guard let self, let vaultURL = self.vaultURL else { return }
-        try? await Task.sleep(for: .milliseconds(250))
+        guard let self, let continuation = self.streamContinuation else { return }
         let updated = (try? await self.tasks(in: nil)) ?? []
-        _ = vaultURL  // keep vaultURL alive across the sleep
         continuation.yield(updated)
       }
     }
-    source.setCancelHandler { close(fileDescriptor) }
-    source.resume()
-    fsEventSource = source
+    debounceWorkItem = item
+    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.25, execute: item)
   }
 
   private func stopWatching() {
-    fsEventSource?.cancel()
-    fsEventSource = nil
+    debounceWorkItem?.cancel()
+    debounceWorkItem = nil
+    if let stream = fsEventStream {
+      FSEventStreamStop(stream)
+      FSEventStreamRelease(stream)
+      fsEventStream = nil
+    }
     streamContinuation?.finish()
     streamContinuation = nil
   }

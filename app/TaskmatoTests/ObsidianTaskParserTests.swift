@@ -349,3 +349,115 @@ struct ObsidianTaskParserTests {
     #expect(tasks[0].notes?.contains("Pay attention to the auth changes.") == true)
   }
 }
+
+// MARK: - Completed task parsing
+
+@Suite("ObsidianTaskParser — completed tasks")
+struct ObsidianTaskParserCompletedTests {
+
+  private let parser = ObsidianTaskParser()
+  private let providerID = "obsidian"
+  private let dummyList = TaskList(id: "tasks.md", providerID: "obsidian", name: "tasks")
+
+  private func parseCompleted(
+    _ content: String,
+    relativePath: String = "tasks.md"
+  ) -> [(item: TaskItem, completedAt: Date?)] {
+    parser.parseCompleted(
+      content: content,
+      providerID: providerID,
+      fileRelativePath: relativePath,
+      vaultName: "MyVault",
+      list: dummyList
+    ).entries
+  }
+
+  @Test func parsesCompletedTaskLowercaseX() {
+    let entries = parseCompleted("- [x] Finished task")
+    #expect(entries.count == 1)
+    #expect(entries[0].item.title == "Finished task")
+  }
+
+  @Test func parsesCompletedTaskUppercaseX() {
+    let entries = parseCompleted("- [X] Also finished")
+    #expect(entries.count == 1)
+    #expect(entries[0].item.title == "Also finished")
+  }
+
+  @Test func skipsIncompleteTaskInCompletedScan() {
+    #expect(parseCompleted("- [ ] Still pending").isEmpty)
+  }
+
+  @Test func skipsCancelledTaskInCompletedScan() {
+    #expect(parseCompleted("- [-] Abandoned").isEmpty)
+  }
+
+  @Test func extractsCompletionDate() throws {
+    let entries = parseCompleted("- [x] Done task ✅ 2025-12-31")
+    let completedAt = try #require(entries[0].completedAt)
+    var utcCalendar = Calendar(identifier: .gregorian)
+    utcCalendar.timeZone = TimeZone(identifier: "UTC")!
+    let comps = utcCalendar.dateComponents([.year, .month, .day], from: completedAt)
+    #expect(comps.year == 2025)
+    #expect(comps.month == 12)
+    #expect(comps.day == 31)
+  }
+
+  @Test func completionEmojiRemovedFromTitle() {
+    let entries = parseCompleted("- [x] Done task ✅ 2025-12-31")
+    #expect(entries[0].item.title == "Done task")
+    #expect(!entries[0].item.title.contains("✅"))
+  }
+
+  @Test func completedWithNoDateHasNilCompletedAt() {
+    #expect(parseCompleted("- [x] Done without date")[0].completedAt == nil)
+  }
+
+  @Test func completedTaskExtractsPriority() {
+    let entries = parseCompleted("- [x] High priority task ⏫")
+    #expect(entries[0].item.priority == .high)
+    #expect(entries[0].item.title == "High priority task")
+  }
+
+  @Test func completedTaskExtractsDueDate() {
+    let entries = parseCompleted("- [x] Task 📅 2025-06-01")
+    #expect(entries[0].item.dueDate != nil)
+    #expect(entries[0].item.title == "Task")
+  }
+
+  @Test func completedTaskPreservesNativeID() {
+    let entries = parseCompleted("- [x] Task", relativePath: "Projects/done.md")
+    #expect(entries[0].item.id.nativeID == "Projects/done.md:1")
+    #expect(entries[0].item.id.providerID == "obsidian")
+  }
+
+  @Test func completedTaskPreservesNotes() {
+    let content = "- [x] Done\n    Some follow-up notes"
+    let entries = parseCompleted(content)
+    #expect(entries[0].item.notes?.contains("Some follow-up notes") == true)
+  }
+
+  @Test func mixedContentReturnsOnlyCompleted() {
+    let content = """
+      - [ ] Pending task
+      - [x] Done one ✅ 2025-12-01
+      - [x] Done two
+      """
+    let entries = parseCompleted(content)
+    #expect(entries.count == 2)
+    #expect(entries[0].item.title == "Done one")
+    #expect(entries[1].item.title == "Done two")
+  }
+
+  @Test func parsesOrderedListCompletedTask() {
+    let entries = parseCompleted("1. [x] Done ordered")
+    #expect(entries.count == 1)
+    #expect(entries[0].item.title == "Done ordered")
+  }
+
+  @Test func parsesOrderedListCompletedWithDate() {
+    let entries = parseCompleted("2. [x] Done ✅ 2025-06-01")
+    #expect(entries[0].item.title == "Done")
+    #expect(entries[0].completedAt != nil)
+  }
+}
