@@ -195,8 +195,7 @@ struct TaskmatoApp: App {
         settings: settings,
         selectionStore: selectionStore,
         registry: registry,
-        obsidianProvider: obsidianProvider,
-        localProvider: localProvider
+        obsidianProvider: obsidianProvider
       )
     }
     .windowResizability(.contentSize)

@@ -17,7 +17,7 @@ struct AddTaskView: View {
   @State private var title = ""
   @State private var notes = ""
   @State private var priority: TaskPriority = .none
-  @State private var selectedListID: UUID = UUID()
+  @State private var selectedListID: String = ""
   @State private var hasDueDate = false
   @State private var dueDate = Date()
   @State private var showNotes = false
@@ -44,7 +44,7 @@ struct AddTaskView: View {
             .foregroundStyle(.secondary)
           Picker("List", selection: $selectedListID) {
             ForEach(provider.taskLists) { list in
-              Text(list.name).tag(list.id)
+              Text(list.name).tag(list.id.uuidString)
             }
           }
           .labelsHidden()
@@ -97,9 +97,7 @@ struct AddTaskView: View {
     .frame(width: 360)
     .onAppear {
       isTitleFocused = true
-      if let first = provider.taskLists.first {
-        selectedListID = first.id
-      }
+      selectedListID = provider.defaultListID ?? provider.taskLists.first?.id.uuidString ?? ""
     }
   }
 
@@ -111,9 +109,7 @@ struct AddTaskView: View {
     draft.notes = notes
     draft.priority = priority
     draft.dueDate = hasDueDate ? dueDate : nil
-    draft.listID =
-      provider.taskLists.first(where: { $0.id == selectedListID })?.id
-      ?? provider.taskLists.first?.id
+    draft.listID = selectedListID.isEmpty ? nil : selectedListID
     provider.addTask(draft)
     isPresented = false
   }

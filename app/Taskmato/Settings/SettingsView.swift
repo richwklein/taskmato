@@ -13,7 +13,6 @@ struct SettingsView: View {
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
   var obsidianProvider: ObsidianProvider
-  var localProvider: LocalProvider
 
   var body: some View {
     Form {
@@ -38,34 +37,9 @@ struct SettingsView: View {
           .foregroundStyle(.secondary)
       }
 
-      Section("Providers") {
-        if registry.providers.isEmpty {
-          Text("No task providers are available.")
-            .foregroundStyle(.secondary)
-        } else {
-          ForEach(registry.providers, id: \.id) { provider in
-            Toggle(
-              provider.displayName,
-              isOn: Binding(
-                get: { registry.isEnabled(provider.id) },
-                set: { isOn in
-                  if isOn {
-                    registry.enable(provider)
-                  } else {
-                    registry.disable(providerID: provider.id)
-                  }
-                }
-              )
-            )
-            if provider.id == ObsidianProvider.providerID && registry.isEnabled(provider.id) {
-              ObsidianSettingsView(provider: obsidianProvider)
-                .padding(.leading, 16)
-            }
-            if provider.id == LocalProvider.providerID && registry.isEnabled(provider.id) {
-              LocalSettingsView(provider: localProvider)
-                .padding(.leading, 16)
-            }
-          }
+      if registry.isEnabled(ObsidianProvider.providerID) {
+        Section("Obsidian") {
+          ObsidianSettingsView(provider: obsidianProvider)
         }
       }
 
@@ -150,7 +124,6 @@ private struct DurationField: View {
     settings: AppSettings(),
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
-    obsidianProvider: ObsidianProvider(),
-    localProvider: LocalProvider()
+    obsidianProvider: ObsidianProvider()
   )
 }
