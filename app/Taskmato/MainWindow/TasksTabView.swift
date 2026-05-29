@@ -134,7 +134,7 @@ struct TasksTabView: View {
     List {
       ForEach(flatSections) { section in
         Section {
-          ForEach(section.tasks) { task in
+          SwiftUI.ForEach(section.tasks) { task in
             TaskRowView(
               task: task,
               onComplete: registry.mutableProvider(for: task.id) != nil
@@ -160,7 +160,7 @@ struct TasksTabView: View {
       LazyVGrid(columns: columns, spacing: 10) {
         ForEach(flatSections) { section in
           Section {
-            ForEach(section.tasks) { task in
+            SwiftUI.ForEach(section.tasks) { task in
               TaskCardView(
                 task: task,
                 onComplete: registry.mutableProvider(for: task.id) != nil
