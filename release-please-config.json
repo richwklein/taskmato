@@ -9,9 +9,7 @@
       "include-component-in-tag": false,
       "bump-minor-pre-major": false,
       "draft": false,
-      "prerelease": true,
-      "prerelease-type": "alpha",
-      "versioning-strategy": "always-bump-patch",
+      "prerelease": false,
       "extra-files": ["version.txt"]
     }
   }
