@@ -95,11 +95,15 @@ struct ProviderSidebarView: View {
     } label: {
       Text(provider.displayName)
         .font(.headline)
-    }
-    .contextMenu {
-      Button("Remove \(provider.displayName)", role: .destructive) {
-        registry.disable(providerID: provider.id)
-      }
+        .contextMenu {
+          if provider is ObsidianProvider {
+            Button("Configure Obsidian…") { isConfiguringObsidian = true }
+            Divider()
+          }
+          Button("Remove \(provider.displayName)", role: .destructive) {
+            registry.disable(providerID: provider.id)
+          }
+        }
     }
     .onAppear { expanded.insert(provider.id) }
   }

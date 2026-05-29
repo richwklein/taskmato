@@ -10,7 +10,7 @@ import Foundation
 /// A `nil` ``visibleListIDs`` means all lists are visible (the default state).
 /// Once the user hides at least one list the set is seeded with all known list IDs
 /// and the hidden list is removed, so future additions default to visible.
-struct ProviderListScope: Codable, Sendable {
+struct ProviderListScope: Codable, Sendable, Equatable {
 
   /// The set of list IDs visible in the picker, or `nil` when all lists are visible.
   var visibleListIDs: Set<String>?

@@ -27,9 +27,6 @@ struct TasksTabView: View {
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
 
-  /// Controls the NavigationSplitView sidebar column visibility.
-  @State private var columnVisibility: NavigationSplitViewVisibility = .all
-
   /// The local provider instance looked up from the registry, if registered.
   private var localProvider: LocalProvider? {
     registry.providers.first(where: { $0 is LocalProvider }) as? LocalProvider
@@ -64,7 +61,12 @@ struct TasksTabView: View {
   }
 
   var body: some View {
-    NavigationSplitView(columnVisibility: $columnVisibility) {
+    NavigationSplitView(
+      columnVisibility: Binding(
+        get: { settings.sidebarVisible ? .all : .detailOnly },
+        set: { settings.sidebarVisible = $0 != .detailOnly }
+      )
+    ) {
       ProviderSidebarView(registry: registry)
         .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
     } detail: {
@@ -76,6 +78,8 @@ struct TasksTabView: View {
         .onChange(of: isAddingTask) { _, adding in
           if !adding { Task { await loadTasks() } }
         }
+        .onChange(of: registry.enabledIDs) { _, _ in Task { await loadTasks() } }
+        .onChange(of: registry.scopes) { _, _ in Task { await loadTasks() } }
         .sheet(isPresented: $isAddingTask) {
           if let provider = localProvider {
             AddTaskView(provider: provider, isPresented: $isAddingTask)
@@ -111,12 +115,6 @@ struct TasksTabView: View {
             .help("Open Settings (⌘,)")
           }
         }
-    }
-    .onChange(of: settings.sidebarVisible) { _, visible in
-      columnVisibility = visible ? .all : .detailOnly
-    }
-    .onAppear {
-      columnVisibility = settings.sidebarVisible ? .all : .detailOnly
     }
   }
 
