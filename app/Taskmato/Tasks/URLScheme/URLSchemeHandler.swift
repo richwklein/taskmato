@@ -97,7 +97,7 @@ final class URLSchemeHandler {
         draft.listID =
           localProvider.taskLists.first {
             $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
-          }?.id
+          }?.id.uuidString ?? localProvider.defaultListID
       }
       return localProvider.addTask(draft)
     }

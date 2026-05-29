@@ -55,6 +55,36 @@ struct LocalProviderTests {
     #expect(provider.taskLists[0].name == "Default")
   }
 
+  @Test func defaultListIDIsSetOnFirstLoad() {
+    let provider = makeProvider()
+    #expect(provider.defaultListID == provider.taskLists[0].id.uuidString)
+  }
+
+  @Test func defaultListIDPersistsAcrossReload() {
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString + ".json")
+    let first = LocalProvider(fileURL: url)
+    let storedID = first.defaultListID!
+
+    let second = LocalProvider(fileURL: url)
+    #expect(second.defaultListID == storedID)
+  }
+
+  @Test func setDefaultListChangesDefault() throws {
+    let provider = makeProvider()
+    provider.createList(name: "Work")
+    let workID = provider.taskLists[1].id.uuidString
+    try provider.setDefaultList(workID)
+    #expect(provider.defaultListID == workID)
+  }
+
+  @Test func setDefaultListThrowsForUnknownID() {
+    let provider = makeProvider()
+    #expect(throws: LocalProviderError.self) {
+      try provider.setDefaultList(UUID().uuidString)
+    }
+  }
+
   @Test func doesNotDuplicateDefaultListOnReload() {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".json")
@@ -107,16 +137,12 @@ struct LocalProviderTests {
 
   @Test func addTaskUsesDefaultListWhenNoDraftListID() async throws {
     let provider = makeProvider()
-    let defaultListID = provider.taskLists[0].id
+    let defaultID = provider.defaultListID!
     var draft = TaskDraft()
     draft.title = "Orphan"
     provider.addTask(draft)
 
-    let list = TaskList(
-      id: defaultListID.uuidString,
-      providerID: LocalProvider.providerID,
-      name: "Default"
-    )
+    let list = TaskList(id: defaultID, providerID: LocalProvider.providerID, name: "Default")
     let tasks = try await provider.tasks(in: list)
     #expect(tasks.map(\.title).contains("Orphan"))
   }
@@ -234,59 +260,44 @@ struct LocalProviderTests {
 
   @Test func renameListUpdatesName() throws {
     let provider = makeProvider()
-    let listID = provider.taskLists[0].id
+    let listID = provider.taskLists[0].id.uuidString
     try provider.renameList(listID, name: "Personal")
     #expect(provider.taskLists[0].name == "Personal")
   }
 
-  @Test func deleteListMovesTasksToFallback() async throws {
+  @Test func deleteNonDefaultListMovesTasksToDefault() async throws {
     let provider = makeProvider()
     provider.createList(name: "Secondary")
-    let primaryID = provider.taskLists[0].id
-    let secondaryID = provider.taskLists[1].id
+    let primaryID = provider.taskLists[0].id.uuidString  // Default = current default
+    let secondaryID = provider.taskLists[1].id.uuidString
+
+    // Promote "Secondary" so we can delete "Default"
+    try provider.setDefaultList(secondaryID)
 
     var draft = TaskDraft()
     draft.title = "Orphaned"
     draft.listID = primaryID
     provider.addTask(draft)
 
-    provider.deleteList(primaryID)
+    try provider.deleteList(primaryID)
 
     let secondaryList = TaskList(
-      id: secondaryID.uuidString,
-      providerID: LocalProvider.providerID,
-      name: "Secondary"
-    )
+      id: secondaryID, providerID: LocalProvider.providerID, name: "Secondary")
     let tasks = try await provider.tasks(in: secondaryList)
     #expect(tasks.map(\.title).contains("Orphaned"))
   }
 
-  @Test func deleteLastListCreatesNewDefault() {
+  @Test func deleteDefaultListThrows() throws {
     let provider = makeProvider()
-    let listID = provider.taskLists[0].id
-    provider.deleteList(listID)
-    #expect(provider.taskLists.count == 1)
-    #expect(provider.taskLists[0].name == "Default")
-  }
-
-  @Test func deleteLastListMovesTasksToNewDefault() async throws {
-    let provider = makeProvider()
-    let listID = provider.taskLists[0].id
-    var draft = TaskDraft()
-    draft.title = "Survivor"
-    draft.listID = listID
-    provider.addTask(draft)
-
-    provider.deleteList(listID)
-
-    #expect(provider.taskLists.count == 1)
-    let tasks = try await provider.tasks(in: nil)
-    #expect(tasks.map(\.title).contains("Survivor"))
+    let defaultID = provider.defaultListID!
+    #expect(throws: LocalProviderError.self) {
+      try provider.deleteList(defaultID)
+    }
   }
 
   @Test func renameListThrowsForUnknownID() {
     let provider = makeProvider()
-    let unknown = UUID()
+    let unknown = UUID().uuidString
     #expect(throws: (any Error).self) {
       try provider.renameList(unknown, name: "Ghost")
     }

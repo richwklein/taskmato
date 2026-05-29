@@ -50,14 +50,14 @@ struct LocalSettingsView: View {
       .onSubmit { commitRename(list) }
 
       Button(role: .destructive) {
-        provider.deleteList(list.id)
+        try? provider.deleteList(list.id.uuidString)
         pendingNames.removeValue(forKey: list.id)
       } label: {
         Image(systemName: "trash")
       }
       .buttonStyle(.plain)
       .foregroundStyle(.red)
-      .disabled(provider.taskLists.count == 1)
+      .disabled(list.id.uuidString == provider.defaultListID)
     }
     .onChange(of: list.name) { _, newName in
       // Keep the editing buffer in sync if provider updates the name externally.
@@ -72,7 +72,7 @@ struct LocalSettingsView: View {
     guard let pending = pendingNames[list.id] else { return }
     let trimmed = pending.trimmingCharacters(in: .whitespaces)
     if !trimmed.isEmpty && trimmed != list.name {
-      try? provider.renameList(list.id, name: trimmed)
+      try? provider.renameList(list.id.uuidString, name: trimmed)
     }
     pendingNames.removeValue(forKey: list.id)
   }

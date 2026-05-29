@@ -35,19 +35,20 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [ ] Implement `RemindersProvider` (lists, search, incomplete-only filter) ([#254](https://github.com/richwklein/taskmato/issues/254))
 - [ ] Implement close-back: `MutableTaskProvider.complete` marks the reminder done in EventKit ([#255](https://github.com/richwklein/taskmato/issues/255))
 - [ ] Live updates via `EKEventStoreChangedNotification` ([#256](https://github.com/richwklein/taskmato/issues/256))
+- [ ] `RemindersProvider` conformance to `WritableTaskProvider`: `addTask` via EventKit; `defaultListID` reads `EKEventStore.defaultCalendarForNewReminders` ([#329](https://github.com/richwklein/taskmato/issues/329))
 
 ## Picker UI + close-back affordance (P3)
 
 - [x] Main window with Timer, Tasks, and Stats tabs (TabView navigation skeleton) ([#294](https://github.com/richwklein/taskmato/issues/294))
 - [x] Task picker view in main window Tasks tab (search across providers, grouped by list) ([#257](https://github.com/richwklein/taskmato/issues/257) partial — provider section headers and priority badges remain)
-- [ ] Two-level picker grouping when multiple providers active: provider section header → list → tasks; "+" add-task button in local provider section header ([#298](https://github.com/richwklein/taskmato/issues/298))
+- [ ] Collapsible provider sidebar with per-provider list scoping: `NavigationSplitView` layout; sidebar owns provider enable/disable, list visibility (checkmark), default list (star), and list CRUD for `WritableTaskProvider` conformers; detail column scoped to visible lists; removes Providers section from Settings ([#298](https://github.com/richwklein/taskmato/issues/298), fulfills [#276](https://github.com/richwklein/taskmato/issues/276))
 - [x] List and grid view toggle for the task picker (list = current row layout, grid = card layout) ([#299](https://github.com/richwklein/taskmato/issues/299))
 - [ ] "View Completed" sheet in picker for any enabled `MutableTaskProvider`; calls `completedTasks()` with restore (`reopen`) and permanent-delete affordances ([#300](https://github.com/richwklein/taskmato/issues/300))
 - [x] Active task label in popover and main window timer tab: provider-conditional complete (checkmark) button, always-visible clear button, hidden when no task active ([#258](https://github.com/richwklein/taskmato/issues/258))
 - [x] Mid-session task swap (does not stop the timer) ([#296](https://github.com/richwklein/taskmato/issues/296))
 - [ ] Honor priority and due-date hints in the picker (sort and badge) ([#257](https://github.com/richwklein/taskmato/issues/257))
 - [ ] Always-on-top mode for the timer popover (detached floating window, toggle in popover header, persisted setting) ([#260](https://github.com/richwklein/taskmato/issues/260))
-- [ ] Per-provider list scoping (choose which lists each provider exposes in the picker; persisted per provider) ([#276](https://github.com/richwklein/taskmato/issues/276))
+- [ ] Per-provider list scoping (choose which lists each provider exposes in the picker; persisted per provider) ([#276](https://github.com/richwklein/taskmato/issues/276)) — _fulfilled by sidebar ([#298](https://github.com/richwklein/taskmato/issues/298))_
 - [x] Render task notes/description as markdown where displayed (picker detail, active task label); add `NoteFormat` (.plainText / .markdown) to `TaskItem` ([#278](https://github.com/richwklein/taskmato/issues/278))
 - [ ] Explore full / minimized mode: minimized keeps the compact popover, full mode opens/focuses the main window on menu bar click and on session start ([#293](https://github.com/richwklein/taskmato/issues/293))
 
@@ -64,6 +65,7 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [x] Implement `completedTasks()` for `ObsidianProvider` (scans vault for `- [x]` tasks) ([#301](https://github.com/richwklein/taskmato/issues/301))
 - [x] Restore dynamic date token expansion in `ObsidianProvider` file patterns (`{year}`, `{week}`, `{month}`, `{day}` → current date values) so patterns like `**/Weekly/{year}-W{week}.md` resolve to real file paths
 - [x] Parse ordered-list tasks (`1. [ ] Task`) alongside unordered-list tasks (`- [ ] Task`)
+- [ ] `ObsidianProvider` conformance to `WritableTaskProvider`: `addTask` appends obsidian-tasks formatted line; list management as folder operations within vault bookmark ([#328](https://github.com/richwklein/taskmato/issues/328))
 
 ## CLI / URL scheme provider (P5)
 

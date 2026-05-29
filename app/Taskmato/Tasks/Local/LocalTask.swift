@@ -72,7 +72,7 @@ struct LocalTask: Codable, Identifiable {
     notes = draft.notes.isEmpty ? nil : draft.notes
     priority = draft.priority
     dueDate = draft.dueDate
-    listID = draft.listID
+    listID = draft.listID.flatMap(UUID.init)
   }
 }
 
@@ -87,7 +87,7 @@ extension LocalTask {
     dueDate = draft.dueDate
     scheduledDate = nil
     startDate = nil
-    listID = draft.listID
+    listID = draft.listID.flatMap(UUID.init)
     isCompleted = false
     completedAt = nil
     createdAt = Date()
