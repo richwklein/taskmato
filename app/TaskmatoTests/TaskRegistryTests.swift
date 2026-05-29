@@ -35,6 +35,29 @@ private final class StubProvider: TaskProvider {
   func observe() -> AsyncStream<[TaskItem]>? { nil }
 }
 
+private final class StubScopedProvider: TaskProvider {
+  let id: String
+  let displayName: String
+  let entitlement: ProviderEntitlement = .free
+  private let stubbedLists: [TaskList]
+  private let tasksByListID: [String: [TaskItem]]
+
+  init(id: String, listTasks: [(TaskList, [TaskItem])]) {
+    self.id = id
+    self.displayName = id
+    self.stubbedLists = listTasks.map(\.0)
+    self.tasksByListID = Dictionary(uniqueKeysWithValues: listTasks.map { ($0.0.id, $0.1) })
+  }
+
+  func authorize() async throws {}
+  func lists() async throws -> [TaskList] { stubbedLists }
+  func tasks(in list: TaskList?) async throws -> [TaskItem] {
+    guard let list else { return tasksByListID.values.flatMap { $0 } }
+    return tasksByListID[list.id] ?? []
+  }
+  func observe() -> AsyncStream<[TaskItem]>? { nil }
+}
+
 private final class StubMutableProvider: MutableTaskProvider {
   let id: String
   let displayName: String
@@ -265,5 +288,98 @@ struct TaskRegistryTests {
 
     let ref = TaskRef(providerID: "readonly", nativeID: "x")
     #expect(registry.mutableProvider(for: ref) == nil)
+  }
+
+  // MARK: - List scoping
+
+  private func makeScopedItem(listID: String, providerID: String, title: String) -> TaskItem {
+    makeItem(providerID: providerID, nativeID: UUID().uuidString, title: title)
+  }
+
+  @Test func allListsVisibleByDefault() async {
+    let registry = makeRegistry()
+    let listA = TaskList(id: "a", providerID: "alpha", name: "A")
+    let listB = TaskList(id: "b", providerID: "alpha", name: "B")
+    let provider = StubScopedProvider(
+      id: "alpha",
+      listTasks: [
+        (listA, [makeItem(providerID: "alpha", nativeID: "1", title: "Task A")]),
+        (listB, [makeItem(providerID: "alpha", nativeID: "2", title: "Task B")]),
+      ])
+    registry.register(provider)
+    registry.enable(provider)
+
+    let (tasks, _) = await registry.tasks(matching: "")
+    #expect(tasks.count == 2)
+  }
+
+  @Test func hiddenListExcludedFromFanOut() async {
+    let registry = makeRegistry()
+    let listA = TaskList(id: "a", providerID: "alpha", name: "A")
+    let listB = TaskList(id: "b", providerID: "alpha", name: "B")
+    let provider = StubScopedProvider(
+      id: "alpha",
+      listTasks: [
+        (listA, [makeItem(providerID: "alpha", nativeID: "1", title: "Task A")]),
+        (listB, [makeItem(providerID: "alpha", nativeID: "2", title: "Task B")]),
+      ])
+    registry.register(provider)
+    registry.enable(provider)
+    registry.setListVisible("a", providerID: "alpha", visible: false, allListIDs: ["a", "b"])
+
+    let (tasks, _) = await registry.tasks(matching: "")
+    #expect(tasks.count == 1)
+    #expect(tasks[0].title == "Task B")
+  }
+
+  @Test func reshowingListRestoresTasks() async {
+    let registry = makeRegistry()
+    let listA = TaskList(id: "a", providerID: "alpha", name: "A")
+    let listB = TaskList(id: "b", providerID: "alpha", name: "B")
+    let provider = StubScopedProvider(
+      id: "alpha",
+      listTasks: [
+        (listA, [makeItem(providerID: "alpha", nativeID: "1", title: "Task A")]),
+        (listB, [makeItem(providerID: "alpha", nativeID: "2", title: "Task B")]),
+      ])
+    registry.register(provider)
+    registry.enable(provider)
+    registry.setListVisible("a", providerID: "alpha", visible: false, allListIDs: ["a", "b"])
+    registry.setListVisible("a", providerID: "alpha", visible: true, allListIDs: ["a", "b"])
+
+    let (tasks, _) = await registry.tasks(matching: "")
+    #expect(tasks.count == 2)
+  }
+
+  @Test func scopePersistsAcrossRegistryReload() {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let first = TaskRegistry(defaults: defaults)
+    let provider = StubProvider(id: "alpha")
+    first.register(provider)
+    first.enable(provider)
+    first.setListVisible(
+      "list-1", providerID: "alpha", visible: false, allListIDs: ["list-1", "list-2"])
+
+    let second = TaskRegistry(defaults: defaults)
+    #expect(!second.isListVisible("list-1", providerID: "alpha"))
+    #expect(second.isListVisible("list-2", providerID: "alpha"))
+  }
+
+  @Test func searchQueryAppliesWithinVisibleScope() async {
+    let registry = makeRegistry()
+    let listA = TaskList(id: "a", providerID: "alpha", name: "A")
+    let listB = TaskList(id: "b", providerID: "alpha", name: "B")
+    let provider = StubScopedProvider(
+      id: "alpha",
+      listTasks: [
+        (listA, [makeItem(providerID: "alpha", nativeID: "1", title: "Write tests")]),
+        (listB, [makeItem(providerID: "alpha", nativeID: "2", title: "Review PR")]),
+      ])
+    registry.register(provider)
+    registry.enable(provider)
+
+    let (tasks, _) = await registry.tasks(matching: "write")
+    #expect(tasks.count == 1)
+    #expect(tasks[0].title == "Write tests")
   }
 }

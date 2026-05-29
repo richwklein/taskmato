@@ -97,7 +97,7 @@ final class URLSchemeHandler {
         draft.listID =
           localProvider.taskLists.first {
             $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
-          }?.id
+          }?.id.uuidString ?? localProvider.defaultListID
       }
       return localProvider.addTask(draft)
     }
@@ -168,7 +168,8 @@ final class URLSchemeHandler {
   }
 
   private func lookupByID(nativeID: String, providerID: String) async -> TaskItem? {
-    guard let provider = registry.providers.first(where: { $0.id == providerID })
+    guard let provider = registry.providers.first(where: { $0.id == providerID }),
+      registry.isEnabled(provider.id)
     else { return nil }
     let all = (try? await provider.tasks(in: nil)) ?? []
     return all.first { $0.id.nativeID == nativeID }

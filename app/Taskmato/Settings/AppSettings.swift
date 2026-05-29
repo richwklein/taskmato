@@ -63,6 +63,13 @@ final class AppSettings {
     didSet { defaults.set(taskPickerLayout.rawValue, forKey: Keys.taskPickerLayout) }
   }
 
+  /// Whether the provider/list sidebar column is visible in the Tasks tab.
+  ///
+  /// Defaults to `true`.
+  var sidebarVisible: Bool {
+    didSet { defaults.set(sidebarVisible, forKey: Keys.sidebarVisible) }
+  }
+
   /// `focusMinutes` expressed as a `TimeInterval` in seconds.
   var focusDuration: TimeInterval { TimeInterval(focusMinutes * 60) }
 
@@ -92,6 +99,7 @@ final class AppSettings {
     showDockIcon = defaults.object(forKey: Keys.showDockIcon) as? Bool ?? false
     let rawLayout = defaults.string(forKey: Keys.taskPickerLayout)
     taskPickerLayout = rawLayout.flatMap(TaskPickerLayout.init) ?? .grid
+    sidebarVisible = defaults.object(forKey: Keys.sidebarVisible) as? Bool ?? true
   }
 
   private enum Keys {
@@ -104,6 +112,7 @@ final class AppSettings {
     static let autoStartNextPhase = "autoStartNextPhase"
     static let showDockIcon = "showDockIcon"
     static let taskPickerLayout = "taskPickerLayout"
+    static let sidebarVisible = "taskRegistry.sidebarVisible"
   }
 }
 

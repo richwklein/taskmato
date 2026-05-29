@@ -60,3 +60,40 @@ protocol MutableTaskProvider: TaskProvider {
 extension MutableTaskProvider {
   func completedTasks() async throws -> [TaskItem] { [] }
 }
+
+/// A `MutableTaskProvider` that also supports creating tasks and managing lists.
+///
+/// Providers conforming to this protocol expose the full write surface: task creation,
+/// list lifecycle (create, rename, delete), and a persistent default-list preference.
+/// `LocalProvider` conforms immediately; `ObsidianProvider` and `RemindersProvider`
+/// will conform in follow-on milestones.
+protocol WritableTaskProvider: MutableTaskProvider {
+
+  /// The ID of the list new tasks target by default, or `nil` if none is set.
+  var defaultListID: String? { get }
+
+  /// Creates a new task from `draft` and returns the resulting item.
+  ///
+  /// If `draft.listID` is `nil` the provider uses its default list.
+  @discardableResult
+  func addTask(_ draft: TaskDraft) async throws -> TaskItem
+
+  /// Persists `listID` as the default target for new tasks.
+  /// - Throws: if `listID` does not identify a known list.
+  func setDefaultList(_ listID: String) async throws
+
+  /// Creates a new list with `name` and returns the provider-agnostic ``TaskList``.
+  @discardableResult
+  func createList(name: String) async throws -> TaskList
+
+  /// Renames the list identified by `listID` to `name`.
+  /// - Throws: if `listID` does not identify a known list.
+  func renameList(_ listID: String, name: String) async throws
+
+  /// Deletes the list identified by `listID`, reassigning its tasks to the default list.
+  ///
+  /// The default list cannot be deleted; call ``setDefaultList(_:)`` first to promote
+  /// another list before deleting the current default.
+  /// - Throws: if `listID` is the default list or does not identify a known list.
+  func deleteList(_ listID: String) async throws
+}

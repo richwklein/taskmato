@@ -12,6 +12,7 @@ import Testing
 
 private struct HandlerContext {
   let handler: URLSchemeHandler
+  let registry: TaskRegistry
   let selectionStore: TaskSelectionStore
   let localProvider: LocalProvider
 }
@@ -79,7 +80,11 @@ struct URLSchemeHandlerTests {
       localProvider: localProvider
     )
     return HandlerContext(
-      handler: handler, selectionStore: selectionStore, localProvider: localProvider)
+      handler: handler,
+      registry: registry,
+      selectionStore: selectionStore,
+      localProvider: localProvider
+    )
   }
 
   private func makeTask(title: String, providerID: String = "stub") -> TaskItem {
@@ -158,6 +163,16 @@ struct URLSchemeHandlerTests {
   @Test func lookupByIDUnknownProviderIsIgnored() async {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?provider=unknown&id=abc123")!)
+    #expect(ctx.selectionStore.activeTask == nil)
+  }
+
+  @Test func lookupByIDIgnoresDisabledProvider() async {
+    let existing = makeTask(title: "Disabled Task", providerID: "stub")
+    let ctx = makeHandler(stubProviderTasks: [existing])
+    // Disable the stub provider after setup.
+    ctx.registry.disable(providerID: "stub")
+    let urlString = "taskmato://start?provider=stub&id=\(existing.id.nativeID)"
+    await ctx.handler.handle(URL(string: urlString)!)
     #expect(ctx.selectionStore.activeTask == nil)
   }
 

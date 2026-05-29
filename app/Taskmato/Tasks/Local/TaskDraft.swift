@@ -24,6 +24,6 @@ struct TaskDraft {
   /// Due date, or `nil` if no due date is set.
   var dueDate: Date?
 
-  /// The list this task should belong to, or `nil` for uncategorized.
-  var listID: UUID?
+  /// The provider-local list ID this task should belong to, or `nil` for the default list.
+  var listID: String?
 }

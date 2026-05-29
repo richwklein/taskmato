@@ -80,6 +80,8 @@ struct TaskmatoApp: App {
     let localProvider = LocalProvider()
     registry.register(obsidianProvider)
     registry.register(localProvider)
+    // Auto-enable on first launch before any provider state is persisted.
+    if registry.enabledIDs.isEmpty { registry.enable(localProvider) }
     let urlHandler = URLSchemeHandler(
       registry: registry,
       selectionStore: selectionStore,
@@ -195,8 +197,7 @@ struct TaskmatoApp: App {
         settings: settings,
         selectionStore: selectionStore,
         registry: registry,
-        obsidianProvider: obsidianProvider,
-        localProvider: localProvider
+        obsidianProvider: obsidianProvider
       )
     }
     .windowResizability(.contentSize)

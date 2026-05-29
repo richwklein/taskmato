@@ -46,7 +46,7 @@ struct MainWindowView: View {
         StatsTabView(store: store)
       }
     }
-    .frame(minWidth: 480, minHeight: 400)
+    .frame(minWidth: 640, minHeight: 400)
     .onReceive(NotificationCenter.default.publisher(for: .showTimerTab)) { _ in
       selectedTab = 0
     }
