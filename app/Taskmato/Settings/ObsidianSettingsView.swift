@@ -24,19 +24,31 @@ struct ObsidianSettingsView: View {
       if provider.isConfigured {
         LabeledContent("Vault", value: provider.vaultName)
 
-        Button("Change Vault…", action: selectVault)
-
         LabeledContent("File patterns") {
-          TextField("e.g. **/*.md", text: $patternText)
-            .focused($isPatternFocused)
-            .onSubmit { commitPatterns() }
-            .onChange(of: isPatternFocused) { _, focused in
-              if !focused { commitPatterns() }
+          VStack(alignment: .leading, spacing: 4) {
+            TextField("e.g. **/*.md", text: $patternText)
+              .autocorrectionDisabled()
+              .focused($isPatternFocused)
+              .onSubmit { commitPatterns() }
+              .onChange(of: isPatternFocused) { _, focused in
+                if !focused { commitPatterns() }
+              }
+
+            let expanded = provider.filePatterns.map { provider.expandTokens($0) }
+            if expanded != provider.filePatterns {
+              Text(expanded.joined(separator: ", "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .help("Current expansion of date tokens")
             }
+          }
         }
 
-        Button("Remove Vault", role: .destructive) {
-          provider.clearVault()
+        HStack {
+          Button("Change Vault…", action: selectVault)
+          Button("Remove Vault", role: .destructive) {
+            provider.clearVault()
+          }
         }
       } else {
         Text("No vault selected.")
