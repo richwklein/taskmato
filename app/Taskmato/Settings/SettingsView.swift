@@ -12,7 +12,6 @@ struct SettingsView: View {
   @Bindable var settings: AppSettings
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
-  var obsidianProvider: ObsidianProvider
 
   var body: some View {
     Form {
@@ -35,12 +34,6 @@ struct SettingsView: View {
         Text("Takes effect the next time \(Bundle.main.appName) is launched.")
           .font(.caption)
           .foregroundStyle(.secondary)
-      }
-
-      if registry.isEnabled(ObsidianProvider.providerID) {
-        Section("Obsidian") {
-          ObsidianSettingsView(provider: obsidianProvider)
-        }
       }
 
       #if DEBUG
@@ -123,7 +116,6 @@ private struct DurationField: View {
   SettingsView(
     settings: AppSettings(),
     selectionStore: TaskSelectionStore(),
-    registry: TaskRegistry(),
-    obsidianProvider: ObsidianProvider()
+    registry: TaskRegistry()
   )
 }

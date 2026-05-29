@@ -66,6 +66,7 @@ struct TaskmatoApp: App {
   @State private var sounds: SoundService
   @State private var obsidianProvider: ObsidianProvider
   @State private var localProvider: LocalProvider
+  @State private var remindersProvider: RemindersProvider
   @State private var urlHandler: URLSchemeHandler
 
   init() {
@@ -78,48 +79,44 @@ struct TaskmatoApp: App {
     let sounds = SoundService()
     let obsidianProvider = ObsidianProvider()
     let localProvider = LocalProvider()
+    let remindersProvider = RemindersProvider()
     registry.register(obsidianProvider)
     registry.register(localProvider)
+    registry.register(remindersProvider)
     // Auto-enable on first launch before any provider state is persisted.
     if registry.enabledIDs.isEmpty { registry.enable(localProvider) }
     let urlHandler = URLSchemeHandler(
-      registry: registry,
-      selectionStore: selectionStore,
-      engine: engine,
-      settings: settings,
-      localProvider: localProvider
+      registry: registry, selectionStore: selectionStore,
+      engine: engine, settings: settings, localProvider: localProvider
     )
-
     engine.onPhaseEnded = { phase, startedAt, endedAt, wasCompleted in
       store.append(
         Session(
-          id: UUID(),
-          phase: phase,
-          startedAt: startedAt,
-          endedAt: endedAt,
-          wasCompleted: wasCompleted,
+          id: UUID(), phase: phase, startedAt: startedAt,
+          endedAt: endedAt, wasCompleted: wasCompleted,
           taskRef: selectionStore.activeTask?.id,
           taskTitle: selectionStore.activeTask?.title
         ))
-      if wasCompleted {
-        if settings.soundEnabled { sounds.play() }
-        if settings.notificationsEnabled { notifications.send(phase: phase) }
-        engine.focusDuration = settings.focusDuration
-        engine.shortBreakDuration = settings.shortBreakDuration
-        engine.longBreakDuration = settings.longBreakDuration
-        let next: SessionPhase
-        switch phase {
-        case .focus: next = engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
-        case .shortBreak, .longBreak: next = .focus
-        }
-        if settings.autoStartNextPhase {
-          engine.start(phase: next)
-        } else {
-          engine.enqueuePhase(next)
-        }
+      guard wasCompleted else { return }
+      if settings.soundEnabled { sounds.play() }
+      if settings.notificationsEnabled { notifications.send(phase: phase) }
+      engine.focusDuration = settings.focusDuration
+      engine.shortBreakDuration = settings.shortBreakDuration
+      engine.longBreakDuration = settings.longBreakDuration
+      let next: SessionPhase
+      switch phase {
+      case .focus:
+        next = engine.nextBreakPhase(
+          longBreakAfter: settings.longBreakAfterSessions
+        )
+      case .shortBreak, .longBreak: next = .focus
+      }
+      if settings.autoStartNextPhase {
+        engine.start(phase: next)
+      } else {
+        engine.enqueuePhase(next)
       }
     }
-
     _engine = State(initialValue: engine)
     _settings = State(initialValue: settings)
     _store = State(initialValue: store)
@@ -129,10 +126,8 @@ struct TaskmatoApp: App {
     _sounds = State(initialValue: sounds)
     _obsidianProvider = State(initialValue: obsidianProvider)
     _localProvider = State(initialValue: localProvider)
+    _remindersProvider = State(initialValue: remindersProvider)
     _urlHandler = State(initialValue: urlHandler)
-
-    // Capture the delegate so the closure doesn't retain _appDelegate's storage.
-    // App.init() runs once; this local IS the @State-managed handler for the app's lifetime.
     let appDel = _appDelegate.wrappedValue
     appDel.bootstrap = { appDel.wire(urlHandler: urlHandler) }
   }
@@ -196,8 +191,7 @@ struct TaskmatoApp: App {
       SettingsView(
         settings: settings,
         selectionStore: selectionStore,
-        registry: registry,
-        obsidianProvider: obsidianProvider
+        registry: registry
       )
     }
     .windowResizability(.contentSize)
