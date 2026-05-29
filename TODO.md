@@ -41,7 +41,7 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [x] Main window with Timer, Tasks, and Stats tabs (TabView navigation skeleton) ([#294](https://github.com/richwklein/taskmato/issues/294))
 - [x] Task picker view in main window Tasks tab (search across providers, grouped by list) ([#257](https://github.com/richwklein/taskmato/issues/257) partial — provider section headers and priority badges remain)
 - [ ] Two-level picker grouping when multiple providers active: provider section header → list → tasks; "+" add-task button in local provider section header ([#298](https://github.com/richwklein/taskmato/issues/298))
-- [ ] List and grid view toggle for the task picker (list = current row layout, grid = card layout) ([#299](https://github.com/richwklein/taskmato/issues/299))
+- [x] List and grid view toggle for the task picker (list = current row layout, grid = card layout) ([#299](https://github.com/richwklein/taskmato/issues/299))
 - [ ] "View Completed" sheet in picker for any enabled `MutableTaskProvider`; calls `completedTasks()` with restore (`reopen`) and permanent-delete affordances ([#300](https://github.com/richwklein/taskmato/issues/300))
 - [x] Active task label in popover and main window timer tab: provider-conditional complete (checkmark) button, always-visible clear button, hidden when no task active ([#258](https://github.com/richwklein/taskmato/issues/258))
 - [x] Mid-session task swap (does not stop the timer) ([#296](https://github.com/richwklein/taskmato/issues/296))
@@ -62,6 +62,7 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [ ] FSEvents-based live updates with debouncing ([#263](https://github.com/richwklein/taskmato/issues/263))
 - [x] `MutableTaskProvider.complete` rewrites `- [ ]` → `- [x]` and appends `✅ <today>` ([#263](https://github.com/richwklein/taskmato/issues/263))
 - [ ] Implement `completedTasks()` for `ObsidianProvider` (scans vault for `- [x]` tasks) ([#301](https://github.com/richwklein/taskmato/issues/301))
+- [ ] Restore dynamic date token expansion in `ObsidianProvider` file patterns (`{year}`, `{week}`, `{month}`, `{day}` → current date values) so patterns like `**/Weekly/{year}-W{week}.md` resolve to real file paths
 
 ## CLI / URL scheme provider (P5)
 

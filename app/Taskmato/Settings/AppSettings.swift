@@ -56,6 +56,13 @@ final class AppSettings {
     didSet { defaults.set(showDockIcon, forKey: Keys.showDockIcon) }
   }
 
+  /// The display mode for the task picker (list rows or card grid).
+  ///
+  /// Defaults to `.grid`.
+  var taskPickerLayout: TaskPickerLayout {
+    didSet { defaults.set(taskPickerLayout.rawValue, forKey: Keys.taskPickerLayout) }
+  }
+
   /// `focusMinutes` expressed as a `TimeInterval` in seconds.
   var focusDuration: TimeInterval { TimeInterval(focusMinutes * 60) }
 
@@ -83,6 +90,8 @@ final class AppSettings {
     notificationsEnabled = defaults.object(forKey: Keys.notificationsEnabled) as? Bool ?? true
     autoStartNextPhase = defaults.object(forKey: Keys.autoStartNextPhase) as? Bool ?? false
     showDockIcon = defaults.object(forKey: Keys.showDockIcon) as? Bool ?? false
+    let rawLayout = defaults.string(forKey: Keys.taskPickerLayout)
+    taskPickerLayout = rawLayout.flatMap(TaskPickerLayout.init) ?? .grid
   }
 
   private enum Keys {
@@ -94,6 +103,7 @@ final class AppSettings {
     static let notificationsEnabled = "notificationsEnabled"
     static let autoStartNextPhase = "autoStartNextPhase"
     static let showDockIcon = "showDockIcon"
+    static let taskPickerLayout = "taskPickerLayout"
   }
 }
 
