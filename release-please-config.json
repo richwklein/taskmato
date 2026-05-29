@@ -5,11 +5,11 @@
       "release-type": "simple",
       "package-name": "taskmato",
       "changelog-path": "CHANGELOG.md",
-      "include-v-in-tag": false,
+      "include-v-in-tag": true,
       "include-component-in-tag": false,
       "bump-minor-pre-major": false,
       "draft": false,
-      "prerelease": true,
+      "prerelease": false,
       "extra-files": ["version.txt"]
     }
   }
