@@ -45,7 +45,7 @@ struct TaskRowView: View {
           if let due = task.dueDate {
             Text(due, format: .dateTime.month(.abbreviated).day())
               .font(.caption2)
-              .foregroundStyle(.secondary)
+              .foregroundStyle(isUrgent(due) ? Color.red : Color.secondary)
           }
         }
 
@@ -56,6 +56,11 @@ struct TaskRowView: View {
     }
     .padding(.vertical, 4)
     .contentShape(Rectangle())
+  }
+
+  /// Returns `true` when the due date is today or in the past.
+  private func isUrgent(_ date: Date) -> Bool {
+    Calendar.current.isDateInToday(date) || date < Date.now
   }
 
   /// Priority mark (colored) prepended inline to the markdown-rendered title.
@@ -86,8 +91,7 @@ struct TaskRowView: View {
 
   private var priorityColor: Color {
     switch task.priority {
-    case .highest, .high: return .red
-    case .medium: return .orange
+    case .highest, .high, .medium: return .orange
     case .low, .lowest, .none: return .primary
     }
   }
