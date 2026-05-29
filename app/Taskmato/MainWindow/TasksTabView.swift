@@ -87,6 +87,7 @@ struct TasksTabView: View {
     }
     .searchable(text: $query, prompt: "Search tasks")
     .task(id: query) { await loadTasks() }
+    .task { await subscribeToProviderUpdates() }
     .onAppear { Task { await loadTasks() } }
     .onChange(of: isAddingTask) { _, adding in
       if !adding { Task { await loadTasks() } }
@@ -189,6 +190,20 @@ struct TasksTabView: View {
   }
 
   // MARK: - Data loading
+
+  /// Subscribes to live-update streams from all enabled providers and reloads tasks on each event.
+  private func subscribeToProviderUpdates() async {
+    await withTaskGroup(of: Void.self) { group in
+      for provider in registry.providers where registry.isEnabled(provider.id) {
+        guard let stream = provider.observe() else { continue }
+        group.addTask {
+          for await _ in stream {
+            await loadTasks()
+          }
+        }
+      }
+    }
+  }
 
   private func loadTasks() async {
     isLoading = groupedLists.isEmpty

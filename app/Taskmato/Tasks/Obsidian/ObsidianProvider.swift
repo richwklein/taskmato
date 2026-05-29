@@ -150,18 +150,17 @@ final class ObsidianProvider: MutableTaskProvider {
 
   // MARK: - MutableTaskProvider
 
-  /// Rewrites the task line from `- [ ]` to `- [x]` in the vault file.
+  /// Rewrites the task checkbox from `[ ]` to `[x]` in the vault file, supporting both
+  /// unordered (`- [ ] `) and ordered (`1. [ ] `) list formats.
   ///
-  /// The line is validated against the stored task title before writing to guard against
-  /// stale ``TaskRef`` line numbers. If the expected line no longer matches, a title search
-  /// is performed as a fallback.
+  /// The stored line number is tried first; a file-wide search is the fallback for stale refs.
   func complete(_ ref: TaskRef) async throws {
-    try await rewrite(ref: ref, from: "- [ ] ", to: "- [x] ")
+    try await rewrite(ref: ref, from: " ", to: "x")
   }
 
-  /// Rewrites the task line from `- [x]` to `- [ ]` in the vault file.
+  /// Rewrites the task checkbox from `[x]` / `[X]` back to `[ ]` in the vault file.
   func reopen(_ ref: TaskRef) async throws {
-    try await rewrite(ref: ref, from: "- [x] ", to: "- [ ] ", fallbackFrom: "- [X] ")
+    try await rewrite(ref: ref, from: "x", to: " ", fallbackFrom: "X")
   }
 
   /// Scans the vault for all completed (`- [x]`) tasks, sorted by `✅` completion date descending.
@@ -326,8 +325,8 @@ final class ObsidianProvider: MutableTaskProvider {
 
   private func rewrite(
     ref: TaskRef,
-    from sourcePrefix: String,
-    to targetPrefix: String,
+    from fromCheckbox: String,
+    to toCheckbox: String,
     fallbackFrom: String? = nil
   ) async throws {
     guard let vaultURL else {
@@ -347,24 +346,54 @@ final class ObsidianProvider: MutableTaskProvider {
           .components(separatedBy: "\n")
         let index = lineNumber - 1
 
-        // Locate the target line: stored line number first, then title search as fallback.
-        let (targetIndex, matchedPrefix): (Int, String) = try {
-          if index < lines.count, lines[index].hasPrefix(sourcePrefix) {
-            return (index, sourcePrefix)
+        // Try the stored line number first; fall back to a file-wide search for stale refs.
+        let (targetIndex, rewritten): (Int, String) = try {
+          if index < lines.count {
+            if let rewrite = Self.rewriteLine(lines[index], from: fromCheckbox, to: toCheckbox) {
+              return (index, rewrite)
+            }
+            if let alt = fallbackFrom {
+              if let rewrite = Self.rewriteLine(lines[index], from: alt, to: toCheckbox) {
+                return (index, rewrite)
+              }
+            }
           }
-          if let alt = fallbackFrom, index < lines.count, lines[index].hasPrefix(alt) {
-            return (index, alt)
-          }
-          if let found = lines.firstIndex(where: { $0.hasPrefix(sourcePrefix) }) {
-            return (found, sourcePrefix)
+          for (idx, line) in lines.enumerated() {
+            if let rewrite = Self.rewriteLine(line, from: fromCheckbox, to: toCheckbox) {
+              return (idx, rewrite)
+            }
           }
           throw ObsidianProviderError.taskNotFound(ref.nativeID)
         }()
-        lines[targetIndex] = targetPrefix + lines[targetIndex].dropFirst(matchedPrefix.count)
+        lines[targetIndex] = rewritten
         let updated = lines.joined(separator: "\n")
         try Data(updated.utf8).write(to: fileURL, options: [])
       }
     }.value
+  }
+
+  /// Swaps the checkbox in `line` from `fromCheckbox` to `toCheckbox`, handling both
+  /// unordered (`- [checkbox] `) and ordered (`N. [checkbox] `) list formats.
+  /// Returns the rewritten line, or `nil` if no matching checkbox was found.
+  private nonisolated static func rewriteLine(
+    _ line: String,
+    from fromCheckbox: String,
+    to toCheckbox: String
+  ) -> String? {
+    let unordered = "- [\(fromCheckbox)] "
+    if line.hasPrefix(unordered) {
+      return "- [\(toCheckbox)] " + line.dropFirst(unordered.count)
+    }
+    var idx = line.startIndex
+    while idx < line.endIndex, line[idx].isNumber {
+      idx = line.index(after: idx)
+    }
+    guard idx > line.startIndex else { return nil }
+    let numPart = String(line[..<idx])
+    let remainder = String(line[idx...])
+    let orderedSuffix = ". [\(fromCheckbox)] "
+    guard remainder.hasPrefix(orderedSuffix) else { return nil }
+    return numPart + ". [\(toCheckbox)] " + remainder.dropFirst(orderedSuffix.count)
   }
 
   // MARK: - File-system watching (FSEventStream)
