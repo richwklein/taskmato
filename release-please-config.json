@@ -10,7 +10,6 @@
       "bump-minor-pre-major": false,
       "draft": false,
       "prerelease": false,
-      "versioning-strategy": "always-bump-patch",
       "extra-files": ["version.txt"]
     }
   }
