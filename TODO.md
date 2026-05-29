@@ -93,20 +93,31 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 ## Monetization (P7)
 
-- [ ] `ProviderEntitlement` enum (`.free` / `.paid(productID)`) ([#272](https://github.com/richwklein/taskmato/issues/272))
+> Strategy: single **"Taskmato Pro"** non-consumable IAP unlocks all cloud providers. Local, Obsidian, Reminders, and Things 3 are always free. No subscription.
+
+- [ ] `ProviderEntitlement` enum (`.free` / `.paid(productID)`) — all cloud providers share one product ID (`com.taskmato.provider.pro`) ([#272](https://github.com/richwklein/taskmato/issues/272))
 - [ ] `ProviderEntitlementStore` (StoreKit 2 transactions, refresh, restore purchases) ([#272](https://github.com/richwklein/taskmato/issues/272))
-- [ ] Settings → Providers panel with unlock cards for paid providers ([#273](https://github.com/richwklein/taskmato/issues/273))
-- [ ] Lock paid providers from `TaskRegistry` until purchased ([#272](https://github.com/richwklein/taskmato/issues/272))
+- [ ] Settings → single "Taskmato Pro" unlock card listing all included cloud providers ([#273](https://github.com/richwklein/taskmato/issues/273))
+- [ ] Lock paid providers from `TaskRegistry` until Pro is purchased ([#272](https://github.com/richwklein/taskmato/issues/272))
 - [ ] App Store Connect product configuration notes (in `/docs`) ([#274](https://github.com/richwklein/taskmato/issues/274))
 
-## Todoist provider (P8, paid unlock)
+## Things 3 provider (P8a, free — local IPC)
 
-> Requires explicit go-ahead — adds a network dependency and OAuth flow.
+- [ ] `ThingsProvider` via URL scheme + AppleScript; lists map to Things 3 areas/projects ([#332](https://github.com/richwklein/taskmato/issues/332))
+- [ ] Provider absent from registry when Things 3 is not installed ([#332](https://github.com/richwklein/taskmato/issues/332))
+- [ ] `complete` via `things:///update` URL; `addTask` via `things:///add` URL ([#332](https://github.com/richwklein/taskmato/issues/332))
+- [ ] Live updates via FSEvents on Things 3 database or polling fallback ([#332](https://github.com/richwklein/taskmato/issues/332))
 
-- [ ] OAuth (PKCE) flow with secure token storage in Keychain ([#275](https://github.com/richwklein/taskmato/issues/275))
-- [ ] Read projects, sections, labels, tasks (sync API) ([#275](https://github.com/richwklein/taskmato/issues/275))
-- [ ] `MutableTaskProvider.complete` calls Todoist close endpoint ([#275](https://github.com/richwklein/taskmato/issues/275))
-- [ ] Background refresh on popover open ([#275](https://github.com/richwklein/taskmato/issues/275))
+## Cloud providers (P8b, Pro unlock)
+
+> All cloud providers share a single **"Taskmato Pro"** non-consumable IAP. Each adds a network dependency and OAuth/token auth flow. Requires explicit go-ahead per provider.
+
+- [ ] Todoist: OAuth (PKCE), sync API, projects as lists ([#275](https://github.com/richwklein/taskmato/issues/275))
+- [ ] Linear: GraphQL API, teams/projects as lists, close issue on complete ([#333](https://github.com/richwklein/taskmato/issues/333))
+- [ ] TickTick: OAuth, lists/projects as lists ([#334](https://github.com/richwklein/taskmato/issues/334))
+- [ ] Notion: OAuth, database selection + property mapping step ([#335](https://github.com/richwklein/taskmato/issues/335))
+- [ ] Google Tasks: OAuth, task lists as lists ([#336](https://github.com/richwklein/taskmato/issues/336))
+- [ ] GitHub Issues: PAT or OAuth, repository selection, assigned issues/PRs as tasks ([#337](https://github.com/richwklein/taskmato/issues/337))
 
 ## Release (P9)
 
