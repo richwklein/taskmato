@@ -7,10 +7,12 @@ import SwiftUI
 
 /// The task picker tab, showing tasks grouped into sections with live search.
 ///
-/// Selecting a task sets it as the active task and switches to the Timer tab.
-/// Section headers are formatted as "List: Section" when multiple lists are active,
-/// or just "Section" when only one list is active. Supports toggling between a list
-/// and an adaptive card grid layout.
+/// A ``NavigationSplitView`` places the ``ProviderSidebarView`` in the collapsible
+/// sidebar column and the task list/grid in the detail column. Selecting a task
+/// sets it as the active task and switches to the Timer tab. Section headers are
+/// formatted as "List: Section" when multiple lists are active, or just "Section"
+/// when only one list is active. Supports toggling between a list and an adaptive
+/// card grid layout.
 struct TasksTabView: View {
 
   var selectionStore: TaskSelectionStore
@@ -24,6 +26,9 @@ struct TasksTabView: View {
   @State private var groupedLists: [TaskGroup] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
+
+  /// Controls the NavigationSplitView sidebar column visibility.
+  @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
   /// The local provider instance looked up from the registry, if registered.
   private var localProvider: LocalProvider? {
@@ -59,73 +64,89 @@ struct TasksTabView: View {
   }
 
   var body: some View {
-    Group {
-      if registry.providers.filter({ registry.isEnabled($0.id) }).isEmpty {
-        ContentUnavailableView(
-          "No Task Providers",
-          systemImage: "tray",
-          description: Text("Enable a task provider in Settings to see your tasks here.")
-        )
-      } else if isLoading {
-        ProgressView()
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-      } else if groupedLists.isEmpty {
-        ContentUnavailableView(
-          query.isEmpty ? "No Tasks" : "No Results",
-          systemImage: query.isEmpty ? "checkmark.circle" : "magnifyingglass",
-          description: Text(
-            query.isEmpty
-              ? "All tasks from your providers will appear here."
-              : "No tasks match \"\(query)\"."
-          )
-        )
-      } else if settings.taskPickerLayout == .grid {
-        taskGrid
-      } else {
-        taskList
-      }
-    }
-    .searchable(text: $query, prompt: "Search tasks")
-    .task(id: query) { await loadTasks() }
-    .task { await subscribeToProviderUpdates() }
-    .onAppear { Task { await loadTasks() } }
-    .onChange(of: isAddingTask) { _, adding in
-      if !adding { Task { await loadTasks() } }
-    }
-    .sheet(isPresented: $isAddingTask) {
-      if let provider = localProvider {
-        AddTaskView(provider: provider, isPresented: $isAddingTask)
-      }
-    }
-    .toolbar {
-      if localProviderEnabled {
-        ToolbarItem(placement: .automatic) {
-          Button {
-            isAddingTask = true
-          } label: {
-            Label("Add Task", systemImage: "plus")
+    NavigationSplitView(columnVisibility: $columnVisibility) {
+      ProviderSidebarView(registry: registry)
+        .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
+    } detail: {
+      detailContent
+        .searchable(text: $query, prompt: "Search tasks")
+        .task(id: query) { await loadTasks() }
+        .task { await subscribeToProviderUpdates() }
+        .onAppear { Task { await loadTasks() } }
+        .onChange(of: isAddingTask) { _, adding in
+          if !adding { Task { await loadTasks() } }
+        }
+        .sheet(isPresented: $isAddingTask) {
+          if let provider = localProvider {
+            AddTaskView(provider: provider, isPresented: $isAddingTask)
           }
-          .help("Add a local task")
         }
-      }
+        .toolbar {
+          if localProviderEnabled {
+            ToolbarItem(placement: .automatic) {
+              Button {
+                isAddingTask = true
+              } label: {
+                Label("Add Task", systemImage: "plus")
+              }
+              .help("Add a local task")
+            }
+          }
 
-      ToolbarItem(placement: .automatic) {
-        Picker("Layout", selection: $settings.taskPickerLayout) {
-          Label("List", systemImage: "list.bullet").tag(TaskPickerLayout.list)
-          Label("Grid", systemImage: "square.grid.2x2").tag(TaskPickerLayout.grid)
-        }
-        .pickerStyle(.segmented)
-        .help("Toggle between list and grid view")
-      }
+          ToolbarItem(placement: .automatic) {
+            Picker("Layout", selection: $settings.taskPickerLayout) {
+              Label("List", systemImage: "list.bullet").tag(TaskPickerLayout.list)
+              Label("Grid", systemImage: "square.grid.2x2").tag(TaskPickerLayout.grid)
+            }
+            .pickerStyle(.segmented)
+            .help("Toggle between list and grid view")
+          }
 
-      ToolbarItem(placement: .automatic) {
-        Button {
-          openSettings()
-        } label: {
-          Label("Settings", systemImage: "gearshape")
+          ToolbarItem(placement: .automatic) {
+            Button {
+              openSettings()
+            } label: {
+              Label("Settings", systemImage: "gearshape")
+            }
+            .help("Open Settings (⌘,)")
+          }
         }
-        .help("Open Settings (⌘,)")
-      }
+    }
+    .onChange(of: settings.sidebarVisible) { _, visible in
+      columnVisibility = visible ? .all : .detailOnly
+    }
+    .onAppear {
+      columnVisibility = settings.sidebarVisible ? .all : .detailOnly
+    }
+  }
+
+  // MARK: - Detail content
+
+  @ViewBuilder
+  private var detailContent: some View {
+    if registry.providers.filter({ registry.isEnabled($0.id) }).isEmpty {
+      ContentUnavailableView(
+        "No Task Providers",
+        systemImage: "tray",
+        description: Text("Add a task provider using the sidebar.")
+      )
+    } else if isLoading {
+      ProgressView()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    } else if groupedLists.isEmpty {
+      ContentUnavailableView(
+        query.isEmpty ? "No Tasks" : "No Results",
+        systemImage: query.isEmpty ? "checkmark.circle" : "magnifyingglass",
+        description: Text(
+          query.isEmpty
+            ? "All tasks from your providers will appear here."
+            : "No tasks match \"\(query)\"."
+        )
+      )
+    } else if settings.taskPickerLayout == .grid {
+      taskGrid
+    } else {
+      taskList
     }
   }
 
