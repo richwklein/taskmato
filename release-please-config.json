@@ -11,6 +11,7 @@
       "draft": false,
       "prerelease": true,
       "prerelease-type": "alpha",
+      "versioning-strategy": "always-bump-patch",
       "extra-files": ["version.txt"]
     }
   }
