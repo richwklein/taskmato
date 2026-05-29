@@ -59,10 +59,11 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
   - [x] Priorities `🔺 ⏫ 🔼 🔽 ⏬`
   - [x] Dates `📅 ⏳ 🛫 ➕ ✅ ❌` (`YYYY-MM-DD`)
   - [x] Parse-tolerant for `🔁`, `🏁`, `🆔`, `⛔` (preserved on round-trip, not authoritative)
-- [ ] FSEvents-based live updates with debouncing ([#263](https://github.com/richwklein/taskmato/issues/263))
+- [x] FSEvents-based live updates with debouncing ([#263](https://github.com/richwklein/taskmato/issues/263))
 - [x] `MutableTaskProvider.complete` rewrites `- [ ]` → `- [x]` and appends `✅ <today>` ([#263](https://github.com/richwklein/taskmato/issues/263))
-- [ ] Implement `completedTasks()` for `ObsidianProvider` (scans vault for `- [x]` tasks) ([#301](https://github.com/richwklein/taskmato/issues/301))
-- [ ] Restore dynamic date token expansion in `ObsidianProvider` file patterns (`{year}`, `{week}`, `{month}`, `{day}` → current date values) so patterns like `**/Weekly/{year}-W{week}.md` resolve to real file paths
+- [x] Implement `completedTasks()` for `ObsidianProvider` (scans vault for `- [x]` tasks) ([#301](https://github.com/richwklein/taskmato/issues/301))
+- [x] Restore dynamic date token expansion in `ObsidianProvider` file patterns (`{year}`, `{week}`, `{month}`, `{day}` → current date values) so patterns like `**/Weekly/{year}-W{week}.md` resolve to real file paths
+- [x] Parse ordered-list tasks (`1. [ ] Task`) alongside unordered-list tasks (`- [ ] Task`)
 
 ## CLI / URL scheme provider (P5)
 
