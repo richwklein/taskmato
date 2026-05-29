@@ -132,23 +132,28 @@ struct TasksTabView: View {
 
   private var taskList: some View {
     List {
-      ForEach(flatSections) { section in
-        SwiftUI.Section {
-          SwiftUI.ForEach(section.tasks) { task in
-            TaskRowView(
-              task: task,
-              onComplete: registry.mutableProvider(for: task.id) != nil
-                ? { handleComplete(task) }
-                : nil
-            )
-            .onTapGesture { select(task) }
-          }
-        } header: {
-          Text(section.header)
-            .font(.subheadline)
-            .fontWeight(.semibold)
-        }
+      SwiftUI.ForEach(flatSections) { section in
+        listSection(for: section)
       }
+    }
+  }
+
+  @ViewBuilder
+  private func listSection(for section: FlatSection) -> some View {
+    SwiftUI.Section {
+      SwiftUI.ForEach(section.tasks) { task in
+        TaskRowView(
+          task: task,
+          onComplete: registry.mutableProvider(for: task.id) != nil
+            ? { handleComplete(task) }
+            : nil
+        )
+        .onTapGesture { select(task) }
+      }
+    } header: {
+      Text(section.header)
+        .font(.subheadline)
+        .fontWeight(.semibold)
     }
   }
 
