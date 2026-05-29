@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.0](https://github.com/richwklein/taskmato/compare/v0.0.14...v0.1.0) (2026-05-29)
+
+
+### Features
+
+* macOS app foundation ([#247](https://github.com/richwklein/taskmato/issues/247)) ([697ec9a](https://github.com/richwklein/taskmato/commit/697ec9ae2e5b84dd6ff3a37bd8ebc6a3ab3ff7c5))
+* **picker:** list/grid view toggle with card grid and flat section headers ([#319](https://github.com/richwklein/taskmato/issues/319)) ([fd509b4](https://github.com/richwklein/taskmato/commit/fd509b4da7d25f2767caa7408f94d85cb7581291))
+* **release:** use GitHub App token so release PRs trigger checks ([#310](https://github.com/richwklein/taskmato/issues/310)) ([e2af6e9](https://github.com/richwklein/taskmato/commit/e2af6e9898a5a99455ac02d7c74259768cbafbf8))
+* wire version.txt into Xcode build via xcconfig ([#313](https://github.com/richwklein/taskmato/issues/313)) ([63bd480](https://github.com/richwklein/taskmato/commit/63bd480942b271c6a1c5da9ed9f93faea6177d8c))
+
+
+### Bug Fixes
+
+* **release:** add v prefix to release-please tags ([#314](https://github.com/richwklein/taskmato/issues/314)) ([8e60231](https://github.com/richwklein/taskmato/commit/8e60231fd1ab363741965053630e59fec6ef4cec))
+* **release:** always bump patch to keep alpha counter incrementing ([#321](https://github.com/richwklein/taskmato/issues/321)) ([31ca5cd](https://github.com/richwklein/taskmato/commit/31ca5cd41eaa3dc85daba92238aa67be39051dc8))
+* **release:** set prerelease-type to alpha ([#316](https://github.com/richwklein/taskmato/issues/316)) ([7535384](https://github.com/richwklein/taskmato/commit/7535384e9f53c6fdc14bb3af6a44afd4fe26144f))
+* **release:** switch to 0.0.x versioning, drop alpha pre-release ([#323](https://github.com/richwklein/taskmato/issues/323)) ([4becd9f](https://github.com/richwklein/taskmato/commit/4becd9fd9c7a8b9a01aef11c64b4f747cbf44750))
+
 ## [1.0.0-alpha.14](https://github.com/richwklein/taskmato/compare/v1.0.0-alpha.13...v1.0.0-alpha.14) (2025-10-08)
 
 ### Bug Fixes
