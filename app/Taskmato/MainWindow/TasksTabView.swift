@@ -133,7 +133,7 @@ struct TasksTabView: View {
   private var taskList: some View {
     List {
       ForEach(flatSections) { section in
-        Section {
+        SwiftUI.Section {
           SwiftUI.ForEach(section.tasks) { task in
             TaskRowView(
               task: task,
@@ -157,25 +157,25 @@ struct TasksTabView: View {
   private var taskGrid: some View {
     let columns = [GridItem(.adaptive(minimum: 180), spacing: 10)]
     return ScrollView {
-      LazyVGrid(columns: columns, spacing: 10) {
+      VStack(alignment: .leading, spacing: 16) {
         ForEach(flatSections) { section in
-          Section {
-            SwiftUI.ForEach(section.tasks) { task in
-              TaskCardView(
-                task: task,
-                onComplete: registry.mutableProvider(for: task.id) != nil
-                  ? { handleComplete(task) }
-                  : nil
-              )
-              .onTapGesture { select(task) }
-            }
-          } header: {
+          VStack(alignment: .leading, spacing: 8) {
             Text(section.header)
               .font(.subheadline)
               .fontWeight(.semibold)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.top, 4)
-              .padding(.bottom, 2)
+              .padding(.horizontal, 2)
+
+            LazyVGrid(columns: columns, spacing: 10) {
+              ForEach(section.tasks) { task in
+                TaskCardView(
+                  task: task,
+                  onComplete: registry.mutableProvider(for: task.id) != nil
+                    ? { handleComplete(task) }
+                    : nil
+                )
+                .onTapGesture { select(task) }
+              }
+            }
           }
         }
       }
