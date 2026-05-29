@@ -13,10 +13,18 @@ struct ObsidianTaskParser {
 
   // MARK: - Public interface
 
-  /// The result of parsing a single markdown file.
+  /// The result of parsing a single markdown file for incomplete tasks.
   struct ParseResult {
     /// Incomplete tasks found in the file, in source order.
     let items: [TaskItem]
+    /// Text of the first H1 heading in the file, if any — used to name the ``TaskList``.
+    let listName: String?
+  }
+
+  /// The result of parsing a single markdown file for completed tasks.
+  struct CompletedParseResult {
+    /// Completed tasks paired with their `✅` completion dates (nil when the date is absent).
+    let entries: [(item: TaskItem, completedAt: Date?)]
     /// Text of the first H1 heading in the file, if any — used to name the ``TaskList``.
     let listName: String?
   }
@@ -38,35 +46,96 @@ struct ObsidianTaskParser {
     vaultName: String,
     list: TaskList
   ) -> ParseResult {
-    let lines = content.components(separatedBy: "\n")
     let context = FileContext(
       providerID: providerID,
       fileRelativePath: fileRelativePath,
       vaultName: vaultName,
       list: list
     )
-    var items: [TaskItem] = []
-    var listName: String?
+    let (raw, listName) = collectEntries(
+      from: content,
+      isTarget: isIncompleteTask,
+      shouldSkip: isCompletedTask
+    )
+    let items = raw.map { entry in
+      buildTaskItem(
+        rawLine: entry.rawLine, lineNumber: entry.lineNumber,
+        section: entry.section, notes: entry.notes, context: context
+      )
+    }
+    return ParseResult(items: items, listName: listName)
+  }
 
-    // Mutable parse state
+  /// Parses all completed (`- [x]` / `- [X]`) tasks from `content`.
+  ///
+  /// Each entry includes the parsed ``TaskItem`` and the `✅ YYYY-MM-DD` completion date
+  /// (nil when the emoji is absent), allowing callers to sort by recency.
+  func parseCompleted(
+    content: String,
+    providerID: String,
+    fileRelativePath: String,
+    vaultName: String,
+    list: TaskList
+  ) -> CompletedParseResult {
+    let context = FileContext(
+      providerID: providerID,
+      fileRelativePath: fileRelativePath,
+      vaultName: vaultName,
+      list: list
+    )
+    let (raw, listName) = collectEntries(
+      from: content,
+      isTarget: isCompletedTask,
+      shouldSkip: isIncompleteTask
+    )
+    let entries = raw.map { entry in
+      buildCompletedEntry(
+        rawLine: entry.rawLine, lineNumber: entry.lineNumber,
+        section: entry.section, notes: entry.notes, context: context
+      )
+    }
+    return CompletedParseResult(entries: entries, listName: listName)
+  }
+
+  // MARK: - State machine
+
+  /// Raw task line collected by the state machine before field extraction.
+  private struct RawEntry {
+    let lineNumber: Int
+    let rawLine: String
+    let section: String?
+    let notes: String?
+  }
+
+  /// Walks `content` line by line and collects task lines that pass `isTarget`, skipping those
+  /// that match `shouldSkip`. H1 headings, subheadings, and indented continuation lines are
+  /// handled identically regardless of which task type is being collected.
+  private func collectEntries(
+    from content: String,
+    isTarget: (String) -> Bool,
+    shouldSkip: (String) -> Bool
+  ) -> (entries: [RawEntry], listName: String?) {
+    let lines = content.components(separatedBy: "\n")
+    var collected: [RawEntry] = []
+    var listName: String?
     var currentSection: String?
     var pendingLine: Int?
     var pendingRaw: String?
     var pendingSection: String?
     var notesBuffer: [String] = []
 
-    func finalizeTask() {
-      guard let lineNumber = pendingLine, let rawLine = pendingRaw else { return }
-      let joined = notesBuffer.joined(separator: "\n")
-      let notes = joined.trimmingCharacters(in: .whitespacesAndNewlines)
-      let item = buildTaskItem(
-        rawLine: rawLine,
-        lineNumber: lineNumber,
-        section: pendingSection,
-        notes: notes.isEmpty ? nil : notes,
-        context: context
+    func finalize() {
+      guard let lineNo = pendingLine, let raw = pendingRaw else { return }
+      let notes = notesBuffer.joined(separator: "\n")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+      collected.append(
+        RawEntry(
+          lineNumber: lineNo,
+          rawLine: raw,
+          section: pendingSection,
+          notes: notes.isEmpty ? nil : notes
+        )
       )
-      items.append(item)
       pendingLine = nil
       pendingRaw = nil
       pendingSection = nil
@@ -75,31 +144,28 @@ struct ObsidianTaskParser {
 
     for (zeroIndex, line) in lines.enumerated() {
       let lineNumber = zeroIndex + 1
-
-      if let headingText = h1(line) {
-        finalizeTask()
-        if listName == nil { listName = headingText }
-      } else if let headingText = subheading(line) {
-        finalizeTask()
-        currentSection = headingText
-      } else if isIncompleteTask(line) {
-        finalizeTask()
+      if let heading = h1(line) {
+        finalize()
+        if listName == nil { listName = heading }
+      } else if let heading = subheading(line) {
+        finalize()
+        currentSection = heading
+      } else if isTarget(line) {
+        finalize()
         pendingLine = lineNumber
         pendingRaw = line
         pendingSection = currentSection
-      } else if isCompletedTask(line) {
-        finalizeTask()
-        // completed tasks are discarded
+      } else if shouldSkip(line) {
+        finalize()
       } else if pendingLine != nil, isIndented(line) {
         notesBuffer.append(stripIndent(line))
       } else if !line.trimmingCharacters(in: .whitespaces).isEmpty {
-        finalizeTask()
+        finalize()
       }
     }
+    finalize()
 
-    finalizeTask()
-
-    return ParseResult(items: items, listName: listName)
+    return (collected, listName)
   }
 
   // MARK: - Line classification
@@ -121,11 +187,39 @@ struct ObsidianTaskParser {
   }
 
   private func isIncompleteTask(_ line: String) -> Bool {
-    line.hasPrefix("- [ ] ")
+    line.hasPrefix("- [ ] ") || matchesOrderedItem(line, bracket: "[ ]")
   }
 
   private func isCompletedTask(_ line: String) -> Bool {
     line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
+      || matchesOrderedItem(line, bracket: "[x]")
+      || matchesOrderedItem(line, bracket: "[X]")
+  }
+
+  /// Returns `true` when `line` is an ordered list item (`1. <bracket> `) with the given bracket content.
+  private func matchesOrderedItem(_ line: String, bracket: String) -> Bool {
+    var idx = line.startIndex
+    while idx < line.endIndex, line[idx].isNumber {
+      idx = line.index(after: idx)
+    }
+    return idx > line.startIndex && line[idx...].hasPrefix(". \(bracket) ")
+  }
+
+  /// Strips the task list marker (`- [ ] `, `1. [x] `, etc.) from the beginning of a raw task line.
+  private func stripTaskMarker(from line: String) -> String {
+    for prefix in ["- [ ] ", "- [x] ", "- [X] "] where line.hasPrefix(prefix) {
+      return String(line.dropFirst(prefix.count))
+    }
+    var idx = line.startIndex
+    while idx < line.endIndex, line[idx].isNumber {
+      idx = line.index(after: idx)
+    }
+    guard idx > line.startIndex else { return line }
+    let rest = String(line[idx...])
+    for suffix in [". [ ] ", ". [x] ", ". [X] "] where rest.hasPrefix(suffix) {
+      return String(rest.dropFirst(suffix.count))
+    }
+    return line
   }
 
   private func isIndented(_ line: String) -> Bool {
@@ -155,7 +249,7 @@ struct ObsidianTaskParser {
     notes: String?,
     context: FileContext
   ) -> TaskItem {
-    var text = String(rawLine.dropFirst(6))  // strip "- [ ] "
+    var text = stripTaskMarker(from: rawLine)
 
     let priority = extractPriority(from: &text)
     let dueDate = extractDate(emoji: "📅", from: &text)
@@ -179,6 +273,42 @@ struct ObsidianTaskParser {
       section: section,
       sourceURL: obsidianURL(vaultName: context.vaultName, filePath: context.fileRelativePath)
     )
+  }
+
+  /// Builds a ``TaskItem`` from a completed task line and extracts the `✅` completion date.
+  private func buildCompletedEntry(
+    rawLine: String,
+    lineNumber: Int,
+    section: String?,
+    notes: String?,
+    context: FileContext
+  ) -> (item: TaskItem, completedAt: Date?) {
+    var text = stripTaskMarker(from: rawLine)
+
+    let completedAt = extractDate(emoji: "✅", from: &text)
+    let priority = extractPriority(from: &text)
+    let dueDate = extractDate(emoji: "📅", from: &text)
+    let scheduledDate = extractDate(emoji: "⏰", from: &text)
+    let startDate = extractDate(emoji: "🛫", from: &text)
+    let title = text.trimmingCharacters(in: .whitespaces)
+
+    let item = TaskItem(
+      id: TaskRef(
+        providerID: context.providerID,
+        nativeID: "\(context.fileRelativePath):\(lineNumber)"
+      ),
+      title: title,
+      notes: notes,
+      format: .markdown,
+      priority: priority,
+      dueDate: dueDate,
+      scheduledDate: scheduledDate,
+      startDate: startDate,
+      list: context.list,
+      section: section,
+      sourceURL: obsidianURL(vaultName: context.vaultName, filePath: context.fileRelativePath)
+    )
+    return (item, completedAt)
   }
 
   // MARK: - Field extraction
