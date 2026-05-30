@@ -169,7 +169,7 @@ final class ObsidianProvider: ClosableTaskProvider {
   func completedTasks() async throws -> [TaskItem] {
     guard let vaultURL else { return [] }
     let patterns = filePatterns
-    let entries: [(item: TaskItem, completedAt: Date?)] = try await Task.detached(
+    let entries: [TaskItem] = try await Task.detached(
       priority: .userInitiated
     ) { [weak self] in
       guard let self else { return [] }
@@ -192,10 +192,7 @@ final class ObsidianProvider: ClosableTaskProvider {
         }
       }
     }.value
-    return
-      entries
-      .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
-      .map(\.item)
+    return entries.sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
   }
 
   // MARK: - Vault bookmark management

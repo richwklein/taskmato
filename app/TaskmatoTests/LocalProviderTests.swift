@@ -183,6 +183,22 @@ struct LocalProviderTests {
     #expect(completed[0].title == "Done")
   }
 
+  @Test func completedTasksItemsCarryCompletedAt() async throws {
+    let provider = makeProvider()
+    var draft = TaskDraft()
+    draft.title = "With Date"
+    provider.addTask(draft)
+    let ref = try await provider.tasks(in: nil)[0].id
+    let before = Date()
+    try await provider.complete(ref)
+    let after = Date()
+    let completed = try await provider.completedTasks()
+    #expect(completed.count == 1)
+    let stamp = try #require(completed[0].completedAt)
+    #expect(stamp >= before)
+    #expect(stamp <= after)
+  }
+
   @Test func reopenRestoresTaskToActive() async throws {
     let provider = makeProvider()
     var draft = TaskDraft()

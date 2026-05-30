@@ -44,4 +44,9 @@ struct TaskItem: Identifiable, Hashable, Codable, Sendable {
 
   /// A deep link back to the task in the source provider app, if available.
   var sourceURL: URL?
+
+  /// Wall-clock time the task was completed, or `nil` for active tasks.
+  ///
+  /// Populated by ``ClosableTaskProvider/completedTasks()``; always `nil` for live tasks.
+  var completedAt: Date?
 }
