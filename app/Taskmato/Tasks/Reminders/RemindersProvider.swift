@@ -12,6 +12,7 @@ import Foundation
 /// ``authorize()`` succeeds. The provider conforms to ``MutableTaskProvider`` so
 /// completing a Pomodoro can mark the reminder done in the source system.
 @Observable
+@MainActor
 final class RemindersProvider: MutableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
