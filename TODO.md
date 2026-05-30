@@ -31,10 +31,10 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 ## Apple Reminders provider (P2)
 
-- [ ] Request Reminders access (EventKit) lazily with graceful denial UX ([#254](https://github.com/richwklein/taskmato/issues/254))
-- [ ] Implement `RemindersProvider` (lists, search, incomplete-only filter) ([#254](https://github.com/richwklein/taskmato/issues/254))
-- [ ] Implement close-back: `MutableTaskProvider.complete` marks the reminder done in EventKit ([#255](https://github.com/richwklein/taskmato/issues/255))
-- [ ] Live updates via `EKEventStoreChangedNotification` ([#256](https://github.com/richwklein/taskmato/issues/256))
+- [x] Request Reminders access (EventKit) lazily with graceful denial UX ([#254](https://github.com/richwklein/taskmato/issues/254))
+- [x] Implement `RemindersProvider` (lists, search, incomplete-only filter) ([#254](https://github.com/richwklein/taskmato/issues/254))
+- [x] Implement close-back: `MutableTaskProvider.complete` marks the reminder done in EventKit ([#255](https://github.com/richwklein/taskmato/issues/255))
+- [x] Live updates via `EKEventStoreChangedNotification` ([#256](https://github.com/richwklein/taskmato/issues/256))
 - [ ] `RemindersProvider` conformance to `WritableTaskProvider`: `addTask` via EventKit; `defaultListID` reads `EKEventStore.defaultCalendarForNewReminders` ([#329](https://github.com/richwklein/taskmato/issues/329))
 
 ## Picker UI + close-back affordance (P3)

@@ -32,6 +32,10 @@ struct TasksTabView: View {
     registry.providers.first(where: { $0 is LocalProvider }) as? LocalProvider
   }
 
+  private var remindersProvider: RemindersProvider? {
+    registry.providers.first(where: { $0 is RemindersProvider }) as? RemindersProvider
+  }
+
   /// `true` when the local provider is registered and currently enabled.
   private var localProviderEnabled: Bool {
     localProvider.map { registry.isEnabled($0.id) } ?? false
@@ -80,6 +84,10 @@ struct TasksTabView: View {
         }
         .onChange(of: registry.enabledIDs) { _, _ in Task { await loadTasks() } }
         .onChange(of: registry.scopes) { _, _ in Task { await loadTasks() } }
+        .onChange(of: remindersProvider?.isAuthorized) { _, authorized in
+          guard authorized == true else { return }
+          Task { await loadTasks() }
+        }
         .sheet(isPresented: $isAddingTask) {
           if let provider = localProvider {
             AddTaskView(provider: provider, isPresented: $isAddingTask)

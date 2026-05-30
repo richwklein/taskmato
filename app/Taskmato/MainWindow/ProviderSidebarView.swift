@@ -29,6 +29,9 @@ struct ProviderSidebarView: View {
   /// Controls the Obsidian configuration sheet shown when Obsidian is first enabled.
   @State private var isConfiguringObsidian = false
 
+  /// Controls the Reminders configuration sheet shown when Reminders is first enabled.
+  @State private var isConfiguringReminders = false
+
   // MARK: - Computed helpers
 
   private var enabledProviders: [any TaskProvider] {
@@ -46,6 +49,10 @@ struct ProviderSidebarView: View {
 
   private var obsidianProvider: ObsidianProvider? {
     registry.providers.first(where: { $0 is ObsidianProvider }) as? ObsidianProvider
+  }
+
+  private var remindersProvider: RemindersProvider? {
+    registry.providers.first(where: { $0 is RemindersProvider }) as? RemindersProvider
   }
 
   // MARK: - Body
@@ -72,6 +79,17 @@ struct ProviderSidebarView: View {
         obsidianSetupSheet(obsidian)
       }
     }
+    .sheet(isPresented: $isConfiguringReminders) {
+      if let reminders = remindersProvider {
+        RemindersSetupSheet(provider: reminders)
+      }
+    }
+    .onChange(of: isConfiguringReminders) { _, isPresented in
+      guard !isPresented, let reminders = remindersProvider, reminders.isAuthorized else {
+        return
+      }
+      Task { await loadLists(for: reminders) }
+    }
   }
 
   // MARK: - Provider group
@@ -95,9 +113,16 @@ struct ProviderSidebarView: View {
     } label: {
       Text(provider.displayName)
         .font(.headline)
+        .padding(.leading, 4)
         .contextMenu {
           if provider is ObsidianProvider {
             Button("Configure Obsidian…") { isConfiguringObsidian = true }
+            Divider()
+          }
+          if provider is RemindersProvider {
+            Button("Configure Apple Reminders…") {
+              isConfiguringReminders = true
+            }
             Divider()
           }
           Button("Remove \(provider.displayName)", role: .destructive) {
@@ -219,6 +244,9 @@ struct ProviderSidebarView: View {
           expanded.insert(provider.id)
           if provider is ObsidianProvider {
             isConfiguringObsidian = true
+          }
+          if provider is RemindersProvider {
+            isConfiguringReminders = true
           }
           Task { await loadLists(for: provider) }
         }

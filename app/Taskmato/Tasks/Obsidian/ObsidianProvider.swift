@@ -45,7 +45,7 @@ final class ObsidianProvider: MutableTaskProvider {
   private let parser = ObsidianTaskParser()
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
   private var fsEventStream: FSEventStreamRef?
-  private var debounceWorkItem: DispatchWorkItem?
+  private var debounceTask: Task<Void, Never>?
 
   private static let bookmarkKey = "obsidian.vaultBookmark"
   private static let patternsKey = "obsidian.filePatterns"
@@ -440,21 +440,18 @@ final class ObsidianProvider: MutableTaskProvider {
 
   /// Cancels any pending rescan and schedules a new one 250 ms from now.
   private func scheduleDebounce() {
-    debounceWorkItem?.cancel()
-    let item = DispatchWorkItem { [weak self] in
-      Task { @MainActor [weak self] in
-        guard let self, let continuation = self.streamContinuation else { return }
-        let updated = (try? await self.tasks(in: nil)) ?? []
-        continuation.yield(updated)
-      }
+    debounceTask?.cancel()
+    debounceTask = Task { [weak self] in
+      try? await Task.sleep(for: .milliseconds(250))
+      guard !Task.isCancelled, let self else { return }
+      let updated = (try? await self.tasks(in: nil)) ?? []
+      self.streamContinuation?.yield(updated)
     }
-    debounceWorkItem = item
-    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.25, execute: item)
   }
 
   private func stopWatching() {
-    debounceWorkItem?.cancel()
-    debounceWorkItem = nil
+    debounceTask?.cancel()
+    debounceTask = nil
     if let stream = fsEventStream {
       FSEventStreamStop(stream)
       FSEventStreamRelease(stream)
