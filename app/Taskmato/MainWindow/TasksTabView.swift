@@ -133,7 +133,7 @@ struct TasksTabView: View {
               } label: {
                 Label(
                   showCompleted ? "Hide Completed" : "Show Completed",
-                  systemImage: "checkmark.circle.fill"
+                  systemImage: showCompleted ? "eye.slash" : "eye"
                 )
               }
               .help(showCompleted ? "Hide completed tasks" : "Show completed tasks")
@@ -262,6 +262,17 @@ struct TasksTabView: View {
     )
   }
 
+  /// A ``CompletedTaskCardView`` wired to this view's restore and delete handlers.
+  @ViewBuilder
+  private func completedCard(_ task: TaskItem) -> some View {
+    CompletedTaskCardView(
+      task: task,
+      onRestore: { handleRestore(task) },
+      onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
+        ? { handleDelete(task) } : nil
+    )
+  }
+
   // MARK: - Grid layout
 
   private var taskGrid: some View {
@@ -305,7 +316,9 @@ struct TasksTabView: View {
             }
 
             if showCompleted && !completed.isEmpty {
-              ForEach(completed) { task in completedRow(task) }
+              LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(completed) { task in completedCard(task) }
+              }
             }
           }
         }
@@ -316,7 +329,9 @@ struct TasksTabView: View {
               .font(.subheadline)
               .fontWeight(.semibold)
               .padding(.horizontal, 2)
-            ForEach(completedOrphans) { task in completedRow(task) }
+            LazyVGrid(columns: columns, spacing: 10) {
+              ForEach(completedOrphans) { task in completedCard(task) }
+            }
           }
         }
       }
@@ -456,31 +471,6 @@ extension TasksTabView {
       )
     }
   }
-}
-
-// MARK: - Supporting types
-
-/// A grouped collection of tasks sharing a ``TaskList``.
-private struct TaskGroup: Identifiable {
-  let id: String
-  let listName: String
-  let sections: [TaskSection]
-}
-
-/// A collection of tasks under a single section heading within a list.
-private struct TaskSection: Identifiable {
-  let id: String
-  let name: String?
-  let tasks: [TaskItem]
-}
-
-/// A flattened display section with a computed header label and its tasks.
-private struct FlatSection: Identifiable {
-  let id: String
-  /// The ``TaskList`` identifier this section belongs to — used to bucket completed tasks.
-  let listID: String
-  let header: String
-  let tasks: [TaskItem]
 }
 
 #Preview {
