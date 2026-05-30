@@ -84,6 +84,12 @@ struct ProviderSidebarView: View {
         RemindersSetupSheet(provider: reminders)
       }
     }
+    .onChange(of: isConfiguringReminders) { _, isPresented in
+      guard !isPresented, let reminders = remindersProvider, reminders.isAuthorized else {
+        return
+      }
+      Task { await loadLists(for: reminders) }
+    }
   }
 
   // MARK: - Provider group
@@ -107,6 +113,7 @@ struct ProviderSidebarView: View {
     } label: {
       Text(provider.displayName)
         .font(.headline)
+        .padding(.leading, 4)
         .contextMenu {
           if provider is ObsidianProvider {
             Button("Configure Obsidian…") { isConfiguringObsidian = true }
