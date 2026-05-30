@@ -103,7 +103,7 @@ struct ActiveTaskView: View {
       ) {
         Button("Stop & Complete", role: .destructive) {
           guard let task = selectionStore.activeTask,
-            let provider = registry.mutableProvider(for: task.id)
+            let provider = registry.closableProvider(for: task.id)
           else { return }
           let ref = task.id
           engine.stop()
@@ -156,7 +156,7 @@ struct ActiveTaskView: View {
   /// Returns a complete button when the provider supports mutation, or a static dot indicator otherwise.
   @ViewBuilder
   private func leadingIndicator(for task: TaskItem) -> some View {
-    if let provider = registry.mutableProvider(for: task.id) {
+    if let provider = registry.closableProvider(for: task.id) {
       Button {
         if sessionIsActive {
           confirmComplete = true

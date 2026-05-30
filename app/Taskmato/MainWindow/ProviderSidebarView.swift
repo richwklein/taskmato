@@ -11,8 +11,8 @@ import SwiftUI
 /// each group, list rows carry a checkbox to control visibility and, for writable
 /// providers, a star button to promote the default list. Writable provider groups
 /// also expose an inline "New list" row at the bottom. A context menu on each list
-/// row provides set-default and delete actions. The "Add Provider" menu at the
-/// bottom enables any registered but currently disabled provider.
+/// row provides set-default, rename, and delete actions. The "Add Provider" menu at
+/// the bottom enables any registered but currently disabled provider.
 struct ProviderSidebarView: View {
 
   var registry: TaskRegistry
@@ -25,6 +25,15 @@ struct ProviderSidebarView: View {
 
   /// Inline new-list name buffer keyed by provider ID.
   @State private var newListName: [String: String] = [:]
+
+  /// The list ID currently being renamed inline, or `nil` when no rename is in progress.
+  @State private var renamingListID: String?
+
+  /// Editable buffer for the in-progress rename.
+  @State private var renameBuffer: String = ""
+
+  /// Drives focus into the rename `TextField` when a rename begins.
+  @FocusState private var renameFocused: String?
 
   /// Controls the Obsidian configuration sheet shown when Obsidian is first enabled.
   @State private var isConfiguringObsidian = false
@@ -160,8 +169,7 @@ struct ProviderSidebarView: View {
       .toggleStyle(.checkbox)
       .disabled(isDefaultList)
 
-      Text(list.name)
-        .lineLimit(1)
+      listNameField(list: list, provider: provider)
 
       Spacer()
 
@@ -186,6 +194,12 @@ struct ProviderSidebarView: View {
         }
         .disabled(isDefaultList)
 
+        Button("Rename") {
+          renamingListID = list.id
+          renameBuffer = list.name
+          renameFocused = list.id
+        }
+
         Divider()
 
         Button("Delete", role: .destructive) {
@@ -198,6 +212,21 @@ struct ProviderSidebarView: View {
         }
         .disabled(isDefaultList)
       }
+    }
+  }
+
+  /// Inline name display that switches to an editable `TextField` during a rename.
+  @ViewBuilder
+  private func listNameField(list: TaskList, provider: any TaskProvider) -> some View {
+    if renamingListID == list.id {
+      TextField("", text: $renameBuffer)
+        .textFieldStyle(.plain)
+        .focused($renameFocused, equals: list.id)
+        .onSubmit { commitRename(list: list, provider: provider) }
+        .onExitCommand { cancelRename() }
+    } else {
+      Text(list.name)
+        .lineLimit(1)
     }
   }
 
@@ -302,6 +331,26 @@ struct ProviderSidebarView: View {
       return local.defaultListID == listID
     }
     return (provider as? (any WritableTaskProvider))?.defaultListID == listID
+  }
+
+  // MARK: - Rename helpers
+
+  private func commitRename(list: TaskList, provider: any TaskProvider) {
+    let trimmed = renameBuffer.trimmingCharacters(in: .whitespaces)
+    guard !trimmed.isEmpty, let writable = provider as? (any WritableTaskProvider) else {
+      cancelRename()
+      return
+    }
+    renamingListID = nil
+    Task {
+      try? await writable.renameList(list.id, name: trimmed)
+      await loadLists(for: provider)
+    }
+  }
+
+  private func cancelRename() {
+    renamingListID = nil
+    renameBuffer = ""
   }
 
   // MARK: - Async list loading

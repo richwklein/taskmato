@@ -62,6 +62,22 @@ struct ObsidianProviderCompletedTasksTests {
     #expect(tasks[0].title == "Done")
   }
 
+  @Test func completedTasksItemsCarryCompletedAt() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write("- [x] Done ✅ 2026-05-10\n- [ ] Pending", at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let tasks = try await provider.completedTasks()
+    #expect(tasks.count == 1)
+    let stamp = try #require(tasks[0].completedAt)
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone(identifier: "UTC")!
+    let comps = cal.dateComponents([.year, .month, .day], from: stamp)
+    #expect(comps.year == 2026)
+    #expect(comps.month == 5)
+    #expect(comps.day == 10)
+  }
+
   @Test func excludesIncompleteTasks() async throws {
     let vault = try makeVault()
     defer { try? FileManager.default.removeItem(at: vault) }

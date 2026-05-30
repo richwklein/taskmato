@@ -23,8 +23,8 @@ struct ObsidianTaskParser {
 
   /// The result of parsing a single markdown file for completed tasks.
   struct CompletedParseResult {
-    /// Completed tasks paired with their `✅` completion dates (nil when the date is absent).
-    let entries: [(item: TaskItem, completedAt: Date?)]
+    /// Completed tasks, each with `completedAt` set from the `✅ YYYY-MM-DD` emoji when present.
+    let entries: [TaskItem]
     /// Text of the first H1 heading in the file, if any — used to name the ``TaskList``.
     let listName: String?
   }
@@ -68,8 +68,8 @@ struct ObsidianTaskParser {
 
   /// Parses all completed (`- [x]` / `- [X]`) tasks from `content`.
   ///
-  /// Each entry includes the parsed ``TaskItem`` and the `✅ YYYY-MM-DD` completion date
-  /// (nil when the emoji is absent), allowing callers to sort by recency.
+  /// Each ``TaskItem`` in the result has `completedAt` set from the `✅ YYYY-MM-DD` emoji
+  /// when present, or `nil` when the date is absent.
   func parseCompleted(
     content: String,
     providerID: String,
@@ -275,14 +275,14 @@ struct ObsidianTaskParser {
     )
   }
 
-  /// Builds a ``TaskItem`` from a completed task line and extracts the `✅` completion date.
+  /// Builds a ``TaskItem`` from a completed task line, setting `completedAt` from the `✅` emoji.
   private func buildCompletedEntry(
     rawLine: String,
     lineNumber: Int,
     section: String?,
     notes: String?,
     context: FileContext
-  ) -> (item: TaskItem, completedAt: Date?) {
+  ) -> TaskItem {
     var text = stripTaskMarker(from: rawLine)
 
     let completedAt = extractDate(emoji: "✅", from: &text)
@@ -292,7 +292,7 @@ struct ObsidianTaskParser {
     let startDate = extractDate(emoji: "🛫", from: &text)
     let title = text.trimmingCharacters(in: .whitespaces)
 
-    let item = TaskItem(
+    return TaskItem(
       id: TaskRef(
         providerID: context.providerID,
         nativeID: "\(context.fileRelativePath):\(lineNumber)"
@@ -306,9 +306,9 @@ struct ObsidianTaskParser {
       startDate: startDate,
       list: context.list,
       section: section,
-      sourceURL: obsidianURL(vaultName: context.vaultName, filePath: context.fileRelativePath)
+      sourceURL: obsidianURL(vaultName: context.vaultName, filePath: context.fileRelativePath),
+      completedAt: completedAt
     )
-    return (item, completedAt)
   }
 
   // MARK: - Field extraction

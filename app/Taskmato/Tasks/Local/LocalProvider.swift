@@ -84,7 +84,7 @@ final class LocalProvider: WritableTaskProvider {
   /// Returns `nil` — mutations are in-process and `@Observable` propagates changes directly.
   func observe() -> AsyncStream<[TaskItem]>? { nil }
 
-  // MARK: - MutableTaskProvider
+  // MARK: - ClosableTaskProvider
 
   /// Soft-deletes the task by setting `isCompleted = true` and recording `completedAt`.
   func complete(_ ref: TaskRef) async throws {

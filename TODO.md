@@ -41,9 +41,9 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 
 - [x] Main window with Timer, Tasks, and Stats tabs (TabView navigation skeleton) ([#294](https://github.com/richwklein/taskmato/issues/294))
 - [x] Task picker view in main window Tasks tab (search across providers, grouped by list) ([#257](https://github.com/richwklein/taskmato/issues/257) partial — provider section headers and priority badges remain)
-- [ ] Collapsible provider sidebar with per-provider list scoping: `NavigationSplitView` layout; sidebar owns provider enable/disable, list visibility (checkmark), default list (star), and list CRUD for `WritableTaskProvider` conformers; detail column scoped to visible lists; removes Providers section from Settings ([#298](https://github.com/richwklein/taskmato/issues/298), fulfills [#276](https://github.com/richwklein/taskmato/issues/276))
+- [x] Collapsible provider sidebar with per-provider list scoping: `NavigationSplitView` layout; sidebar owns provider enable/disable, list visibility (checkmark), default list (star), and list CRUD for `WritableTaskProvider` conformers; detail column scoped to visible lists; removes Providers section from Settings ([#298](https://github.com/richwklein/taskmato/issues/298), fulfills [#276](https://github.com/richwklein/taskmato/issues/276))
 - [x] List and grid view toggle for the task picker (list = current row layout, grid = card layout) ([#299](https://github.com/richwklein/taskmato/issues/299))
-- [ ] "View Completed" sheet in picker for any enabled `MutableTaskProvider`; calls `completedTasks()` with restore (`reopen`) and permanent-delete affordances ([#300](https://github.com/richwklein/taskmato/issues/300))
+- [x] "View Completed" inline section in picker for any enabled `ClosableTaskProvider`; Show/Hide toolbar toggle; completed tasks appear at the bottom of their originating list section with restore (`reopen`) and permanent-delete affordances for `WritableTaskProvider` tasks ([#300](https://github.com/richwklein/taskmato/issues/300))
 - [x] Active task label in popover and main window timer tab: provider-conditional complete (checkmark) button, always-visible clear button, hidden when no task active ([#258](https://github.com/richwklein/taskmato/issues/258))
 - [x] Mid-session task swap (does not stop the timer) ([#296](https://github.com/richwklein/taskmato/issues/296))
 - [ ] Edit task sheet for `WritableTaskProvider` items: title, notes, priority, due date, list; `LocalProvider.updateTask` already implemented; accessible via right-click context menu or double-click in picker ([#330](https://github.com/richwklein/taskmato/issues/330))
@@ -152,6 +152,10 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [ ] Add a documentation deploy action (if needed) ([#290](https://github.com/richwklein/taskmato/issues/290))
 - [ ] Make deploys dependent on build and require build checks ([#291](https://github.com/richwklein/taskmato/issues/291))
 - [ ] Re-enable the GitHub ruleset when rules are finalized ([#292](https://github.com/richwklein/taskmato/issues/292))
+
+## Notifications & sound (exploration)
+
+- [ ] Explore skipping `SoundService.play()` when notification banners are enabled to avoid the double audio cue on phase completion ([#341](https://github.com/richwklein/taskmato/issues/341))
 
 ## General foundations (pre-pivot, already shipped)
 
