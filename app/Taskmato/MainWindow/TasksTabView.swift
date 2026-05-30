@@ -217,14 +217,7 @@ struct TasksTabView: View {
 
       if showCompleted && !completedOrphans.isEmpty {
         SwiftUI.Section {
-          SwiftUI.ForEach(completedOrphans) { task in
-            CompletedTaskRowView(
-              task: task,
-              onRestore: { handleRestore(task) },
-              onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
-                ? { handleDelete(task) } : nil
-            )
-          }
+          SwiftUI.ForEach(completedOrphans) { task in completedRow(task) }
         } header: {
           Text("Other Completed")
             .font(.subheadline)
@@ -249,14 +242,7 @@ struct TasksTabView: View {
         .onTapGesture { select(task) }
       }
       if showCompleted && !completed.isEmpty {
-        SwiftUI.ForEach(completed) { task in
-          CompletedTaskRowView(
-            task: task,
-            onRestore: { handleRestore(task) },
-            onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
-              ? { handleDelete(task) } : nil
-          )
-        }
+        SwiftUI.ForEach(completed) { task in completedRow(task) }
       }
     } header: {
       Text(section.header)
@@ -265,13 +251,41 @@ struct TasksTabView: View {
     }
   }
 
+  /// A ``CompletedTaskRowView`` wired to this view's restore and delete handlers.
+  @ViewBuilder
+  private func completedRow(_ task: TaskItem) -> some View {
+    CompletedTaskRowView(
+      task: task,
+      onRestore: { handleRestore(task) },
+      onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
+        ? { handleDelete(task) } : nil
+    )
+  }
+
   // MARK: - Grid layout
 
   private var taskGrid: some View {
     let columns = [GridItem(.adaptive(minimum: 180), spacing: 10)]
     return ScrollView {
       VStack(alignment: .leading, spacing: 16) {
+        if showCompleted {
+          HStack {
+            Image(systemName: "checkmark.circle.fill")
+              .foregroundStyle(Color.accentColor)
+            Text("\(totalCompletedCount) Completed")
+              .foregroundStyle(.secondary)
+            Spacer()
+            Button("Hide") { showCompleted = false }
+              .buttonStyle(.plain)
+              .foregroundStyle(Color.accentColor)
+          }
+          .padding(.horizontal, 2)
+        }
+
         ForEach(flatSections) { section in
+          let isLastForList =
+            flatSections.last(where: { $0.listID == section.listID })?.id == section.id
+          let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
           VStack(alignment: .leading, spacing: 8) {
             Text(section.header)
               .font(.subheadline)
@@ -289,6 +303,20 @@ struct TasksTabView: View {
                 .onTapGesture { select(task) }
               }
             }
+
+            if showCompleted && !completed.isEmpty {
+              ForEach(completed) { task in completedRow(task) }
+            }
+          }
+        }
+
+        if showCompleted && !completedOrphans.isEmpty {
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Other Completed")
+              .font(.subheadline)
+              .fontWeight(.semibold)
+              .padding(.horizontal, 2)
+            ForEach(completedOrphans) { task in completedRow(task) }
           }
         }
       }
@@ -296,7 +324,11 @@ struct TasksTabView: View {
     }
   }
 
-  // MARK: - Data loading
+}
+
+// MARK: - Data loading
+
+extension TasksTabView {
 
   /// Subscribes to live-update streams from all enabled providers and reloads tasks on each event.
   private func subscribeToProviderUpdates() async {
@@ -383,7 +415,11 @@ struct TasksTabView: View {
     }
   }
 
-  // MARK: - Grouping
+}
+
+// MARK: - Grouping
+
+extension TasksTabView {
 
   private func buildGroups(from tasks: [TaskItem]) -> [TaskGroup] {
     var ordered: [String] = []
