@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0](https://github.com/richwklein/taskmato/compare/v0.1.0...v0.2.0) (2026-05-30)
+
+
+### Features
+
+* **obsidian:** complete P4 — completedTasks, FSEventStream, token expansion, ordered-list tasks, UX polish ([#326](https://github.com/richwklein/taskmato/issues/326)) ([aee36c4](https://github.com/richwklein/taskmato/commit/aee36c4a140fd10a27aa83884e093eee85837cba))
+* **picker:** provider sidebar with list scoping and WritableTaskProvider ([#331](https://github.com/richwklein/taskmato/issues/331)) ([9b26d6a](https://github.com/richwklein/taskmato/commit/9b26d6a3866d3d14479bec64552214f0dc76d93a))
+* **reminders:** Apple Reminders provider via EventKit (P2) ([#340](https://github.com/richwklein/taskmato/issues/340)) ([2f192a9](https://github.com/richwklein/taskmato/commit/2f192a9806edf9e9889058bd1a9a733ab84846e3))
+
 ## [0.1.0](https://github.com/richwklein/taskmato/compare/v0.0.14...v0.1.0) (2026-05-29)
 
 
