@@ -241,6 +241,18 @@ struct LocalProviderTests {
     #expect(try await provider.completedTasks().isEmpty)
   }
 
+  @Test func writableProviderDeleteTaskRemovesCompletedItem() async throws {
+    let provider = makeProvider()
+    var draft = TaskDraft()
+    draft.title = "Completed and deleted"
+    provider.addTask(draft)
+    let ref = try await provider.tasks(in: nil)[0].id
+    try await provider.complete(ref)
+    let writable: any WritableTaskProvider = provider
+    try await writable.deleteTask(ref)
+    #expect(try await provider.completedTasks().isEmpty)
+  }
+
   @Test func updateTaskAppliesNewTitle() async throws {
     let provider = makeProvider()
     var draft = TaskDraft()
