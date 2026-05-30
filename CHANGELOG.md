@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/richwklein/taskmato/compare/v0.2.0...v0.3.0) (2026-05-30)
+
+
+### Features
+
+* **tasks:** view completed tasks inline with list rename ([#342](https://github.com/richwklein/taskmato/issues/342)) ([4b52ad4](https://github.com/richwklein/taskmato/commit/4b52ad415bc2e41ecc3733bd2bfe6ea86ef840a1))
+
 ## [0.2.0](https://github.com/richwklein/taskmato/compare/v0.1.0...v0.2.0) (2026-05-30)
 
 
