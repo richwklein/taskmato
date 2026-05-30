@@ -47,7 +47,6 @@ struct RemindersEventStoreTests {
     #expect(store.savedReminders.first?.title == "Test")
   }
 }
-
 // MARK: - Authorization tests
 @Suite("RemindersProvider — authorization")
 @MainActor
@@ -93,6 +92,11 @@ struct RemindersProviderAuthorizationTests {
     #expect(provider.isAuthorized)
   }
 
+  @Test func isAuthorizedReflectsInitialTCCStatus() {
+    #expect(makeProvider(status: .fullAccess).0.isAuthorized)
+    #expect(!makeProvider(status: .notDetermined).0.isAuthorized)
+  }
+
   @Test func authorizeWhenDenied_throwsAccessDenied() async {
     let (provider, _) = makeProvider(status: .denied)
     await #expect(throws: RemindersProviderError.accessDenied) {
@@ -100,7 +104,6 @@ struct RemindersProviderAuthorizationTests {
     }
     #expect(!provider.isAuthorized)
   }
-
   @Test func authorizeWhenRestricted_throwsAccessRestricted() async {
     let (provider, _) = makeProvider(status: .restricted)
     await #expect(throws: RemindersProviderError.accessRestricted) {
@@ -108,7 +111,6 @@ struct RemindersProviderAuthorizationTests {
     }
     #expect(!provider.isAuthorized)
   }
-
   @Test func authorizeWhenWriteOnly_throwsFullAccessRequired() async {
     let (provider, _) = makeProvider(status: .writeOnly)
     await #expect(throws: RemindersProviderError.fullAccessRequired) {
@@ -116,7 +118,6 @@ struct RemindersProviderAuthorizationTests {
     }
     #expect(!provider.isAuthorized)
   }
-
   @Test func authorizeWhenRequestReturnsFalse_throwsAccessDenied() async {
     let (provider, _) = makeProvider(status: .notDetermined, grantAccess: false)
     await #expect(throws: RemindersProviderError.accessDenied) {
@@ -450,7 +451,6 @@ struct RemindersProviderMutationTests {
 }
 
 // MARK: - completedTasks
-
 @Suite("RemindersProvider — completedTasks")
 @MainActor
 struct RemindersProviderCompletedTasksTests {

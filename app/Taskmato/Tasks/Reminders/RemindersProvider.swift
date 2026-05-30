@@ -37,6 +37,7 @@ final class RemindersProvider: MutableTaskProvider {
   /// Test-friendly initializer accepting any ``RemindersEventStore`` conformer.
   init(store: any RemindersEventStore) {
     self.store = store
+    isAuthorized = store.authorizationStatus() == .fullAccess
   }
 
   // MARK: - Authorization
