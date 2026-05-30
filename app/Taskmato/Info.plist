@@ -35,5 +35,9 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Taskmato reads your reminders so you can select one as your focus task.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Taskmato needs full access to read your reminder lists and mark reminders complete when you finish a Pomodoro.</string>
 </dict>
 </plist>
