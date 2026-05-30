@@ -13,6 +13,10 @@ import SwiftUI
 /// formatted as "List: Section" when multiple lists are active, or just "Section"
 /// when only one list is active. Supports toggling between a list and an adaptive
 /// card grid layout.
+///
+/// When at least one enabled provider conforms to ``ClosableTaskProvider``, a
+/// "Show Completed" toolbar button becomes available. Toggling it on fetches
+/// completed tasks and appends them inline at the bottom of each matching section.
 struct TasksTabView: View {
 
   var selectionStore: TaskSelectionStore
@@ -26,6 +30,10 @@ struct TasksTabView: View {
   @State private var groupedLists: [TaskGroup] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
+  @State private var showCompleted = false
+  @State private var completedByListID: [String: [TaskItem]] = [:]
+  @State private var completedOrphans: [TaskItem] = []
+  @State private var isLoadingCompleted = false
 
   /// The local provider instance looked up from the registry, if registered.
   private var localProvider: LocalProvider? {
@@ -39,6 +47,16 @@ struct TasksTabView: View {
   /// `true` when the local provider is registered and currently enabled.
   private var localProviderEnabled: Bool {
     localProvider.map { registry.isEnabled($0.id) } ?? false
+  }
+
+  /// `true` when at least one enabled provider conforms to ``ClosableTaskProvider``.
+  private var hasClosableProvider: Bool {
+    registry.providers.contains { registry.isEnabled($0.id) && $0 is (any ClosableTaskProvider) }
+  }
+
+  /// Total number of completed tasks currently loaded across all sections and orphans.
+  private var totalCompletedCount: Int {
+    completedByListID.values.reduce(0) { $0 + $1.count } + completedOrphans.count
   }
 
   /// Flat display sections derived from `groupedLists`.
@@ -59,7 +77,9 @@ struct TasksTabView: View {
         case (false, let name?): header = name
         case (false, nil): header = group.listName
         }
-        return FlatSection(id: "\(group.id).\(section.id)", header: header, tasks: section.tasks)
+        return FlatSection(
+          id: "\(group.id).\(section.id)", listID: group.id, header: header, tasks: section.tasks
+        )
       }
     }
   }
@@ -102,6 +122,21 @@ struct TasksTabView: View {
                 Label("Add Task", systemImage: "plus")
               }
               .help("Add a local task")
+            }
+          }
+
+          if hasClosableProvider {
+            ToolbarItem(placement: .automatic) {
+              Button {
+                showCompleted.toggle()
+                if showCompleted { Task { await loadCompleted() } }
+              } label: {
+                Label(
+                  showCompleted ? "Hide Completed" : "Show Completed",
+                  systemImage: "checkmark.circle.fill"
+                )
+              }
+              .help(showCompleted ? "Hide completed tasks" : "Show completed tasks")
             }
           }
 
@@ -160,14 +195,49 @@ struct TasksTabView: View {
 
   private var taskList: some View {
     List {
+      if showCompleted {
+        SwiftUI.Section {
+          HStack {
+            Image(systemName: "checkmark.circle.fill")
+              .foregroundStyle(Color.accentColor)
+            Text("\(totalCompletedCount) Completed")
+              .foregroundStyle(.secondary)
+            Spacer()
+            Button("Hide") { showCompleted = false }
+              .buttonStyle(.plain)
+              .foregroundStyle(Color.accentColor)
+          }
+          .padding(.vertical, 2)
+        }
+      }
+
       SwiftUI.ForEach(flatSections) { section in
         listSection(for: section)
+      }
+
+      if showCompleted && !completedOrphans.isEmpty {
+        SwiftUI.Section {
+          SwiftUI.ForEach(completedOrphans) { task in
+            CompletedTaskRowView(
+              task: task,
+              onRestore: { handleRestore(task) },
+              onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
+                ? { handleDelete(task) } : nil
+            )
+          }
+        } header: {
+          Text("Other Completed")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+        }
       }
     }
   }
 
   @ViewBuilder
   private func listSection(for section: FlatSection) -> some View {
+    let isLastForList = flatSections.last(where: { $0.listID == section.listID })?.id == section.id
+    let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
     SwiftUI.Section {
       SwiftUI.ForEach(section.tasks) { task in
         TaskRowView(
@@ -177,6 +247,16 @@ struct TasksTabView: View {
             : nil
         )
         .onTapGesture { select(task) }
+      }
+      if showCompleted && !completed.isEmpty {
+        SwiftUI.ForEach(completed) { task in
+          CompletedTaskRowView(
+            task: task,
+            onRestore: { handleRestore(task) },
+            onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
+              ? { handleDelete(task) } : nil
+          )
+        }
       }
     } header: {
       Text(section.header)
@@ -239,12 +319,36 @@ struct TasksTabView: View {
     isLoading = false
   }
 
+  private func loadCompleted() async {
+    isLoadingCompleted = true
+    var byList: [String: [TaskItem]] = [:]
+    var orphans: [TaskItem] = []
+    let activeListIDs = Set(flatSections.map(\.listID))
+    for provider in registry.providers where registry.isEnabled(provider.id) {
+      guard let closable = provider as? (any ClosableTaskProvider) else { continue }
+      let items = (try? await closable.completedTasks()) ?? []
+      for item in items {
+        let key = item.list?.id ?? ""
+        if !key.isEmpty && activeListIDs.contains(key) {
+          byList[key, default: []].append(item)
+        } else {
+          orphans.append(item)
+        }
+      }
+    }
+    completedByListID = byList
+    completedOrphans = orphans.sorted {
+      ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast)
+    }
+    isLoadingCompleted = false
+  }
+
   private func select(_ task: TaskItem) {
     selectionStore.select(task)
     selectedTab = 0
   }
 
-  /// Completes the task via its mutable provider, then refreshes the list.
+  /// Completes the task via its closable provider, then refreshes the list.
   private func handleComplete(_ task: TaskItem) {
     let ref = task.id
     Task {
@@ -252,6 +356,30 @@ struct TasksTabView: View {
         try? await provider.complete(ref)
       }
       await loadTasks()
+      if showCompleted { await loadCompleted() }
+    }
+  }
+
+  /// Reopens a completed task via its closable provider, then refreshes both lists.
+  private func handleRestore(_ task: TaskItem) {
+    let ref = task.id
+    Task {
+      if let provider = registry.closableProvider(for: ref) {
+        try? await provider.reopen(ref)
+      }
+      await loadTasks()
+      await loadCompleted()
+    }
+  }
+
+  /// Permanently deletes a completed task via its writable provider, then refreshes completed.
+  private func handleDelete(_ task: TaskItem) {
+    let ref = task.id
+    Task {
+      if let provider = registry.provider(for: ref) as? (any WritableTaskProvider) {
+        try? await provider.deleteTask(ref)
+      }
+      await loadCompleted()
     }
   }
 
@@ -313,6 +441,8 @@ private struct TaskSection: Identifiable {
 /// A flattened display section with a computed header label and its tasks.
 private struct FlatSection: Identifiable {
   let id: String
+  /// The ``TaskList`` identifier this section belongs to — used to bucket completed tasks.
+  let listID: String
   let header: String
   let tasks: [TaskItem]
 }
