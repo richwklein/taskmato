@@ -172,7 +172,7 @@ struct TasksTabView: View {
       SwiftUI.ForEach(section.tasks) { task in
         TaskRowView(
           task: task,
-          onComplete: registry.mutableProvider(for: task.id) != nil
+          onComplete: registry.closableProvider(for: task.id) != nil
             ? { handleComplete(task) }
             : nil
         )
@@ -202,7 +202,7 @@ struct TasksTabView: View {
               ForEach(section.tasks) { task in
                 TaskCardView(
                   task: task,
-                  onComplete: registry.mutableProvider(for: task.id) != nil
+                  onComplete: registry.closableProvider(for: task.id) != nil
                     ? { handleComplete(task) }
                     : nil
                 )
@@ -248,7 +248,7 @@ struct TasksTabView: View {
   private func handleComplete(_ task: TaskItem) {
     let ref = task.id
     Task {
-      if let provider = registry.mutableProvider(for: ref) {
+      if let provider = registry.closableProvider(for: ref) {
         try? await provider.complete(ref)
       }
       await loadTasks()

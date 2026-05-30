@@ -19,7 +19,7 @@ import SwiftUI
 ///   change notifications are coalesced by a 250 ms debounce before a rescan is triggered.
 @Observable
 @MainActor
-final class ObsidianProvider: MutableTaskProvider {
+final class ObsidianProvider: ClosableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
   static let providerID = "obsidian"
@@ -148,7 +148,7 @@ final class ObsidianProvider: MutableTaskProvider {
     return stream
   }
 
-  // MARK: - MutableTaskProvider
+  // MARK: - ClosableTaskProvider
 
   /// Rewrites the task checkbox from `[ ]` to `[x]` in the vault file, supporting both
   /// unordered (`- [ ] `) and ordered (`1. [ ] `) list formats.

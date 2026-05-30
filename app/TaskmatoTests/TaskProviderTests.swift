@@ -21,6 +21,7 @@ private final class FakeWritableProvider: WritableTaskProvider {
   private(set) var createListCalls: [String] = []
   private(set) var renameListCalls: [(String, String)] = []
   private(set) var deleteListCalls: [String] = []
+  private(set) var deleteTaskCalls: [TaskRef] = []
 
   func authorize() async throws {}
   func lists() async throws -> [TaskList] {
@@ -60,6 +61,10 @@ private final class FakeWritableProvider: WritableTaskProvider {
   func deleteList(_ listID: String) {
     deleteListCalls.append(listID)
   }
+
+  func deleteTask(_ ref: TaskRef) {
+    deleteTaskCalls.append(ref)
+  }
 }
 
 private final class FakeReadOnlyProvider: TaskProvider {
@@ -73,9 +78,9 @@ private final class FakeReadOnlyProvider: TaskProvider {
   func observe() -> AsyncStream<[TaskItem]>? { nil }
 }
 
-private final class FakeMutableProvider: MutableTaskProvider {
-  let id = "fake-mutable"
-  let displayName = "Fake Mutable"
+private final class FakeClosableProvider: ClosableTaskProvider {
+  let id = "fake-closable"
+  let displayName = "Fake Closable"
   let entitlement: ProviderEntitlement = .paid(productID: "com.taskmato.provider.fake")
 
   private(set) var completedRefs: [TaskRef] = []
@@ -95,8 +100,8 @@ private final class FakeMutableProvider: MutableTaskProvider {
 @Suite("WritableTaskProvider")
 struct WritableTaskProviderTests {
 
-  @Test func writableProviderSatisfiesMutableProvider() {
-    let provider: any MutableTaskProvider = FakeWritableProvider()
+  @Test func writableProviderSatisfiesClosableProvider() {
+    let provider: any ClosableTaskProvider = FakeWritableProvider()
     #expect(provider.id == "fake-writable")
   }
 
@@ -198,29 +203,29 @@ struct TaskProviderTests {
     #expect(try await provider.tasks(in: nil).isEmpty)
   }
 
-  @Test func mutableProviderIsPaid() {
-    let provider = FakeMutableProvider()
+  @Test func closableProviderIsPaid() {
+    let provider = FakeClosableProvider()
     #expect(provider.entitlement == .paid(productID: "com.taskmato.provider.fake"))
   }
 
-  @Test func mutableProviderTracksComplete() async throws {
-    let provider = FakeMutableProvider()
-    let ref = TaskRef(providerID: "fake-mutable", nativeID: "1")
+  @Test func closableProviderTracksComplete() async throws {
+    let provider = FakeClosableProvider()
+    let ref = TaskRef(providerID: "fake-closable", nativeID: "1")
     try await provider.complete(ref)
     #expect(provider.completedRefs == [ref])
     #expect(provider.reopenedRefs.isEmpty)
   }
 
-  @Test func mutableProviderTracksReopen() async throws {
-    let provider = FakeMutableProvider()
-    let ref = TaskRef(providerID: "fake-mutable", nativeID: "1")
+  @Test func closableProviderTracksReopen() async throws {
+    let provider = FakeClosableProvider()
+    let ref = TaskRef(providerID: "fake-closable", nativeID: "1")
     try await provider.reopen(ref)
     #expect(provider.reopenedRefs == [ref])
     #expect(provider.completedRefs.isEmpty)
   }
 
-  @Test func mutableProviderSatisfiesTaskProvider() {
-    let provider: any TaskProvider = FakeMutableProvider()
-    #expect(provider.id == "fake-mutable")
+  @Test func closableProviderSatisfiesTaskProvider() {
+    let provider: any TaskProvider = FakeClosableProvider()
+    #expect(provider.id == "fake-closable")
   }
 }

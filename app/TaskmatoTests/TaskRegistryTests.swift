@@ -58,7 +58,7 @@ private final class StubScopedProvider: TaskProvider {
   func observe() -> AsyncStream<[TaskItem]>? { nil }
 }
 
-private final class StubMutableProvider: MutableTaskProvider {
+private final class StubClosableProvider: ClosableTaskProvider {
   let id: String
   let displayName: String
   let entitlement: ProviderEntitlement = .free
@@ -272,22 +272,22 @@ struct TaskRegistryTests {
     #expect(registry.provider(for: ref) == nil)
   }
 
-  @Test func mutableProviderForMutableConformer() {
+  @Test func closableProviderForClosableConformer() {
     let registry = makeRegistry()
-    let provider = StubMutableProvider(id: "mutable")
+    let provider = StubClosableProvider(id: "closable")
     registry.register(provider)
 
-    let ref = TaskRef(providerID: "mutable", nativeID: "x")
-    #expect(registry.mutableProvider(for: ref) != nil)
+    let ref = TaskRef(providerID: "closable", nativeID: "x")
+    #expect(registry.closableProvider(for: ref) != nil)
   }
 
-  @Test func mutableProviderForReadOnlyReturnsNil() {
+  @Test func closableProviderForReadOnlyReturnsNil() {
     let registry = makeRegistry()
     let provider = StubProvider(id: "readonly")
     registry.register(provider)
 
     let ref = TaskRef(providerID: "readonly", nativeID: "x")
-    #expect(registry.mutableProvider(for: ref) == nil)
+    #expect(registry.closableProvider(for: ref) == nil)
   }
 
   // MARK: - List scoping

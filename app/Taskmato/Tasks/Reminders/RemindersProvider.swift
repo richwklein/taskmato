@@ -9,11 +9,11 @@ import Foundation
 /// A task provider backed by Apple Reminders via EventKit.
 ///
 /// Authorization is lazy: ``lists()`` and ``tasks(in:)`` return empty arrays until
-/// ``authorize()`` succeeds. The provider conforms to ``MutableTaskProvider`` so
+/// ``authorize()`` succeeds. The provider conforms to ``ClosableTaskProvider`` so
 /// completing a Pomodoro can mark the reminder done in the source system.
 @Observable
 @MainActor
-final class RemindersProvider: MutableTaskProvider {
+final class RemindersProvider: ClosableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
   static let providerID = "reminders"
@@ -133,7 +133,7 @@ final class RemindersProvider: MutableTaskProvider {
     streamContinuation = nil
   }
 
-  // MARK: - MutableTaskProvider
+  // MARK: - ClosableTaskProvider
 
   func completedTasks() async throws -> [TaskItem] {
     guard isAuthorized else { return [] }

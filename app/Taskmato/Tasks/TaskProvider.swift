@@ -7,7 +7,7 @@ import Foundation
 
 /// A read-only source of tasks that can be listed, searched, and observed for live updates.
 ///
-/// Conform to `MutableTaskProvider` in addition when the provider supports
+/// Conform to `ClosableTaskProvider` in addition when the provider supports
 /// completing or reopening tasks in the source system.
 protocol TaskProvider: AnyObject, Sendable {
 
@@ -39,8 +39,8 @@ protocol TaskProvider: AnyObject, Sendable {
   func observe() -> AsyncStream<[TaskItem]>?
 }
 
-/// A `TaskProvider` that can also write completion state back to the source system.
-protocol MutableTaskProvider: TaskProvider {
+/// A `TaskProvider` that supports toggling task completion state in the source system.
+protocol ClosableTaskProvider: TaskProvider {
 
   /// Marks the task identified by `ref` as complete in the source system.
   /// - Parameter ref: The stable reference to the task to close.
@@ -50,24 +50,24 @@ protocol MutableTaskProvider: TaskProvider {
   /// - Parameter ref: The stable reference to the task to reopen.
   func reopen(_ ref: TaskRef) async throws
 
-  /// Returns tasks that have been marked complete, for display in a "View Completed" sheet.
+  /// Returns tasks that have been marked complete, for display in the "View Completed" section.
   ///
   /// The default implementation returns an empty array. Override when the provider
   /// supports surfacing completed tasks (e.g. a local JSON store or an Obsidian vault).
   func completedTasks() async throws -> [TaskItem]
 }
 
-extension MutableTaskProvider {
+extension ClosableTaskProvider {
   func completedTasks() async throws -> [TaskItem] { [] }
 }
 
-/// A `MutableTaskProvider` that also supports creating tasks and managing lists.
+/// A `ClosableTaskProvider` that also supports creating tasks and managing lists.
 ///
 /// Providers conforming to this protocol expose the full write surface: task creation,
-/// list lifecycle (create, rename, delete), and a persistent default-list preference.
-/// `LocalProvider` conforms immediately; `ObsidianProvider` and `RemindersProvider`
-/// will conform in follow-on milestones.
-protocol WritableTaskProvider: MutableTaskProvider {
+/// list lifecycle (create, rename, delete), task deletion, and a persistent default-list
+/// preference. `LocalProvider` conforms immediately; `ObsidianProvider` and
+/// `RemindersProvider` will conform in follow-on milestones.
+protocol WritableTaskProvider: ClosableTaskProvider {
 
   /// The ID of the list new tasks target by default, or `nil` if none is set.
   var defaultListID: String? { get }
@@ -96,4 +96,8 @@ protocol WritableTaskProvider: MutableTaskProvider {
   /// another list before deleting the current default.
   /// - Throws: if `listID` is the default list or does not identify a known list.
   func deleteList(_ listID: String) async throws
+
+  /// Permanently removes the task identified by `ref` from the provider's store.
+  /// - Throws: if the task cannot be found or removal fails.
+  func deleteTask(_ ref: TaskRef) async throws
 }

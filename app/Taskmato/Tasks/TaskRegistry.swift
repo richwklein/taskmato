@@ -145,10 +145,10 @@ final class TaskRegistry {
     providers.first { $0.id == ref.providerID }
   }
 
-  /// Returns the provider for a task reference if it conforms to `MutableTaskProvider`, or `nil`.
-  /// - Parameter ref: The task reference whose mutable provider to look up.
-  func mutableProvider(for ref: TaskRef) -> (any MutableTaskProvider)? {
-    provider(for: ref) as? any MutableTaskProvider
+  /// Returns the provider for a task reference if it conforms to `ClosableTaskProvider`, or `nil`.
+  /// - Parameter ref: The task reference whose closable provider to look up.
+  func closableProvider(for ref: TaskRef) -> (any ClosableTaskProvider)? {
+    provider(for: ref) as? any ClosableTaskProvider
   }
 
   // MARK: - List scoping
