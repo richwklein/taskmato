@@ -65,7 +65,15 @@ struct ProviderSidebarView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      List {
+      List(
+        selection: Binding(
+          get: { registry.selection },
+          set: { registry.select($0) }
+        )
+      ) {
+        Label("Today", systemImage: "calendar")
+          .tag(SidebarSelection.today as SidebarSelection?)
+
         ForEach(enabledProviders, id: \.id) { provider in
           providerGroup(provider)
         }
@@ -112,6 +120,9 @@ struct ProviderSidebarView: View {
     ) {
       ForEach(lists(for: provider)) { list in
         listRow(list, provider: provider)
+          .tag(
+            SidebarSelection.list(
+              SelectedList(providerID: provider.id, listID: list.id)) as SidebarSelection?)
       }
       if provider is (any WritableTaskProvider) {
         newListRow(providerID: provider.id)

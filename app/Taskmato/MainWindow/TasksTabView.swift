@@ -60,28 +60,8 @@ struct TasksTabView: View {
   }
 
   /// Flat display sections derived from `groupedLists`.
-  ///
-  /// Header labels collapse list and section names following these rules:
-  /// - Multiple lists + has section → "List: Section"
-  /// - Multiple lists + no section → "List"
-  /// - Single list + has section → "Section"
-  /// - Single list + no section → "List"
   private var flatSections: [FlatSection] {
-    let multipleGroups = groupedLists.count > 1
-    return groupedLists.flatMap { group in
-      group.sections.map { section in
-        let header: String
-        switch (multipleGroups, section.name) {
-        case (true, let name?): header = "\(group.listName): \(name)"
-        case (true, nil): header = group.listName
-        case (false, let name?): header = name
-        case (false, nil): header = group.listName
-        }
-        return FlatSection(
-          id: "\(group.id).\(section.id)", listID: group.id, header: header, tasks: section.tasks
-        )
-      }
-    }
+    Taskmato.flatSections(from: groupedLists)
   }
 
   var body: some View {
@@ -95,7 +75,7 @@ struct TasksTabView: View {
         .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
     } detail: {
       detailContent
-        .searchable(text: $query, prompt: "Search tasks")
+        .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
         .task(id: query) { await loadTasks() }
         .task { await subscribeToProviderUpdates() }
         .onAppear { Task { await loadTasks() } }
@@ -168,23 +148,39 @@ struct TasksTabView: View {
   private var detailContent: some View {
     if registry.providers.filter({ registry.isEnabled($0.id) }).isEmpty {
       ContentUnavailableView(
-        "No Task Providers",
-        systemImage: "tray",
-        description: Text("Add a task provider using the sidebar.")
+        "Enable a Provider",
+        systemImage: "plus.circle",
+        description: Text("Enable a provider in the sidebar to get started.")
+      )
+    } else if registry.selection == nil {
+      ContentUnavailableView(
+        "Select a List",
+        systemImage: "sidebar.left",
+        description: Text("Select a list in the sidebar.")
       )
     } else if isLoading {
       ProgressView()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     } else if groupedLists.isEmpty {
-      ContentUnavailableView(
-        query.isEmpty ? "No Tasks" : "No Results",
-        systemImage: query.isEmpty ? "checkmark.circle" : "magnifyingglass",
-        description: Text(
-          query.isEmpty
-            ? "All tasks from your providers will appear here."
-            : "No tasks match \"\(query)\"."
+      if !query.isEmpty {
+        ContentUnavailableView(
+          "No Results",
+          systemImage: "magnifyingglass",
+          description: Text("No tasks match \"\(query)\".")
         )
-      )
+      } else if registry.selection == .today {
+        ContentUnavailableView(
+          "No Tasks Due Today",
+          systemImage: "sun.max",
+          description: Text("Tasks due today or overdue will appear here.")
+        )
+      } else {
+        ContentUnavailableView(
+          "No Tasks",
+          systemImage: "checkmark.circle",
+          description: Text("No tasks in this list.")
+        )
+      }
     } else if settings.taskPickerLayout == .grid {
       taskGrid
     } else {

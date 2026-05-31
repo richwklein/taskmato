@@ -25,3 +25,28 @@ struct FlatSection: Identifiable {
   let header: String
   let tasks: [TaskItem]
 }
+
+/// Flattens grouped lists into display sections with computed header labels.
+///
+/// Header rules:
+/// - Single list + section name → section name
+/// - Single list + no section name → list name
+/// - Multiple lists + section name → "List: Section"
+/// - Multiple lists + no section name → list name
+func flatSections(from groupedLists: [TaskGroup]) -> [FlatSection] {
+  let multipleGroups = groupedLists.count > 1
+  return groupedLists.flatMap { group in
+    group.sections.map { section in
+      let header: String
+      switch (multipleGroups, section.name) {
+      case (true, let name?): header = "\(group.listName): \(name)"
+      case (true, nil): header = group.listName
+      case (false, let name?): header = name
+      case (false, nil): header = group.listName
+      }
+      return FlatSection(
+        id: "\(group.id).\(section.id)", listID: group.id, header: header, tasks: section.tasks
+      )
+    }
+  }
+}

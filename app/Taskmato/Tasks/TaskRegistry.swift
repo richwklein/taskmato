@@ -62,13 +62,10 @@ final class TaskRegistry {
     let stored = defaults.stringArray(forKey: Self.enabledKey) ?? []
     self.enabledIDs = Set(stored)
 
-    if let data = defaults.data(forKey: Self.selectionKey),
-      let saved = try? JSONDecoder().decode(SidebarSelection.self, from: data)
-    {
-      self.selection = saved
-    } else {
-      self.selection = .today
-    }
+    self.selection =
+      defaults.data(forKey: Self.selectionKey).flatMap {
+        try? JSONDecoder().decode(SidebarSelection.self, from: $0)
+      } ?? .today
   }
 
   // MARK: - Registration
@@ -144,14 +141,12 @@ final class TaskRegistry {
 
     // Cascade 1: writable provider's default list.
     for provider in providers where isEnabled(provider.id) {
-      if let writable = provider as? (any WritableTaskProvider),
-        let defaultID = writable.defaultListID,
-        let lists = providerLists[provider.id],
-        lists.contains(where: { $0.id == defaultID })
-      {
-        select(.list(SelectedList(providerID: provider.id, listID: defaultID)))
-        return
-      }
+      guard let writable = provider as? (any WritableTaskProvider) else { continue }
+      guard let defaultID = writable.defaultListID else { continue }
+      guard providerLists[provider.id]?.contains(where: { $0.id == defaultID }) == true
+      else { continue }
+      select(.list(SelectedList(providerID: provider.id, listID: defaultID)))
+      return
     }
 
     // Cascade 2: first list of first enabled provider.
