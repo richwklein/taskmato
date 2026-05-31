@@ -46,6 +46,7 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [x] "View Completed" inline section in picker for any enabled `ClosableTaskProvider`; Show/Hide toolbar toggle; completed tasks appear at the bottom of their originating list section with restore (`reopen`) and permanent-delete affordances for `WritableTaskProvider` tasks ([#300](https://github.com/richwklein/taskmato/issues/300))
 - [x] Active task label in popover and main window timer tab: provider-conditional complete (checkmark) button, always-visible clear button, hidden when no task active ([#258](https://github.com/richwklein/taskmato/issues/258))
 - [x] Mid-session task swap (does not stop the timer) ([#296](https://github.com/richwklein/taskmato/issues/296))
+- [ ] Remove redundant Settings toolbar button from all tab views (TimerView, TimerTabView, TasksTabView, StatsTabView) — Cmd+, and the app menu already provide access ([#344](https://github.com/richwklein/taskmato/issues/344))
 - [ ] Edit task sheet for `WritableTaskProvider` items: title, notes, priority, due date, list; `LocalProvider.updateTask` already implemented; accessible via right-click context menu or double-click in picker ([#330](https://github.com/richwklein/taskmato/issues/330))
 - [ ] Honor priority and due-date hints in the picker (sort and badge) ([#257](https://github.com/richwklein/taskmato/issues/257))
 - [ ] Always-on-top mode for the timer popover (detached floating window, toggle in popover header, persisted setting) ([#260](https://github.com/richwklein/taskmato/issues/260))
