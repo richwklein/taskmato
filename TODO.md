@@ -48,7 +48,8 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [x] Mid-session task swap (does not stop the timer) ([#296](https://github.com/richwklein/taskmato/issues/296))
 - [x] Remove redundant Settings toolbar button from all main window tab views (TimerTabView, TasksTabView, StatsTabView) — Cmd+, and the app menu already provide access ([#344](https://github.com/richwklein/taskmato/issues/344))
 - [ ] Edit task sheet for `WritableTaskProvider` items: title, notes, priority, due date, list; `LocalProvider.updateTask` already implemented; accessible via right-click context menu or double-click in picker ([#330](https://github.com/richwklein/taskmato/issues/330))
-- [ ] Honor priority and due-date hints in the picker (sort and badge) ([#257](https://github.com/richwklein/taskmato/issues/257))
+- [x] Global sort menu in picker: sort by due date, priority, title, or creation date; direction auto-defaults to the natural order when switching fields; persisted per field ([#257](https://github.com/richwklein/taskmato/issues/257))
+- [ ] Priority badge on task rows and cards ([#257](https://github.com/richwklein/taskmato/issues/257))
 - [ ] Always-on-top mode for the timer popover (detached floating window, toggle in popover header, persisted setting) ([#260](https://github.com/richwklein/taskmato/issues/260))
 - [ ] Per-provider list scoping (choose which lists each provider exposes in the picker; persisted per provider) ([#276](https://github.com/richwklein/taskmato/issues/276)) — _fulfilled by sidebar ([#298](https://github.com/richwklein/taskmato/issues/298))_
 - [x] Render task notes/description as markdown where displayed (picker detail, active task label); add `NoteFormat` (.plainText / .markdown) to `TaskItem` ([#278](https://github.com/richwklein/taskmato/issues/278))
