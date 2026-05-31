@@ -18,8 +18,6 @@ struct TimerTabView: View {
   /// The break type to use when skipping from a focus session.
   var nextBreakPhase: SessionPhase
 
-  @Environment(\.openSettings) private var openSettings
-
   var body: some View {
     VStack(spacing: 0) {
       Spacer()
@@ -64,16 +62,6 @@ struct TimerTabView: View {
       SessionStatsView(count: store.todayFocusCount(), minutes: store.todayFocusMinutes())
         .padding(.horizontal, 24)
         .padding(.vertical, 12)
-    }
-    .toolbar {
-      ToolbarItem(placement: .automatic) {
-        Button {
-          openSettings()
-        } label: {
-          Label("Settings", systemImage: "gearshape")
-        }
-        .help("Open Settings (⌘,)")
-      }
     }
   }
 
