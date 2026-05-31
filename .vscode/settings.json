@@ -20,5 +20,13 @@
   "[swift]": {
     "editor.defaultFormatter": "sweetpad.sweetpad"
   },
-  "cSpell.words": ["pomodoro", "swiftlint", "taskmato"]
+  "cSpell.words": ["pomodoro", "swiftlint", "taskmato"],
+  "sweetpad.build.args": [
+    "CODE_SIGN_IDENTITY=Apple Development",
+    "CODE_SIGN_STYLE=Automatic",
+    "CODE_SIGNING_REQUIRED=YES",
+    "CODE_SIGNING_ALLOWED=YES",
+    "DEVELOPMENT_TEAM=43757RE978"
+  ],
+  "sweetpad.build.allowProvisioningUpdates": true
 }
