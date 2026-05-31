@@ -44,8 +44,10 @@ final class TaskRegistry {
   ///
   /// `.today` is always valid. `.list(...)` selections are validated lazily after
   /// `providerLists` is populated; treat a transient invalid `.list` as "no scope".
-  /// Defaults to `.today` on first launch.
-  private(set) var selection: SidebarSelection?
+  /// Defaults to `.today` on first launch. Assignment auto-persists via `didSet`.
+  var selection: SidebarSelection? {
+    didSet { persistSelection() }
+  }
 
   private let defaults: UserDefaults
   private static let enabledKey = "taskRegistry.enabledProviderIDs"
@@ -115,11 +117,10 @@ final class TaskRegistry {
 
   // MARK: - Selection
 
-  /// Sets the active sidebar selection and persists it.
+  /// Sets the active sidebar selection. Persistence happens automatically via `selection`'s `didSet`.
   /// - Parameter newSelection: The new selection, or `nil` to clear.
   func select(_ newSelection: SidebarSelection?) {
     selection = newSelection
-    persistSelection()
   }
 
   /// Validates the current selection against the loaded `providerLists` cache and
@@ -133,10 +134,11 @@ final class TaskRegistry {
   func validateSelection() {
     guard case .list(let selectedList) = selection else { return }
 
-    // Still valid if the list exists in the cache.
-    let listExists =
-      providerLists[selectedList.providerID]?.contains(where: { $0.id == selectedList.listID })
-      == true
+    // Only cascade when the cache is populated AND doesn't contain the list.
+    // A nil cache means lists haven't loaded yet (e.g. LocalProvider uses reactive properties
+    // directly) — treat absent cache as indeterminate so we don't cascade prematurely.
+    let cache = providerLists[selectedList.providerID]
+    let listExists = cache?.contains(where: { $0.id == selectedList.listID }) ?? true
     if listExists { return }
 
     // Cascade 1: writable provider's default list.
@@ -215,11 +217,19 @@ final class TaskRegistry {
     case .list(let selectedList):
       guard
         let provider = providers.first(where: { $0.id == selectedList.providerID }),
-        isEnabled(provider.id),
-        let list = providerLists[selectedList.providerID]?.first(where: {
-          $0.id == selectedList.listID
-        })
+        isEnabled(provider.id)
       else {
+        return (tasks: [], errors: [])
+      }
+      // Prefer the populated cache; fall back to a live fetch for providers (e.g. LocalProvider)
+      // that never write to providerLists and instead expose reactive @Observable properties.
+      let available: [TaskList]
+      if let cached = providerLists[selectedList.providerID] {
+        available = cached
+      } else {
+        available = (try? await provider.lists()) ?? []
+      }
+      guard let list = available.first(where: { $0.id == selectedList.listID }) else {
         return (tasks: [], errors: [])
       }
       let items = (try? await provider.tasks(in: list)) ?? []
