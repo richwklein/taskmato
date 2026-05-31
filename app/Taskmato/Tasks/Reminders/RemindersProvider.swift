@@ -193,7 +193,8 @@ final class RemindersProvider: ClosableTaskProvider {
       sourceURL: URL(
         string:
           "x-apple-reminderkit://REMCDReminder/\(reminder.calendarItemIdentifier)"
-      )
+      ),
+      createdAt: reminder.creationDate
     )
   }
 

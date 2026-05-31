@@ -59,7 +59,9 @@ struct TaskItemTests {
       startDate: nil,
       list: nil,
       section: nil,
-      sourceURL: nil
+      sourceURL: nil,
+      completedAt: nil,
+      createdAt: nil
     )
     let data = try JSONEncoder().encode(item)
     let decoded = try JSONDecoder().decode(TaskItem.self, from: data)
@@ -79,11 +81,40 @@ struct TaskItemTests {
       startDate: Date(timeIntervalSince1970: 800_000),
       list: list,
       section: "In Progress",
-      sourceURL: URL(string: "obsidian://open?vault=Main&file=tasks")
+      sourceURL: URL(string: "obsidian://open?vault=Main&file=tasks"),
+      completedAt: nil,
+      createdAt: Date(timeIntervalSince1970: 500_000)
     )
     let data = try JSONEncoder().encode(item)
     let decoded = try JSONDecoder().decode(TaskItem.self, from: data)
     #expect(decoded == item)
+  }
+
+  @Test func taskItemDecodesLegacyJSONWithoutCreatedAt() throws {
+    // Round-trip a TaskItem, strip the createdAt key, then decode — simulates a
+    // JSON blob written before createdAt was added to the struct.
+    let original = TaskItem(
+      id: TaskRef(providerID: "local", nativeID: "abc"),
+      title: "Legacy task",
+      notes: nil,
+      format: .plainText,
+      priority: .none,
+      dueDate: nil,
+      scheduledDate: nil,
+      startDate: nil,
+      list: nil,
+      section: nil,
+      sourceURL: nil,
+      completedAt: nil,
+      createdAt: Date()
+    )
+    let encoded = try JSONEncoder().encode(original)
+    var dict = try #require(try JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    dict.removeValue(forKey: "createdAt")
+    let stripped = try JSONSerialization.data(withJSONObject: dict)
+    let decoded = try JSONDecoder().decode(TaskItem.self, from: stripped)
+    #expect(decoded.createdAt == nil)
+    #expect(decoded.title == "Legacy task")
   }
 
   @Test func taskItemNoteFormatCodableRoundTrip() throws {

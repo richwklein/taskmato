@@ -271,7 +271,8 @@ struct ObsidianTaskParser {
       startDate: startDate,
       list: context.list,
       section: section,
-      sourceURL: obsidianURL(vaultName: context.vaultName, filePath: context.fileRelativePath)
+      sourceURL: obsidianURL(vaultName: context.vaultName, filePath: context.fileRelativePath),
+      createdAt: nil
     )
   }
 
@@ -307,7 +308,8 @@ struct ObsidianTaskParser {
       list: context.list,
       section: section,
       sourceURL: obsidianURL(vaultName: context.vaultName, filePath: context.fileRelativePath),
-      completedAt: completedAt
+      completedAt: completedAt,
+      createdAt: nil
     )
   }
 

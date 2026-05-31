@@ -84,7 +84,9 @@ private func makeItem(
   nativeID: String,
   title: String,
   priority: TaskPriority = .none,
-  dueDate: Date? = nil
+  dueDate: Date? = nil,
+  list: TaskList? = nil,
+  section: String? = nil
 ) -> TaskItem {
   TaskItem(
     id: TaskRef(providerID: providerID, nativeID: nativeID),
@@ -95,9 +97,11 @@ private func makeItem(
     dueDate: dueDate,
     scheduledDate: nil,
     startDate: nil,
-    list: nil,
-    section: nil,
-    sourceURL: nil
+    list: list,
+    section: section,
+    sourceURL: nil,
+    completedAt: nil,
+    createdAt: nil
   )
 }
 
