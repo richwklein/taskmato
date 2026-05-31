@@ -17,9 +17,6 @@ struct ProviderSidebarView: View {
 
   var registry: TaskRegistry
 
-  /// Lists loaded from non-local providers, keyed by provider ID.
-  @State private var listsByProvider: [String: [TaskList]] = [:]
-
   /// Provider IDs whose ``DisclosureGroup`` is expanded (session-only; all start expanded).
   @State private var expanded: Set<String> = []
 
@@ -148,26 +145,11 @@ struct ProviderSidebarView: View {
   private func listRow(_ list: TaskList, provider: any TaskProvider) -> some View {
     let writable = provider as? (any WritableTaskProvider)
     let isDefaultList = isDefault(list.id, for: provider)
-    let allIDs = Set(lists(for: provider).map(\.id))
 
     HStack(spacing: 6) {
-      Toggle(
-        isOn: Binding(
-          get: { registry.isListVisible(list.id, providerID: provider.id) },
-          set: { visible in
-            registry.setListVisible(
-              list.id,
-              providerID: provider.id,
-              visible: visible,
-              allListIDs: allIDs
-            )
-          }
-        )
-      ) {
-        EmptyView()
-      }
-      .toggleStyle(.checkbox)
-      .disabled(isDefaultList)
+      Image(systemName: "list.bullet")
+        .imageScale(.small)
+        .foregroundStyle(.secondary)
 
       listNameField(list: list, provider: provider)
 
@@ -313,13 +295,13 @@ struct ProviderSidebarView: View {
   /// Returns the lists to display for a provider.
   ///
   /// For ``LocalProvider``, reads `taskLists` directly so SwiftUI tracks the
-  /// @Observable property and re-renders on mutations. Other providers use the
-  /// async-loaded cache in `listsByProvider`.
+  /// @Observable property and re-renders on mutations. Other providers read from
+  /// `registry.providerLists`, which is populated by `loadLists(for:)`.
   private func lists(for provider: any TaskProvider) -> [TaskList] {
     if let local = localProvider, provider.id == local.id {
       return local.taskLists.map(\.asTaskList)
     }
-    return listsByProvider[provider.id] ?? []
+    return registry.providerLists[provider.id] ?? []
   }
 
   /// Returns `true` when `listID` is the default list for `provider`.
@@ -363,7 +345,8 @@ struct ProviderSidebarView: View {
 
   private func loadLists(for provider: any TaskProvider) async {
     guard provider as? LocalProvider == nil else { return }
-    listsByProvider[provider.id] = (try? await provider.lists()) ?? []
+    let loaded = (try? await provider.lists()) ?? []
+    registry.setLists(loaded, forProviderID: provider.id)
   }
 }
 

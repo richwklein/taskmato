@@ -103,7 +103,8 @@ struct TasksTabView: View {
           if !adding { Task { await loadTasks() } }
         }
         .onChange(of: registry.enabledIDs) { _, _ in Task { await loadTasks() } }
-        .onChange(of: registry.scopes) { _, _ in Task { await loadTasks() } }
+        .onChange(of: registry.selection) { _, _ in Task { await loadTasks() } }
+        .onChange(of: registry.providerLists) { _, _ in Task { await loadTasks() } }
         .onChange(of: remindersProvider?.isAuthorized) { _, authorized in
           guard authorized == true else { return }
           Task { await loadTasks() }
@@ -361,7 +362,9 @@ extension TasksTabView {
 
   private func loadTasks() async {
     isLoading = groupedLists.isEmpty
-    let (tasks, _) = await registry.tasks(matching: query)
+    let (tasks, _) = await registry.tasks(
+      matching: query, selection: registry.selection,
+      sortBy: .priority, direction: .descending)
     groupedLists = buildGroups(from: tasks)
     isLoading = false
   }

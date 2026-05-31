@@ -119,7 +119,9 @@ final class URLSchemeHandler {
       startDate: nil,
       list: list,
       section: nil,
-      sourceURL: nil
+      sourceURL: nil,
+      completedAt: nil,
+      createdAt: Date()
     )
   }
 
@@ -193,7 +195,8 @@ final class URLSchemeHandler {
   }
 
   private func crossProviderTitleSearch(title: String) async -> [TaskItem] {
-    let (tasks, _) = await registry.tasks(matching: title)
+    let (tasks, _) = await registry.tasks(
+      matching: title, selection: nil, sortBy: .title, direction: .ascending)
     return tasks
   }
 

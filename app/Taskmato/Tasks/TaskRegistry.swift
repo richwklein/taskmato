@@ -11,8 +11,18 @@ typealias ProviderFetchError = (providerID: String, error: any Error)
 
 /// Manages the set of registered task providers and fans out queries across all enabled ones.
 ///
-/// Providers are registered programmatically at app startup. The enabled/disabled
-/// state of each provider is persisted to `UserDefaults` and restored on next launch.
+/// Providers are registered programmatically at app startup. The enabled/disabled state of
+/// each provider is persisted to `UserDefaults` and restored on next launch.
+///
+/// **Selection model**: `selection` persists the sidebar's active view — either `.today` (the
+/// smart Today list) or `.list(SelectedList)` (a specific provider list). The value is stored
+/// verbatim and validated lazily once `providerLists` is populated via `setLists`. `.today` is
+/// always immediately valid; `.list(...)` selections are treated as "no scope" (empty results)
+/// until the first `setLists` call confirms the list exists.
+///
+/// **Migration**: on first launch after upgrading from the list-scope model, the initializer
+/// removes the abandoned `"taskRegistry.providerListScopes"` and `"taskRegistry.selectedList"`
+/// keys from `UserDefaults`.
 @Observable
 @MainActor
 final class TaskRegistry {
@@ -23,21 +33,42 @@ final class TaskRegistry {
   /// IDs of providers currently enabled by the user.
   private(set) var enabledIDs: Set<String>
 
-  /// Per-provider list visibility scopes, keyed by provider ID.
-  private(set) var scopes: [String: ProviderListScope]
+  /// Lists loaded for each provider, keyed by provider ID.
+  ///
+  /// Populated by ``setLists(_:forProviderID:)``, which the sidebar calls after every
+  /// `provider.lists()` load. Cleared for a provider when it is disabled. Views can
+  /// observe this property to react when list data becomes available.
+  private(set) var providerLists: [String: [TaskList]] = [:]
+
+  /// The currently active sidebar selection.
+  ///
+  /// `.today` is always valid. `.list(...)` selections are validated lazily after
+  /// `providerLists` is populated; treat a transient invalid `.list` as "no scope".
+  /// Defaults to `.today` on first launch.
+  private(set) var selection: SidebarSelection?
 
   private let defaults: UserDefaults
   private static let enabledKey = "taskRegistry.enabledProviderIDs"
-  private static let scopesKey = "taskRegistry.providerListScopes"
+  private static let selectionKey = "taskRegistry.selection"
 
-  /// - Parameter defaults: `UserDefaults` store for enabled-state persistence. Override in tests.
+  /// - Parameter defaults: `UserDefaults` store for persistence. Override in tests.
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
+
+    // One-shot migration: remove abandoned list-scope blobs from prior versions.
+    defaults.removeObject(forKey: "taskRegistry.providerListScopes")
+    defaults.removeObject(forKey: "taskRegistry.selectedList")
+
     let stored = defaults.stringArray(forKey: Self.enabledKey) ?? []
     self.enabledIDs = Set(stored)
-    self.scopes =
-      defaults.data(forKey: Self.scopesKey)
-      .flatMap { try? JSONDecoder().decode([String: ProviderListScope].self, from: $0) } ?? [:]
+
+    if let data = defaults.data(forKey: Self.selectionKey),
+      let saved = try? JSONDecoder().decode(SidebarSelection.self, from: data)
+    {
+      self.selection = saved
+    } else {
+      self.selection = .today
+    }
   }
 
   // MARK: - Registration
@@ -59,10 +90,14 @@ final class TaskRegistry {
   }
 
   /// Disables a provider by ID, excluding it from future fan-out queries.
+  ///
+  /// Also clears the provider's list cache so downstream observers react immediately.
   /// - Parameter providerID: The `id` of the provider to disable.
   func disable(providerID: String) {
     enabledIDs.remove(providerID)
+    providerLists.removeValue(forKey: providerID)
     persist()
+    validateSelection()
   }
 
   /// Returns `true` if the provider with the given ID is currently enabled.
@@ -71,37 +106,166 @@ final class TaskRegistry {
     enabledIDs.contains(providerID)
   }
 
+  // MARK: - List cache
+
+  /// Updates the list cache for `providerID` and validates the current selection.
+  ///
+  /// Call this after every `provider.lists()` load — on appear, after add, delete, or rename.
+  func setLists(_ lists: [TaskList], forProviderID providerID: String) {
+    providerLists[providerID] = lists
+    validateSelection()
+  }
+
+  // MARK: - Selection
+
+  /// Sets the active sidebar selection and persists it.
+  /// - Parameter newSelection: The new selection, or `nil` to clear.
+  func select(_ newSelection: SidebarSelection?) {
+    selection = newSelection
+    persistSelection()
+  }
+
+  /// Validates the current selection against the loaded `providerLists` cache and
+  /// applies a fallback cascade when the selected list is no longer reachable.
+  ///
+  /// `.today` is always valid and is never changed. `.list(...)` selections are
+  /// checked against `providerLists`; if the list is missing the cascade is:
+  /// 1. First enabled writable provider's `defaultListID` (if in cache).
+  /// 2. First list of the first enabled provider with lists in cache.
+  /// 3. `.today`.
+  func validateSelection() {
+    guard case .list(let selectedList) = selection else { return }
+
+    // Still valid if the list exists in the cache.
+    let listExists =
+      providerLists[selectedList.providerID]?.contains(where: { $0.id == selectedList.listID })
+      == true
+    if listExists { return }
+
+    // Cascade 1: writable provider's default list.
+    for provider in providers where isEnabled(provider.id) {
+      if let writable = provider as? (any WritableTaskProvider),
+        let defaultID = writable.defaultListID,
+        let lists = providerLists[provider.id],
+        lists.contains(where: { $0.id == defaultID })
+      {
+        select(.list(SelectedList(providerID: provider.id, listID: defaultID)))
+        return
+      }
+    }
+
+    // Cascade 2: first list of first enabled provider.
+    for provider in providers where isEnabled(provider.id) {
+      if let lists = providerLists[provider.id], let first = lists.first {
+        select(.list(SelectedList(providerID: provider.id, listID: first.id)))
+        return
+      }
+    }
+
+    // Cascade 3: always-valid Today.
+    select(.today)
+  }
+
   // MARK: - Queries
 
-  /// Returns tasks from all enabled providers, optionally filtered by a search string.
+  /// Returns tasks according to the active selection, applying an optional title filter.
   ///
-  /// Results from each provider are fetched concurrently. Provider errors are collected
-  /// and returned alongside results so the UI can surface them without blocking other providers.
-  /// Tasks are sorted by priority (descending) then due date (ascending, nil last).
+  /// - When `query` is non-empty: fans out across all enabled providers and all their lists,
+  ///   applying a case-insensitive title filter. `selection` is ignored.
+  /// - When `selection == .today`: fans out globally and filters to tasks whose `dueDate`
+  ///   falls on or before the end of today (overdue + due today).
+  /// - When `selection == .list(...)`: returns tasks from the single named list, using the
+  ///   `providerLists` cache to resolve the `TaskList`. Returns empty if the cache is not
+  ///   yet populated for the selected list.
+  /// - When `selection == nil`: fans out across all enabled providers (same as legacy behavior).
   ///
-  /// - Parameter query: Case-insensitive substring to match against task titles.
-  ///   Pass an empty string to return all tasks.
-  /// - Returns: A tuple of matched tasks and any per-provider errors that occurred.
-  func tasks(matching query: String) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
+  /// Results are sorted by priority (descending) then due date (ascending, nil last).
+  /// Sort field and direction will be fully respected once commit 4 lands.
+  ///
+  /// - Parameters:
+  ///   - query: Case-insensitive substring to match against task titles. Pass `""` for all tasks.
+  ///   - selection: The sidebar selection scope; pass `nil` for unconditional global fan-out.
+  ///   - sortBy: The field to sort by (currently only priority+dueDate ordering is applied).
+  ///   - direction: The sort direction (used in commit 4; direction is implicit for now).
+  /// - Returns: Matched tasks and any per-provider errors that occurred.
+  func tasks(
+    matching query: String,
+    selection: SidebarSelection?,
+    sortBy _: TaskSortField,
+    direction _: TaskSortDirection
+  ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
     let active = providers.filter { isEnabled($0.id) }
+
+    // Non-empty query: global fan-out + title filter (ignores selection).
+    if !query.isEmpty {
+      let (all, errors) = await globalFanOut(providers: active)
+      let filtered = all.filter { $0.title.localizedCaseInsensitiveContains(query) }
+      return (tasks: sortedByPriorityThenDueDate(filtered), errors: errors)
+    }
+
+    switch selection {
+    case nil:
+      // No explicit selection: unconstrained global fan-out (backward-compat / URL handler).
+      let (all, errors) = await globalFanOut(providers: active)
+      return (tasks: sortedByPriorityThenDueDate(all), errors: errors)
+
+    case .today:
+      let (all, errors) = await globalFanOut(providers: active)
+      let today = all.filter { item in
+        guard let due = item.dueDate else { return false }
+        return due <= Calendar.current.endOfToday
+      }
+      return (tasks: sortedByPriorityThenDueDate(today), errors: errors)
+
+    case .list(let selectedList):
+      guard
+        let provider = providers.first(where: { $0.id == selectedList.providerID }),
+        isEnabled(provider.id),
+        let list = providerLists[selectedList.providerID]?.first(where: {
+          $0.id == selectedList.listID
+        })
+      else {
+        return (tasks: [], errors: [])
+      }
+      let items = (try? await provider.tasks(in: list)) ?? []
+      return (tasks: sortedByPriorityThenDueDate(items), errors: [])
+    }
+  }
+
+  // MARK: - Provider lookup
+
+  /// Returns the registered provider that owns the given task reference, or `nil` if not found.
+  /// - Parameter ref: The task reference whose provider to look up.
+  func provider(for ref: TaskRef) -> (any TaskProvider)? {
+    providers.first { $0.id == ref.providerID }
+  }
+
+  /// Returns the provider for a task reference if it conforms to `ClosableTaskProvider`, or `nil`.
+  /// - Parameter ref: The task reference whose closable provider to look up.
+  func closableProvider(for ref: TaskRef) -> (any ClosableTaskProvider)? {
+    provider(for: ref) as? any ClosableTaskProvider
+  }
+
+  // MARK: - Private helpers
+
+  private func globalFanOut(providers: [any TaskProvider]) async -> (
+    [TaskItem], [ProviderFetchError]
+  ) {
     var merged: [TaskItem] = []
     var providerErrors: [ProviderFetchError] = []
 
     await withTaskGroup(of: (items: [TaskItem], fetchError: ProviderFetchError?).self) { group in
-      for provider in active {
+      for provider in providers {
         let providerID = provider.id
-        let scope = scopes[providerID]
         group.addTask {
           do {
             let allLists = try await provider.lists()
             let items: [TaskItem]
             if allLists.isEmpty {
-              // Provider declares no lists; fetch all tasks unscoped.
               items = try await provider.tasks(in: nil)
             } else {
-              let visibleLists = allLists.filter { scope?.isVisible($0.id) ?? true }
               var scoped: [TaskItem] = []
-              for list in visibleLists {
+              for list in allLists {
                 scoped += try await provider.tasks(in: list)
               }
               items = scoped
@@ -120,11 +284,7 @@ final class TaskRegistry {
       }
     }
 
-    if !query.isEmpty {
-      merged = merged.filter { $0.title.localizedCaseInsensitiveContains(query) }
-    }
-
-    return (tasks: sortedByPriorityThenDueDate(merged), errors: providerErrors)
+    return (merged, providerErrors)
   }
 
   private func sortedByPriorityThenDueDate(_ items: [TaskItem]) -> [TaskItem] {
@@ -139,55 +299,28 @@ final class TaskRegistry {
     }
   }
 
-  /// Returns the registered provider that owns the given task reference, or `nil` if not found.
-  /// - Parameter ref: The task reference whose provider to look up.
-  func provider(for ref: TaskRef) -> (any TaskProvider)? {
-    providers.first { $0.id == ref.providerID }
-  }
-
-  /// Returns the provider for a task reference if it conforms to `ClosableTaskProvider`, or `nil`.
-  /// - Parameter ref: The task reference whose closable provider to look up.
-  func closableProvider(for ref: TaskRef) -> (any ClosableTaskProvider)? {
-    provider(for: ref) as? any ClosableTaskProvider
-  }
-
-  // MARK: - List scoping
-
-  /// Returns `true` if the list with `listID` is visible for the given provider.
-  ///
-  /// Defaults to `true` when no scope has been configured for the provider.
-  func isListVisible(_ listID: String, providerID: String) -> Bool {
-    scopes[providerID]?.isVisible(listID) ?? true
-  }
-
-  /// Updates the visibility of a list within a provider's scope.
-  ///
-  /// - Parameters:
-  ///   - listID: The list whose visibility changes.
-  ///   - providerID: The provider that owns the list.
-  ///   - visible: `true` to show, `false` to hide.
-  ///   - allListIDs: All list IDs currently known for the provider. Used to seed the
-  ///     scope the first time a list is hidden.
-  func setListVisible(
-    _ listID: String,
-    providerID: String,
-    visible: Bool,
-    allListIDs: Set<String>
-  ) {
-    var scope = scopes[providerID] ?? ProviderListScope()
-    scope.setVisible(listID, visible: visible, allListIDs: allListIDs)
-    scopes[providerID] = scope
-    persistScopes()
-  }
-
   // MARK: - Persistence
 
   private func persist() {
     defaults.set(Array(enabledIDs), forKey: Self.enabledKey)
   }
 
-  private func persistScopes() {
-    guard let data = try? JSONEncoder().encode(scopes) else { return }
-    defaults.set(data, forKey: Self.scopesKey)
+  private func persistSelection() {
+    guard let selection,
+      let data = try? JSONEncoder().encode(selection)
+    else {
+      defaults.removeObject(forKey: Self.selectionKey)
+      return
+    }
+    defaults.set(data, forKey: Self.selectionKey)
+  }
+}
+
+// MARK: - Calendar helpers
+
+extension Calendar {
+  /// The last second of today: start of day + 86399 seconds.
+  fileprivate var endOfToday: Date {
+    startOfDay(for: Date()).addingTimeInterval(86400 - 1)
   }
 }
