@@ -22,7 +22,7 @@ RELEASE_SIGN_FLAGS = CODE_SIGN_IDENTITY="Developer ID Application" \
                      CODE_SIGNING_ALLOWED=YES \
                      DEVELOPMENT_TEAM=43757RE978
 
-.PHONY: help sync-version build run test lint format format-check clean archive notarize release
+.PHONY: help sync-version build run open test lint format format-check clean archive notarize release
 
 help: ## List the available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -38,7 +38,9 @@ build: sync-version ## Build the app in Debug configuration
 		-destination '$(DESTINATION)' \
 		$(SIGN_FLAGS)
 
-run: build ## Build and launch the app (kills any running instance first)
+run: build open ## Build and launch the app
+
+open: ## Launch the last built app without rebuilding
 	@pkill -x $(SCHEME) 2>/dev/null || true
 	open "$(APP_PATH)"
 
