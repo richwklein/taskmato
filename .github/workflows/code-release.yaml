@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Import signing certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          BUILD_CERTIFICATE_PASSWORD: ${{ secrets.BUILD_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$BUILD_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Decode notarization key
+        env:
+          NOTARYTOOL_AUTH_KEY_P8: ${{ secrets.NOTARYTOOL_AUTH_KEY_P8 }}
+        run: |
+          echo -n "$NOTARYTOOL_AUTH_KEY_P8" | base64 --decode -o "$RUNNER_TEMP/notarytool_key.p8"
+
+      - name: Archive and package DMG
+        run: make archive
+
+      - name: Notarize and staple
+        env:
+          NOTARYTOOL_KEY_ID: ${{ secrets.NOTARYTOOL_KEY_ID }}
+          NOTARYTOOL_ISSUER_ID: ${{ secrets.NOTARYTOOL_ISSUER_ID }}
+        run: |
+          VERSION=$(cat version.txt | tr -d '[:space:]')
+          xcrun notarytool submit "build/Taskmato-${VERSION}.dmg" \
+            --key "$RUNNER_TEMP/notarytool_key.p8" \
+            --key-id "$NOTARYTOOL_KEY_ID" \
+            --issuer "$NOTARYTOOL_ISSUER_ID" \
+            --wait
+          xcrun stapler staple "build/Taskmato-${VERSION}.dmg"
+
+      - name: Create draft release, attach DMG, and publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(cat version.txt | tr -d '[:space:]')
+          DMG="build/Taskmato-${VERSION}.dmg"
+          TAG="v${VERSION}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$DMG#Taskmato.dmg" --clobber
+          else
+            gh release create "$TAG" \
+              --draft \
+              --title "Taskmato ${TAG}" \
+              --generate-notes \
+              "$DMG#Taskmato.dmg"
+            gh release edit "$TAG" --draft=false
+          fi
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
