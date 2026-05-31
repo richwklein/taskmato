@@ -134,10 +134,13 @@ final class TaskRegistry {
   func validateSelection() {
     guard case .list(let selectedList) = selection else { return }
 
-    // Only cascade when the cache is populated AND doesn't contain the list.
-    // A nil cache means lists haven't loaded yet (e.g. LocalProvider uses reactive properties
-    // directly) — treat absent cache as indeterminate so we don't cascade prematurely.
-    let cache = providerLists[selectedList.providerID]
+    // Treat a nil cache as indeterminate only for registered, enabled providers (e.g.
+    // LocalProvider, which never writes to providerLists). Unknown or disabled providers
+    // get an empty cache so the cascade fires normally.
+    let providerKnown = providers.contains(where: {
+      $0.id == selectedList.providerID && isEnabled($0.id)
+    })
+    let cache: [TaskList]? = providerKnown ? providerLists[selectedList.providerID] : []
     let listExists = cache?.contains(where: { $0.id == selectedList.listID }) ?? true
     if listExists { return }
 
