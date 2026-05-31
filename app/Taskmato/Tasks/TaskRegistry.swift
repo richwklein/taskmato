@@ -180,14 +180,14 @@ final class TaskRegistry {
   /// - Parameters:
   ///   - query: Case-insensitive substring to match against task titles. Pass `""` for all tasks.
   ///   - selection: The sidebar selection scope; pass `nil` for unconditional global fan-out.
-  ///   - sortBy: The field to sort by (currently only priority+dueDate ordering is applied).
-  ///   - direction: The sort direction (used in commit 4; direction is implicit for now).
+  ///   - sortBy: The field to sort by.
+  ///   - direction: The sort direction.
   /// - Returns: Matched tasks and any per-provider errors that occurred.
   func tasks(
     matching query: String,
     selection: SidebarSelection?,
-    sortBy _: TaskSortField,
-    direction _: TaskSortDirection
+    sortBy field: TaskSortField,
+    direction: TaskSortDirection
   ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
     let active = providers.filter { isEnabled($0.id) }
 
@@ -195,14 +195,14 @@ final class TaskRegistry {
     if !query.isEmpty {
       let (all, errors) = await globalFanOut(providers: active)
       let filtered = all.filter { $0.title.localizedCaseInsensitiveContains(query) }
-      return (tasks: sortedByPriorityThenDueDate(filtered), errors: errors)
+      return (tasks: sortedByField(filtered, field: field, direction: direction), errors: errors)
     }
 
     switch selection {
     case nil:
       // No explicit selection: unconstrained global fan-out (backward-compat / URL handler).
       let (all, errors) = await globalFanOut(providers: active)
-      return (tasks: sortedByPriorityThenDueDate(all), errors: errors)
+      return (tasks: sortedByField(all, field: field, direction: direction), errors: errors)
 
     case .today:
       let (all, errors) = await globalFanOut(providers: active)
@@ -210,7 +210,7 @@ final class TaskRegistry {
         guard let due = item.dueDate else { return false }
         return due <= Calendar.current.endOfToday
       }
-      return (tasks: sortedByPriorityThenDueDate(today), errors: errors)
+      return (tasks: sortedByField(today, field: field, direction: direction), errors: errors)
 
     case .list(let selectedList):
       guard
@@ -223,7 +223,7 @@ final class TaskRegistry {
         return (tasks: [], errors: [])
       }
       let items = (try? await provider.tasks(in: list)) ?? []
-      return (tasks: sortedByPriorityThenDueDate(items), errors: [])
+      return (tasks: sortedByField(items, field: field, direction: direction), errors: [])
     }
   }
 
@@ -282,16 +282,79 @@ final class TaskRegistry {
     return (merged, providerErrors)
   }
 
-  private func sortedByPriorityThenDueDate(_ items: [TaskItem]) -> [TaskItem] {
-    items.sorted { lhs, rhs in
-      if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
-      switch (lhs.dueDate, rhs.dueDate) {
-      case (let lhsDate?, let rhsDate?): return lhsDate < rhsDate
-      case (.some, .none): return true
-      case (.none, .some): return false
-      case (.none, .none): return false
-      }
+  /// Sorts `items` by `field`/`direction`, applying the sort within each `(list.id, section)`
+  /// group in encounter order. Groups are then flattened back to a single array, preserving
+  /// the section order the providers produced.
+  private func sortedByField(
+    _ items: [TaskItem], field: TaskSortField, direction: TaskSortDirection
+  ) -> [TaskItem] {
+    struct SectionKey: Hashable {
+      let listID: String
+      let section: String?
     }
+
+    var ordered: [SectionKey] = []
+    var bySection: [SectionKey: [TaskItem]] = [:]
+
+    for item in items {
+      let key = SectionKey(listID: item.list?.id ?? "", section: item.section)
+      if bySection[key] == nil { ordered.append(key) }
+      bySection[key, default: []].append(item)
+    }
+
+    return ordered.flatMap { key in
+      (bySection[key] ?? []).sorted { compareItems($0, $1, field: field, direction: direction) }
+    }
+  }
+
+  private func compareItems(
+    _ lhs: TaskItem, _ rhs: TaskItem, field: TaskSortField, direction: TaskSortDirection
+  ) -> Bool {
+    let asc = direction == .ascending
+    switch field {
+    case .dueDate:
+      return compareDatesNilLast(lhs.dueDate, rhs.dueDate, ascending: asc)
+        ?? compareTitlesAscending(lhs.title, rhs.title)
+        ?? compareRefs(lhs.id, rhs.id)
+    case .priority:
+      if lhs.priority != rhs.priority {
+        return asc ? lhs.priority < rhs.priority : lhs.priority > rhs.priority
+      }
+      return compareDatesNilLast(lhs.dueDate, rhs.dueDate, ascending: true)
+        ?? compareTitlesAscending(lhs.title, rhs.title)
+        ?? compareRefs(lhs.id, rhs.id)
+    case .title:
+      let cmp = lhs.title.localizedStandardCompare(rhs.title)
+      if cmp != .orderedSame { return asc ? cmp == .orderedAscending : cmp == .orderedDescending }
+      return compareRefs(lhs.id, rhs.id)
+    case .creationDate:
+      return compareDatesNilLast(lhs.createdAt, rhs.createdAt, ascending: asc)
+        ?? compareTitlesAscending(lhs.title, rhs.title)
+        ?? compareRefs(lhs.id, rhs.id)
+    }
+  }
+
+  /// Compares two optional dates with nil-last semantics. Returns `nil` when both are equal or both nil.
+  private func compareDatesNilLast(_ lhs: Date?, _ rhs: Date?, ascending: Bool) -> Bool? {
+    switch (lhs, rhs) {
+    case (let lhsDate?, let rhsDate?):
+      guard lhsDate != rhsDate else { return nil }
+      return ascending ? lhsDate < rhsDate : lhsDate > rhsDate
+    case (.some, .none): return true
+    case (.none, .some): return false
+    case (.none, .none): return nil
+    }
+  }
+
+  /// Ascending title comparison using `localizedStandardCompare`. Returns `nil` when equal.
+  private func compareTitlesAscending(_ lhs: String, _ rhs: String) -> Bool? {
+    let result = lhs.localizedStandardCompare(rhs)
+    return result == .orderedSame ? nil : result == .orderedAscending
+  }
+
+  /// Deterministic tiebreaker using the lexicographic order of `providerID/nativeID`.
+  private func compareRefs(_ lhs: TaskRef, _ rhs: TaskRef) -> Bool {
+    "\(lhs.providerID)/\(lhs.nativeID)" < "\(rhs.providerID)/\(rhs.nativeID)"
   }
 
   // MARK: - Persistence

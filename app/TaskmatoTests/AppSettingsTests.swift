@@ -72,6 +72,40 @@ struct AppSettingsTests {
     #expect(makeSettings().autoStartNextPhase == false)
   }
 
+  // MARK: - Sort defaults
+
+  @Test func defaultTaskSortFieldIsDueDate() {
+    #expect(makeSettings().taskSortField == .dueDate)
+  }
+
+  @Test func defaultTaskSortDirectionIsAscending() {
+    #expect(makeSettings().taskSortDirection == .ascending)
+  }
+
+  @Test func defaultTodaySortFieldIsPriority() {
+    #expect(makeSettings().todaySortField == .priority)
+  }
+
+  @Test func defaultTodaySortDirectionIsDescending() {
+    #expect(makeSettings().todaySortDirection == .descending)
+  }
+
+  // MARK: - Sort persistence
+
+  @Test func sortSettingsPersistAcrossInstances() {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let writer = AppSettings(defaults: defaults)
+    writer.taskSortField = .title
+    writer.taskSortDirection = .descending
+    writer.todaySortField = .creationDate
+    writer.todaySortDirection = .ascending
+    let reader = AppSettings(defaults: defaults)
+    #expect(reader.taskSortField == .title)
+    #expect(reader.taskSortDirection == .descending)
+    #expect(reader.todaySortField == .creationDate)
+    #expect(reader.todaySortDirection == .ascending)
+  }
+
   // MARK: - Persistence
 
   @Test func settingPersistsAcrossInstances() {

@@ -64,6 +64,16 @@ struct TasksTabView: View {
     Taskmato.flatSections(from: groupedLists)
   }
 
+  /// The sort field to apply based on the active sidebar selection.
+  private var activeSortField: TaskSortField {
+    registry.selection == .today ? settings.todaySortField : settings.taskSortField
+  }
+
+  /// The sort direction to apply based on the active sidebar selection.
+  private var activeSortDirection: TaskSortDirection {
+    registry.selection == .today ? settings.todaySortDirection : settings.taskSortDirection
+  }
+
   var body: some View {
     NavigationSplitView(
       columnVisibility: Binding(
@@ -85,6 +95,10 @@ struct TasksTabView: View {
         .onChange(of: registry.enabledIDs) { _, _ in Task { await loadTasks() } }
         .onChange(of: registry.selection) { _, _ in Task { await loadTasks() } }
         .onChange(of: registry.providerLists) { _, _ in Task { await loadTasks() } }
+        .onChange(of: settings.taskSortField) { _, _ in Task { await loadTasks() } }
+        .onChange(of: settings.taskSortDirection) { _, _ in Task { await loadTasks() } }
+        .onChange(of: settings.todaySortField) { _, _ in Task { await loadTasks() } }
+        .onChange(of: settings.todaySortDirection) { _, _ in Task { await loadTasks() } }
         .onChange(of: remindersProvider?.isAuthorized) { _, authorized in
           guard authorized == true else { return }
           Task { await loadTasks() }
@@ -128,6 +142,10 @@ struct TasksTabView: View {
             }
             .pickerStyle(.segmented)
             .help("Toggle between list and grid view")
+          }
+
+          ToolbarItem(placement: .automatic) {
+            sortMenu
           }
 
           ToolbarItem(placement: .automatic) {
@@ -360,7 +378,7 @@ extension TasksTabView {
     isLoading = groupedLists.isEmpty
     let (tasks, _) = await registry.tasks(
       matching: query, selection: registry.selection,
-      sortBy: .priority, direction: .descending)
+      sortBy: activeSortField, direction: activeSortDirection)
     groupedLists = buildGroups(from: tasks)
     isLoading = false
   }
