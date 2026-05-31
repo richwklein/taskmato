@@ -124,7 +124,7 @@ The numbered tracks below (P0–P8) become the **Provider Pivot (1.0)** GitHub m
 - [x] Add `make archive` target: `xcodebuild archive` with real signing identity and provisioning profile ([#282](https://github.com/richwklein/taskmato/issues/282))
 - [x] Add `make notarize` target: `xcrun notarytool submit` + `staple` for Developer ID distribution ([#282](https://github.com/richwklein/taskmato/issues/282))
 - [x] Add `make release` target: archive → notarize → export → create GitHub release with `.dmg` ([#282](https://github.com/richwklein/taskmato/issues/282))
-- [ ] Document required Keychain setup and environment variables for CI signing (`CERTIFICATE_BASE64`, `KEYCHAIN_PASSWORD`, etc.) ([#283](https://github.com/richwklein/taskmato/issues/283))
+- [x] Document required Keychain setup and environment variables for CI signing (`CERTIFICATE_BASE64`, `KEYCHAIN_PASSWORD`, etc.) ([#283](https://github.com/richwklein/taskmato/issues/283))
 - [x] Add GitHub Actions release workflow triggered on version tags (`v*`) ([#284](https://github.com/richwklein/taskmato/issues/284))
 - [ ] Configure App Store Connect for App Store distribution (separate from Developer ID path) ([#285](https://github.com/richwklein/taskmato/issues/285))
 - [x] Update `Makefile` `SIGN_FLAGS` docs to clarify dev-only scope ([#282](https://github.com/richwklein/taskmato/issues/282))
