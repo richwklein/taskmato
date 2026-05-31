@@ -3,7 +3,7 @@
 SCHEME      = Taskmato
 PROJECT     = app/Taskmato.xcodeproj
 DESTINATION = platform=macOS
-SIGN_FLAGS  = CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=YES CODE_SIGNING_ALLOWED=YES
+SIGN_FLAGS  = CODE_SIGN_IDENTITY="Apple Development" CODE_SIGN_STYLE=Automatic CODE_SIGNING_REQUIRED=YES CODE_SIGNING_ALLOWED=YES DEVELOPMENT_TEAM=43757RE978
 
 SOURCE_DIRS = app/Taskmato app/TaskmatoTests app/TaskmatoUITests
 
@@ -17,6 +17,7 @@ APP_PATH     = $(shell xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configu
 # Developer ID signing — used for notarized distribution outside the App Store.
 # SIGN_FLAGS (ad-hoc) is used for local dev builds only.
 RELEASE_SIGN_FLAGS = CODE_SIGN_IDENTITY="Developer ID Application" \
+                     CODE_SIGN_STYLE=Manual \
                      CODE_SIGNING_REQUIRED=YES \
                      CODE_SIGNING_ALLOWED=YES \
                      DEVELOPMENT_TEAM=43757RE978
