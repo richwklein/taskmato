@@ -9,50 +9,39 @@ import SwiftUI
 
 extension TasksTabView {
 
-  /// Sort menu placed in the toolbar, adapting field/direction labels to the active selection.
+  /// Sort menu placed in the toolbar.
+  ///
+  /// Selecting a field also resets the direction to its natural default so the
+  /// picker always lands in a sensible state: due date and creation date default
+  /// to earliest-first, priority defaults to highest-first, title defaults to A→Z.
   var sortMenu: some View {
-    let isToday = registry.selection == .today
-    let currentField = isToday ? settings.todaySortField : settings.taskSortField
-    let currentDirection = isToday ? settings.todaySortDirection : settings.taskSortDirection
-
-    return Menu {
+    Menu {
       Section("Sort by") {
         ForEach(TaskSortField.allCases, id: \.self) { field in
           Button {
-            if isToday {
-              settings.todaySortField = field
-            } else {
-              settings.taskSortField = field
-            }
+            settings.taskSortField = field
+            settings.taskSortDirection = defaultDirection(for: field)
           } label: {
             Label(
               displayName(for: field),
-              systemImage: currentField == field ? "checkmark" : "")
+              systemImage: settings.taskSortField == field ? "checkmark" : "")
           }
         }
       }
       Divider()
       Button {
-        if isToday {
-          settings.todaySortDirection = .ascending
-        } else {
-          settings.taskSortDirection = .ascending
-        }
+        settings.taskSortDirection = .ascending
       } label: {
         Label(
-          ascendingLabel(for: currentField),
-          systemImage: currentDirection == .ascending ? "checkmark" : "")
+          ascendingLabel(for: settings.taskSortField),
+          systemImage: settings.taskSortDirection == .ascending ? "checkmark" : "")
       }
       Button {
-        if isToday {
-          settings.todaySortDirection = .descending
-        } else {
-          settings.taskSortDirection = .descending
-        }
+        settings.taskSortDirection = .descending
       } label: {
         Label(
-          descendingLabel(for: currentField),
-          systemImage: currentDirection == .descending ? "checkmark" : "")
+          descendingLabel(for: settings.taskSortField),
+          systemImage: settings.taskSortDirection == .descending ? "checkmark" : "")
       }
     } label: {
       Label("Sort", systemImage: "arrow.up.arrow.down")
@@ -66,6 +55,15 @@ extension TasksTabView {
     case .priority: return "Priority"
     case .title: return "Title"
     case .creationDate: return "Creation Date"
+    }
+  }
+
+  /// The natural sort direction for a field: used when switching fields so the
+  /// user always lands in the most intuitive order without an extra click.
+  func defaultDirection(for field: TaskSortField) -> TaskSortDirection {
+    switch field {
+    case .dueDate, .creationDate, .title: return .ascending
+    case .priority: return .descending
     }
   }
 

@@ -82,14 +82,6 @@ struct AppSettingsTests {
     #expect(makeSettings().taskSortDirection == .ascending)
   }
 
-  @Test func defaultTodaySortFieldIsPriority() {
-    #expect(makeSettings().todaySortField == .priority)
-  }
-
-  @Test func defaultTodaySortDirectionIsDescending() {
-    #expect(makeSettings().todaySortDirection == .descending)
-  }
-
   // MARK: - Sort persistence
 
   @Test func sortSettingsPersistAcrossInstances() {
@@ -97,13 +89,9 @@ struct AppSettingsTests {
     let writer = AppSettings(defaults: defaults)
     writer.taskSortField = .title
     writer.taskSortDirection = .descending
-    writer.todaySortField = .creationDate
-    writer.todaySortDirection = .ascending
     let reader = AppSettings(defaults: defaults)
     #expect(reader.taskSortField == .title)
     #expect(reader.taskSortDirection == .descending)
-    #expect(reader.todaySortField == .creationDate)
-    #expect(reader.todaySortDirection == .ascending)
   }
 
   // MARK: - Persistence

@@ -7,24 +7,16 @@ import SwiftUI
 
 /// The task picker tab, showing tasks grouped into sections with live search.
 ///
-/// A ``NavigationSplitView`` places the ``ProviderSidebarView`` in the collapsible
-/// sidebar column and the task list/grid in the detail column. Selecting a task
-/// sets it as the active task and switches to the Timer tab. Section headers are
-/// formatted as "List: Section" when multiple lists are active, or just "Section"
-/// when only one list is active. Supports toggling between a list and an adaptive
-/// card grid layout.
-///
-/// When at least one enabled provider conforms to ``ClosableTaskProvider``, a
-/// "Show Completed" toolbar button becomes available. Toggling it on fetches
-/// completed tasks and appends them inline at the bottom of each matching section.
+/// A ``NavigationSplitView`` places the ``ProviderSidebarView`` in the sidebar and the
+/// task list/grid in the detail column. Supports list and grid layouts. When at least one
+/// enabled provider conforms to ``ClosableTaskProvider``, a "Show Completed" toolbar
+/// button becomes available.
 struct TasksTabView: View {
 
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
   @Binding var selectedTab: Int
   @Bindable var settings: AppSettings
-
-  @Environment(\.openSettings) private var openSettings
 
   @State private var query: String = ""
   @State private var groupedLists: [TaskGroup] = []
@@ -35,7 +27,6 @@ struct TasksTabView: View {
   @State private var completedOrphans: [TaskItem] = []
   @State private var isLoadingCompleted = false
 
-  /// The local provider instance looked up from the registry, if registered.
   private var localProvider: LocalProvider? {
     registry.providers.first(where: { $0 is LocalProvider }) as? LocalProvider
   }
@@ -44,34 +35,32 @@ struct TasksTabView: View {
     registry.providers.first(where: { $0 is RemindersProvider }) as? RemindersProvider
   }
 
-  /// `true` when the local provider is registered and currently enabled.
   private var localProviderEnabled: Bool {
     localProvider.map { registry.isEnabled($0.id) } ?? false
   }
 
-  /// `true` when at least one enabled provider conforms to ``ClosableTaskProvider``.
   private var hasClosableProvider: Bool {
     registry.providers.contains { registry.isEnabled($0.id) && $0 is (any ClosableTaskProvider) }
   }
 
-  /// Total number of completed tasks currently loaded across all sections and orphans.
   private var totalCompletedCount: Int {
     completedByListID.values.reduce(0) { $0 + $1.count } + completedOrphans.count
   }
 
-  /// Flat display sections derived from `groupedLists`.
   private var flatSections: [FlatSection] {
     Taskmato.flatSections(from: groupedLists)
   }
 
-  /// The sort field to apply based on the active sidebar selection.
-  private var activeSortField: TaskSortField {
-    registry.selection == .today ? settings.todaySortField : settings.taskSortField
-  }
-
-  /// The sort direction to apply based on the active sidebar selection.
-  private var activeSortDirection: TaskSortDirection {
-    registry.selection == .today ? settings.todaySortDirection : settings.taskSortDirection
+  /// Context affordance shown at the top of the task list and grid.
+  private var affordanceInfo: (icon: String, label: String)? {
+    if !query.isEmpty {
+      let count = flatSections.reduce(0) { $0 + $1.tasks.count }
+      let label = isLoading ? "Searching…" : "\(count) \(count == 1 ? "result" : "results")"
+      return ("magnifyingglass", label)
+    }
+    if registry.selection == .today { return ("calendar", "Today") }
+    guard case .list = registry.selection, let grp = groupedLists.first else { return nil }
+    return ("list.bullet", grp.listName)
   }
 
   var body: some View {
@@ -85,78 +74,70 @@ struct TasksTabView: View {
         .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
     } detail: {
       detailContent
-        .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
-        .task(id: query) { await loadTasks() }
-        .task { await subscribeToProviderUpdates() }
-        .onAppear { Task { await loadTasks() } }
-        .onChange(of: isAddingTask) { _, adding in
-          if !adding { Task { await loadTasks() } }
+    }
+    .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
+    .task(id: query) { await loadTasks() }
+    .task { await subscribeToProviderUpdates() }
+    .onAppear { Task { await loadTasks() } }
+    .onChange(of: isAddingTask) { _, adding in
+      if !adding { Task { await loadTasks() } }
+    }
+    .onChange(of: registry.enabledIDs) { _, _ in Task { await loadTasks() } }
+    .onChange(of: registry.selection) { _, _ in
+      query = ""
+      Task { await loadTasks() }
+    }
+    .onChange(of: registry.providerLists) { _, _ in Task { await loadTasks() } }
+    .onChange(of: settings.taskSortField) { _, _ in Task { await loadTasks() } }
+    .onChange(of: settings.taskSortDirection) { _, _ in Task { await loadTasks() } }
+    .onChange(of: remindersProvider?.isAuthorized) { _, authorized in
+      guard authorized == true else { return }
+      Task { await loadTasks() }
+    }
+    .sheet(isPresented: $isAddingTask) {
+      if let provider = localProvider {
+        AddTaskView(provider: provider, isPresented: $isAddingTask)
+      }
+    }
+    .toolbar {
+      if localProviderEnabled {
+        ToolbarItem(placement: .automatic) {
+          Button {
+            isAddingTask = true
+          } label: {
+            Label("Add Task", systemImage: "plus")
+          }
+          .help("Add a local task")
         }
-        .onChange(of: registry.enabledIDs) { _, _ in Task { await loadTasks() } }
-        .onChange(of: registry.selection) { _, _ in Task { await loadTasks() } }
-        .onChange(of: registry.providerLists) { _, _ in Task { await loadTasks() } }
-        .onChange(of: settings.taskSortField) { _, _ in Task { await loadTasks() } }
-        .onChange(of: settings.taskSortDirection) { _, _ in Task { await loadTasks() } }
-        .onChange(of: settings.todaySortField) { _, _ in Task { await loadTasks() } }
-        .onChange(of: settings.todaySortDirection) { _, _ in Task { await loadTasks() } }
-        .onChange(of: remindersProvider?.isAuthorized) { _, authorized in
-          guard authorized == true else { return }
-          Task { await loadTasks() }
+      }
+
+      if hasClosableProvider {
+        ToolbarItem(placement: .automatic) {
+          Button {
+            showCompleted.toggle()
+            if showCompleted { Task { await loadCompleted() } }
+          } label: {
+            Label(
+              showCompleted ? "Hide Completed" : "Show Completed",
+              systemImage: showCompleted ? "eye.slash" : "eye"
+            )
+          }
+          .help(showCompleted ? "Hide completed tasks" : "Show completed tasks")
         }
-        .sheet(isPresented: $isAddingTask) {
-          if let provider = localProvider {
-            AddTaskView(provider: provider, isPresented: $isAddingTask)
-          }
+      }
+
+      ToolbarItem(placement: .automatic) {
+        Picker("Layout", selection: $settings.taskPickerLayout) {
+          Label("List", systemImage: "list.bullet").tag(TaskPickerLayout.list)
+          Label("Grid", systemImage: "square.grid.2x2").tag(TaskPickerLayout.grid)
         }
-        .toolbar {
-          if localProviderEnabled {
-            ToolbarItem(placement: .automatic) {
-              Button {
-                isAddingTask = true
-              } label: {
-                Label("Add Task", systemImage: "plus")
-              }
-              .help("Add a local task")
-            }
-          }
+        .pickerStyle(.segmented)
+        .help("Toggle between list and grid view")
+      }
 
-          if hasClosableProvider {
-            ToolbarItem(placement: .automatic) {
-              Button {
-                showCompleted.toggle()
-                if showCompleted { Task { await loadCompleted() } }
-              } label: {
-                Label(
-                  showCompleted ? "Hide Completed" : "Show Completed",
-                  systemImage: showCompleted ? "eye.slash" : "eye"
-                )
-              }
-              .help(showCompleted ? "Hide completed tasks" : "Show completed tasks")
-            }
-          }
-
-          ToolbarItem(placement: .automatic) {
-            Picker("Layout", selection: $settings.taskPickerLayout) {
-              Label("List", systemImage: "list.bullet").tag(TaskPickerLayout.list)
-              Label("Grid", systemImage: "square.grid.2x2").tag(TaskPickerLayout.grid)
-            }
-            .pickerStyle(.segmented)
-            .help("Toggle between list and grid view")
-          }
-
-          ToolbarItem(placement: .automatic) {
-            sortMenu
-          }
-
-          ToolbarItem(placement: .automatic) {
-            Button {
-              openSettings()
-            } label: {
-              Label("Settings", systemImage: "gearshape")
-            }
-            .help("Open Settings (⌘,)")
-          }
-        }
+      ToolbarItem(placement: .automatic) {
+        sortMenu
+      }
     }
   }
 
@@ -210,6 +191,17 @@ struct TasksTabView: View {
 
   private var taskList: some View {
     List {
+      if let info = affordanceInfo {
+        SwiftUI.Section {
+          HStack(spacing: 6) {
+            Image(systemName: info.icon).foregroundStyle(Color.accentColor)
+            Text(info.label).foregroundStyle(.secondary)
+            Spacer()
+          }
+          .padding(.vertical, 2)
+        }
+      }
+
       if showCompleted {
         SwiftUI.Section {
           HStack {
@@ -260,9 +252,9 @@ struct TasksTabView: View {
         SwiftUI.ForEach(completed) { task in completedRow(task) }
       }
     } header: {
-      Text(section.header)
-        .font(.subheadline)
-        .fontWeight(.semibold)
+      if affordanceInfo?.label != section.header {
+        Text(section.header).font(.subheadline).fontWeight(.semibold)
+      }
     }
   }
 
@@ -294,6 +286,15 @@ struct TasksTabView: View {
     let columns = [GridItem(.adaptive(minimum: 180), spacing: 10)]
     return ScrollView {
       VStack(alignment: .leading, spacing: 16) {
+        if let info = affordanceInfo {
+          HStack(spacing: 6) {
+            Image(systemName: info.icon).foregroundStyle(Color.accentColor)
+            Text(info.label).foregroundStyle(.secondary)
+            Spacer()
+          }
+          .padding(.horizontal, 2)
+        }
+
         if showCompleted {
           HStack {
             Image(systemName: "checkmark.circle.fill")
@@ -313,10 +314,9 @@ struct TasksTabView: View {
             flatSections.last(where: { $0.listID == section.listID })?.id == section.id
           let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
           VStack(alignment: .leading, spacing: 8) {
-            Text(section.header)
-              .font(.subheadline)
-              .fontWeight(.semibold)
-              .padding(.horizontal, 2)
+            if affordanceInfo?.label != section.header {
+              Text(section.header).font(.subheadline).fontWeight(.semibold).padding(.horizontal, 2)
+            }
 
             LazyVGrid(columns: columns, spacing: 10) {
               ForEach(section.tasks) { task in
@@ -360,7 +360,6 @@ struct TasksTabView: View {
 
 extension TasksTabView {
 
-  /// Subscribes to live-update streams from all enabled providers and reloads tasks on each event.
   private func subscribeToProviderUpdates() async {
     await withTaskGroup(of: Void.self) { group in
       for provider in registry.providers where registry.isEnabled(provider.id) {
@@ -378,7 +377,7 @@ extension TasksTabView {
     isLoading = groupedLists.isEmpty
     let (tasks, _) = await registry.tasks(
       matching: query, selection: registry.selection,
-      sortBy: activeSortField, direction: activeSortDirection)
+      sortBy: settings.taskSortField, direction: settings.taskSortDirection)
     groupedLists = buildGroups(from: tasks)
     isLoading = false
   }

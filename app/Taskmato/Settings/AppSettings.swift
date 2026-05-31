@@ -70,32 +70,14 @@ final class AppSettings {
     didSet { defaults.set(sidebarVisible, forKey: Keys.sidebarVisible) }
   }
 
-  /// The field used to sort tasks when a list is selected in the sidebar.
-  ///
-  /// Defaults to `.dueDate`. Persisted independently from the Today sort.
+  /// The field used to sort tasks in all views. Defaults to `.dueDate`.
   var taskSortField: TaskSortField {
     didSet { defaults.set(taskSortField.rawValue, forKey: Keys.taskSortField) }
   }
 
-  /// The sort direction applied to `taskSortField` when a list is selected.
-  ///
-  /// Defaults to `.ascending`.
+  /// The sort direction applied to `taskSortField`. Defaults to `.ascending`.
   var taskSortDirection: TaskSortDirection {
     didSet { defaults.set(taskSortDirection.rawValue, forKey: Keys.taskSortDirection) }
-  }
-
-  /// The field used to sort tasks when the Today smart list is active.
-  ///
-  /// Defaults to `.priority`. Persisted independently from the list sort.
-  var todaySortField: TaskSortField {
-    didSet { defaults.set(todaySortField.rawValue, forKey: Keys.todaySortField) }
-  }
-
-  /// The sort direction applied to `todaySortField` when the Today smart list is active.
-  ///
-  /// Defaults to `.descending`.
-  var todaySortDirection: TaskSortDirection {
-    didSet { defaults.set(todaySortDirection.rawValue, forKey: Keys.todaySortDirection) }
   }
 
   /// `focusMinutes` expressed as a `TimeInterval` in seconds.
@@ -131,13 +113,7 @@ final class AppSettings {
     taskSortField =
       defaults.string(forKey: Keys.taskSortField).flatMap(TaskSortField.init) ?? .dueDate
     taskSortDirection =
-      defaults.string(forKey: Keys.taskSortDirection)
-      .flatMap(TaskSortDirection.init) ?? .ascending
-    todaySortField =
-      defaults.string(forKey: Keys.todaySortField).flatMap(TaskSortField.init) ?? .priority
-    todaySortDirection =
-      defaults.string(forKey: Keys.todaySortDirection)
-      .flatMap(TaskSortDirection.init) ?? .descending
+      defaults.string(forKey: Keys.taskSortDirection).flatMap(TaskSortDirection.init) ?? .ascending
   }
 
   private enum Keys {
@@ -153,8 +129,6 @@ final class AppSettings {
     static let sidebarVisible = "taskRegistry.sidebarVisible"
     static let taskSortField = "taskSort.field"
     static let taskSortDirection = "taskSort.direction"
-    static let todaySortField = "taskSort.today.field"
-    static let todaySortDirection = "taskSort.today.direction"
   }
 }
 
