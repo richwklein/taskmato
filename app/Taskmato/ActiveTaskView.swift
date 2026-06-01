@@ -96,27 +96,6 @@ struct ActiveTaskView: View {
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 8)
-      .confirmationDialog(
-        "End the current session?",
-        isPresented: $confirmComplete,
-        titleVisibility: .visible
-      ) {
-        Button("Stop & Complete", role: .destructive) {
-          guard let task = selectionStore.activeTask,
-            let provider = registry.closableProvider(for: task.id)
-          else { return }
-          let ref = task.id
-          engine.stop()
-          Task {
-            try? await provider.complete(ref)
-            selectionStore.clearActiveTask()
-            NotificationCenter.default.post(name: .showTasksTab, object: nil)
-          }
-        }
-        Button("Cancel", role: .cancel) {}
-      } message: {
-        Text("Completing the task will stop the timer and mark it done.")
-      }
     }
   }
 
@@ -175,6 +154,25 @@ struct ActiveTaskView: View {
       .buttonStyle(.plain)
       .onHover { isCompletionHovered = $0 }
       .help(sessionIsActive ? "Complete task (will stop timer)" : "Mark done")
+      .confirmationDialog(
+        "End the current session?",
+        isPresented: $confirmComplete,
+        titleVisibility: .visible
+      ) {
+        Button("Stop & Complete", role: .destructive) {
+          guard let provider = registry.closableProvider(for: task.id) else { return }
+          let ref = task.id
+          engine.stop()
+          Task {
+            try? await provider.complete(ref)
+            selectionStore.clearActiveTask()
+            NotificationCenter.default.post(name: .showTasksTab, object: nil)
+          }
+        }
+        Button("Cancel", role: .cancel) {}
+      } message: {
+        Text("Completing the task will stop the timer and mark it done.")
+      }
     } else {
       Image(systemName: "circle.fill")
         .font(.caption2)
