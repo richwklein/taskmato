@@ -1,6 +1,11 @@
 # Changelog
 
-## [0.3.1](https://github.com/richwklein/taskmato/compare/v0.3.0...v0.3.1) (2026-06-01)
+## [0.4.0](https://github.com/richwklein/taskmato/compare/v0.3.0...v0.4.0) (2026-06-01)
+
+
+### Features
+
+* **picker:** provider sidebar with list selection, sort defaults, and context affordance ([#347](https://github.com/richwklein/taskmato/issues/347)) ([45662d5](https://github.com/richwklein/taskmato/commit/45662d5))
 
 
 ### Bug Fixes
