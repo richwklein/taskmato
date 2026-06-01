@@ -7,21 +7,15 @@ import SwiftUI
 
 /// Sidebar column for the Tasks tab.
 ///
-/// Shows each enabled task provider as a collapsible ``DisclosureGroup``. Inside
-/// each group, list rows carry a checkbox to control visibility and, for writable
-/// providers, a star button to promote the default list. Writable provider groups
-/// also expose an inline "New list" row at the bottom. A context menu on each list
-/// row provides set-default, rename, and delete actions. The "Add Provider" menu at
-/// the bottom enables any registered but currently disabled provider.
+/// Shows each enabled task provider as a collapsible ``Section``. Inside each section,
+/// list rows carry a leading icon and, for writable providers, a star button to promote
+/// the default list. Writable provider sections also expose an inline "New list" row at
+/// the bottom. A context menu on each section header provides configure, rename, and
+/// delete actions. The "Add Provider" menu at the bottom enables any registered but
+/// currently disabled provider.
 struct ProviderSidebarView: View {
 
-  var registry: TaskRegistry
-
-  /// Lists loaded from non-local providers, keyed by provider ID.
-  @State private var listsByProvider: [String: [TaskList]] = [:]
-
-  /// Provider IDs whose ``DisclosureGroup`` is expanded (session-only; all start expanded).
-  @State private var expanded: Set<String> = []
+  @Bindable var registry: TaskRegistry
 
   /// Inline new-list name buffer keyed by provider ID.
   @State private var newListName: [String: String] = [:]
@@ -67,19 +61,27 @@ struct ProviderSidebarView: View {
   // MARK: - Body
 
   var body: some View {
-    VStack(spacing: 0) {
-      List {
-        ForEach(enabledProviders, id: \.id) { provider in
-          providerGroup(provider)
-        }
-      }
-      .listStyle(.sidebar)
+    List(selection: $registry.selection) {
+      Label("Today", systemImage: "calendar")
+        .tag(SidebarSelection.today)
 
+      ForEach(enabledProviders, id: \.id) { provider in
+        providerSection(provider)
+      }
+    }
+    .listStyle(.sidebar)
+    .contextMenu(forSelectionType: SidebarSelection.self) { selections in
+      listContextMenu(for: selections)
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
       if !disabledProviders.isEmpty {
-        Divider()
-        addProviderMenu
-          .padding(.horizontal, 12)
-          .padding(.vertical, 8)
+        VStack(spacing: 0) {
+          Divider()
+          addProviderMenu
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .background(.bar)
       }
     }
     .task { await loadAllLists() }
@@ -101,37 +103,27 @@ struct ProviderSidebarView: View {
     }
   }
 
-  // MARK: - Provider group
+  // MARK: - Provider section
 
   @ViewBuilder
-  private func providerGroup(_ provider: any TaskProvider) -> some View {
-    DisclosureGroup(
-      isExpanded: Binding(
-        get: { expanded.contains(provider.id) },
-        set: { open in
-          if open { expanded.insert(provider.id) } else { expanded.remove(provider.id) }
-        }
-      )
-    ) {
+  private func providerSection(_ provider: any TaskProvider) -> some View {
+    Section {
       ForEach(lists(for: provider)) { list in
         listRow(list, provider: provider)
+          .tag(SidebarSelection.list(SelectedList(providerID: provider.id, listID: list.id)))
       }
       if provider is (any WritableTaskProvider) {
         newListRow(providerID: provider.id)
       }
-    } label: {
+    } header: {
       Text(provider.displayName)
-        .font(.headline)
-        .padding(.leading, 4)
         .contextMenu {
           if provider is ObsidianProvider {
             Button("Configure Obsidian…") { isConfiguringObsidian = true }
             Divider()
           }
           if provider is RemindersProvider {
-            Button("Configure Apple Reminders…") {
-              isConfiguringReminders = true
-            }
+            Button("Configure Apple Reminders…") { isConfiguringReminders = true }
             Divider()
           }
           Button("Remove \(provider.displayName)", role: .destructive) {
@@ -139,7 +131,6 @@ struct ProviderSidebarView: View {
           }
         }
     }
-    .onAppear { expanded.insert(provider.id) }
   }
 
   // MARK: - List row
@@ -148,26 +139,11 @@ struct ProviderSidebarView: View {
   private func listRow(_ list: TaskList, provider: any TaskProvider) -> some View {
     let writable = provider as? (any WritableTaskProvider)
     let isDefaultList = isDefault(list.id, for: provider)
-    let allIDs = Set(lists(for: provider).map(\.id))
 
     HStack(spacing: 6) {
-      Toggle(
-        isOn: Binding(
-          get: { registry.isListVisible(list.id, providerID: provider.id) },
-          set: { visible in
-            registry.setListVisible(
-              list.id,
-              providerID: provider.id,
-              visible: visible,
-              allListIDs: allIDs
-            )
-          }
-        )
-      ) {
-        EmptyView()
-      }
-      .toggleStyle(.checkbox)
-      .disabled(isDefaultList)
+      Image(systemName: "list.bullet")
+        .imageScale(.small)
+        .foregroundStyle(.secondary)
 
       listNameField(list: list, provider: provider)
 
@@ -181,38 +157,67 @@ struct ProviderSidebarView: View {
           Image(systemName: isDefaultList ? "star.fill" : "star")
             .imageScale(.small)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .foregroundStyle(isDefaultList ? Color.yellow : Color.secondary)
         .help(isDefaultList ? "Default list" : "Set as default list")
       }
     }
-    .contextMenu {
-      if let writable {
-        Button("Set as Default") {
-          let id = list.id
-          Task { try? await writable.setDefaultList(id) }
-        }
-        .disabled(isDefaultList)
+  }
 
-        Button("Rename") {
-          renamingListID = list.id
-          renameBuffer = list.name
-          renameFocused = list.id
-        }
+  /// Builds the contextual menu for a control-clicked sidebar selection.
+  ///
+  /// Activated via `contextMenu(forSelectionType:)` on the List, this looks up the
+  /// writable list referenced by the clicked row and renders the standard set/rename/delete
+  /// actions. Returns no items for `.today` or unknown rows.
+  @ViewBuilder
+  private func listContextMenu(for selections: Set<SidebarSelection>) -> some View {
+    if let resolved = resolveListAction(from: selections) {
+      let list = resolved.list
+      let provider = resolved.provider
+      let writable = resolved.writable
+      let isDefaultList = isDefault(list.id, for: provider)
 
-        Divider()
-
-        Button("Delete", role: .destructive) {
-          let pid = provider.id
-          Task {
-            try? await writable.deleteList(list.id)
-            await loadLists(for: provider)
-            _ = pid
-          }
-        }
-        .disabled(isDefaultList)
+      Button("Set as Default") {
+        let id = list.id
+        Task { try? await writable.setDefaultList(id) }
       }
+      .disabled(isDefaultList)
+
+      Button("Rename") {
+        renamingListID = list.id
+        renameBuffer = list.name
+        renameFocused = list.id
+      }
+
+      Divider()
+
+      Button("Delete", role: .destructive) {
+        Task {
+          try? await writable.deleteList(list.id)
+          await loadLists(for: provider)
+        }
+      }
+      .disabled(isDefaultList)
     }
+  }
+
+  /// Resolves the row-targeted context-menu action from a selection set, or `nil` for non-writable rows.
+  private func resolveListAction(from selections: Set<SidebarSelection>) -> ListAction? {
+    guard let selection = selections.first,
+      case .list(let selectedList) = selection,
+      let provider = registry.providers.first(where: { $0.id == selectedList.providerID }),
+      let writable = provider as? (any WritableTaskProvider),
+      let list = lists(for: provider).first(where: { $0.id == selectedList.listID })
+    else { return nil }
+    return ListAction(list: list, provider: provider, writable: writable)
+  }
+
+  /// Tuple-like value that bundles the list, owning provider, and its writable interface
+  /// resolved from a context-menu selection.
+  private struct ListAction {
+    let list: TaskList
+    let provider: any TaskProvider
+    let writable: any WritableTaskProvider
   }
 
   /// Inline name display that switches to an editable `TextField` during a rename.
@@ -270,7 +275,6 @@ struct ProviderSidebarView: View {
       ForEach(disabledProviders, id: \.id) { provider in
         Button(provider.displayName) {
           registry.enable(provider)
-          expanded.insert(provider.id)
           if provider is ObsidianProvider {
             isConfiguringObsidian = true
           }
@@ -313,13 +317,13 @@ struct ProviderSidebarView: View {
   /// Returns the lists to display for a provider.
   ///
   /// For ``LocalProvider``, reads `taskLists` directly so SwiftUI tracks the
-  /// @Observable property and re-renders on mutations. Other providers use the
-  /// async-loaded cache in `listsByProvider`.
+  /// @Observable property and re-renders on mutations. Other providers read from
+  /// `registry.providerLists`, which is populated by `loadLists(for:)`.
   private func lists(for provider: any TaskProvider) -> [TaskList] {
     if let local = localProvider, provider.id == local.id {
       return local.taskLists.map(\.asTaskList)
     }
-    return listsByProvider[provider.id] ?? []
+    return registry.providerLists[provider.id] ?? []
   }
 
   /// Returns `true` when `listID` is the default list for `provider`.
@@ -363,7 +367,8 @@ struct ProviderSidebarView: View {
 
   private func loadLists(for provider: any TaskProvider) async {
     guard provider as? LocalProvider == nil else { return }
-    listsByProvider[provider.id] = (try? await provider.lists()) ?? []
+    let loaded = (try? await provider.lists()) ?? []
+    registry.setLists(loaded, forProviderID: provider.id)
   }
 }
 

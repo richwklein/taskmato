@@ -8,7 +8,7 @@ import SwiftUI
 /// The root view for the main application window, hosting three-tab navigation.
 ///
 /// Tabs: Timer (primary), Tasks (P1/P3), Stats (P6).
-/// Settings opens in a separate window via the toolbar button or ⌘,.
+/// Settings opens in a separate window via ⌘, or the app menu.
 struct MainWindowView: View {
 
   var engine: SessionEngine

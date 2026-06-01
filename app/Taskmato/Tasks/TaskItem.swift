@@ -49,4 +49,7 @@ struct TaskItem: Identifiable, Hashable, Codable, Sendable {
   ///
   /// Populated by ``ClosableTaskProvider/completedTasks()``; always `nil` for live tasks.
   var completedAt: Date?
+
+  /// Wall-clock time when the task was created in the source provider, if known.
+  var createdAt: Date?
 }

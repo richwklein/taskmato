@@ -70,6 +70,16 @@ final class AppSettings {
     didSet { defaults.set(sidebarVisible, forKey: Keys.sidebarVisible) }
   }
 
+  /// The field used to sort tasks in all views. Defaults to `.dueDate`.
+  var taskSortField: TaskSortField {
+    didSet { defaults.set(taskSortField.rawValue, forKey: Keys.taskSortField) }
+  }
+
+  /// The sort direction applied to `taskSortField`. Defaults to `.ascending`.
+  var taskSortDirection: TaskSortDirection {
+    didSet { defaults.set(taskSortDirection.rawValue, forKey: Keys.taskSortDirection) }
+  }
+
   /// `focusMinutes` expressed as a `TimeInterval` in seconds.
   var focusDuration: TimeInterval { TimeInterval(focusMinutes * 60) }
 
@@ -100,6 +110,10 @@ final class AppSettings {
     let rawLayout = defaults.string(forKey: Keys.taskPickerLayout)
     taskPickerLayout = rawLayout.flatMap(TaskPickerLayout.init) ?? .grid
     sidebarVisible = defaults.object(forKey: Keys.sidebarVisible) as? Bool ?? true
+    taskSortField =
+      defaults.string(forKey: Keys.taskSortField).flatMap(TaskSortField.init) ?? .dueDate
+    taskSortDirection =
+      defaults.string(forKey: Keys.taskSortDirection).flatMap(TaskSortDirection.init) ?? .ascending
   }
 
   private enum Keys {
@@ -113,6 +127,8 @@ final class AppSettings {
     static let showDockIcon = "showDockIcon"
     static let taskPickerLayout = "taskPickerLayout"
     static let sidebarVisible = "taskRegistry.sidebarVisible"
+    static let taskSortField = "taskSort.field"
+    static let taskSortDirection = "taskSort.direction"
   }
 }
 

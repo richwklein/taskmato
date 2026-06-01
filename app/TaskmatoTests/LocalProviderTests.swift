@@ -135,6 +135,19 @@ struct LocalProviderTests {
     #expect(tasks[0].title == "My task")
   }
 
+  @Test func activeTaskCarriesCreatedAt() async throws {
+    let provider = makeProvider()
+    let before = Date()
+    var draft = TaskDraft()
+    draft.title = "Timestamped"
+    provider.addTask(draft)
+    let after = Date()
+    let tasks = try await provider.tasks(in: nil)
+    let createdAt = try #require(tasks.first?.createdAt)
+    #expect(createdAt >= before)
+    #expect(createdAt <= after)
+  }
+
   @Test func addTaskUsesDefaultListWhenNoDraftListID() async throws {
     let provider = makeProvider()
     let defaultID = provider.defaultListID!

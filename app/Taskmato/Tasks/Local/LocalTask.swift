@@ -63,7 +63,8 @@ struct LocalTask: Codable, Identifiable {
       scheduledDate: scheduledDate,
       startDate: startDate,
       list: taskList,
-      completedAt: completedAt
+      completedAt: completedAt,
+      createdAt: createdAt
     )
   }
 
