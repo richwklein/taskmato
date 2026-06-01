@@ -1,37 +1,47 @@
 # Taskmato
 
-The Pomodoro Technique is a time management method developed by Francesco Cirillo in the late 1980s. It uses a kitchen timer to break work into intervals, typically 25 minutes in length, separated by short breaks. Each interval is a _pomodoro_, from the Italian word for tomato, after the tomato-shaped kitchen timer Cirillo used as a university student. [wikipedia](https://en.wikipedia.org/wiki/Pomodoro_Technique)
+A native macOS menu bar Pomodoro timer that meets you wherever your tasks already live.
 
-**Taskmato** is a macOS menu bar Pomodoro timer that meets you wherever your tasks already live.
+The [Pomodoro Technique](https://en.wikipedia.org/wiki/Pomodoro_Technique) breaks work into focused 25-minute intervals separated by short breaks. Taskmato runs that loop from the menu bar, attaches each interval to a real task in the system you already use, and logs the time so you can look back at where your focus actually went.
 
-## Project Direction
+## Principles
 
-Taskmato is a SwiftUI menu bar app with a popover timer, built around a small set of principles:
-
-- **Bring your own task source.** Pick from any number of pluggable providers running side by side.
+- **Bring your own task source.** Multiple pluggable providers run side by side.
 - **Native macOS first.** Menu bar status item, popover window, EventKit, Swift Concurrency, Swift Charts, StoreKit 2.
 - **Stay out of your way.** No website blocking, gamification, soundscapes, or social features.
 
-### Built-in task providers
+## Task providers
 
-- **Apple Reminders** — read incomplete reminders by list and complete them back into Reminders when a focus phase ends
-- **Obsidian / Markdown** — parse [obsidian-tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) emoji syntax from a vault or single file, with FSEvents-based live updates
-- **CLI / URL scheme** — start a Pomodoro from any script, launcher, or share extension via `taskmato://start?title=...`
+Built in today:
 
-### Paid provider unlocks (planned)
+- **Local** — a JSON-backed in-app task list, fully writable.
+- **Apple Reminders** — read incomplete reminders by list and complete them back into Reminders when a focus phase ends.
+- **Obsidian / Markdown** — parse [obsidian-tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) emoji syntax from a security-scoped vault bookmark, with FSEvents-based live updates.
+- **CLI / URL scheme** — start a Pomodoro from any script, launcher, or share extension via `taskmato://start?title=...`.
 
-Heavier integrations (Todoist first; Notion, Linear, Jira as candidates) require OAuth flows and ongoing API maintenance, so they ship as one-time StoreKit unlocks rather than being bundled into the core app. The free providers above will always remain free.
+Planned:
 
-### Stats
+- **Things 3** (free, local IPC) in 0.9.
+- **Cloud providers** (Todoist, Linear, TickTick, Notion, Google Tasks, GitHub Issues) in 1.0, gated behind a single **Taskmato Pro** non-consumable IAP. The free providers above will always remain free. See [ADR-0004](docs/architecture/decisions/0004-single-pro-iap.md).
 
-Every completed Pomodoro is logged with the originating task reference, so Taskmato can show:
+## Stats
 
-- Today's focus minutes per task
-- A rolling 7-day chart, stacked by provider
-- All-time per-task totals
+Every completed Pomodoro is logged with the originating task reference. The Stats tab shows today's focus minutes per task as a donut chart; a rolling 7-day chart stacked by provider and an all-time per-task table land in 0.7.
 
 Stats are computed from the persisted session log — never manually incremented.
 
-## Marketing Site
+## Documentation
 
-The `taskmato.com` URL hosts a static GitHub Pages landing page that advertises the macOS app.
+- [`docs/`](docs/) — the project's documentation, organised by reader intent ([Divio four-quadrant](https://documentation.divio.com/) layout).
+- [`docs/explanation/architecture.md`](docs/explanation/architecture.md) — high-level architecture overview.
+- [`docs/architecture/decisions/`](docs/architecture/decisions/) — Architecture Decision Records.
+- [`AGENTS.md`](AGENTS.md) — operating rules for agents (Claude Code, Copilot, etc.) collaborating on the project.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — commit and branching conventions.
+
+## Marketing site
+
+The `taskmato.com` URL hosts a static landing page that advertises the macOS app. Migration from Netlify to a GitHub Pages-deployed Astro site lands alongside the 0.8 DMG (minimal) and 1.0 GA (polished).
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).
