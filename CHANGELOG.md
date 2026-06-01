@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/richwklein/taskmato/compare/v0.3.0...v0.3.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* **timer:** replace confirmation dialogs with inline confirmation row ([#367](https://github.com/richwklein/taskmato/issues/367)) ([c125c29](https://github.com/richwklein/taskmato/commit/c125c29bf913fc62c760da8764e0bb4c2baa369a))
+
 ## [0.3.0](https://github.com/richwklein/taskmato/compare/v0.2.0...v0.3.0) (2026-05-30)
 
 
