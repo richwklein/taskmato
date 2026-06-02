@@ -20,7 +20,7 @@ Adopt `NavigationSplitView` for the Tasks tab:
 
 Remove the Providers section from Settings. Provider configuration that does not belong in the sidebar (e.g., the Obsidian vault root picker, Reminders permission state) stays in Settings.
 
-The decision resolved 14 specific design questions; see #298 for the resolutions captured in `project_sidebar_design.md` memory.
+The decision resolved 14 specific design questions; the full proposal and resolutions are recorded in the [provider sidebar design doc](../design/0001-provider-sidebar.md).
 
 ## Consequences
 
