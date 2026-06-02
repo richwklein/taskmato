@@ -36,10 +36,9 @@ Taskmato is a native macOS menu bar Pomodoro timer with pluggable task providers
 
 Task sources are pluggable via a protocol hierarchy. Each layer adds capability:
 
-- `TaskProvider` — read-only: list lists, list tasks, search.
-- `MutableTaskProvider` — `TaskProvider` + complete/reopen.
-- `WritableTaskProvider` — `MutableTaskProvider` + add task, manage lists.
-- `ClosableTaskProvider` — `MutableTaskProvider` + `completedTasks()` for the "View Completed" affordance.
+- `TaskProvider` — read-only: list lists, list tasks, observe live updates.
+- `ClosableTaskProvider: TaskProvider` — adds `complete`, `reopen`, and `completedTasks()` for the "View Completed" affordance (default impl returns empty).
+- `WritableTaskProvider: ClosableTaskProvider` — adds `addTask`, `defaultListID`, list CRUD, and `deleteTask`.
 
 `TaskRegistry` holds the active set; providers can be enabled, disabled, and scoped to specific lists per provider. See [ADR-0001](../architecture/decisions/0001-pluggable-task-providers.md) for the rationale behind protocol layering over a single fat protocol.
 

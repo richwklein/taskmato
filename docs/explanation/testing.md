@@ -10,7 +10,7 @@ The following must have unit tests before any PR that touches them merges. New c
 
 ### Task providers
 
-For every conformer of `TaskProvider`, `MutableTaskProvider`, `WritableTaskProvider`, and `ClosableTaskProvider` (`LocalProvider`, `ObsidianProvider`, `RemindersProvider`, and future `ThingsProvider`, cloud providers):
+For every conformer of `TaskProvider`, `ClosableTaskProvider`, and `WritableTaskProvider` (`LocalProvider`, `ObsidianProvider`, `RemindersProvider`, and future `ThingsProvider`, cloud providers):
 
 - Every public method, including the happy path and at least one error path.
 - List CRUD where the conformer supports it.
