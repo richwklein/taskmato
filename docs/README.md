@@ -9,7 +9,10 @@ This directory follows [Divio's Documentation System](https://documentation.divi
 | [`reference/`](reference/) | Information-oriented specs | "Tell me what." |
 | [`explanation/`](explanation/) | Understanding-oriented essays | "Help me understand." |
 
-Architecture decisions live separately, under [`architecture/decisions/`](architecture/decisions/), as Nygard-format ADRs.
+Architecture content lives separately under [`architecture/`](architecture/):
+
+- [`architecture/decisions/`](architecture/decisions/) — Nygard-format ADRs (load-bearing decisions, immutable once accepted).
+- [`architecture/design/`](architecture/design/) — design proposals (the proposal + reasoning that may precede an ADR).
 
 Screenshots and other static assets used by the README and the marketing site live in [`screenshots/`](screenshots/).
 
@@ -18,6 +21,7 @@ Screenshots and other static assets used by the README and the marketing site li
 - **Working out *how* to do something?** Start in [`how-to/`](how-to/).
 - **Trying to understand *why* something works the way it does?** Start in [`explanation/`](explanation/).
 - **Wondering why a load-bearing decision was made?** Read the relevant ADR in [`architecture/decisions/`](architecture/decisions/).
+- **Reviewing a design proposal in flight?** Look in [`architecture/design/`](architecture/design/).
 - **Looking up a value, schema, or surface?** Look in [`reference/`](reference/).
 - **Learning Taskmato from zero?** Look in [`tutorials/`](tutorials/).
 

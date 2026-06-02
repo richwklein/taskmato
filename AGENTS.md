@@ -83,7 +83,9 @@ Clearly state when Xcode is **required** versus merely **convenient**.
   explanation/             # understanding-oriented
     architecture.md
     testing.md
-  architecture/decisions/  # Architecture Decision Records (Nygard)
+  architecture/
+    decisions/             # Architecture Decision Records (Nygard)
+    design/                # Design proposals (RFC-style, precede ADRs)
   screenshots/
 
 /scripts/
