@@ -86,7 +86,7 @@ Clearly state when Xcode is **required** versus merely **convenient**.
   architecture/
     decisions/             # Architecture Decision Records (Nygard)
     design/                # Design proposals (RFC-style, precede ADRs)
-  screenshots/
+  assets/                  # screenshots and other images used by README, docs, and the marketing site
 
 /scripts/
   taskmato                 # CLI shell wrapper

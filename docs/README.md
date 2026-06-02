@@ -14,7 +14,7 @@ Architecture content lives separately under [`architecture/`](architecture/):
 - [`architecture/decisions/`](architecture/decisions/) — Nygard-format ADRs (load-bearing decisions, immutable once accepted).
 - [`architecture/design/`](architecture/design/) — design proposals (the proposal + reasoning that may precede an ADR).
 
-Screenshots and other static assets land in `screenshots/` once any are added.
+Screenshots and other images used in the docs (and elsewhere) live at [`assets/`](assets/), created when the first image lands.
 
 ## Where to look
 
