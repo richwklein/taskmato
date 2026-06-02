@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-05-31; updated 2026-06-01 to reflect renumbered milestones. Developer ID DMG lands at 1.0.0; App Store distribution lands at 1.3.0.
+Accepted — 2026-05-31. Current milestone numbering for each phase below lives on the [GitHub milestones page](https://github.com/richwklein/taskmato/milestones).
 
 ## Context
 
@@ -15,19 +15,19 @@ The Xcode project already enables modern macOS capabilities (`ENABLE_APP_SANDBOX
 
 ## Decision
 
-Distribute via Developer ID first (1.0.0); add Mac App Store distribution at 1.3.0 alongside the Pro IAP launch.
+Distribute via Developer ID first; add Mac App Store distribution later alongside the Pro IAP launch.
 
-Specifically:
+The sequence has four logical phases. Each maps to a specific milestone; see the milestones page for current numbering.
 
-- **0.5.0 (current cleanup PR):** add the missing Info.plist metadata required by both channels — `LSApplicationCategoryType = public.app-category.productivity`, `NSHumanReadableCopyright`, `CFBundleDisplayName`. No entitlements or build-settings changes are required (sandbox and hardened runtime are already enabled via Xcode 16 capability flags).
-- **1.0.0:** `make release` archives, signs with Developer ID Application, notarizes, staples, and publishes a `.dmg` to a GitHub Release. The Developer ID DMG ships from the existing build configuration.
-- **1.2.0:** Pro IAP foundation lands — `ENABLE_OUTGOING_NETWORK_CONNECTIONS` flips to `YES` (cloud providers need network access), StoreKit integration goes in.
-- **1.3.0:** App Store distribution starts. A separate build configuration (or scheme) signs with Apple Distribution and uploads via `xcrun altool` / Transporter. App Store Connect record + Pro IAP product registration are prerequisites. The Developer ID DMG continues to ship in parallel from the same codebase — important for Obsidian users with vault paths outside the App Store sandbox container (security-scoped bookmarks work in both channels).
+- **Metadata cleanup phase.** Add the missing Info.plist metadata required by both channels — `LSApplicationCategoryType = public.app-category.productivity`, `NSHumanReadableCopyright`, `CFBundleDisplayName`. No entitlements or build-settings changes are required (sandbox and hardened runtime are already enabled via Xcode 16 capability flags).
+- **First signed DMG phase.** `make release` archives, signs with Developer ID Application, notarizes, staples, and publishes a `.dmg` to a GitHub Release. The Developer ID DMG ships from the existing build configuration.
+- **Pro foundation phase.** Pro IAP plumbing lands — `ENABLE_OUTGOING_NETWORK_CONNECTIONS` flips to `YES` (cloud providers need network access), StoreKit 2 integration goes in.
+- **App Store phase.** App Store distribution starts. A separate build configuration (or scheme) signs with Apple Distribution and uploads via `xcrun altool` / Transporter. App Store Connect record + Pro IAP product registration are prerequisites. The Developer ID DMG continues to ship in parallel from the same codebase — important for Obsidian users with vault paths outside the App Store sandbox container (security-scoped bookmarks work in both channels).
 
 ## Consequences
 
-- Time-to-first-release is short — no App Store review queue at 1.0.0.
+- Time-to-first-release is short — no App Store review queue blocks the first signed DMG.
 - The sandbox + hardened runtime decisions are already made and shipped; this ADR mostly captures sequencing, not new technical work.
 - The same binary configuration works for both channels; the difference is signing identity and ASC paperwork.
-- Adding network access at 1.2.0 is a single build-setting flip plus per-provider TLS verification, not an entitlement-file rewrite.
-- Two distribution channels at 1.3.0+ means two release artifacts (DMG + .pkg) and two upload paths. Acceptable; tools (notarytool, Transporter) cover both.
+- Adding network access for cloud providers is a single build-setting flip plus per-provider TLS verification, not an entitlement-file rewrite.
+- Once both channels are live, two release artifacts (DMG + .pkg) and two upload paths exist in parallel. Acceptable; tools (notarytool, Transporter) cover both.
