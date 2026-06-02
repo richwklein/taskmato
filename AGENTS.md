@@ -2,24 +2,9 @@
 
 This document defines how agents (Claude Code, Codex, Copilot, etc.) should assist with the design, development, and maintenance of the **Taskmato** macOS application.
 
-The agent is a collaborator, not an autonomous decision-maker. Its role is to accelerate implementation, clarify tradeoffs, and produce high-quality, macOS-native code that aligns with the project's architectural and product goals.
+The agent is a collaborator, not an autonomous decision-maker. Its role is to accelerate implementation, clarify tradeoffs, and produce high-quality, macOS-native code that aligns with the project's architectural and product goals. Agents should behave as if every contribution will be reviewed as a pull request.
 
-Agents should behave as if every contribution will be reviewed as a pull request.
-
-## Project Summary
-
-**Taskmato** is a macOS menu bar Pomodoro timer application with deep system integration and a deliberately lightweight user experience.
-
-Core features:
-
-- Menu bar timer with live countdown
-- Popup window with full timer controls
-- Apple Reminders–based task selection
-- Share Sheet action to start a Pomodoro
-- Session logging and focus statistics
-- Native macOS look and behavior
-
-Primary development is done in **VS Code**. **Xcode is used only when required** (signing, entitlements, extensions, archiving, App Store workflows).
+For architecture and design content, read [`docs/explanation/architecture.md`](docs/explanation/architecture.md) and the ADRs under [`docs/architecture/decisions/`](docs/architecture/decisions/). This file covers operating rules only.
 
 ## Operating Mode
 
@@ -40,31 +25,23 @@ Unless explicitly instructed otherwise, assume:
 
 - **Language:** Swift
 - **UI:** SwiftUI
-- **System APIs:** AppKit (menu bar, status items, extensions), EventKit (Apple Reminders)
+- **System APIs:** AppKit (menu bar, status items), EventKit (Apple Reminders), FSEvents (Obsidian vaults)
 - **Concurrency:** Swift Concurrency (`async/await`)
-- **Persistence:** JSON files (Codable) for MVP; revisit Core Data when session visualization requires richer querying
-- **Testing:** Swift Testing (`import Testing`, `@Test` macros)
-- **Repository:** GitHub
-- **Marketing site:** GitHub Pages
+- **Persistence:** JSON files (Codable) — see [ADR-0002](docs/architecture/decisions/0002-json-persistence-mvp.md)
+- **Testing:** Swift Testing (`import Testing`, `@Test` macros) — see [`docs/explanation/testing.md`](docs/explanation/testing.md) for the test charter
+- **Repository:** GitHub; release-please drives versioning ([ADR-0005](docs/architecture/decisions/0005-release-please-versioning.md))
+- **Marketing site:** GitHub Pages (lands minimal at 1.0, polished at 1.3)
 - **Editor:** VS Code (primary), Xcode (secondary)
 
 Clearly state when Xcode is **required** versus merely **convenient**.
-
-## Architectural Principles
-
-1. **macOS-native first** — follow Apple platform conventions; avoid cross-platform abstractions unless explicitly requested.
-2. **Clear separation of concerns** — session/timer logic independent of UI; Apple Reminders access isolated behind a service layer; statistics derived from persisted data, not UI state.
-3. **Small, testable units** — session engine and stats aggregation must be unit-testable; EventKit access must be mockable via protocols.
-4. **State resilience** — session state must survive window close, sleep/wake, and app relaunch. Compute remaining time from stored timestamps, not ticking counters.
-5. **Incremental delivery** — prefer vertical slices that produce visible, working behavior. Avoid broad refactors without explicit approval.
 
 ## Change Boundaries
 
 ### Agents may change without asking
 
 - Add new Swift files consistent with the current architecture
-- Add views, models, and services for the active milestone
-- Add or extend tests for new logic
+- Add views, models, and services for the work in scope
+- Add or extend tests for new logic per the test charter
 - Update documentation to reflect implemented behavior
 
 ### Agents must stop and ask before
@@ -76,69 +53,55 @@ Clearly state when Xcode is **required** versus merely **convenient**.
 - Adding new app targets or extensions
 - Renaming public types or restructuring directories
 
-## Core Domains & Responsibilities
-
-### Session Engine
-
-- Owns the Pomodoro state machine (focus, break, paused, stopped)
-- Computes remaining time using wall-clock timestamps
-- Emits events for UI updates and notifications
-
-### Menu Bar Integration
-
-- AppKit `NSStatusItem`
-- Displays remaining time and current state
-- Opens the popup window
-
-### Popup Window
-
-- Single window view
-- Displays: large timer, Start / Pause / Stop / Skip controls, task selection, session statistics
-
-### Apple Reminders Integration
-
-- Uses EventKit
-- Requests permissions lazily and gracefully
-- Reads incomplete reminders
-- Stores stable reminder identifiers alongside session logs
-
-### Share Sheet / Extension
-
-- Provides a "Start Pomodoro" action
-- Accepts text and URLs
-- Signals or launches the main app
-- Optionally creates a Reminder from shared content
-
-Always document required entitlements, app ↔ extension communication strategy, and platform limitations.
-
-### Stats & Persistence
-
-- Session log is the source of truth
-- Tracks focus time totals (day / week / all-time), session counts, per-task aggregation
-- Statistics are computed, never manually incremented
-
 ## Repository Structure
 
 ```
 /app/
-  Taskmato.xcodeproj
-  Taskmato/          # app sources (SwiftUI, AppKit, services)
-  TaskmatoTests/     # Swift Testing unit tests
-  TaskmatoUITests/   # UI tests
+  Taskmato.xcodeproj/      # Xcode project
+  Taskmato/                # app sources (SwiftUI, AppKit, services)
+    Assets.xcassets/       # app icon + accent colors
+    Config/                # Version.xcconfig (driven by version.txt)
+    Session/               # SessionEngine, SessionStore
+    Tasks/                 # TaskProvider hierarchy, TaskRegistry
+      Local/               # LocalProvider (JSON-backed)
+      Obsidian/            # ObsidianProvider (FSEvents)
+      Reminders/           # RemindersProvider (EventKit)
+      URLScheme/           # URL handler (taskmato://)
+    MainWindow/            # Timer/Tasks/Stats tab UI
+    Settings/              # Settings panes
+    Views/                 # Task rows, cards, notes
+    Notifications/         # Notification + sound services
+    TaskmatoApp.swift      # @main entry point + AppDelegate
+    Info.plist
+  TaskmatoTests/           # Swift Testing unit tests
+  TaskmatoUITests/         # UI tests
 
-/site/
-  (GitHub Pages marketing site)
-
-/docs/
-  architecture.md
-  screenshots/
+/docs/                     # Divio four-quadrant documentation
+  tutorials/               # learning-oriented
+  how-to/                  # task-oriented runbooks
+  reference/               # information-oriented
+  explanation/             # understanding-oriented
+    architecture.md
+    testing.md
+  architecture/
+    decisions/             # Architecture Decision Records (Nygard)
+    design/                # Design proposals (RFC-style, precede ADRs)
+  assets/                  # screenshots and other images used by README, docs, and the marketing site
 
 /scripts/
-  build.sh
-  release.sh
+  taskmato                 # CLI shell wrapper
+  sync-version.sh          # version.txt → Version.xcconfig
 
-.github/
-  workflows/
+/.github/
+  workflows/               # CI: build, test, lint, codeql, release-please
+  ISSUE_TEMPLATE/          # bug, enhancement, task, idea schemas
+  PULL_REQUEST_TEMPLATE.md
+
+Makefile                   # build / test / lint / format / archive / notarize / release
+README.md
+LICENSE
+version.txt                # release-please source of truth
+CHANGELOG.md               # release-please-generated
 ```
 
 Always state where new files belong.
@@ -185,6 +148,8 @@ All public types, properties, and methods must have Swift doc comments (`///`).
 - Do not repeat the type or method name verbatim in the comment
 - Internal implementation details (private helpers) do not require doc comments unless the logic is non-obvious
 
+Non-code documentation lives under `docs/` following the [Divio Documentation System](https://documentation.divio.com/) — see [`docs/README.md`](docs/README.md).
+
 ## Guardrails
 
 Agents must not:
@@ -197,24 +162,11 @@ Agents must not:
 
 When uncertain: state assumptions, propose a default, clearly describe tradeoffs.
 
-## Milestones
-
-Always select the **smallest shippable slice** of the next milestone.
-
-1. Menu bar app skeleton
-2. Session (timer) engine with persistence
-3. Popup window with controls
-4. Apple Reminders integration
-5. Session logging and statistics
-6. Share Sheet support
-7. Settings, polish, and accessibility
-8. Signing, notarization, and release
-
-Each milestone should be achievable in small, reviewable commits.
+Always select the **smallest shippable slice** of the work in scope.
 
 ## Commits
 
-Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages. release-please parses these to generate changelogs and bump `version.txt`.
+Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages. release-please parses these to generate `CHANGELOG.md` and bump `version.txt` ([ADR-0005](docs/architecture/decisions/0005-release-please-versioning.md)).
 
 Allowed types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `build`, `ci`, `perf`, `style`.
 
