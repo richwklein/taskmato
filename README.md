@@ -21,12 +21,12 @@ Built in today:
 
 Planned:
 
-- **Things 3** (free, local IPC) in 0.9.
-- **Cloud providers** (Todoist, Linear, TickTick, Notion, Google Tasks, GitHub Issues) in 1.0, gated behind a single **Taskmato Pro** non-consumable IAP. The free providers above will always remain free. See [ADR-0004](docs/architecture/decisions/0004-single-pro-iap.md).
+- **Things 3** (free, local IPC) in 1.2.
+- **Cloud providers** (Todoist, Linear, TickTick, Notion, Google Tasks, GitHub Issues) in 1.3, gated behind a single **Taskmato Pro** non-consumable IAP. The free providers above will always remain free. See [ADR-0004](docs/architecture/decisions/0004-single-pro-iap.md).
 
 ## Stats
 
-Every completed Pomodoro is logged with the originating task reference. The Stats tab shows today's focus minutes per task as a donut chart; a rolling 7-day chart stacked by provider and an all-time per-task table land in 0.7.
+Every completed Pomodoro is logged with the originating task reference. The Stats tab shows today's focus minutes per task as a donut chart; a rolling 7-day chart stacked by provider and an all-time per-task table land in 0.8.
 
 Stats are computed from the persisted session log — never manually incremented.
 
@@ -40,7 +40,7 @@ Stats are computed from the persisted session log — never manually incremented
 
 ## Marketing site
 
-The `taskmato.com` URL hosts a static landing page that advertises the macOS app. Migration from Netlify to a GitHub Pages-deployed Astro site lands alongside the 0.8 DMG (minimal) and 1.0 GA (polished).
+The `taskmato.com` URL hosts a static landing page that advertises the macOS app. Migration from Netlify to a GitHub Pages-deployed Astro site lands alongside the 1.0 DMG (minimal site) and 1.3 (polished site + DNS migration).
 
 ## License
 

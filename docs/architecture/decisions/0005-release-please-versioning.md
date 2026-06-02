@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-05-29 (#310, #313). `always-bump-patch` strategy is transitional; planned exit at 0.8.0 (#320).
+Accepted — 2026-05-29 (#310, #313). `always-bump-patch` strategy is transitional; planned exit at 1.0.0 (#320).
 
 ## Context
 
@@ -27,7 +27,7 @@ Use [release-please](https://github.com/googleapis/release-please) with:
 
 **Transitional setting:** `versioning-strategy: always-bump-patch` keeps `0.x.y` incrementing on every commit during the experimental period, regardless of whether the commit is `fix:` or `feat:`. This avoids accidental minor/major bumps while the API is in flux.
 
-**Planned exit (#320):** when the project leaves experimental cadence at 0.8.0, remove `always-bump-patch` so Conventional Commits drive proper semver bumps: `fix:` → patch, `feat:` → minor, breaking → major.
+**Planned exit (#320):** when the project leaves experimental cadence at 1.0.0, remove `always-bump-patch` so Conventional Commits drive proper semver bumps: `fix:` → patch, `feat:` → minor, breaking → major.
 
 ## Consequences
 

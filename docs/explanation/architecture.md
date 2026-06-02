@@ -66,7 +66,7 @@ JSON file persistence under App Support is the MVP storage layer (Codable models
 
 ## Distribution
 
-Taskmato distributes as a Developer ID-signed and notarized DMG via the `make release` pipeline (lands at 0.8.0). The Xcode project already enables hardened runtime and app sandbox via Xcode 16 capability flags (`ENABLE_APP_SANDBOX`, `ENABLE_HARDENED_RUNTIME`), so the same binary configuration supports both Developer ID and Mac App Store paths — what differs is the signing identity and the App Store Connect record. App Store distribution lands at 1.0.0 alongside the Pro IAP. See [ADR-0006](../architecture/decisions/0006-developer-id-distribution.md).
+Taskmato distributes as a Developer ID-signed and notarized DMG via the `make release` pipeline (lands at 1.0.0). The Xcode project already enables hardened runtime and app sandbox via Xcode 16 capability flags (`ENABLE_APP_SANDBOX`, `ENABLE_HARDENED_RUNTIME`), so the same binary configuration supports both Developer ID and Mac App Store paths — what differs is the signing identity and the App Store Connect record. App Store distribution lands at 1.3.0 alongside the Pro IAP. See [ADR-0006](../architecture/decisions/0006-developer-id-distribution.md).
 
 ## Monetization
 

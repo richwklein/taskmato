@@ -1,8 +1,8 @@
 # Testing charter
 
-Taskmato uses [Swift Testing](https://developer.apple.com/documentation/testing) (`import Testing`, `@Test` macros). There is no numeric coverage gate. Instead, this charter names the per-domain critical paths that must be covered, and the areas that are exempt.
+Taskmato uses [Swift Testing](https://developer.apple.com/documentation/testing) (`import Testing`, `@Test` macros). There is no numeric coverage gate. Instead, this charter names the per-domain critical paths that must be covered before the first signed DMG (1.0.0), and the areas that are exempt.
 
-The charter is the gate. Reviewers enforce it during PR review. CI reports LCOV coverage for visibility, not as a pass/fail signal.
+The charter is the gate. Reviewers enforce it during PR review. CI reports LCOV coverage for visibility, not as a pass/fail signal. The LCOV pipeline fix in #280 is a hard prerequisite for the 1.0.0 release.
 
 ## Required coverage
 
@@ -40,7 +40,7 @@ For every conformer of `TaskProvider`, `MutableTaskProvider`, `WritableTaskProvi
 ### Session store + aggregations
 
 - Persistence round-trip.
-- Once the 0.7.0 aggregation helpers land: `focusTotals(by:)`, `focusTotalsByTask(in:)`, `focusTotalsByDay(in:)`, `focusTotalsByProvider(in:)`, `currentStreak(now:)` — all keyed correctly at start-of-day boundaries.
+- Once the 0.8.0 aggregation helpers land: `focusTotals(by:)`, `focusTotalsByTask(in:)`, `focusTotalsByDay(in:)`, `focusTotalsByProvider(in:)`, `currentStreak(now:)` — all keyed correctly at start-of-day boundaries.
 
 ## Exempt areas
 

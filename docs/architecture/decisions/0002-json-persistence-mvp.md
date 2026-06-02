@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-05-22. Revisited at 0.7.0 when stats aggregation helpers land; revisited again if stats querying outgrows JSON.
+Accepted — 2026-05-22. Revisited at 0.8.0 when stats aggregation helpers land; revisited again if stats querying outgrows JSON.
 
 ## Context
 

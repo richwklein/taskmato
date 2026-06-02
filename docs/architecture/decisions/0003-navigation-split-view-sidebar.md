@@ -28,4 +28,4 @@ The decision resolved 14 specific design questions; see #298 for the resolutions
 - List CRUD lives where lists are used; one mental model.
 - Settings shrinks to genuinely cross-cutting app preferences.
 - `NavigationSplitView` is iOS/macOS-15+ idiomatic and supports keyboard navigation natively.
-- Cost: existing users with muscle memory for "Settings → Providers" need to learn the new location. Acceptable at pre-1.0 with a small user base.
+- Cost: existing users with muscle memory for "Settings → Providers" need to learn the new location. Acceptable in the pre-DMG period with a small user base.

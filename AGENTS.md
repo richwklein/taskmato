@@ -30,7 +30,7 @@ Unless explicitly instructed otherwise, assume:
 - **Persistence:** JSON files (Codable) — see [ADR-0002](docs/architecture/decisions/0002-json-persistence-mvp.md)
 - **Testing:** Swift Testing (`import Testing`, `@Test` macros) — see [`docs/explanation/testing.md`](docs/explanation/testing.md) for the test charter
 - **Repository:** GitHub; release-please drives versioning ([ADR-0005](docs/architecture/decisions/0005-release-please-versioning.md))
-- **Marketing site:** GitHub Pages (post-0.8)
+- **Marketing site:** GitHub Pages (lands minimal at 1.0, polished at 1.3)
 - **Editor:** VS Code (primary), Xcode (secondary)
 
 Clearly state when Xcode is **required** versus merely **convenient**.
@@ -162,18 +162,19 @@ When uncertain: state assumptions, propose a default, clearly describe tradeoffs
 
 ## Milestones
 
-Work is tracked under versioned milestones on GitHub. The current pre-1.0 sequence is documented at [Pre-1.0 release sequence](https://github.com/richwklein/taskmato/milestones?direction=asc&sort=due_date&state=open) and summarised below:
+Work is tracked under versioned milestones on GitHub. The active sequence is summarised below; the [GitHub milestones page](https://github.com/richwklein/taskmato/milestones?direction=asc&sort=due_date&state=open) is the source of truth.
 
 | Version | Theme |
 |---------|-------|
-| 0.4.0 | Repo cleanup, app metadata, LICENSE, ADR backfill, Divio docs, testing charter |
-| 0.5.0 | UI cosmetics — per-provider icons, Today / Search grouping |
-| 0.6.0 | P3 close-out — edit task sheet, priority/due hints, always-on-top, full/min mode |
-| 0.7.0 | Stats complete — aggregation helpers, 7-day, all-time, streak |
-| 0.8.0 | First signed/notarized DMG + minimal GH Pages landing page |
-| 0.9.0 | Things 3 (P8a) + Pro foundation (StoreKit 2, unlock card) |
-| 1.0.0 | GA — cloud providers, App Store distribution, polished site |
+| 0.4.0 | Provider sidebar + inline confirmation row (shipped) |
+| 0.5.0 | Repo cleanup, app metadata, LICENSE, ADR backfill, Divio docs, testing charter |
+| 0.6.0 | UI cosmetics — per-provider icons, Today / Search grouping |
+| 0.7.0 | P3 close-out — edit task sheet, priority/due hints, always-on-top, full/min mode |
+| 0.8.0 | Stats complete — aggregation helpers, 7-day, all-time, streak |
+| 1.0.0 | First signed/notarized DMG + minimal GH Pages landing page |
 | 1.1.0 | WritableTaskProvider on Reminders and Obsidian |
+| 1.2.0 | Things 3 (P8a) + Pro foundation (StoreKit 2, unlock card) |
+| 1.3.0 | Cloud providers, App Store distribution, polished site |
 
 Always select the **smallest shippable slice** of the active milestone.
 
