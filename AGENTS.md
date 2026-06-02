@@ -164,19 +164,7 @@ When uncertain: state assumptions, propose a default, clearly describe tradeoffs
 
 ## Milestones
 
-Work is tracked under versioned milestones on GitHub. The active sequence is summarised below; the [GitHub milestones page](https://github.com/richwklein/taskmato/milestones?direction=asc&sort=due_date&state=open) is the source of truth.
-
-| Version | Theme |
-|---------|-------|
-| 0.4.0 | Provider sidebar + inline confirmation row (shipped) |
-| 0.5.0 | Repo cleanup, app metadata, LICENSE, ADR backfill, Divio docs, testing charter |
-| 0.6.0 | UI cosmetics — per-provider icons, Today / Search grouping |
-| 0.7.0 | P3 close-out — edit task sheet, priority/due hints, always-on-top, full/min mode |
-| 0.8.0 | Stats complete — aggregation helpers, 7-day, all-time, streak |
-| 1.0.0 | First signed/notarized DMG + minimal GH Pages landing page |
-| 1.1.0 | WritableTaskProvider on Reminders and Obsidian |
-| 1.2.0 | Things 3 (P8a) + Pro foundation (StoreKit 2, unlock card) |
-| 1.3.0 | Cloud providers, App Store distribution, polished site |
+Work is tracked under versioned milestones on GitHub. The [milestones page](https://github.com/richwklein/taskmato/milestones?direction=asc&sort=due_date&state=open) is the source of truth for the current sequence and what each one covers.
 
 Always select the **smallest shippable slice** of the active milestone.
 
