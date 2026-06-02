@@ -40,7 +40,7 @@ Clearly state when Xcode is **required** versus merely **convenient**.
 ### Agents may change without asking
 
 - Add new Swift files consistent with the current architecture
-- Add views, models, and services for the active milestone
+- Add views, models, and services for the work in scope
 - Add or extend tests for new logic per the test charter
 - Update documentation to reflect implemented behavior
 
@@ -162,11 +162,7 @@ Agents must not:
 
 When uncertain: state assumptions, propose a default, clearly describe tradeoffs.
 
-## Milestones
-
-Work is tracked under versioned milestones on GitHub. The [milestones page](https://github.com/richwklein/taskmato/milestones?direction=asc&sort=due_date&state=open) is the source of truth for the current sequence and what each one covers.
-
-Always select the **smallest shippable slice** of the active milestone.
+Always select the **smallest shippable slice** of the work in scope.
 
 ## Commits
 
