@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-05-29 (#298 / #331).
+Accepted — 2026-05-29 (#298 / #331). **Amended 2026-06-01** — the high-level decision (use `NavigationSplitView` for provider / list scoping) still holds, but the list-scoping mechanism changed materially: per-list checkmark visibility was replaced with single-selection scoping when v0.4.0 shipped. See [design doc 0002](../design/0002-provider-sidebar-revisited.md) for the current behavior; the body of this ADR is preserved as the original decision record.
 
 ## Context
 

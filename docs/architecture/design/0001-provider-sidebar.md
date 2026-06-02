@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted 2026-05-29; implemented in [#347](https://github.com/richwklein/taskmato/pull/347) (shipped in v0.4.0). Resulting decisions captured in [ADR-0003](../decisions/0003-navigation-split-view-sidebar.md).
+Accepted 2026-05-29; **superseded 2026-06-01 by [`0002-provider-sidebar-revisited`](0002-provider-sidebar-revisited.md)**. The NavigationSplitView decision still holds; per-list checkmark visibility (decisions 2, 6, 8, 14 below) was replaced with single-selection scoping when v0.4.0 shipped. Read 0002 for what's actually in the code; 0001 stays as the record of what was proposed at the time.
+
+Originally captured in [ADR-0003](../decisions/0003-navigation-split-view-sidebar.md).
 
 ## Background
 
