@@ -19,14 +19,11 @@ Built in today:
 - **Obsidian / Markdown** — parse [obsidian-tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) emoji syntax from a security-scoped vault bookmark, with FSEvents-based live updates.
 - **CLI / URL scheme** — start a Pomodoro from any script, launcher, or share extension via `taskmato://start?title=...`.
 
-Planned:
-
-- **Things 3** (free, local IPC) in 1.2.
-- **Cloud providers** (Todoist, Linear, TickTick, Notion, Google Tasks, GitHub Issues) in 1.3, gated behind a single **Taskmato Pro** non-consumable IAP. The free providers above will always remain free. See [ADR-0004](docs/architecture/decisions/0004-single-pro-iap.md).
+Cloud-backed providers will ship behind a single **Taskmato Pro** non-consumable IAP — see [ADR-0004](docs/architecture/decisions/0004-single-pro-iap.md). The free providers above will always remain free. Upcoming providers are tracked on the [GitHub milestones page](https://github.com/richwklein/taskmato/milestones).
 
 ## Stats
 
-Every completed Pomodoro is logged with the originating task reference. The Stats tab shows today's focus minutes per task as a donut chart; a rolling 7-day chart stacked by provider and an all-time per-task table land in 0.8.
+Every completed Pomodoro is logged with the originating task reference. The Stats tab shows today's focus minutes per task as a donut chart; richer rollups are tracked on the [GitHub milestones page](https://github.com/richwklein/taskmato/milestones).
 
 Stats are computed from the persisted session log — never manually incremented.
 
@@ -40,7 +37,7 @@ Stats are computed from the persisted session log — never manually incremented
 
 ## Marketing site
 
-The `taskmato.com` URL hosts a static landing page that advertises the macOS app. Migration from Netlify to a GitHub Pages-deployed Astro site lands alongside the 1.0 DMG (minimal site) and 1.3 (polished site + DNS migration).
+The `taskmato.com` URL hosts a static landing page that advertises the macOS app. Migration to a GitHub Pages-deployed Astro site is tracked on the [GitHub milestones page](https://github.com/richwklein/taskmato/milestones).
 
 ## License
 
