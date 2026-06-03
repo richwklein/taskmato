@@ -133,7 +133,7 @@ struct TaskmatoApp: App {
   }
 
   var body: some Scene {
-    MenuBarExtra(menuBarLabel) {
+    MenuBarExtra {
       TimerView(
         engine: engine,
         settings: settings,
@@ -172,6 +172,11 @@ struct TaskmatoApp: App {
           urlHandler.pendingAdHocParams = nil
         }
       }
+    } label: {
+      HStack(spacing: 4) {
+        Image("MenuIcon")
+        Text(menuBarLabel)
+      }
     }
     .menuBarExtraStyle(.window)
 
@@ -197,7 +202,7 @@ struct TaskmatoApp: App {
     .windowResizability(.contentSize)
   }
 
-  /// Formats the active or idle time as `"🍅 MM:SS"` for display in the menu bar.
+  /// Formats the active or idle time as `"MM:SS"` for display in the menu bar.
   private var menuBarLabel: String {
     let seconds: Int
     if case .idle = engine.state {
@@ -210,6 +215,6 @@ struct TaskmatoApp: App {
     } else {
       seconds = Int(engine.timeRemaining)
     }
-    return "🍅 \(String(format: "%02d:%02d", seconds / 60, seconds % 60))"
+    return String(format: "%02d:%02d", seconds / 60, seconds % 60)
   }
 }

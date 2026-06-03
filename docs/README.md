@@ -18,7 +18,7 @@ Screenshots and other images used in the docs (and elsewhere) live at [`assets/`
 
 ## Where to look
 
-- **Working out *how* to do something?** Start in `how-to/` (created when populated).
+- **Working out *how* to do something?** Start in [`how-to/`](how-to/).
 - **Trying to understand *why* something works the way it does?** Start in [`explanation/`](explanation/).
 - **Wondering why a load-bearing decision was made?** Read the relevant ADR in [`architecture/decisions/`](architecture/decisions/).
 - **Reviewing a design proposal in flight?** Look in [`architecture/design/`](architecture/design/).
