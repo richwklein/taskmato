@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/richwklein/taskmato/compare/v0.4.0...v0.5.0) (2026-06-03)
+
+
+### Features
+
+* 0.5.0 polish bundle — metadata, docs, ADRs, LICENSE ([#366](https://github.com/richwklein/taskmato/issues/366)) ([cb40778](https://github.com/richwklein/taskmato/commit/cb407783395dd30d11a614d8f7a7ee68bb41e6ad))
+* **assets:** add app icon, menu bar icon, and generation script ([#375](https://github.com/richwklein/taskmato/issues/375)) ([36186c6](https://github.com/richwklein/taskmato/commit/36186c6764acd298de6579805d945ade87d21917))
+
 ## [0.4.0](https://github.com/richwklein/taskmato/compare/v0.3.0...v0.4.0) (2026-06-01)
 
 
