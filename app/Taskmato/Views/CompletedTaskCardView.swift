@@ -29,7 +29,7 @@ struct CompletedTaskCardView: View {
             .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)
-        .help("Restore task")
+        .help(TaskLabel.Tooltip.restore)
 
         VStack(alignment: .leading, spacing: 4) {
           Text(task.title)
@@ -62,7 +62,7 @@ struct CompletedTaskCardView: View {
             .padding(8)
         }
         .buttonStyle(.plain)
-        .help("Delete permanently")
+        .help(TaskLabel.Tooltip.deletePermanently)
         .confirmationDialog("Delete this task permanently?", isPresented: $showDeleteConfirmation) {
           Button("Delete", role: .destructive) { delete() }
           Button("Cancel", role: .cancel) {}

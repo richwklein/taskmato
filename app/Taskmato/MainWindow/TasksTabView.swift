@@ -241,13 +241,13 @@ struct TasksTabView: View {
     let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
     SwiftUI.Section {
       SwiftUI.ForEach(section.tasks) { task in
-        TaskRowView(
-          task: task,
-          onComplete: registry.closableProvider(for: task.id) != nil
-            ? { handleComplete(task) }
-            : nil
-        )
-        .onTapGesture { select(task) }
+        Button {
+          select(task)
+        } label: {
+          TaskRowView(task: task, onComplete: onCompleteHandler(for: task))
+        }
+        .buttonStyle(.plain)
+        .contextMenu { taskContextMenu(for: task) }
       }
       if showCompleted && !completed.isEmpty {
         SwiftUI.ForEach(completed) { task in completedRow(task) }
@@ -260,7 +260,6 @@ struct TasksTabView: View {
   }
 
   /// A ``CompletedTaskRowView`` wired to this view's restore and delete handlers.
-  @ViewBuilder
   private func completedRow(_ task: TaskItem) -> some View {
     CompletedTaskRowView(
       task: task,
@@ -268,10 +267,10 @@ struct TasksTabView: View {
       onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
         ? { handleDelete(task) } : nil
     )
+    .contextMenu { completedTaskContextMenu(for: task) }
   }
 
   /// A ``CompletedTaskCardView`` wired to this view's restore and delete handlers.
-  @ViewBuilder
   private func completedCard(_ task: TaskItem) -> some View {
     CompletedTaskCardView(
       task: task,
@@ -279,6 +278,44 @@ struct TasksTabView: View {
       onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
         ? { handleDelete(task) } : nil
     )
+    .contextMenu { completedTaskContextMenu(for: task) }
+  }
+
+  /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.
+  @ViewBuilder
+  private func taskContextMenu(for task: TaskItem) -> some View {
+    Button {
+      select(task)
+    } label: {
+      Label(TaskLabel.Menu.trackTask, systemImage: "timer")
+    }
+    Divider()
+    if registry.closableProvider(for: task.id) != nil {
+      Button {
+        handleComplete(task)
+      } label: {
+        Label(TaskLabel.Menu.markAsCompleted, systemImage: "checkmark.circle.fill")
+      }
+    }
+  }
+
+  /// Context menu items shown on secondary-click of a completed task row or card.
+  @ViewBuilder
+  private func completedTaskContextMenu(for task: TaskItem) -> some View {
+    if registry.closableProvider(for: task.id) != nil {
+      Button {
+        handleRestore(task)
+      } label: {
+        Label(TaskLabel.Menu.restoreTask, systemImage: "arrow.counterclockwise")
+      }
+    }
+    if registry.provider(for: task.id) is (any WritableTaskProvider) {
+      Button(role: .destructive) {
+        handleDelete(task)
+      } label: {
+        Label(TaskLabel.Menu.deletePermanently, systemImage: "trash")
+      }
+    }
   }
 
   // MARK: - Grid layout
@@ -321,13 +358,13 @@ struct TasksTabView: View {
 
             LazyVGrid(columns: columns, spacing: 10) {
               ForEach(section.tasks) { task in
-                TaskCardView(
-                  task: task,
-                  onComplete: registry.closableProvider(for: task.id) != nil
-                    ? { handleComplete(task) }
-                    : nil
-                )
-                .onTapGesture { select(task) }
+                Button {
+                  select(task)
+                } label: {
+                  TaskCardView(task: task, onComplete: onCompleteHandler(for: task))
+                }
+                .buttonStyle(.plain)
+                .contextMenu { taskContextMenu(for: task) }
               }
             }
 
@@ -410,6 +447,10 @@ extension TasksTabView {
   private func select(_ task: TaskItem) {
     selectionStore.select(task)
     selectedTab = .timer
+  }
+
+  private func onCompleteHandler(for task: TaskItem) -> (() -> Void)? {
+    registry.closableProvider(for: task.id) != nil ? { self.handleComplete(task) } : nil
   }
 
   /// Completes the task via its closable provider, then refreshes the list.
