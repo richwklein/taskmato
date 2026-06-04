@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.0](https://github.com/richwklein/taskmato/compare/v0.5.0...v0.6.0) (2026-06-04)
+
+
+### Features
+
+* **main-window:** reorder tabs and default sidebar collapsed ([#371](https://github.com/richwklein/taskmato/issues/371)) ([#376](https://github.com/richwklein/taskmato/issues/376)) ([ad65ee1](https://github.com/richwklein/taskmato/commit/ad65ee1a6094ffb2cafc9090f7620f86fe3b0d19))
+* **sidebar:** add per-provider icons to sidebar, task view, and Add Task picker ([#380](https://github.com/richwklein/taskmato/issues/380)) ([390fc10](https://github.com/richwklein/taskmato/commit/390fc107912af427a0a4e538ef7b56763ff71630))
+* **tasks:** add context menu to task rows and cards ([#386](https://github.com/richwklein/taskmato/issues/386)) ([ac81cda](https://github.com/richwklein/taskmato/commit/ac81cdaff5325448d288411cfd9d73a1882217c2))
+* **views:** SF Symbol priority icons in task row, card, and add-task picker ([#384](https://github.com/richwklein/taskmato/issues/384)) ([1cc6bf0](https://github.com/richwklein/taskmato/commit/1cc6bf0448c250acc7001e37e8c6dd576a4acd15))
+
+
+### Bug Fixes
+
+* **vscode:** make sweetpad work in git worktrees ([#385](https://github.com/richwklein/taskmato/issues/385)) ([a336bed](https://github.com/richwklein/taskmato/commit/a336bedd0ef0359f9cfeb9c1bf6fd8a7f3729aaa))
+
 ## [0.5.0](https://github.com/richwklein/taskmato/compare/v0.4.0...v0.5.0) (2026-06-03)
 
 
