@@ -31,7 +31,7 @@ struct TaskCardView: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
-        .help("Mark done")
+        .help(TaskLabel.Tooltip.markAsCompleted)
       }
 
       VStack(alignment: .leading, spacing: 4) {

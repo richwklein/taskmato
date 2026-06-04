@@ -156,7 +156,9 @@ struct ActiveTaskView: View {
       }
       .buttonStyle(.plain)
       .onHover { isCompletionHovered = $0 }
-      .help(sessionIsActive ? "Complete task (will stop timer)" : "Mark done")
+      .help(
+        sessionIsActive
+          ? TaskLabel.Tooltip.markAsCompletedActive : TaskLabel.Tooltip.markAsCompleted)
     } else {
       Image(systemName: "circle.fill")
         .font(.caption2)

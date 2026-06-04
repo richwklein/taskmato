@@ -28,7 +28,7 @@ struct CompletedTaskRowView: View {
           .foregroundStyle(Color.accentColor)
       }
       .buttonStyle(.plain)
-      .help("Restore task")
+      .help(TaskLabel.Tooltip.restore)
 
       VStack(alignment: .leading, spacing: 2) {
         Text(task.title)
@@ -50,7 +50,7 @@ struct CompletedTaskRowView: View {
             .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
-        .help("Delete permanently")
+        .help(TaskLabel.Tooltip.deletePermanently)
         .confirmationDialog("Delete this task permanently?", isPresented: $showDeleteConfirmation) {
           Button("Delete", role: .destructive) { delete() }
           Button("Cancel", role: .cancel) {}
