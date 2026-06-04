@@ -410,10 +410,20 @@ extension TasksTabView {
     }
   }
 
+  private var currentQuery: TaskQuery {
+    if !query.isEmpty { return .crossProvider(filter: .titleContains(query)) }
+    if case .list(let sel) = registry.selection { return .singleList(sel) }
+    return .crossProvider(filter: .dueUpToToday)
+  }
+
   private func loadTasks() async {
+    guard !query.isEmpty || registry.selection != nil else {
+      groupedLists = []
+      return
+    }
     isLoading = groupedLists.isEmpty
     let (tasks, _) = await registry.tasks(
-      matching: query, selection: registry.selection,
+      query: currentQuery,
       sortBy: settings.taskSortField, direction: settings.taskSortDirection)
     groupedLists = buildGroups(from: tasks)
     isLoading = false

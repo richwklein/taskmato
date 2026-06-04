@@ -206,7 +206,7 @@ struct TaskRegistryTests {
     registry.enable(beta)
 
     let (tasks, errors) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .priority, direction: .descending)
+      query: .crossProvider(), sortBy: .priority, direction: .descending)
     #expect(tasks.count == 2)
     #expect(errors.isEmpty)
   }
@@ -222,7 +222,7 @@ struct TaskRegistryTests {
     registry.enable(alpha)
 
     let (tasks, errors) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .priority, direction: .descending)
+      query: .crossProvider(), sortBy: .priority, direction: .descending)
     #expect(tasks.count == 1)
     #expect(tasks[0].id.providerID == "alpha")
     #expect(errors.isEmpty)
@@ -240,7 +240,8 @@ struct TaskRegistryTests {
     registry.enable(provider)
 
     let (tasks, errors) = await registry.tasks(
-      matching: "write", selection: nil, sortBy: .priority, direction: .descending)
+      query: .crossProvider(filter: .titleContains("write")),
+      sortBy: .priority, direction: .descending)
     #expect(tasks.count == 1)
     #expect(tasks[0].title == "Write tests")
     #expect(errors.isEmpty)
@@ -259,7 +260,7 @@ struct TaskRegistryTests {
     registry.enable(provider)
 
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .priority, direction: .descending)
+      query: .crossProvider(), sortBy: .priority, direction: .descending)
     #expect(tasks.map(\.title) == ["High", "Medium", "Low"])
   }
 
@@ -277,7 +278,7 @@ struct TaskRegistryTests {
     registry.enable(provider)
 
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .priority, direction: .descending)
+      query: .crossProvider(), sortBy: .priority, direction: .descending)
     #expect(tasks.map(\.title) == ["Earlier", "Later"])
   }
 
@@ -292,7 +293,7 @@ struct TaskRegistryTests {
     registry.enable(bad)
 
     let (tasks, errors) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .priority, direction: .descending)
+      query: .crossProvider(), sortBy: .priority, direction: .descending)
     #expect(tasks.count == 1)
     #expect(tasks[0].id.providerID == "good")
     #expect(errors.count == 1)

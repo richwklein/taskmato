@@ -196,7 +196,7 @@ final class URLSchemeHandler {
 
   private func crossProviderTitleSearch(title: String) async -> [TaskItem] {
     let (tasks, _) = await registry.tasks(
-      matching: title, selection: nil, sortBy: .title, direction: .ascending)
+      query: .crossProvider(filter: .titleContains(title)), sortBy: .title, direction: .ascending)
     return tasks
   }
 
