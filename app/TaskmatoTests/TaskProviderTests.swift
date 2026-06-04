@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import Taskmato
@@ -78,6 +79,34 @@ private final class FakeReadOnlyProvider: TaskProvider {
   func lists() async throws -> [TaskList] { [] }
   func tasks(in _: TaskList?) async throws -> [TaskItem] { [] }
   func observe() -> AsyncStream<[TaskItem]>? { nil }
+}
+
+private final class FakeUnauthorizedProvider: TaskProvider {
+  let id = "fake-unauthorized"
+  let displayName = "Fake Unauthorized"
+  let icon = "square"
+  let entitlement: ProviderEntitlement = .free
+  var isAuthorized = false
+
+  func authorize() async throws {}
+  func lists() async throws -> [TaskList] { [] }
+  func tasks(in _: TaskList?) async throws -> [TaskItem] { [] }
+  func observe() -> AsyncStream<[TaskItem]>? { nil }
+}
+
+private final class FakeConfigurableProvider: TaskProvider, ConfigurableTaskProvider {
+  let id = "fake-configurable"
+  let displayName = "Fake Configurable"
+  let icon = "square"
+  let entitlement: ProviderEntitlement = .free
+
+  func authorize() async throws {}
+  func lists() async throws -> [TaskList] { [] }
+  func tasks(in _: TaskList?) async throws -> [TaskItem] { [] }
+  func observe() -> AsyncStream<[TaskItem]>? { nil }
+
+  @MainActor
+  func configurationView() -> AnyView { AnyView(EmptyView()) }
 }
 
 private final class FakeClosableProvider: ClosableTaskProvider {
@@ -230,5 +259,25 @@ struct TaskProviderTests {
   @Test func closableProviderSatisfiesTaskProvider() {
     let provider: any TaskProvider = FakeClosableProvider()
     #expect(provider.id == "fake-closable")
+  }
+
+  @Test func isAuthorizedDefaultsToTrue() {
+    let provider = FakeReadOnlyProvider()
+    #expect(provider.isAuthorized)
+  }
+
+  @Test func isAuthorizedCanBeOverridden() {
+    let provider = FakeUnauthorizedProvider()
+    #expect(!provider.isAuthorized)
+  }
+
+  @Test func nonConfigurableProviderIsNotConfigurableTaskProvider() {
+    let provider: any TaskProvider = FakeReadOnlyProvider()
+    #expect((provider as? (any ConfigurableTaskProvider)) == nil)
+  }
+
+  @Test func configurableProviderIsCastable() {
+    let provider: any TaskProvider = FakeConfigurableProvider()
+    #expect((provider as? (any ConfigurableTaskProvider)) != nil)
   }
 }

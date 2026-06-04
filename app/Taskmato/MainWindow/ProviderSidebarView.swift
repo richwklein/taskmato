@@ -29,11 +29,8 @@ struct ProviderSidebarView: View {
   /// Drives focus into the rename `TextField` when a rename begins.
   @FocusState private var renameFocused: String?
 
-  /// Controls the Obsidian configuration sheet shown when Obsidian is first enabled.
-  @State private var isConfiguringObsidian = false
-
-  /// Controls the Reminders configuration sheet shown when Reminders is first enabled.
-  @State private var isConfiguringReminders = false
+  /// The provider whose configuration sheet is currently presented, or `nil`.
+  @State private var configuringProvider: (any ConfigurableTaskProvider)?
 
   // MARK: - Computed helpers
 
@@ -43,19 +40,6 @@ struct ProviderSidebarView: View {
 
   private var disabledProviders: [any TaskProvider] {
     registry.providers.filter { !registry.isEnabled($0.id) }
-  }
-
-  /// Direct reference to the local provider for reactive access to its @Observable properties.
-  private var localProvider: LocalProvider? {
-    registry.providers.first(where: { $0 is LocalProvider }) as? LocalProvider
-  }
-
-  private var obsidianProvider: ObsidianProvider? {
-    registry.providers.first(where: { $0 is ObsidianProvider }) as? ObsidianProvider
-  }
-
-  private var remindersProvider: RemindersProvider? {
-    registry.providers.first(where: { $0 is RemindersProvider }) as? RemindersProvider
   }
 
   // MARK: - Body
@@ -85,22 +69,18 @@ struct ProviderSidebarView: View {
       }
     }
     .task { await loadAllLists() }
-    .sheet(isPresented: $isConfiguringObsidian) {
-      if let obsidian = obsidianProvider {
-        obsidianSetupSheet(obsidian)
+    .sheet(
+      isPresented: Binding(
+        get: { configuringProvider != nil },
+        set: { if !$0 { configuringProvider = nil } }
+      ),
+      onDismiss: { Task { await loadAllLists() } },
+      content: {
+        if let provider = configuringProvider {
+          provider.configurationView()
+        }
       }
-    }
-    .sheet(isPresented: $isConfiguringReminders) {
-      if let reminders = remindersProvider {
-        RemindersSetupSheet(provider: reminders)
-      }
-    }
-    .onChange(of: isConfiguringReminders) { _, isPresented in
-      guard !isPresented, let reminders = remindersProvider, reminders.isAuthorized else {
-        return
-      }
-      Task { await loadLists(for: reminders) }
-    }
+    )
   }
 
   // MARK: - Provider section
@@ -126,12 +106,10 @@ struct ProviderSidebarView: View {
       .padding(.vertical, 2)
       .contentShape(Rectangle())
       .contextMenu {
-        if provider is ObsidianProvider {
-          Button("Configure Obsidian…") { isConfiguringObsidian = true }
-          Divider()
-        }
-        if provider is RemindersProvider {
-          Button("Configure Apple Reminders…") { isConfiguringReminders = true }
+        if let configurable = provider as? (any ConfigurableTaskProvider) {
+          Button("Configure \(provider.displayName)…") {
+            configuringProvider = configurable
+          }
           Divider()
         }
         Button("Remove \(provider.displayName)", role: .destructive) {
@@ -283,11 +261,8 @@ struct ProviderSidebarView: View {
       ForEach(disabledProviders, id: \.id) { provider in
         Button {
           registry.enable(provider)
-          if provider is ObsidianProvider {
-            isConfiguringObsidian = true
-          }
-          if provider is RemindersProvider {
-            isConfiguringReminders = true
+          if let configurable = provider as? (any ConfigurableTaskProvider) {
+            configuringProvider = configurable
           }
           Task { await loadLists(for: provider) }
         } label: {
@@ -301,50 +276,14 @@ struct ProviderSidebarView: View {
     .menuStyle(.borderlessButton)
   }
 
-  // MARK: - Obsidian setup sheet
-
-  @ViewBuilder
-  private func obsidianSetupSheet(_ obsidian: ObsidianProvider) -> some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text("Configure Obsidian")
-        .font(.title2)
-        .fontWeight(.semibold)
-
-      ObsidianSettingsView(provider: obsidian)
-
-      HStack {
-        Spacer()
-        Button("Done") { isConfiguringObsidian = false }
-          .keyboardShortcut(.defaultAction)
-      }
-    }
-    .padding(24)
-    .frame(minWidth: 360)
-  }
-
   // MARK: - Data helpers
 
-  /// Returns the lists to display for a provider.
-  ///
-  /// For ``LocalProvider``, reads `taskLists` directly so SwiftUI tracks the
-  /// @Observable property and re-renders on mutations. Other providers read from
-  /// `registry.providerLists`, which is populated by `loadLists(for:)`.
   private func lists(for provider: any TaskProvider) -> [TaskList] {
-    if let local = localProvider, provider.id == local.id {
-      return local.taskLists.map(\.asTaskList)
-    }
-    return registry.providerLists[provider.id] ?? []
+    registry.providerLists[provider.id] ?? []
   }
 
-  /// Returns `true` when `listID` is the default list for `provider`.
-  ///
-  /// For ``LocalProvider``, reads `defaultListID` directly so the star icon
-  /// updates immediately on mutation without an explicit reload.
   private func isDefault(_ listID: String, for provider: any TaskProvider) -> Bool {
-    if let local = localProvider, provider.id == local.id {
-      return local.defaultListID == listID
-    }
-    return (provider as? (any WritableTaskProvider))?.defaultListID == listID
+    (provider as? (any WritableTaskProvider))?.defaultListID == listID
   }
 
   // MARK: - Rename helpers
@@ -370,13 +309,12 @@ struct ProviderSidebarView: View {
   // MARK: - Async list loading
 
   private func loadAllLists() async {
-    for provider in enabledProviders where provider as? LocalProvider == nil {
+    for provider in enabledProviders {
       await loadLists(for: provider)
     }
   }
 
   private func loadLists(for provider: any TaskProvider) async {
-    guard provider as? LocalProvider == nil else { return }
     let loaded = (try? await provider.lists()) ?? []
     registry.setLists(loaded, forProviderID: provider.id)
   }

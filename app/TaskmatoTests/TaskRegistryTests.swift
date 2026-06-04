@@ -36,6 +36,62 @@ private final class StubProvider: TaskProvider {
   func observe() -> AsyncStream<[TaskItem]>? { nil }
 }
 
+private final class StubWritableProvider: WritableTaskProvider {
+  let id: String
+  let displayName: String
+  let icon: String = "square"
+  let entitlement: ProviderEntitlement = .free
+  private(set) var defaultListID: String?
+
+  init(id: String) {
+    self.id = id
+    self.displayName = id
+  }
+
+  func authorize() async throws {}
+  func lists() async throws -> [TaskList] { [] }
+  func tasks(in _: TaskList?) async throws -> [TaskItem] { [] }
+  func observe() -> AsyncStream<[TaskItem]>? { nil }
+  func complete(_: TaskRef) async throws {}
+  func reopen(_: TaskRef) async throws {}
+
+  @discardableResult
+  func addTask(_: TaskDraft) async throws -> TaskItem {
+    TaskItem(
+      id: TaskRef(providerID: id, nativeID: UUID().uuidString),
+      title: "", notes: nil, format: .plainText, priority: .none)
+  }
+
+  func setDefaultList(_ listID: String) async throws { defaultListID = listID }
+
+  @discardableResult
+  func createList(name: String) async throws -> TaskList {
+    TaskList(id: UUID().uuidString, providerID: id, name: name)
+  }
+
+  func renameList(_: String, name _: String) async throws {}
+  func deleteList(_: String) async throws {}
+  func deleteTask(_: TaskRef) async throws {}
+}
+
+private final class StubUnauthorizedProvider: TaskProvider {
+  let id: String
+  let displayName: String
+  let icon: String = "square"
+  let entitlement: ProviderEntitlement = .free
+  let isAuthorized = false
+
+  init(id: String) {
+    self.id = id
+    self.displayName = id
+  }
+
+  func authorize() async throws {}
+  func lists() async throws -> [TaskList] { [] }
+  func tasks(in _: TaskList?) async throws -> [TaskItem] { [] }
+  func observe() -> AsyncStream<[TaskItem]>? { nil }
+}
+
 private final class StubClosableProvider: ClosableTaskProvider {
   let id: String
   let displayName: String
@@ -277,6 +333,49 @@ struct TaskRegistryTests {
 
     let ref = TaskRef(providerID: "readonly", nativeID: "x")
     #expect(registry.closableProvider(for: ref) == nil)
+  }
+
+  // MARK: firstEnabledWritableProvider
+
+  @Test func firstEnabledWritableProviderNilWhenNoneRegistered() {
+    let registry = makeRegistry()
+    #expect(registry.firstEnabledWritableProvider == nil)
+  }
+
+  @Test func firstEnabledWritableProviderNilWhenNotEnabled() {
+    let registry = makeRegistry()
+    let provider = StubWritableProvider(id: "writable")
+    registry.register(provider)
+    #expect(registry.firstEnabledWritableProvider == nil)
+  }
+
+  @Test func firstEnabledWritableProviderReturnsWhenEnabled() {
+    let registry = makeRegistry()
+    let provider = StubWritableProvider(id: "writable")
+    registry.register(provider)
+    registry.enable(provider)
+    #expect(registry.firstEnabledWritableProvider?.id == "writable")
+  }
+
+  // MARK: providerAuthorizationStates
+
+  @Test func providerAuthorizationStatesEmptyWithNoProviders() {
+    let registry = makeRegistry()
+    #expect(registry.providerAuthorizationStates.isEmpty)
+  }
+
+  @Test func providerAuthorizationStatesAllTrueByDefault() {
+    let registry = makeRegistry()
+    registry.register(StubProvider(id: "a"))
+    registry.register(StubProvider(id: "b"))
+    #expect(registry.providerAuthorizationStates == [true, true])
+  }
+
+  @Test func providerAuthorizationStatesReflectsFalse() {
+    let registry = makeRegistry()
+    registry.register(StubProvider(id: "authorized"))
+    registry.register(StubUnauthorizedProvider(id: "unauthorized"))
+    #expect(registry.providerAuthorizationStates == [true, false])
   }
 
 }

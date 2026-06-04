@@ -5,13 +5,13 @@
 
 import SwiftUI
 
-/// A sheet for creating a new task in ``LocalProvider``.
+/// A sheet for creating a new task via any writable task provider.
 ///
-/// Displayed as a modal sheet from the Tasks tab when the local provider is active.
-/// The title field is auto-focused on appear. Submitting with an empty title is disabled.
+/// Displayed as a modal sheet from the Tasks tab. The title field is auto-focused on appear.
+/// Submitting with an empty title is disabled. Lists are loaded asynchronously on appear.
 struct AddTaskView: View {
 
-  var provider: LocalProvider
+  var provider: any WritableTaskProvider
   @Binding var isPresented: Bool
 
   @State private var title = ""
@@ -21,6 +21,7 @@ struct AddTaskView: View {
   @State private var hasDueDate = false
   @State private var dueDate = Date()
   @State private var showNotes = false
+  @State private var taskLists: [TaskList] = []
 
   @FocusState private var isTitleFocused: Bool
 
@@ -43,8 +44,8 @@ struct AddTaskView: View {
           Text("List")
             .foregroundStyle(.secondary)
           Picker("List", selection: $selectedListID) {
-            ForEach(provider.taskLists) { list in
-              Label(list.name, systemImage: "list.bullet").tag(list.id.uuidString)
+            ForEach(taskLists) { list in
+              Label(list.name, systemImage: "list.bullet").tag(list.id)
             }
           }
           .labelsHidden()
@@ -99,9 +100,12 @@ struct AddTaskView: View {
     }
     .padding()
     .frame(width: 360)
-    .onAppear {
-      isTitleFocused = true
-      selectedListID = provider.defaultListID ?? provider.taskLists.first?.id.uuidString ?? ""
+    .onAppear { isTitleFocused = true }
+    .task {
+      taskLists = (try? await provider.lists()) ?? []
+      if selectedListID.isEmpty, let first = taskLists.first {
+        selectedListID = provider.defaultListID ?? first.id
+      }
     }
   }
 
@@ -114,8 +118,8 @@ struct AddTaskView: View {
     draft.priority = priority
     draft.dueDate = hasDueDate ? dueDate : nil
     draft.listID = selectedListID.isEmpty ? nil : selectedListID
-    provider.addTask(draft)
     isPresented = false
+    Task { try? await provider.addTask(draft) }
   }
 }
 

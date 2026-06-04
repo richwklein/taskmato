@@ -134,9 +134,9 @@ final class TaskRegistry {
   func validateSelection() {
     guard case .list(let selectedList) = selection else { return }
 
-    // Treat a nil cache as indeterminate only for registered, enabled providers (e.g.
-    // LocalProvider, which never writes to providerLists). Unknown or disabled providers
-    // get an empty cache so the cascade fires normally.
+    // Treat a nil cache as indeterminate only for registered, enabled providers whose
+    // lists have not yet been loaded. Unknown or disabled providers get an empty cache
+    // so the cascade fires normally.
     let providerKnown = providers.contains(where: {
       $0.id == selectedList.providerID && isEnabled($0.id)
     })
@@ -224,8 +224,8 @@ final class TaskRegistry {
       else {
         return (tasks: [], errors: [])
       }
-      // Prefer the populated cache; fall back to a live fetch for providers (e.g. LocalProvider)
-      // that never write to providerLists and instead expose reactive @Observable properties.
+      // Prefer the populated cache; fall back to a live fetch when the cache has not yet
+      // been populated for this provider.
       let available: [TaskList]
       if let cached = providerLists[selectedList.providerID] {
         available = cached
@@ -252,6 +252,19 @@ final class TaskRegistry {
   /// - Parameter ref: The task reference whose closable provider to look up.
   func closableProvider(for ref: TaskRef) -> (any ClosableTaskProvider)? {
     provider(for: ref) as? any ClosableTaskProvider
+  }
+
+  /// Returns the first enabled provider conforming to `WritableTaskProvider`, or `nil`.
+  var firstEnabledWritableProvider: (any WritableTaskProvider)? {
+    providers.first { isEnabled($0.id) && $0 is (any WritableTaskProvider) }
+      as? (any WritableTaskProvider)
+  }
+
+  /// The authorization state of each registered provider, in registration order.
+  ///
+  /// Observe this in views to react when any provider's `isAuthorized` changes.
+  var providerAuthorizationStates: [Bool] {
+    providers.map(\.isAuthorized)
   }
 
   // MARK: - Private helpers

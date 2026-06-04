@@ -27,16 +27,16 @@ struct TasksTabView: View {
   @State private var completedOrphans: [TaskItem] = []
   @State private var isLoadingCompleted = false
 
-  private var localProvider: LocalProvider? {
-    registry.providers.first(where: { $0 is LocalProvider }) as? LocalProvider
-  }
-
-  private var remindersProvider: RemindersProvider? {
-    registry.providers.first(where: { $0 is RemindersProvider }) as? RemindersProvider
-  }
-
-  private var localProviderEnabled: Bool {
-    localProvider.map { registry.isEnabled($0.id) } ?? false
+  /// Returns the writable provider for the current sidebar selection, or the first
+  /// enabled writable provider when the selection is `.today` or unresolved.
+  private var writableProvider: (any WritableTaskProvider)? {
+    guard case .list(let sel) = registry.selection,
+      let provider = registry.providers.first(where: {
+        $0.id == sel.providerID && registry.isEnabled($0.id)
+      }),
+      let writable = provider as? (any WritableTaskProvider)
+    else { return registry.firstEnabledWritableProvider }
+    return writable
   }
 
   private var hasClosableProvider: Bool {
@@ -91,24 +91,23 @@ struct TasksTabView: View {
     .onChange(of: registry.providerLists) { _, _ in Task { await loadTasks() } }
     .onChange(of: settings.taskSortField) { _, _ in Task { await loadTasks() } }
     .onChange(of: settings.taskSortDirection) { _, _ in Task { await loadTasks() } }
-    .onChange(of: remindersProvider?.isAuthorized) { _, authorized in
-      guard authorized == true else { return }
+    .onChange(of: registry.providerAuthorizationStates) { _, _ in
       Task { await loadTasks() }
     }
     .sheet(isPresented: $isAddingTask) {
-      if let provider = localProvider {
+      if let provider = writableProvider {
         AddTaskView(provider: provider, isPresented: $isAddingTask)
       }
     }
     .toolbar {
-      if localProviderEnabled {
+      if writableProvider != nil {
         ToolbarItem(placement: .automatic) {
           Button {
             isAddingTask = true
           } label: {
             Label("Add Task", systemImage: "plus")
           }
-          .help("Add a local task")
+          .help("Add a task")
         }
       }
 
