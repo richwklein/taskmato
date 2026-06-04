@@ -78,7 +78,7 @@ struct TimerView: View {
           let popover = NSApp.keyWindow
           NSApp.activate(ignoringOtherApps: true)
           openWindow(id: "main")
-          NotificationCenter.default.post(name: .showTasksTab, object: nil)
+          NotificationCenter.default.post(name: .browseTasksAndPick, object: nil)
           DispatchQueue.main.async { popover?.close() }
         } label: {
           Label("Browse Tasks…", systemImage: "checklist")

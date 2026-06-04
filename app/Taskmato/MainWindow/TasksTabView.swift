@@ -15,7 +15,7 @@ struct TasksTabView: View {
 
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
-  @Binding var selectedTab: Int
+  @Binding var selectedTab: MainTab
   @Bindable var settings: AppSettings
 
   @State private var query: String = ""
@@ -408,7 +408,7 @@ extension TasksTabView {
 
   private func select(_ task: TaskItem) {
     selectionStore.select(task)
-    selectedTab = 0
+    selectedTab = .timer
   }
 
   /// Completes the task via its closable provider, then refreshes the list.
@@ -493,7 +493,7 @@ extension TasksTabView {
   TasksTabView(
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
-    selectedTab: .constant(1),
+    selectedTab: .constant(.tasks),
     settings: AppSettings()
   )
 }

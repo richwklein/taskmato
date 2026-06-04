@@ -45,7 +45,7 @@ struct TimerTabView: View {
         .padding(.horizontal, 8)
       } else {
         Button {
-          NotificationCenter.default.post(name: .showTasksTab, object: nil)
+          NotificationCenter.default.post(name: .browseTasksAndPick, object: nil)
         } label: {
           Label("Browse Tasks…", systemImage: "checklist")
             .font(.caption)

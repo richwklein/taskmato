@@ -6,10 +6,17 @@
 import Foundation
 
 extension Notification.Name {
-  /// Posted by the compact popover when the user taps "Browse Tasks…".
+  /// Posted to switch to the Tasks tab without changing sidebar visibility.
   ///
-  /// `MainWindowView` listens for this and switches to the Tasks tab.
+  /// Used for plain tab-switches and auto-navigations after the active task is completed or
+  /// cleared. The sidebar stays in whatever state the user last left it in.
   static let showTasksTab = Notification.Name("Taskmato.showTasksTab")
+
+  /// Posted when the user explicitly wants to browse and pick a task.
+  ///
+  /// `MainWindowView` listens for this, expands the provider sidebar (so list scoping is
+  /// visible), and switches to the Tasks tab.
+  static let browseTasksAndPick = Notification.Name("Taskmato.browseTasksAndPick")
 
   /// Posted by the compact popover when the user taps the session stats row.
   ///

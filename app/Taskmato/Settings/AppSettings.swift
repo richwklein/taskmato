@@ -65,7 +65,7 @@ final class AppSettings {
 
   /// Whether the provider/list sidebar column is visible in the Tasks tab.
   ///
-  /// Defaults to `true`.
+  /// Defaults to `false`; pick-flow entries (Browse Tasks…, swap-task) implicitly expand it.
   var sidebarVisible: Bool {
     didSet { defaults.set(sidebarVisible, forKey: Keys.sidebarVisible) }
   }
@@ -109,7 +109,7 @@ final class AppSettings {
     showDockIcon = defaults.object(forKey: Keys.showDockIcon) as? Bool ?? false
     let rawLayout = defaults.string(forKey: Keys.taskPickerLayout)
     taskPickerLayout = rawLayout.flatMap(TaskPickerLayout.init) ?? .grid
-    sidebarVisible = defaults.object(forKey: Keys.sidebarVisible) as? Bool ?? true
+    sidebarVisible = defaults.object(forKey: Keys.sidebarVisible) as? Bool ?? false
     taskSortField =
       defaults.string(forKey: Keys.taskSortField).flatMap(TaskSortField.init) ?? .dueDate
     taskSortDirection =
