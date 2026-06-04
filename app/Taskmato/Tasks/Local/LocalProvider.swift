@@ -21,6 +21,7 @@ final class LocalProvider: WritableTaskProvider {
 
   let id: String = LocalProvider.providerID
   let displayName: String = "Local"
+  let displayOrder: Int = 0
   let icon: String = "tray"
   let entitlement: ProviderEntitlement = .free
 
