@@ -1,7 +1,14 @@
 {
   "version": "2.0.0",
   "tasks": [
-        {
+    {
+      "label": "Sync Version",
+      "type": "shell",
+      "command": "make sync-version",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
       "type": "sweetpad",
       "action": "launch",
       "problemMatcher": [
@@ -12,7 +19,8 @@
       ],
       "label": "Build and Launch",
       "detail": "Build and Launch the app",
-      "isBackground": true // ! Required for debugging
+      "isBackground": true, // ! Required for debugging
+      "dependsOn": ["Sync Version"]
     }
   ]
 }
