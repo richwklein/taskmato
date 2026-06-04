@@ -26,6 +26,7 @@ final class ObsidianProvider: ClosableTaskProvider {
 
   let id: String = ObsidianProvider.providerID
   let displayName: String = "Obsidian"
+  let icon: String = "book.closed"
   let entitlement: ProviderEntitlement = .free
 
   /// The user-selected vault directory, resolved from the stored security-scoped bookmark.
