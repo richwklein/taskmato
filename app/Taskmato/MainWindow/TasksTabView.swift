@@ -19,7 +19,7 @@ struct TasksTabView: View {
   @Bindable var settings: AppSettings
 
   @State private var query: String = ""
-  @State private var groupedLists: [TaskGroup] = []
+  @State private var sections: [TaskSection] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
   @State private var showCompleted = false
@@ -47,21 +47,20 @@ struct TasksTabView: View {
     completedByListID.values.reduce(0) { $0 + $1.count } + completedOrphans.count
   }
 
-  private var flatSections: [FlatSection] {
-    Taskmato.flatSections(from: groupedLists)
-  }
-
   /// Context affordance shown at the top of the task list and grid.
   private var affordanceInfo: (icon: String, label: String)? {
     if !query.isEmpty {
-      let count = flatSections.reduce(0) { $0 + $1.tasks.count }
+      let count = sections.reduce(0) { $0 + $1.tasks.count }
       let label = isLoading ? "Searching…" : "\(count) \(count == 1 ? "result" : "results")"
       return ("magnifyingglass", label)
     }
     if registry.selection == .today { return ("calendar", "Today") }
-    guard case .list(let sel) = registry.selection, let grp = groupedLists.first else { return nil }
+    guard case .list(let sel) = registry.selection,
+      let listName = registry.providerLists[sel.providerID]?
+        .first(where: { $0.id == sel.listID })?.name
+    else { return nil }
     let icon = registry.providers.first(where: { $0.id == sel.providerID })?.icon ?? "list.bullet"
-    return (icon, grp.listName)
+    return (icon, listName)
   }
 
   var body: some View {
@@ -160,7 +159,7 @@ struct TasksTabView: View {
     } else if isLoading {
       ProgressView()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    } else if groupedLists.isEmpty {
+    } else if sections.isEmpty {
       if !query.isEmpty {
         ContentUnavailableView(
           "No Results",
@@ -218,7 +217,7 @@ struct TasksTabView: View {
         }
       }
 
-      SwiftUI.ForEach(flatSections) { section in
+      SwiftUI.ForEach(sections) { section in
         listSection(for: section)
       }
 
@@ -226,7 +225,7 @@ struct TasksTabView: View {
         SwiftUI.Section {
           SwiftUI.ForEach(completedOrphans) { task in completedRow(task) }
         } header: {
-          Text("Other Completed")
+          Text(sections.first?.displayStyle == .flat ? "Completed" : "Other Completed")
             .font(.subheadline)
             .fontWeight(.semibold)
         }
@@ -235,15 +234,19 @@ struct TasksTabView: View {
   }
 
   @ViewBuilder
-  private func listSection(for section: FlatSection) -> some View {
-    let isLastForList = flatSections.last(where: { $0.listID == section.listID })?.id == section.id
+  private func listSection(for section: TaskSection) -> some View {
+    let isLastForList = sections.last(where: { $0.listID == section.listID })?.id == section.id
     let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
     SwiftUI.Section {
       SwiftUI.ForEach(section.tasks) { task in
         Button {
           select(task)
         } label: {
-          TaskRowView(task: task, onComplete: onCompleteHandler(for: task))
+          TaskRowView(
+            task: task,
+            kind: .active(onComplete: onCompleteHandler(for: task)),
+            lineage: lineage(for: task)
+          )
         }
         .buttonStyle(.plain)
         .contextMenu { taskContextMenu(for: task) }
@@ -252,32 +255,10 @@ struct TasksTabView: View {
         SwiftUI.ForEach(completed) { task in completedRow(task) }
       }
     } header: {
-      if affordanceInfo?.label != section.header {
+      if shouldShowHeader(section) {
         Text(section.header).font(.subheadline).fontWeight(.semibold)
       }
     }
-  }
-
-  /// A ``CompletedTaskRowView`` wired to this view's restore and delete handlers.
-  private func completedRow(_ task: TaskItem) -> some View {
-    CompletedTaskRowView(
-      task: task,
-      onRestore: { handleRestore(task) },
-      onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
-        ? { handleDelete(task) } : nil
-    )
-    .contextMenu { completedTaskContextMenu(for: task) }
-  }
-
-  /// A ``CompletedTaskCardView`` wired to this view's restore and delete handlers.
-  private func completedCard(_ task: TaskItem) -> some View {
-    CompletedTaskCardView(
-      task: task,
-      onRestore: { handleRestore(task) },
-      onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
-        ? { handleDelete(task) } : nil
-    )
-    .contextMenu { completedTaskContextMenu(for: task) }
   }
 
   /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.
@@ -346,13 +327,14 @@ struct TasksTabView: View {
           .padding(.horizontal, 2)
         }
 
-        ForEach(flatSections) { section in
+        ForEach(sections) { section in
           let isLastForList =
-            flatSections.last(where: { $0.listID == section.listID })?.id == section.id
+            sections.last(where: { $0.listID == section.listID })?.id == section.id
           let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
           VStack(alignment: .leading, spacing: 8) {
-            if affordanceInfo?.label != section.header {
-              Text(section.header).font(.subheadline).fontWeight(.semibold).padding(.horizontal, 2)
+            if shouldShowHeader(section) {
+              Text(section.header)
+                .font(.subheadline).fontWeight(.semibold).padding(.horizontal, 2)
             }
 
             LazyVGrid(columns: columns, spacing: 10) {
@@ -360,7 +342,11 @@ struct TasksTabView: View {
                 Button {
                   select(task)
                 } label: {
-                  TaskCardView(task: task, onComplete: onCompleteHandler(for: task))
+                  TaskCardView(
+                    task: task,
+                    kind: .active(onComplete: onCompleteHandler(for: task)),
+                    lineage: lineage(for: task)
+                  )
                 }
                 .buttonStyle(.plain)
                 .contextMenu { taskContextMenu(for: task) }
@@ -377,7 +363,7 @@ struct TasksTabView: View {
 
         if showCompleted && !completedOrphans.isEmpty {
           VStack(alignment: .leading, spacing: 8) {
-            Text("Other Completed")
+            Text(sections.first?.displayStyle == .flat ? "Completed" : "Other Completed")
               .font(.subheadline)
               .fontWeight(.semibold)
               .padding(.horizontal, 2)
@@ -418,14 +404,14 @@ extension TasksTabView {
 
   private func loadTasks() async {
     guard !query.isEmpty || registry.selection != nil else {
-      groupedLists = []
+      sections = []
       return
     }
-    isLoading = groupedLists.isEmpty
+    isLoading = sections.isEmpty
     let (tasks, _) = await registry.tasks(
       query: currentQuery,
       sortBy: settings.taskSortField, direction: settings.taskSortDirection)
-    groupedLists = buildGroups(from: tasks)
+    sections = buildDisplaySections(from: tasks, query: currentQuery)
     isLoading = false
   }
 
@@ -433,10 +419,11 @@ extension TasksTabView {
     isLoadingCompleted = true
     var byList: [String: [TaskItem]] = [:]
     var orphans: [TaskItem] = []
-    let activeListIDs = Set(flatSections.map(\.listID))
+    let activeListIDs = Set(sections.map(\.listID))
     for provider in registry.providers where registry.isEnabled(provider.id) {
       guard let closable = provider as? (any ClosableTaskProvider) else { continue }
-      let items = (try? await closable.completedTasks()) ?? []
+      var items = (try? await closable.completedTasks()) ?? []
+      if currentQuery.isCrossProvider { items = filteredCompleted(items) }
       for item in items {
         let key = item.list?.id ?? ""
         if !key.isEmpty && activeListIDs.contains(key) {
@@ -451,6 +438,57 @@ extension TasksTabView {
       ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast)
     }
     isLoadingCompleted = false
+  }
+
+  /// Filters completed tasks to match the active cross-provider filter.
+  private func filteredCompleted(_ items: [TaskItem]) -> [TaskItem] {
+    guard case .crossProvider(let opt) = currentQuery, let filter = opt else { return items }
+    switch filter {
+    case .dueUpToToday:
+      let startOfToday = Calendar.current.startOfDay(for: Date())
+      return items.filter { ($0.completedAt ?? .distantPast) >= startOfToday }
+    case .titleContains(let titleQuery):
+      return items.filter { $0.title.localizedCaseInsensitiveContains(titleQuery) }
+    }
+  }
+
+  /// Builds a ``TaskLineage`` for flat-mode task rows and cards.
+  private func lineage(for task: TaskItem) -> TaskLineage? {
+    guard currentQuery.isCrossProvider else { return nil }
+    let showIcon = registry.enabledIDs.count > 1
+    let provider = registry.providers.first { $0.id == task.id.providerID }
+    let lin = TaskLineage(
+      providerIcon: showIcon ? provider?.icon : nil,
+      listName: task.list?.name,
+      sectionName: task.section
+    )
+    return lin.isEmpty ? nil : lin
+  }
+
+  private func completedKind(for task: TaskItem) -> TaskItemKind {
+    let canDelete = registry.provider(for: task.id) is (any WritableTaskProvider)
+    return .completed(
+      onRestore: { handleRestore(task) },
+      onDelete: canDelete ? { handleDelete(task) } : nil
+    )
+  }
+
+  /// A ``TaskRowView`` wired to this view's restore and delete handlers.
+  private func completedRow(_ task: TaskItem) -> some View {
+    TaskRowView(task: task, kind: completedKind(for: task), lineage: lineage(for: task))
+      .contextMenu { completedTaskContextMenu(for: task) }
+  }
+
+  /// A ``TaskCardView`` wired to this view's restore and delete handlers.
+  private func completedCard(_ task: TaskItem) -> some View {
+    TaskCardView(task: task, kind: completedKind(for: task), lineage: lineage(for: task))
+      .contextMenu { completedTaskContextMenu(for: task) }
+  }
+
+  private func shouldShowHeader(_ section: TaskSection) -> Bool {
+    section.displayStyle == .sectioned
+      && !section.header.isEmpty
+      && affordanceInfo?.label != section.header
   }
 
   private func select(_ task: TaskItem) {
@@ -497,47 +535,6 @@ extension TasksTabView {
     }
   }
 
-}
-
-// MARK: - Grouping
-
-extension TasksTabView {
-
-  private func buildGroups(from tasks: [TaskItem]) -> [TaskGroup] {
-    var ordered: [String] = []
-    var byKey: [String: [TaskItem]] = [:]
-
-    for task in tasks {
-      let key = task.list?.id ?? ""
-      if byKey[key] == nil { ordered.append(key) }
-      byKey[key, default: []].append(task)
-    }
-
-    return ordered.compactMap { key -> TaskGroup? in
-      guard let tasks = byKey[key], let list = tasks.first?.list else { return nil }
-      let sections = buildSections(from: tasks)
-      return TaskGroup(id: key, listName: list.name, sections: sections)
-    }
-  }
-
-  private func buildSections(from tasks: [TaskItem]) -> [TaskSection] {
-    var ordered: [String?] = []
-    var bySection: [String?: [TaskItem]] = [:]
-
-    for task in tasks {
-      let key = task.section
-      if bySection[key] == nil { ordered.append(key) }
-      bySection[key, default: []].append(task)
-    }
-
-    return ordered.map { key in
-      TaskSection(
-        id: key ?? "_unsectioned_",
-        name: key,
-        tasks: bySection[key] ?? []
-      )
-    }
-  }
 }
 
 #Preview {
