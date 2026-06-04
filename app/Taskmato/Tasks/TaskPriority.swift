@@ -24,4 +24,14 @@ enum TaskPriority: Int, Codable, Comparable, CaseIterable, Sendable {
   static func < (lhs: TaskPriority, rhs: TaskPriority) -> Bool {
     lhs.rawValue < rhs.rawValue
   }
+
+  /// SF Symbol name for this priority level, or `nil` for `.none`.
+  var icon: String? {
+    switch self {
+    case .none: return nil
+    case .lowest, .low: return "exclamationmark"
+    case .medium: return "exclamationmark.2"
+    case .high, .highest: return "exclamationmark.3"
+    }
+  }
 }

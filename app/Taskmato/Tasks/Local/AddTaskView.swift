@@ -56,7 +56,11 @@ struct AddTaskView: View {
             .foregroundStyle(.secondary)
           Picker("Priority", selection: $priority) {
             ForEach(TaskPriority.allCases, id: \.self) { level in
-              Text(level.displayLabel).tag(level)
+              if let icon = level.icon {
+                Label(level.displayLabel, systemImage: icon).tag(level)
+              } else {
+                Text(level.displayLabel).tag(level)
+              }
             }
           }
           .labelsHidden()
