@@ -13,6 +13,7 @@ import Testing
 private final class SortStubProvider: TaskProvider {
   let id: String
   let displayName: String
+  let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   var stubbedItems: [TaskItem]
 

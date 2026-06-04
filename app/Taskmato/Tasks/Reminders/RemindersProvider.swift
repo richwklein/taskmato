@@ -20,6 +20,7 @@ final class RemindersProvider: ClosableTaskProvider {
 
   let id: String = RemindersProvider.providerID
   let displayName: String = "Apple Reminders"
+  let icon: String = "checklist"
   let entitlement: ProviderEntitlement = .free
 
   /// Whether the user has granted full Reminders access.

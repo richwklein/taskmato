@@ -116,20 +116,28 @@ struct ProviderSidebarView: View {
         newListRow(providerID: provider.id)
       }
     } header: {
-      Text(provider.displayName)
-        .contextMenu {
-          if provider is ObsidianProvider {
-            Button("Configure Obsidian…") { isConfiguringObsidian = true }
-            Divider()
-          }
-          if provider is RemindersProvider {
-            Button("Configure Apple Reminders…") { isConfiguringReminders = true }
-            Divider()
-          }
-          Button("Remove \(provider.displayName)", role: .destructive) {
-            registry.disable(providerID: provider.id)
-          }
+      HStack(spacing: 6) {
+        Image(systemName: provider.icon)
+          .imageScale(.small)
+        Text(provider.displayName)
+        Spacer()
+      }
+      .font(.callout)
+      .padding(.vertical, 2)
+      .contentShape(Rectangle())
+      .contextMenu {
+        if provider is ObsidianProvider {
+          Button("Configure Obsidian…") { isConfiguringObsidian = true }
+          Divider()
         }
+        if provider is RemindersProvider {
+          Button("Configure Apple Reminders…") { isConfiguringReminders = true }
+          Divider()
+        }
+        Button("Remove \(provider.displayName)", role: .destructive) {
+          registry.disable(providerID: provider.id)
+        }
+      }
     }
   }
 
@@ -273,7 +281,7 @@ struct ProviderSidebarView: View {
   private var addProviderMenu: some View {
     Menu {
       ForEach(disabledProviders, id: \.id) { provider in
-        Button(provider.displayName) {
+        Button {
           registry.enable(provider)
           if provider is ObsidianProvider {
             isConfiguringObsidian = true
@@ -282,6 +290,8 @@ struct ProviderSidebarView: View {
             isConfiguringReminders = true
           }
           Task { await loadLists(for: provider) }
+        } label: {
+          Label(provider.displayName, systemImage: provider.icon)
         }
       }
     } label: {

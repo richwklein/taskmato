@@ -17,6 +17,9 @@ protocol TaskProvider: AnyObject, Sendable {
   /// Human-readable name shown in the Providers settings panel.
   var displayName: String { get }
 
+  /// SF Symbol name used to represent this provider in the UI.
+  var icon: String { get }
+
   /// Whether this provider is free or requires a StoreKit purchase.
   var entitlement: ProviderEntitlement { get }
 

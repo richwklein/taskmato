@@ -13,6 +13,7 @@ import Testing
 private final class FakeWritableProvider: WritableTaskProvider {
   let id = "fake-writable"
   let displayName = "Fake Writable"
+  let icon = "square"
   let entitlement: ProviderEntitlement = .free
 
   private(set) var defaultListID: String?
@@ -70,6 +71,7 @@ private final class FakeWritableProvider: WritableTaskProvider {
 private final class FakeReadOnlyProvider: TaskProvider {
   let id = "fake-readonly"
   let displayName = "Fake Read-Only"
+  let icon = "square"
   let entitlement: ProviderEntitlement = .free
 
   func authorize() async throws {}
@@ -81,6 +83,7 @@ private final class FakeReadOnlyProvider: TaskProvider {
 private final class FakeClosableProvider: ClosableTaskProvider {
   let id = "fake-closable"
   let displayName = "Fake Closable"
+  let icon = "square"
   let entitlement: ProviderEntitlement = .paid(productID: "com.taskmato.provider.fake")
 
   private(set) var completedRefs: [TaskRef] = []

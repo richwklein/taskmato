@@ -44,7 +44,7 @@ struct AddTaskView: View {
             .foregroundStyle(.secondary)
           Picker("List", selection: $selectedListID) {
             ForEach(provider.taskLists) { list in
-              Text(list.name).tag(list.id.uuidString)
+              Label(list.name, systemImage: "list.bullet").tag(list.id.uuidString)
             }
           }
           .labelsHidden()
@@ -129,4 +129,5 @@ extension TaskPriority {
     case .highest: return "Highest"
     }
   }
+
 }

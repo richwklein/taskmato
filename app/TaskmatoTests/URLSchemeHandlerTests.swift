@@ -22,6 +22,7 @@ private struct HandlerContext {
 private final class StubTaskProvider: TaskProvider {
   let id: String
   let displayName: String
+  let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   private let stubbedTasks: [TaskItem]
 
