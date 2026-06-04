@@ -23,6 +23,12 @@ protocol TaskProvider: AnyObject, Sendable {
   /// Whether this provider is free or requires a StoreKit purchase.
   var entitlement: ProviderEntitlement { get }
 
+  /// Whether this provider currently has the access it needs to serve tasks.
+  ///
+  /// Defaults to `true`. Providers that require explicit user authorization
+  /// (e.g. EventKit) override this to reflect live permission state.
+  var isAuthorized: Bool { get }
+
   /// Requests any permissions the provider needs (e.g. EventKit access, OAuth).
   ///
   /// Called lazily before the first `lists()` or `tasks(in:)` call.
@@ -40,6 +46,10 @@ protocol TaskProvider: AnyObject, Sendable {
   ///
   /// Return `nil` if the provider does not support live updates.
   func observe() -> AsyncStream<[TaskItem]>?
+}
+
+extension TaskProvider {
+  var isAuthorized: Bool { true }
 }
 
 /// A `TaskProvider` that supports toggling task completion state in the source system.

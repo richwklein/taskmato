@@ -57,8 +57,8 @@ struct ActiveTaskView: View {
             TaskNoteView(notes: notes, format: task.format)
           }
 
-          if let url = task.sourceURL {
-            Link("Open in Obsidian", destination: url)
+          if let url = task.sourceURL, let name = registry.provider(for: task.id)?.displayName {
+            Link("Open in \(name)", destination: url)
               .font(.caption2)
               .foregroundStyle(.secondary)
           }
