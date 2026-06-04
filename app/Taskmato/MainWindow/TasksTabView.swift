@@ -59,8 +59,9 @@ struct TasksTabView: View {
       return ("magnifyingglass", label)
     }
     if registry.selection == .today { return ("calendar", "Today") }
-    guard case .list = registry.selection, let grp = groupedLists.first else { return nil }
-    return ("list.bullet", grp.listName)
+    guard case .list(let sel) = registry.selection, let grp = groupedLists.first else { return nil }
+    let icon = registry.providers.first(where: { $0.id == sel.providerID })?.icon ?? "list.bullet"
+    return (icon, grp.listName)
   }
 
   var body: some View {
