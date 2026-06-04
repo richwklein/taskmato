@@ -5,10 +5,20 @@
 
 import SwiftUI
 
+/// Tab ordering for the main window. Raw values are stable selection tags.
+enum MainTab: Int {
+  /// The Tasks tab — the landing tab; hosts the task browser and provider sidebar.
+  case tasks = 0
+  /// The Timer tab — focus/break controls; the popover handles most timer interaction.
+  case timer = 1
+  /// The Stats tab — Today / 7-day / All-time session summaries.
+  case stats = 2
+}
+
 /// The root view for the main application window, hosting three-tab navigation.
 ///
-/// Tabs: Timer (primary), Tasks (P1/P3), Stats (P6).
-/// Settings opens in a separate window via ⌘, or the app menu.
+/// Tabs in order: Tasks (landing), Timer, Stats. Settings opens in a separate window
+/// via ⌘, or the app menu.
 struct MainWindowView: View {
 
   var engine: SessionEngine
@@ -17,11 +27,20 @@ struct MainWindowView: View {
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
 
-  @State private var selectedTab: Int = 0
+  @State private var selectedTab: MainTab = .tasks
 
   var body: some View {
     TabView(selection: $selectedTab) {
-      Tab("Timer", systemImage: "timer", value: 0) {
+      Tab("Tasks", systemImage: "checklist", value: MainTab.tasks) {
+        TasksTabView(
+          selectionStore: selectionStore,
+          registry: registry,
+          selectedTab: $selectedTab,
+          settings: settings
+        )
+      }
+
+      Tab("Timer", systemImage: "timer", value: MainTab.timer) {
         TimerTabView(
           engine: engine,
           settings: settings,
@@ -33,28 +52,23 @@ struct MainWindowView: View {
         )
       }
 
-      Tab("Tasks", systemImage: "checklist", value: 1) {
-        TasksTabView(
-          selectionStore: selectionStore,
-          registry: registry,
-          selectedTab: $selectedTab,
-          settings: settings
-        )
-      }
-
-      Tab("Stats", systemImage: "chart.bar", value: 2) {
+      Tab("Stats", systemImage: "chart.bar", value: MainTab.stats) {
         StatsTabView(store: store)
       }
     }
     .frame(minWidth: 640, minHeight: 400)
     .onReceive(NotificationCenter.default.publisher(for: .showTimerTab)) { _ in
-      selectedTab = 0
+      selectedTab = .timer
     }
     .onReceive(NotificationCenter.default.publisher(for: .showTasksTab)) { _ in
-      selectedTab = 1
+      selectedTab = .tasks
     }
     .onReceive(NotificationCenter.default.publisher(for: .showStatsTab)) { _ in
-      selectedTab = 2
+      selectedTab = .stats
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .browseTasksAndPick)) { _ in
+      settings.sidebarVisible = true
+      selectedTab = .tasks
     }
   }
 }

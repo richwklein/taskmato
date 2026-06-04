@@ -70,7 +70,7 @@ struct ActiveTaskView: View {
           if engine.isRunning { engine.pause() }
           NSApp.activate(ignoringOtherApps: true)
           openWindow(id: "main")
-          NotificationCenter.default.post(name: .showTasksTab, object: nil)
+          NotificationCenter.default.post(name: .browseTasksAndPick, object: nil)
         } label: {
           Image(systemName: "arrow.triangle.swap")
             .font(.caption2)
