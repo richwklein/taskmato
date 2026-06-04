@@ -13,6 +13,7 @@ import Testing
 private final class SelectionStubProvider: TaskProvider {
   let id: String
   let displayName: String
+  let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   private let stubbedTasks: [TaskItem]
   private let stubbedLists: [TaskList]
@@ -33,6 +34,7 @@ private final class SelectionStubProvider: TaskProvider {
 private final class SelectionScopedProvider: TaskProvider {
   let id: String
   let displayName: String
+  let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   private let stubbedLists: [TaskList]
   private let tasksByListID: [String: [TaskItem]]
@@ -56,6 +58,7 @@ private final class SelectionScopedProvider: TaskProvider {
 private final class SelectionWritableProvider: WritableTaskProvider {
   let id: String
   let displayName: String
+  let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let defaultListID: String?
 

@@ -15,6 +15,7 @@ private struct StubError: Error, Equatable {}
 private final class StubProvider: TaskProvider {
   let id: String
   let displayName: String
+  let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let stubbedTasks: [TaskItem]
   let shouldThrow: Bool
@@ -38,6 +39,7 @@ private final class StubProvider: TaskProvider {
 private final class StubClosableProvider: ClosableTaskProvider {
   let id: String
   let displayName: String
+  let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let stubbedTasks: [TaskItem]
   private(set) var completedRefs: [TaskRef] = []
