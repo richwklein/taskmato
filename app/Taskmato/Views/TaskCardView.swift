@@ -35,10 +35,17 @@ struct TaskCardView: View {
       }
 
       VStack(alignment: .leading, spacing: 4) {
-        Text(displayTitle)
-          .font(.callout)
-          .lineLimit(3)
-          .frame(maxWidth: .infinity, alignment: .leading)
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+          if let icon = task.priority.icon {
+            Image(systemName: icon)
+              .foregroundStyle(priorityColor)
+              .font(.callout)
+          }
+          Text(markdownTitle)
+            .font(.callout)
+            .lineLimit(3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
 
         if let due = task.dueDate {
           Text(due, format: .dateTime.month(.abbreviated).day().year())
@@ -68,14 +75,6 @@ struct TaskCardView: View {
     Calendar.current.isDateInToday(date) || date < Date.now
   }
 
-  /// Priority mark (colored) prepended inline to the markdown-rendered title.
-  private var displayTitle: AttributedString {
-    guard !priorityMark.isEmpty else { return markdownTitle }
-    var prefix = AttributedString(priorityMark + " ")
-    prefix.swiftUI.foregroundColor = priorityColor
-    return prefix + markdownTitle
-  }
-
   private var markdownTitle: AttributedString {
     guard task.format == .markdown else { return AttributedString(task.title) }
     let options = AttributedString.MarkdownParsingOptions(
@@ -83,15 +82,6 @@ struct TaskCardView: View {
     )
     return (try? AttributedString(markdown: task.title, options: options))
       ?? AttributedString(task.title)
-  }
-
-  private var priorityMark: String {
-    switch task.priority {
-    case .highest: return "!!!"
-    case .high: return "!!"
-    case .medium: return "!"
-    case .low, .lowest, .none: return ""
-    }
   }
 
   private var priorityColor: Color {
