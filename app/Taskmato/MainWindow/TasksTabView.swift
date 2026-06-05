@@ -76,22 +76,22 @@ struct TasksTabView: View {
       detailContent
     }
     .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
-    .task(id: query) { await loadTasks() }
+    .task(id: query) { await refresh() }
     .task { await subscribeToProviderUpdates() }
-    .onAppear { Task { await loadTasks() } }
+    .onAppear { Task { await refresh() } }
     .onChange(of: isAddingTask) { _, adding in
-      if !adding { Task { await loadTasks() } }
+      if !adding { Task { await refresh() } }
     }
-    .onChange(of: registry.enabledIDs) { _, _ in Task { await loadTasks() } }
+    .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
     .onChange(of: registry.selection) { _, _ in
       query = ""
-      Task { await loadTasks() }
+      Task { await refresh() }
     }
-    .onChange(of: registry.providerLists) { _, _ in Task { await loadTasks() } }
-    .onChange(of: settings.taskSortField) { _, _ in Task { await loadTasks() } }
-    .onChange(of: settings.taskSortDirection) { _, _ in Task { await loadTasks() } }
+    .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
+    .onChange(of: settings.taskSortField) { _, _ in Task { await refresh() } }
+    .onChange(of: settings.taskSortDirection) { _, _ in Task { await refresh() } }
     .onChange(of: registry.providerAuthorizationStates) { _, _ in
-      Task { await loadTasks() }
+      Task { await refresh() }
     }
     .sheet(isPresented: $isAddingTask) {
       if let provider = writableProvider {
@@ -389,7 +389,7 @@ extension TasksTabView {
         guard let stream = provider.observe() else { continue }
         group.addTask {
           for await _ in stream {
-            await loadTasks()
+            await refresh()
           }
         }
       }
@@ -413,6 +413,10 @@ extension TasksTabView {
       sortBy: settings.taskSortField, direction: settings.taskSortDirection)
     sections = buildDisplaySections(from: tasks, query: currentQuery)
     isLoading = false
+  }
+
+  private func refresh() async {
+    await loadTasks()
     if showCompleted { await loadCompleted() }
   }
 
@@ -505,34 +509,28 @@ extension TasksTabView {
     registry.closableProvider(for: task.id) != nil ? { self.handleComplete(task) } : nil
   }
 
-  /// Completes the task via its closable provider, then refreshes the list.
   private func handleComplete(_ task: TaskItem) {
-    let ref = task.id
     Task {
-      if let provider = registry.closableProvider(for: ref) {
-        try? await provider.complete(ref)
+      if let provider = registry.closableProvider(for: task.id) {
+        try? await provider.complete(task.id)
       }
-      await loadTasks()
+      await refresh()
     }
   }
 
-  /// Reopens a completed task via its closable provider, then refreshes both lists.
   private func handleRestore(_ task: TaskItem) {
-    let ref = task.id
     Task {
-      if let provider = registry.closableProvider(for: ref) {
-        try? await provider.reopen(ref)
+      if let provider = registry.closableProvider(for: task.id) {
+        try? await provider.reopen(task.id)
       }
-      await loadTasks()
+      await refresh()
     }
   }
 
-  /// Permanently deletes a completed task via its writable provider, then refreshes completed.
   private func handleDelete(_ task: TaskItem) {
-    let ref = task.id
     Task {
-      if let provider = registry.provider(for: ref) as? (any WritableTaskProvider) {
-        try? await provider.deleteTask(ref)
+      if let provider = registry.provider(for: task.id) as? (any WritableTaskProvider) {
+        try? await provider.deleteTask(task.id)
       }
       await loadCompleted()
     }
