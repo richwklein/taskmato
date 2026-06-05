@@ -70,19 +70,7 @@ struct TasksTabView: View {
       ProviderSidebarView(registry: registry)
         .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
     } detail: {
-      VStack(spacing: 0) {
-        if let info = navigationContext {
-          HStack(spacing: 6) {
-            Image(systemName: info.icon).foregroundStyle(Color.accentColor)
-            Text(info.label).foregroundStyle(.secondary)
-            Spacer()
-          }
-          .padding(.horizontal, 16)
-          .padding(.vertical, 8)
-        }
-        detailContent
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-      }
+      detailColumn
     }
     .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
     .task(id: query) { await refresh() }
@@ -150,6 +138,23 @@ struct TasksTabView: View {
   }
 
   // MARK: - Detail content
+
+  @ViewBuilder
+  private var detailColumn: some View {
+    VStack(spacing: 0) {
+      if let info = navigationContext {
+        HStack(spacing: 6) {
+          Image(systemName: info.icon).foregroundStyle(Color.accentColor)
+          Text(info.label).foregroundStyle(.secondary)
+          Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+      }
+      detailContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+  }
 
   @ViewBuilder
   private var detailContent: some View {
