@@ -229,6 +229,67 @@ final class TaskRegistry {
     }
   }
 
+  /// Returns completed tasks described by the given query, sorted by the specified field and direction.
+  ///
+  /// Fans out `completedTasks()` across all enabled ``ClosableTaskProvider``s, applies the same
+  /// filter logic as ``tasks(query:sortBy:direction:)``, and sorts the flat result globally.
+  ///
+  /// - Parameters:
+  ///   - query: Describes the scope and optional filter for the fetch.
+  ///   - sortBy: The field to sort by.
+  ///   - direction: The sort direction.
+  /// - Returns: Matched completed tasks and any per-provider errors that occurred.
+  func completedTasks(
+    query: TaskQuery,
+    sortBy field: TaskSortField,
+    direction: TaskSortDirection
+  ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
+    var all: [TaskItem] = []
+    var providerErrors: [ProviderFetchError] = []
+
+    await withTaskGroup(of: (items: [TaskItem], fetchError: ProviderFetchError?).self) { group in
+      for provider in providers where isEnabled(provider.id) {
+        guard let closable = provider as? (any ClosableTaskProvider) else { continue }
+        let providerID = provider.id
+        group.addTask {
+          do {
+            let items = try await closable.completedTasks()
+            return (items: items, fetchError: nil)
+          } catch {
+            return (items: [], fetchError: (providerID: providerID, error: error))
+          }
+        }
+      }
+      for await result in group {
+        all.append(contentsOf: result.items)
+        if let fetchError = result.fetchError {
+          providerErrors.append(fetchError)
+        }
+      }
+    }
+
+    let filtered: [TaskItem]
+    switch query {
+    case .singleList(let selectedList):
+      filtered = all.filter { $0.list?.id == selectedList.listID }
+    case .crossProvider(let filter):
+      switch filter {
+      case nil:
+        filtered = all
+      case .dueUpToToday:
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        filtered = all.filter { ($0.completedAt ?? .distantPast) >= startOfToday }
+      case .titleContains(let titleQuery):
+        filtered = all.filter { $0.title.localizedCaseInsensitiveContains(titleQuery) }
+      }
+    }
+
+    return (
+      tasks: sortedByField(filtered, field: field, direction: direction, preserveSections: false),
+      errors: providerErrors
+    )
+  }
+
   // MARK: - Provider lookup
 
   /// Returns the registered provider that owns the given task reference, or `nil` if not found.
