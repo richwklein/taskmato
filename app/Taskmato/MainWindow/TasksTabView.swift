@@ -23,8 +23,7 @@ struct TasksTabView: View {
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
   @State private var showCompleted = false
-  @State private var completedByListID: [String: [TaskItem]] = [:]
-  @State private var completedOrphans: [TaskItem] = []
+  @State private var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
 
   /// Returns the writable provider for the current sidebar selection, or the first
@@ -43,12 +42,10 @@ struct TasksTabView: View {
     registry.providers.contains { registry.isEnabled($0.id) && $0 is (any ClosableTaskProvider) }
   }
 
-  private var totalCompletedCount: Int {
-    completedByListID.values.reduce(0) { $0 + $1.count } + completedOrphans.count
-  }
+  private var totalCompletedCount: Int { completedTasks.count }
 
-  /// Context affordance shown at the top of the task list and grid.
-  private var affordanceInfo: (icon: String, label: String)? {
+  /// The icon and label describing the user's current navigational position (list, Today, or search).
+  private var navigationContext: (icon: String, label: String)? {
     if !query.isEmpty {
       let count = sections.reduce(0) { $0 + $1.tasks.count }
       let label = isLoading ? "Searching…" : "\(count) \(count == 1 ? "result" : "results")"
@@ -73,7 +70,19 @@ struct TasksTabView: View {
       ProviderSidebarView(registry: registry)
         .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
     } detail: {
-      detailContent
+      VStack(spacing: 0) {
+        if let info = navigationContext {
+          HStack(spacing: 6) {
+            Image(systemName: info.icon).foregroundStyle(Color.accentColor)
+            Text(info.label).foregroundStyle(.secondary)
+            Spacer()
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 8)
+        }
+        detailContent
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      }
     }
     .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
     .task(id: query) { await refresh() }
@@ -159,7 +168,7 @@ struct TasksTabView: View {
     } else if isLoading {
       ProgressView()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    } else if sections.isEmpty {
+    } else if sections.isEmpty && (!showCompleted || completedTasks.isEmpty) {
       if !query.isEmpty {
         ContentUnavailableView(
           "No Results",
@@ -190,44 +199,15 @@ struct TasksTabView: View {
 
   private var taskList: some View {
     List {
-      if let info = affordanceInfo {
-        SwiftUI.Section {
-          HStack(spacing: 6) {
-            Image(systemName: info.icon).foregroundStyle(Color.accentColor)
-            Text(info.label).foregroundStyle(.secondary)
-            Spacer()
-          }
-          .padding(.vertical, 2)
-        }
-      }
-
-      if showCompleted {
-        SwiftUI.Section {
-          HStack {
-            Image(systemName: "checkmark.circle.fill")
-              .foregroundStyle(Color.accentColor)
-            Text("\(totalCompletedCount) Completed")
-              .foregroundStyle(.secondary)
-            Spacer()
-            Button("Hide") { showCompleted = false }
-              .buttonStyle(.plain)
-              .foregroundStyle(Color.accentColor)
-          }
-          .padding(.vertical, 2)
-        }
-      }
-
       SwiftUI.ForEach(sections) { section in
         listSection(for: section)
       }
 
-      if showCompleted && !completedOrphans.isEmpty {
+      if showCompleted && !completedTasks.isEmpty {
         SwiftUI.Section {
-          SwiftUI.ForEach(completedOrphans) { task in completedRow(task) }
+          SwiftUI.ForEach(completedTasks) { task in completedRow(task) }
         } header: {
-          Text(sections.first?.displayStyle == .flat ? "Completed" : "Other Completed")
-            .font(.subheadline)
-            .fontWeight(.semibold)
+          completedSectionHeader
         }
       }
     }
@@ -235,8 +215,6 @@ struct TasksTabView: View {
 
   @ViewBuilder
   private func listSection(for section: TaskSection) -> some View {
-    let isLastForList = sections.last(where: { $0.listID == section.listID })?.id == section.id
-    let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
     SwiftUI.Section {
       SwiftUI.ForEach(section.tasks) { task in
         Button {
@@ -250,9 +228,6 @@ struct TasksTabView: View {
         }
         .buttonStyle(.plain)
         .contextMenu { taskContextMenu(for: task) }
-      }
-      if showCompleted && !completed.isEmpty {
-        SwiftUI.ForEach(completed) { task in completedRow(task) }
       }
     } header: {
       if shouldShowHeader(section) {
@@ -304,33 +279,7 @@ struct TasksTabView: View {
     let columns = [GridItem(.adaptive(minimum: 180), spacing: 10)]
     return ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        if let info = affordanceInfo {
-          HStack(spacing: 6) {
-            Image(systemName: info.icon).foregroundStyle(Color.accentColor)
-            Text(info.label).foregroundStyle(.secondary)
-            Spacer()
-          }
-          .padding(.horizontal, 2)
-        }
-
-        if showCompleted {
-          HStack {
-            Image(systemName: "checkmark.circle.fill")
-              .foregroundStyle(Color.accentColor)
-            Text("\(totalCompletedCount) Completed")
-              .foregroundStyle(.secondary)
-            Spacer()
-            Button("Hide") { showCompleted = false }
-              .buttonStyle(.plain)
-              .foregroundStyle(Color.accentColor)
-          }
-          .padding(.horizontal, 2)
-        }
-
         ForEach(sections) { section in
-          let isLastForList =
-            sections.last(where: { $0.listID == section.listID })?.id == section.id
-          let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
           VStack(alignment: .leading, spacing: 8) {
             if shouldShowHeader(section) {
               Text(section.header)
@@ -353,27 +302,32 @@ struct TasksTabView: View {
               }
             }
 
-            if showCompleted && !completed.isEmpty {
-              LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(completed) { task in completedCard(task) }
-              }
-            }
           }
         }
 
-        if showCompleted && !completedOrphans.isEmpty {
+        if showCompleted && !completedTasks.isEmpty {
           VStack(alignment: .leading, spacing: 8) {
-            Text(sections.first?.displayStyle == .flat ? "Completed" : "Other Completed")
-              .font(.subheadline)
-              .fontWeight(.semibold)
+            completedSectionHeader
               .padding(.horizontal, 2)
             LazyVGrid(columns: columns, spacing: 10) {
-              ForEach(completedOrphans) { task in completedCard(task) }
+              ForEach(completedTasks) { task in completedCard(task) }
             }
           }
         }
       }
       .padding(10)
+    }
+  }
+
+  @ViewBuilder
+  private var completedSectionHeader: some View {
+    HStack {
+      Text("\(completedTasks.count) Completed")
+        .font(.subheadline).fontWeight(.semibold)
+      Spacer()
+      Button("Hide") { showCompleted = false }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.accentColor)
     }
   }
 
@@ -422,43 +376,13 @@ extension TasksTabView {
 
   private func loadCompleted() async {
     isLoadingCompleted = true
-    var byList: [String: [TaskItem]] = [:]
-    var orphans: [TaskItem] = []
-    let activeListIDs = Set(sections.map(\.listID))
-    for provider in registry.providers where registry.isEnabled(provider.id) {
-      guard let closable = provider as? (any ClosableTaskProvider) else { continue }
-      var items = (try? await closable.completedTasks()) ?? []
-      if currentQuery.isCrossProvider {
-        items = filteredCompleted(items)
-      } else {
-        items = items.filter { activeListIDs.contains($0.list?.id ?? "") }
-      }
-      for item in items {
-        let key = item.list?.id ?? ""
-        if !key.isEmpty && activeListIDs.contains(key) {
-          byList[key, default: []].append(item)
-        } else {
-          orphans.append(item)
-        }
-      }
-    }
-    completedByListID = byList
-    completedOrphans = orphans.sorted {
-      ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast)
-    }
+    let (tasks, _) = await registry.completedTasks(
+      query: currentQuery,
+      sortBy: settings.taskSortField,
+      direction: settings.taskSortDirection
+    )
+    completedTasks = tasks
     isLoadingCompleted = false
-  }
-
-  /// Filters completed tasks to match the active cross-provider filter.
-  private func filteredCompleted(_ items: [TaskItem]) -> [TaskItem] {
-    guard case .crossProvider(let opt) = currentQuery, let filter = opt else { return items }
-    switch filter {
-    case .dueUpToToday:
-      let startOfToday = Calendar.current.startOfDay(for: Date())
-      return items.filter { ($0.completedAt ?? .distantPast) >= startOfToday }
-    case .titleContains(let titleQuery):
-      return items.filter { $0.title.localizedCaseInsensitiveContains(titleQuery) }
-    }
   }
 
   /// Builds a ``TaskLineage`` for flat-mode task rows and cards.
@@ -497,7 +421,7 @@ extension TasksTabView {
   private func shouldShowHeader(_ section: TaskSection) -> Bool {
     section.displayStyle == .sectioned
       && !section.header.isEmpty
-      && affordanceInfo?.label != section.header
+      && navigationContext?.label != section.header
   }
 
   private func select(_ task: TaskItem) {
