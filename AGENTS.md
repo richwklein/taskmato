@@ -128,9 +128,12 @@ Code should be presented **file-by-file** and suitable for direct application.
 - Provide build or run instructions when behavior changes
 - Call out when Xcode is required (signing, entitlements, extensions)
 
+**Before building or committing any source code change**, run `make sync-version` first to generate `app/Taskmato/Config/Version.xcconfig` — the build fails without it.
+
 **Before committing any source code change**, agents must run and pass both checks locally:
 
 ```
+make sync-version  # generates Version.xcconfig — required before every build
 make lint          # SwiftLint — must report zero violations
 make format-check  # swift-format — must report zero issues
 ```

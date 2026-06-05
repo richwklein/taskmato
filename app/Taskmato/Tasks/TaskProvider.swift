@@ -17,6 +17,12 @@ protocol TaskProvider: AnyObject, Sendable {
   /// Human-readable name shown in the Providers settings panel.
   var displayName: String { get }
 
+  /// Relative display position when listing providers in the sidebar and add-provider menu.
+  ///
+  /// Lower values appear first. Providers that do not override this property default to
+  /// `Int.max` and are then ordered alphabetically by `displayName` among themselves.
+  var displayOrder: Int { get }
+
   /// SF Symbol name used to represent this provider in the UI.
   var icon: String { get }
 
@@ -50,6 +56,7 @@ protocol TaskProvider: AnyObject, Sendable {
 
 extension TaskProvider {
   var isAuthorized: Bool { true }
+  var displayOrder: Int { Int.max }
 }
 
 /// A `TaskProvider` that supports toggling task completion state in the source system.

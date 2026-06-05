@@ -27,7 +27,7 @@ typealias ProviderFetchError = (providerID: String, error: any Error)
 @MainActor
 final class TaskRegistry {
 
-  /// All providers that have been registered, in registration order.
+  /// All providers that have been registered, ordered by `displayOrder` then `displayName`.
   private(set) var providers: [any TaskProvider] = []
 
   /// IDs of providers currently enabled by the user.
@@ -73,10 +73,19 @@ final class TaskRegistry {
   // MARK: - Registration
 
   /// Registers a provider so it appears in the registry. Does not enable it automatically.
+  ///
+  /// The `providers` array is re-sorted after insertion: ascending by `displayOrder`,
+  /// then alphabetically by `displayName` when orders are equal.
   /// - Parameter provider: The provider to register.
   func register(_ provider: any TaskProvider) {
     guard !providers.contains(where: { $0.id == provider.id }) else { return }
     providers.append(provider)
+    providers.sort { lhs, rhs in
+      guard lhs.displayOrder == rhs.displayOrder else {
+        return lhs.displayOrder < rhs.displayOrder
+      }
+      return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+    }
   }
 
   // MARK: - Enable / Disable
