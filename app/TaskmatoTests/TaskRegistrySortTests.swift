@@ -82,7 +82,7 @@ struct TaskRegistrySortTests {
     ]
     let registry = makeRegistry(items: items)
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .dueDate, direction: .ascending)
+      query: .crossProvider(), sortBy: .dueDate, direction: .ascending)
     #expect(tasks.map(\.id.nativeID) == ["near", "far", "nil"])
   }
 
@@ -96,7 +96,7 @@ struct TaskRegistrySortTests {
     ]
     let registry = makeRegistry(items: items)
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .dueDate, direction: .descending)
+      query: .crossProvider(), sortBy: .dueDate, direction: .descending)
     #expect(tasks.map(\.id.nativeID) == ["far", "near", "nil"])
   }
 
@@ -113,7 +113,7 @@ struct TaskRegistrySortTests {
     ]
     let registry = makeRegistry(items: items)
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .priority, direction: .descending)
+      query: .crossProvider(), sortBy: .priority, direction: .descending)
     // high priority first, tie-broken by dueDate asc (nil last); then lower priorities
     #expect(tasks.map(\.id.nativeID) == ["high-near", "high-far", "low-nil", "none-near"])
   }
@@ -126,7 +126,7 @@ struct TaskRegistrySortTests {
     ]
     let registry = makeRegistry(items: items)
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .priority, direction: .ascending)
+      query: .crossProvider(), sortBy: .priority, direction: .ascending)
     #expect(tasks.map(\.id.nativeID) == ["none", "low", "high"])
   }
 
@@ -140,7 +140,7 @@ struct TaskRegistrySortTests {
     ]
     let registry = makeRegistry(items: items)
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .title, direction: .ascending)
+      query: .crossProvider(), sortBy: .title, direction: .ascending)
     // localizedStandardCompare treats "Item 2" < "Item 10" (numeric ordering)
     #expect(tasks.map(\.id.nativeID) == ["1", "2", "10"])
   }
@@ -157,7 +157,7 @@ struct TaskRegistrySortTests {
     ]
     let registry = makeRegistry(items: items)
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .creationDate, direction: .ascending)
+      query: .crossProvider(), sortBy: .creationDate, direction: .ascending)
     #expect(tasks.map(\.id.nativeID) == ["earlier", "later", "nil"])
   }
 
@@ -172,7 +172,7 @@ struct TaskRegistrySortTests {
     ]
     let registry = makeRegistry(items: items)
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .dueDate, direction: .ascending)
+      query: .crossProvider(), sortBy: .dueDate, direction: .ascending)
     // All share the same dueDate and title; TaskRef (providerID/nativeID) is the final tiebreaker.
     // All have providerID "p", so nativeID order: "a" < "m" < "z".
     #expect(tasks.map(\.id.nativeID) == ["a", "m", "z"])
@@ -180,7 +180,7 @@ struct TaskRegistrySortTests {
 
   // MARK: - Section order
 
-  @Test func sortAppliesWithinSectionsNotAcrossThem() async {
+  @Test func singleListPreservesSectionOrder() async {
     let list = TaskList(id: "list1", providerID: "p", name: "List 1")
     let items = [
       makeSortItem(nativeID: "alpha-c", title: "C", list: list, section: "Alpha"),
@@ -189,10 +189,70 @@ struct TaskRegistrySortTests {
       makeSortItem(nativeID: "beta-b", title: "B", list: list, section: "Beta"),
     ]
     let registry = makeRegistry(items: items)
+    registry.setLists([list], forProviderID: "p")
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: nil, sortBy: .title, direction: .ascending)
+      query: .singleList(SelectedList(providerID: "p", listID: "list1")),
+      sortBy: .title, direction: .ascending)
     // Sections maintain provider encounter order (Alpha before Beta).
     // Tasks within each section are sorted by title ascending.
     #expect(tasks.map(\.id.nativeID) == ["alpha-a", "alpha-c", "beta-b", "beta-d"])
+  }
+
+  // MARK: - Flat sort (cross-provider)
+
+  @Test func crossProviderQuerySortsAcrossSectionBoundaries() async {
+    let list = TaskList(id: "l1", providerID: "p", name: "L1")
+    let earlier = Date(timeIntervalSinceNow: -7200)
+    let later = Date(timeIntervalSinceNow: -3600)
+    let items = [
+      makeSortItem(
+        nativeID: "alpha-later", title: "A", dueDate: later, list: list, section: "Alpha"),
+      makeSortItem(
+        nativeID: "beta-earlier", title: "B", dueDate: earlier, list: list, section: "Beta"),
+    ]
+    let registry = makeRegistry(items: items)
+    let (tasks, _) = await registry.tasks(
+      query: .crossProvider(filter: .dueUpToToday),
+      sortBy: .dueDate, direction: .ascending)
+    // Flat sort ignores section encounter order — beta-earlier has an earlier date.
+    #expect(tasks.map(\.id.nativeID) == ["beta-earlier", "alpha-later"])
+  }
+
+  @Test func crossProviderTitleFilterSortsAcrossSectionBoundaries() async {
+    let list = TaskList(id: "l1", providerID: "p", name: "L1")
+    let earlier = Date(timeIntervalSinceNow: -7200)
+    let later = Date(timeIntervalSinceNow: -3600)
+    let items = [
+      makeSortItem(
+        nativeID: "alpha-later", title: "deploy Alpha", dueDate: later, list: list, section: "Alpha"
+      ),
+      makeSortItem(
+        nativeID: "beta-earlier", title: "deploy Beta", dueDate: earlier, list: list,
+        section: "Beta"),
+    ]
+    let registry = makeRegistry(items: items)
+    let (tasks, _) = await registry.tasks(
+      query: .crossProvider(filter: .titleContains("deploy")),
+      sortBy: .dueDate, direction: .ascending)
+    #expect(tasks.map(\.id.nativeID) == ["beta-earlier", "alpha-later"])
+  }
+
+  @Test func singleListQueryPreservesSectionOrder() async {
+    let list = TaskList(id: "l1", providerID: "p", name: "L1")
+    let earlier = Date(timeIntervalSinceNow: -7200)
+    let later = Date(timeIntervalSinceNow: -3600)
+    let items = [
+      makeSortItem(
+        nativeID: "alpha-later", title: "A", dueDate: later, list: list, section: "Alpha"),
+      makeSortItem(
+        nativeID: "beta-earlier", title: "B", dueDate: earlier, list: list, section: "Beta"),
+    ]
+    let registry = makeRegistry(items: items)
+    registry.setLists([list], forProviderID: "p")
+    let (tasks, _) = await registry.tasks(
+      query: .singleList(SelectedList(providerID: "p", listID: "l1")),
+      sortBy: .dueDate, direction: .ascending)
+    // Alpha section encountered first → alpha-later stays before beta-earlier.
+    #expect(tasks.map(\.id.nativeID) == ["alpha-later", "beta-earlier"])
   }
 }

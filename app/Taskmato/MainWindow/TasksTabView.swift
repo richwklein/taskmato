@@ -19,12 +19,11 @@ struct TasksTabView: View {
   @Bindable var settings: AppSettings
 
   @State private var query: String = ""
-  @State private var groupedLists: [TaskGroup] = []
+  @State private var sections: [TaskSection] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
   @State private var showCompleted = false
-  @State private var completedByListID: [String: [TaskItem]] = [:]
-  @State private var completedOrphans: [TaskItem] = []
+  @State private var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
 
   /// Returns the writable provider for the current sidebar selection, or the first
@@ -43,25 +42,22 @@ struct TasksTabView: View {
     registry.providers.contains { registry.isEnabled($0.id) && $0 is (any ClosableTaskProvider) }
   }
 
-  private var totalCompletedCount: Int {
-    completedByListID.values.reduce(0) { $0 + $1.count } + completedOrphans.count
-  }
+  private var totalCompletedCount: Int { completedTasks.count }
 
-  private var flatSections: [FlatSection] {
-    Taskmato.flatSections(from: groupedLists)
-  }
-
-  /// Context affordance shown at the top of the task list and grid.
-  private var affordanceInfo: (icon: String, label: String)? {
+  /// The icon and label describing the user's current navigational position (list, Today, or search).
+  private var navigationContext: (icon: String, label: String)? {
     if !query.isEmpty {
-      let count = flatSections.reduce(0) { $0 + $1.tasks.count }
+      let count = sections.reduce(0) { $0 + $1.tasks.count }
       let label = isLoading ? "Searching…" : "\(count) \(count == 1 ? "result" : "results")"
       return ("magnifyingglass", label)
     }
     if registry.selection == .today { return ("calendar", "Today") }
-    guard case .list(let sel) = registry.selection, let grp = groupedLists.first else { return nil }
+    guard case .list(let sel) = registry.selection,
+      let listName = registry.providerLists[sel.providerID]?
+        .first(where: { $0.id == sel.listID })?.name
+    else { return nil }
     let icon = registry.providers.first(where: { $0.id == sel.providerID })?.icon ?? "list.bullet"
-    return (icon, grp.listName)
+    return (icon, listName)
   }
 
   var body: some View {
@@ -74,25 +70,25 @@ struct TasksTabView: View {
       ProviderSidebarView(registry: registry)
         .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
     } detail: {
-      detailContent
+      detailColumn
     }
     .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
-    .task(id: query) { await loadTasks() }
+    .task(id: query) { await refresh() }
     .task { await subscribeToProviderUpdates() }
-    .onAppear { Task { await loadTasks() } }
+    .onAppear { Task { await refresh() } }
     .onChange(of: isAddingTask) { _, adding in
-      if !adding { Task { await loadTasks() } }
+      if !adding { Task { await refresh() } }
     }
-    .onChange(of: registry.enabledIDs) { _, _ in Task { await loadTasks() } }
+    .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
     .onChange(of: registry.selection) { _, _ in
       query = ""
-      Task { await loadTasks() }
+      Task { await refresh() }
     }
-    .onChange(of: registry.providerLists) { _, _ in Task { await loadTasks() } }
-    .onChange(of: settings.taskSortField) { _, _ in Task { await loadTasks() } }
-    .onChange(of: settings.taskSortDirection) { _, _ in Task { await loadTasks() } }
+    .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
+    .onChange(of: settings.taskSortField) { _, _ in Task { await refresh() } }
+    .onChange(of: settings.taskSortDirection) { _, _ in Task { await refresh() } }
     .onChange(of: registry.providerAuthorizationStates) { _, _ in
-      Task { await loadTasks() }
+      Task { await refresh() }
     }
     .sheet(isPresented: $isAddingTask) {
       if let provider = writableProvider {
@@ -144,6 +140,23 @@ struct TasksTabView: View {
   // MARK: - Detail content
 
   @ViewBuilder
+  private var detailColumn: some View {
+    VStack(spacing: 0) {
+      if let info = navigationContext {
+        HStack(spacing: 6) {
+          Image(systemName: info.icon).foregroundStyle(Color.accentColor)
+          Text(info.label).foregroundStyle(.secondary)
+          Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+      }
+      detailContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+  }
+
+  @ViewBuilder
   private var detailContent: some View {
     if registry.providers.filter({ registry.isEnabled($0.id) }).isEmpty {
       ContentUnavailableView(
@@ -160,7 +173,7 @@ struct TasksTabView: View {
     } else if isLoading {
       ProgressView()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    } else if groupedLists.isEmpty {
+    } else if sections.isEmpty && (!showCompleted || completedTasks.isEmpty) {
       if !query.isEmpty {
         ContentUnavailableView(
           "No Results",
@@ -191,93 +204,41 @@ struct TasksTabView: View {
 
   private var taskList: some View {
     List {
-      if let info = affordanceInfo {
-        SwiftUI.Section {
-          HStack(spacing: 6) {
-            Image(systemName: info.icon).foregroundStyle(Color.accentColor)
-            Text(info.label).foregroundStyle(.secondary)
-            Spacer()
-          }
-          .padding(.vertical, 2)
-        }
-      }
-
-      if showCompleted {
-        SwiftUI.Section {
-          HStack {
-            Image(systemName: "checkmark.circle.fill")
-              .foregroundStyle(Color.accentColor)
-            Text("\(totalCompletedCount) Completed")
-              .foregroundStyle(.secondary)
-            Spacer()
-            Button("Hide") { showCompleted = false }
-              .buttonStyle(.plain)
-              .foregroundStyle(Color.accentColor)
-          }
-          .padding(.vertical, 2)
-        }
-      }
-
-      SwiftUI.ForEach(flatSections) { section in
+      SwiftUI.ForEach(sections) { section in
         listSection(for: section)
       }
 
-      if showCompleted && !completedOrphans.isEmpty {
+      if showCompleted && !completedTasks.isEmpty {
         SwiftUI.Section {
-          SwiftUI.ForEach(completedOrphans) { task in completedRow(task) }
+          SwiftUI.ForEach(completedTasks) { task in completedRow(task) }
         } header: {
-          Text("Other Completed")
-            .font(.subheadline)
-            .fontWeight(.semibold)
+          completedSectionHeader
         }
       }
     }
   }
 
   @ViewBuilder
-  private func listSection(for section: FlatSection) -> some View {
-    let isLastForList = flatSections.last(where: { $0.listID == section.listID })?.id == section.id
-    let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
+  private func listSection(for section: TaskSection) -> some View {
     SwiftUI.Section {
       SwiftUI.ForEach(section.tasks) { task in
         Button {
           select(task)
         } label: {
-          TaskRowView(task: task, onComplete: onCompleteHandler(for: task))
+          TaskRowView(
+            task: task,
+            kind: .active(onComplete: onCompleteHandler(for: task)),
+            lineage: lineage(for: task)
+          )
         }
         .buttonStyle(.plain)
         .contextMenu { taskContextMenu(for: task) }
       }
-      if showCompleted && !completed.isEmpty {
-        SwiftUI.ForEach(completed) { task in completedRow(task) }
-      }
     } header: {
-      if affordanceInfo?.label != section.header {
+      if shouldShowHeader(section) {
         Text(section.header).font(.subheadline).fontWeight(.semibold)
       }
     }
-  }
-
-  /// A ``CompletedTaskRowView`` wired to this view's restore and delete handlers.
-  private func completedRow(_ task: TaskItem) -> some View {
-    CompletedTaskRowView(
-      task: task,
-      onRestore: { handleRestore(task) },
-      onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
-        ? { handleDelete(task) } : nil
-    )
-    .contextMenu { completedTaskContextMenu(for: task) }
-  }
-
-  /// A ``CompletedTaskCardView`` wired to this view's restore and delete handlers.
-  private func completedCard(_ task: TaskItem) -> some View {
-    CompletedTaskCardView(
-      task: task,
-      onRestore: { handleRestore(task) },
-      onDelete: registry.provider(for: task.id) is (any WritableTaskProvider)
-        ? { handleDelete(task) } : nil
-    )
-    .contextMenu { completedTaskContextMenu(for: task) }
   }
 
   /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.
@@ -323,36 +284,11 @@ struct TasksTabView: View {
     let columns = [GridItem(.adaptive(minimum: 180), spacing: 10)]
     return ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        if let info = affordanceInfo {
-          HStack(spacing: 6) {
-            Image(systemName: info.icon).foregroundStyle(Color.accentColor)
-            Text(info.label).foregroundStyle(.secondary)
-            Spacer()
-          }
-          .padding(.horizontal, 2)
-        }
-
-        if showCompleted {
-          HStack {
-            Image(systemName: "checkmark.circle.fill")
-              .foregroundStyle(Color.accentColor)
-            Text("\(totalCompletedCount) Completed")
-              .foregroundStyle(.secondary)
-            Spacer()
-            Button("Hide") { showCompleted = false }
-              .buttonStyle(.plain)
-              .foregroundStyle(Color.accentColor)
-          }
-          .padding(.horizontal, 2)
-        }
-
-        ForEach(flatSections) { section in
-          let isLastForList =
-            flatSections.last(where: { $0.listID == section.listID })?.id == section.id
-          let completed = isLastForList ? (completedByListID[section.listID] ?? []) : []
+        ForEach(sections) { section in
           VStack(alignment: .leading, spacing: 8) {
-            if affordanceInfo?.label != section.header {
-              Text(section.header).font(.subheadline).fontWeight(.semibold).padding(.horizontal, 2)
+            if shouldShowHeader(section) {
+              Text(section.header)
+                .font(.subheadline).fontWeight(.semibold).padding(.horizontal, 2)
             }
 
             LazyVGrid(columns: columns, spacing: 10) {
@@ -360,34 +296,43 @@ struct TasksTabView: View {
                 Button {
                   select(task)
                 } label: {
-                  TaskCardView(task: task, onComplete: onCompleteHandler(for: task))
+                  TaskCardView(
+                    task: task,
+                    kind: .active(onComplete: onCompleteHandler(for: task)),
+                    lineage: lineage(for: task)
+                  )
                 }
                 .buttonStyle(.plain)
                 .contextMenu { taskContextMenu(for: task) }
               }
             }
 
-            if showCompleted && !completed.isEmpty {
-              LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(completed) { task in completedCard(task) }
-              }
-            }
           }
         }
 
-        if showCompleted && !completedOrphans.isEmpty {
+        if showCompleted && !completedTasks.isEmpty {
           VStack(alignment: .leading, spacing: 8) {
-            Text("Other Completed")
-              .font(.subheadline)
-              .fontWeight(.semibold)
+            completedSectionHeader
               .padding(.horizontal, 2)
             LazyVGrid(columns: columns, spacing: 10) {
-              ForEach(completedOrphans) { task in completedCard(task) }
+              ForEach(completedTasks) { task in completedCard(task) }
             }
           }
         }
       }
       .padding(10)
+    }
+  }
+
+  @ViewBuilder
+  private var completedSectionHeader: some View {
+    HStack {
+      Text("\(completedTasks.count) Completed")
+        .font(.subheadline).fontWeight(.semibold)
+      Spacer()
+      Button("Hide") { showCompleted = false }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.accentColor)
     }
   }
 
@@ -403,44 +348,85 @@ extension TasksTabView {
         guard let stream = provider.observe() else { continue }
         group.addTask {
           for await _ in stream {
-            await loadTasks()
+            await refresh()
           }
         }
       }
     }
   }
 
+  private var currentQuery: TaskQuery {
+    if !query.isEmpty { return .crossProvider(filter: .titleContains(query)) }
+    if case .list(let sel) = registry.selection { return .singleList(sel) }
+    return .crossProvider(filter: .dueUpToToday)
+  }
+
   private func loadTasks() async {
-    isLoading = groupedLists.isEmpty
+    guard !query.isEmpty || registry.selection != nil else {
+      sections = []
+      return
+    }
+    isLoading = sections.isEmpty
     let (tasks, _) = await registry.tasks(
-      matching: query, selection: registry.selection,
+      query: currentQuery,
       sortBy: settings.taskSortField, direction: settings.taskSortDirection)
-    groupedLists = buildGroups(from: tasks)
+    sections = buildDisplaySections(from: tasks, query: currentQuery)
     isLoading = false
+  }
+
+  private func refresh() async {
+    await loadTasks()
+    if showCompleted { await loadCompleted() }
   }
 
   private func loadCompleted() async {
     isLoadingCompleted = true
-    var byList: [String: [TaskItem]] = [:]
-    var orphans: [TaskItem] = []
-    let activeListIDs = Set(flatSections.map(\.listID))
-    for provider in registry.providers where registry.isEnabled(provider.id) {
-      guard let closable = provider as? (any ClosableTaskProvider) else { continue }
-      let items = (try? await closable.completedTasks()) ?? []
-      for item in items {
-        let key = item.list?.id ?? ""
-        if !key.isEmpty && activeListIDs.contains(key) {
-          byList[key, default: []].append(item)
-        } else {
-          orphans.append(item)
-        }
-      }
-    }
-    completedByListID = byList
-    completedOrphans = orphans.sorted {
-      ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast)
-    }
+    let (tasks, _) = await registry.completedTasks(
+      query: currentQuery,
+      sortBy: settings.taskSortField,
+      direction: settings.taskSortDirection
+    )
+    completedTasks = tasks
     isLoadingCompleted = false
+  }
+
+  /// Builds a ``TaskLineage`` for flat-mode task rows and cards.
+  private func lineage(for task: TaskItem) -> TaskLineage? {
+    guard currentQuery.isCrossProvider else { return nil }
+    let showIcon = registry.enabledIDs.count > 1
+    let provider = registry.providers.first { $0.id == task.id.providerID }
+    let lin = TaskLineage(
+      providerIcon: showIcon ? provider?.icon : nil,
+      listName: task.list?.name,
+      sectionName: task.section
+    )
+    return lin.isEmpty ? nil : lin
+  }
+
+  private func completedKind(for task: TaskItem) -> TaskItemKind {
+    let canDelete = registry.provider(for: task.id) is (any WritableTaskProvider)
+    return .completed(
+      onRestore: { handleRestore(task) },
+      onDelete: canDelete ? { handleDelete(task) } : nil
+    )
+  }
+
+  /// A ``TaskRowView`` wired to this view's restore and delete handlers.
+  private func completedRow(_ task: TaskItem) -> some View {
+    TaskRowView(task: task, kind: completedKind(for: task), lineage: lineage(for: task))
+      .contextMenu { completedTaskContextMenu(for: task) }
+  }
+
+  /// A ``TaskCardView`` wired to this view's restore and delete handlers.
+  private func completedCard(_ task: TaskItem) -> some View {
+    TaskCardView(task: task, kind: completedKind(for: task), lineage: lineage(for: task))
+      .contextMenu { completedTaskContextMenu(for: task) }
+  }
+
+  private func shouldShowHeader(_ section: TaskSection) -> Bool {
+    section.displayStyle == .sectioned
+      && !section.header.isEmpty
+      && navigationContext?.label != section.header
   }
 
   private func select(_ task: TaskItem) {
@@ -452,82 +438,33 @@ extension TasksTabView {
     registry.closableProvider(for: task.id) != nil ? { self.handleComplete(task) } : nil
   }
 
-  /// Completes the task via its closable provider, then refreshes the list.
   private func handleComplete(_ task: TaskItem) {
-    let ref = task.id
     Task {
-      if let provider = registry.closableProvider(for: ref) {
-        try? await provider.complete(ref)
+      if let provider = registry.closableProvider(for: task.id) {
+        try? await provider.complete(task.id)
       }
-      await loadTasks()
-      if showCompleted { await loadCompleted() }
+      await refresh()
     }
   }
 
-  /// Reopens a completed task via its closable provider, then refreshes both lists.
   private func handleRestore(_ task: TaskItem) {
-    let ref = task.id
     Task {
-      if let provider = registry.closableProvider(for: ref) {
-        try? await provider.reopen(ref)
+      if let provider = registry.closableProvider(for: task.id) {
+        try? await provider.reopen(task.id)
       }
-      await loadTasks()
-      await loadCompleted()
+      await refresh()
     }
   }
 
-  /// Permanently deletes a completed task via its writable provider, then refreshes completed.
   private func handleDelete(_ task: TaskItem) {
-    let ref = task.id
     Task {
-      if let provider = registry.provider(for: ref) as? (any WritableTaskProvider) {
-        try? await provider.deleteTask(ref)
+      if let provider = registry.provider(for: task.id) as? (any WritableTaskProvider) {
+        try? await provider.deleteTask(task.id)
       }
       await loadCompleted()
     }
   }
 
-}
-
-// MARK: - Grouping
-
-extension TasksTabView {
-
-  private func buildGroups(from tasks: [TaskItem]) -> [TaskGroup] {
-    var ordered: [String] = []
-    var byKey: [String: [TaskItem]] = [:]
-
-    for task in tasks {
-      let key = task.list?.id ?? ""
-      if byKey[key] == nil { ordered.append(key) }
-      byKey[key, default: []].append(task)
-    }
-
-    return ordered.compactMap { key -> TaskGroup? in
-      guard let tasks = byKey[key], let list = tasks.first?.list else { return nil }
-      let sections = buildSections(from: tasks)
-      return TaskGroup(id: key, listName: list.name, sections: sections)
-    }
-  }
-
-  private func buildSections(from tasks: [TaskItem]) -> [TaskSection] {
-    var ordered: [String?] = []
-    var bySection: [String?: [TaskItem]] = [:]
-
-    for task in tasks {
-      let key = task.section
-      if bySection[key] == nil { ordered.append(key) }
-      bySection[key, default: []].append(task)
-    }
-
-    return ordered.map { key in
-      TaskSection(
-        id: key ?? "_unsectioned_",
-        name: key,
-        tasks: bySection[key] ?? []
-      )
-    }
-  }
 }
 
 #Preview {

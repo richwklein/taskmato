@@ -177,64 +177,34 @@ final class TaskRegistry {
 
   // MARK: - Queries
 
-  /// Returns tasks according to the active selection, applying an optional title filter.
+  /// Returns tasks described by the given query, sorted by the specified field and direction.
   ///
-  /// - When `query` is non-empty: fans out across all enabled providers and all their lists,
-  ///   applying a case-insensitive title filter. `selection` is ignored.
-  /// - When `selection == .today`: fans out globally and filters to tasks whose `dueDate`
-  ///   falls on or before the end of today (overdue + due today).
-  /// - When `selection == .list(...)`: returns tasks from the single named list, using the
-  ///   `providerLists` cache to resolve the `TaskList`. Returns empty if the cache is not
-  ///   yet populated for the selected list.
-  /// - When `selection == nil`: fans out across all enabled providers (same as legacy behavior).
-  ///
-  /// Results are sorted by priority (descending) then due date (ascending, nil last).
-  /// Sort field and direction will be fully respected once commit 4 lands.
+  /// - `.singleList`: returns tasks from the named list, preserving provider section order.
+  ///   Uses the `providerLists` cache to resolve the `TaskList`; falls back to a live fetch
+  ///   if the cache is not yet populated.
+  /// - `.crossProvider`: fans out across all enabled providers, applies the optional filter,
+  ///   and sorts results globally (section boundaries are not preserved).
   ///
   /// - Parameters:
-  ///   - query: Case-insensitive substring to match against task titles. Pass `""` for all tasks.
-  ///   - selection: The sidebar selection scope; pass `nil` for unconditional global fan-out.
+  ///   - query: Describes the scope and optional filter for the fetch.
   ///   - sortBy: The field to sort by.
   ///   - direction: The sort direction.
   /// - Returns: Matched tasks and any per-provider errors that occurred.
   func tasks(
-    matching query: String,
-    selection: SidebarSelection?,
+    query: TaskQuery,
     sortBy field: TaskSortField,
     direction: TaskSortDirection
   ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
     let active = providers.filter { isEnabled($0.id) }
 
-    // Non-empty query: global fan-out + title filter (ignores selection).
-    if !query.isEmpty {
-      let (all, errors) = await globalFanOut(providers: active)
-      let filtered = all.filter { $0.title.localizedCaseInsensitiveContains(query) }
-      return (tasks: sortedByField(filtered, field: field, direction: direction), errors: errors)
-    }
-
-    switch selection {
-    case nil:
-      // No explicit selection: unconstrained global fan-out (backward-compat / URL handler).
-      let (all, errors) = await globalFanOut(providers: active)
-      return (tasks: sortedByField(all, field: field, direction: direction), errors: errors)
-
-    case .today:
-      let (all, errors) = await globalFanOut(providers: active)
-      let today = all.filter { item in
-        guard let due = item.dueDate else { return false }
-        return due <= Calendar.current.endOfToday
-      }
-      return (tasks: sortedByField(today, field: field, direction: direction), errors: errors)
-
-    case .list(let selectedList):
+    switch query {
+    case .singleList(let selectedList):
       guard
         let provider = providers.first(where: { $0.id == selectedList.providerID }),
         isEnabled(provider.id)
       else {
         return (tasks: [], errors: [])
       }
-      // Prefer the populated cache; fall back to a live fetch when the cache has not yet
-      // been populated for this provider.
       let available: [TaskList]
       if let cached = providerLists[selectedList.providerID] {
         available = cached
@@ -246,7 +216,87 @@ final class TaskRegistry {
       }
       let items = (try? await provider.tasks(in: list)) ?? []
       return (tasks: sortedByField(items, field: field, direction: direction), errors: [])
+
+    case .crossProvider(let filter):
+      let (all, errors) = await globalFanOut(providers: active)
+      let filtered: [TaskItem]
+      switch filter {
+      case nil:
+        filtered = all
+      case .dueUpToToday:
+        filtered = all.filter { item in
+          guard let due = item.dueDate else { return false }
+          return due <= Calendar.current.endOfToday
+        }
+      case .titleContains(let titleQuery):
+        filtered = all.filter { $0.title.localizedCaseInsensitiveContains(titleQuery) }
+      }
+      return (
+        tasks: sortedByField(filtered, field: field, direction: direction, preserveSections: false),
+        errors: errors
+      )
     }
+  }
+
+  /// Returns completed tasks described by the given query, sorted by the specified field and direction.
+  ///
+  /// Fans out `completedTasks()` across all enabled ``ClosableTaskProvider``s, applies the same
+  /// filter logic as ``tasks(query:sortBy:direction:)``, and sorts the flat result globally.
+  ///
+  /// - Parameters:
+  ///   - query: Describes the scope and optional filter for the fetch.
+  ///   - sortBy: The field to sort by.
+  ///   - direction: The sort direction.
+  /// - Returns: Matched completed tasks and any per-provider errors that occurred.
+  func completedTasks(
+    query: TaskQuery,
+    sortBy field: TaskSortField,
+    direction: TaskSortDirection
+  ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
+    var all: [TaskItem] = []
+    var providerErrors: [ProviderFetchError] = []
+
+    await withTaskGroup(of: (items: [TaskItem], fetchError: ProviderFetchError?).self) { group in
+      for provider in providers where isEnabled(provider.id) {
+        guard let closable = provider as? (any ClosableTaskProvider) else { continue }
+        let providerID = provider.id
+        group.addTask {
+          do {
+            let items = try await closable.completedTasks()
+            return (items: items, fetchError: nil)
+          } catch {
+            return (items: [], fetchError: (providerID: providerID, error: error))
+          }
+        }
+      }
+      for await result in group {
+        all.append(contentsOf: result.items)
+        if let fetchError = result.fetchError {
+          providerErrors.append(fetchError)
+        }
+      }
+    }
+
+    let filtered: [TaskItem]
+    switch query {
+    case .singleList(let selectedList):
+      filtered = all.filter { $0.list?.id == selectedList.listID }
+    case .crossProvider(let filter):
+      switch filter {
+      case nil:
+        filtered = all
+      case .dueUpToToday:
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        filtered = all.filter { ($0.completedAt ?? .distantPast) >= startOfToday }
+      case .titleContains(let titleQuery):
+        filtered = all.filter { $0.title.localizedCaseInsensitiveContains(titleQuery) }
+      }
+    }
+
+    return (
+      tasks: sortedByField(filtered, field: field, direction: direction, preserveSections: false),
+      errors: providerErrors
+    )
   }
 
   // MARK: - Provider lookup
@@ -321,8 +371,15 @@ final class TaskRegistry {
   /// group in encounter order. Groups are then flattened back to a single array, preserving
   /// the section order the providers produced.
   private func sortedByField(
-    _ items: [TaskItem], field: TaskSortField, direction: TaskSortDirection
+    _ items: [TaskItem],
+    field: TaskSortField,
+    direction: TaskSortDirection,
+    preserveSections: Bool = true
   ) -> [TaskItem] {
+    guard preserveSections else {
+      return items.sorted { compareItems($0, $1, field: field, direction: direction) }
+    }
+
     struct SectionKey: Hashable {
       let listID: String
       let section: String?

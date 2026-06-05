@@ -255,7 +255,7 @@ struct TaskRegistrySelectionTests {
     registry.enable(provider)
 
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: .today, sortBy: .priority, direction: .descending)
+      query: .crossProvider(filter: .dueUpToToday), sortBy: .priority, direction: .descending)
     let titles = tasks.map(\.title)
     #expect(titles.contains("Overdue"))
     #expect(titles.contains("Due now"))
@@ -277,9 +277,9 @@ struct TaskRegistrySelectionTests {
     registry.enable(provider)
     registry.setLists([listA, listB], forProviderID: "alpha")
 
-    let selection = SidebarSelection.list(SelectedList(providerID: "alpha", listID: "a"))
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: selection, sortBy: .priority, direction: .descending)
+      query: .singleList(SelectedList(providerID: "alpha", listID: "a")),
+      sortBy: .priority, direction: .descending)
     #expect(tasks.count == 1)
     #expect(tasks[0].title == "Task in A")
   }
@@ -293,9 +293,9 @@ struct TaskRegistrySelectionTests {
     registry.register(provider)
     registry.enable(provider)
     // Do NOT call setLists — cache is empty.
-    let selection = SidebarSelection.list(SelectedList(providerID: "alpha", listID: "x"))
     let (tasks, _) = await registry.tasks(
-      matching: "", selection: selection, sortBy: .priority, direction: .descending)
+      query: .singleList(SelectedList(providerID: "alpha", listID: "x")),
+      sortBy: .priority, direction: .descending)
     #expect(tasks.isEmpty)
   }
 
@@ -315,9 +315,9 @@ struct TaskRegistrySelectionTests {
 
     // Only list A is selected, but "Write tests" is there; "Review PR" is in B.
     // A non-empty query fans out across all lists.
-    let selection = SidebarSelection.list(SelectedList(providerID: "alpha", listID: "a"))
     let (tasks, _) = await registry.tasks(
-      matching: "Review", selection: selection, sortBy: .priority, direction: .descending)
+      query: .crossProvider(filter: .titleContains("Review")), sortBy: .priority,
+      direction: .descending)
     #expect(tasks.count == 1)
     #expect(tasks[0].title == "Review PR")
   }

@@ -7,59 +7,33 @@ import SwiftUI
 
 /// A card-style representation of a task for the grid layout in the task picker.
 ///
-/// Displays a completion circle, priority-prefixed title, due date (red when urgent),
-/// and truncated notes. Pass `onComplete` when the task's provider supports mutation.
+/// Use ``TaskItemKind`` to distinguish active and completed tasks. Pass `lineage` when the
+/// picker is in cross-provider flat mode (Today or search) to show the task's origin.
 struct TaskCardView: View {
 
   let task: TaskItem
-  /// Called when the user taps the completion circle. `nil` hides the button entirely.
-  var onComplete: (() -> Void)?
+  let kind: TaskItemKind
+  var lineage: TaskLineage?
 
-  @State private var isHovering: Bool = false
-
-  init(task: TaskItem, onComplete: (() -> Void)? = nil) {
-    self.task = task
-    self.onComplete = onComplete
-  }
+  @State private var isHovered = false
+  @State private var showDeleteConfirmation = false
 
   var body: some View {
     HStack(alignment: .top, spacing: 6) {
-      if let complete = onComplete {
-        Button(action: complete) {
-          Image(systemName: isHovering ? "checkmark.circle" : "circle")
-            .foregroundStyle(Color.accentColor)
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
-        .help(TaskLabel.Tooltip.markAsCompleted)
-      }
-
+      leadingButton
       VStack(alignment: .leading, spacing: 4) {
-        HStack(alignment: .firstTextBaseline, spacing: 3) {
-          if let icon = task.priority.icon {
-            Image(systemName: icon)
-              .foregroundStyle(priorityColor)
-              .font(.callout)
-          }
-          Text(markdownTitle)
-            .font(.callout)
-            .lineLimit(3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-
-        if let due = task.dueDate {
-          Text(due, format: .dateTime.month(.abbreviated).day().year())
-            .font(.caption2)
-            .foregroundStyle(isUrgent(due) ? Color.red : Color.secondary)
-        }
-
+        titleRow
         if let notes = task.notes {
           TaskNoteView(notes: notes, format: task.format)
             .lineLimit(2)
         }
-
+        primaryMetadata
+        if let lin = lineage, !lin.isEmpty {
+          lineageRow(lin)
+        }
         Spacer(minLength: 0)
       }
+      trailingButton
     }
     .padding(10)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -68,9 +42,114 @@ struct TaskCardView: View {
         .fill(.secondary.opacity(0.1))
     )
     .contentShape(RoundedRectangle(cornerRadius: 10))
+    .onHover { hover in
+      if case .completed = kind { isHovered = hover }
+    }
+    .confirmationDialog(
+      "Delete this task permanently?", isPresented: $showDeleteConfirmation
+    ) {
+      Button("Delete", role: .destructive) {
+        if case .completed(_, let onDelete) = kind { onDelete?() }
+      }
+      Button("Cancel", role: .cancel) {}
+    }
   }
 
-  /// Returns `true` when the due date is today or in the past.
+  @ViewBuilder
+  private var leadingButton: some View {
+    switch kind {
+    case .active(let onComplete):
+      if let complete = onComplete {
+        Button(action: complete) {
+          Image(systemName: isHovered ? "checkmark.circle" : "circle")
+            .foregroundStyle(Color.accentColor)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help(TaskLabel.Tooltip.markAsCompleted)
+      }
+    case .completed(let onRestore, _):
+      Button(action: onRestore) {
+        Image(systemName: "checkmark.circle.fill")
+          .foregroundStyle(Color.accentColor)
+      }
+      .buttonStyle(.plain)
+      .help(TaskLabel.Tooltip.restore)
+    }
+  }
+
+  private var titleRow: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 3) {
+      if let icon = task.priority.icon {
+        Image(systemName: icon)
+          .foregroundStyle(priorityColor)
+          .font(.callout)
+      }
+      Text(markdownTitle)
+        .font(.callout)
+        .foregroundStyle(isCompleted ? .secondary : .primary)
+        .lineLimit(3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+  }
+
+  @ViewBuilder
+  private var primaryMetadata: some View {
+    switch kind {
+    case .active:
+      if let due = task.dueDate {
+        Text(due, format: .dateTime.month(.abbreviated).day().year())
+          .font(.caption2)
+          .foregroundStyle(isUrgent(due) ? Color.red : Color.secondary)
+      }
+    case .completed:
+      Text(completedSubtitle)
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+    }
+  }
+
+  private func lineageRow(_ lin: TaskLineage) -> some View {
+    HStack(spacing: 3) {
+      if let icon = lin.providerIcon {
+        Image(systemName: icon)
+      }
+      if let ctx = lin.contextLabel {
+        if lin.providerIcon != nil {
+          Image(systemName: "chevron.right")
+        }
+        Text(ctx)
+      }
+    }
+    .font(.caption2)
+    .foregroundStyle(.tertiary)
+  }
+
+  @ViewBuilder
+  private var trailingButton: some View {
+    if case .completed(_, _?) = kind, isHovered {
+      Button {
+        showDeleteConfirmation = true
+      } label: {
+        Image(systemName: "trash")
+          .foregroundStyle(.secondary)
+      }
+      .buttonStyle(.plain)
+      .help(TaskLabel.Tooltip.deletePermanently)
+    }
+  }
+
+  private var isCompleted: Bool {
+    if case .completed = kind { return true }
+    return false
+  }
+
+  private var completedSubtitle: String {
+    task.completedAt.map {
+      RelativeDateTimeFormatter().localizedString(for: $0, relativeTo: Date())
+    } ?? "Unknown date"
+  }
+
   private func isUrgent(_ date: Date) -> Bool {
     Calendar.current.isDateInToday(date) || date < Date.now
   }
@@ -101,7 +180,7 @@ struct TaskCardView: View {
     priority: .high,
     dueDate: Calendar.current.date(byAdding: .day, value: -3, to: .now)
   )
-  TaskCardView(task: task, onComplete: {})
+  TaskCardView(task: task, kind: .active(onComplete: {}))
     .padding()
     .frame(width: 200)
 }
