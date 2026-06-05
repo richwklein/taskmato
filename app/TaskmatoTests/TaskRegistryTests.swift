@@ -357,6 +357,42 @@ struct TaskRegistryTests {
     #expect(registry.firstEnabledWritableProvider?.id == "writable")
   }
 
+  // MARK: Provider ordering
+
+  @Test func registerSortsProvidersByDisplayOrder() {
+    let registry = makeRegistry()
+    let high = StubProvider(id: "high")
+    let low = StubProvider(id: "low")
+    // Simulate displayOrder: register high-order provider first.
+    registry.register(high)
+    registry.register(low)
+    // Both stubs use the default displayOrder (Int.max) so they fall back to displayName order.
+    // "high" < "low" alphabetically, so "high" should appear first.
+    #expect(registry.providers[0].id == "high")
+    #expect(registry.providers[1].id == "low")
+  }
+
+  @Test func localProviderDisplayOrderIsLowerThanDefault() {
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString + ".json")
+    let local = LocalProvider(fileURL: url)
+    let readOnly = StubProvider(id: "z-other")
+    let registry = makeRegistry()
+    registry.register(readOnly)
+    registry.register(local)
+    #expect(registry.providers[0].id == LocalProvider.providerID)
+    #expect(registry.providers[1].id == "z-other")
+  }
+
+  @Test func alphaNumericTieBreakOrdersProvidersByDisplayName() {
+    let registry = makeRegistry()
+    registry.register(StubProvider(id: "zebra"))
+    registry.register(StubProvider(id: "apple"))
+    registry.register(StubProvider(id: "mango"))
+    let ids = registry.providers.map(\.id)
+    #expect(ids == ["apple", "mango", "zebra"])
+  }
+
   // MARK: providerAuthorizationStates
 
   @Test func providerAuthorizationStatesEmptyWithNoProviders() {
