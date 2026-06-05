@@ -413,6 +413,7 @@ extension TasksTabView {
       sortBy: settings.taskSortField, direction: settings.taskSortDirection)
     sections = buildDisplaySections(from: tasks, query: currentQuery)
     isLoading = false
+    if showCompleted { await loadCompleted() }
   }
 
   private func loadCompleted() async {
@@ -423,7 +424,11 @@ extension TasksTabView {
     for provider in registry.providers where registry.isEnabled(provider.id) {
       guard let closable = provider as? (any ClosableTaskProvider) else { continue }
       var items = (try? await closable.completedTasks()) ?? []
-      if currentQuery.isCrossProvider { items = filteredCompleted(items) }
+      if currentQuery.isCrossProvider {
+        items = filteredCompleted(items)
+      } else {
+        items = items.filter { activeListIDs.contains($0.list?.id ?? "") }
+      }
       for item in items {
         let key = item.list?.id ?? ""
         if !key.isEmpty && activeListIDs.contains(key) {
@@ -508,7 +513,6 @@ extension TasksTabView {
         try? await provider.complete(ref)
       }
       await loadTasks()
-      if showCompleted { await loadCompleted() }
     }
   }
 
@@ -520,7 +524,6 @@ extension TasksTabView {
         try? await provider.reopen(ref)
       }
       await loadTasks()
-      await loadCompleted()
     }
   }
 
