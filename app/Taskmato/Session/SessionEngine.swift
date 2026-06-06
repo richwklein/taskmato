@@ -16,6 +16,27 @@ enum SessionPhase: Equatable, Codable {
   case longBreak
 }
 
+extension SessionPhase {
+
+  /// Display name used when a session is running or paused in this phase.
+  var displayName: String {
+    switch self {
+    case .focus: return "Focus"
+    case .shortBreak: return "Short Break"
+    case .longBreak: return "Long Break"
+    }
+  }
+
+  /// Display name used when the engine is idle and this phase is queued next.
+  var idleLabel: String {
+    switch self {
+    case .focus: return "Ready to focus"
+    case .shortBreak: return "Short Break"
+    case .longBreak: return "Long Break"
+    }
+  }
+}
+
 /// The current state of the session engine's state machine.
 enum SessionState: Equatable {
   /// No session is active. The engine is ready to start a new focus interval.

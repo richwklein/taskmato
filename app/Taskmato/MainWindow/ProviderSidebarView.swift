@@ -130,14 +130,16 @@ struct ProviderSidebarView: View {
           Button {
             configuringProvider = configurable
           } label: {
-            Label("Configure \(provider.displayName)…", systemImage: "gear")
+            Label(
+              "Configure \(provider.displayName)…",
+              systemImage: AppLabels.Sidebar.configure.systemImage)
           }
           Divider()
         }
         Button(role: .destructive) {
           registry.disable(providerID: provider.id)
         } label: {
-          Label("Remove \(provider.displayName)", systemImage: "trash")
+          Label("Remove \(provider.displayName)", systemImage: AppLabels.Sidebar.remove.systemImage)
         }
       }
     }
@@ -191,7 +193,7 @@ struct ProviderSidebarView: View {
         addTaskTarget = AddTaskTarget(provider: writable, listID: list.id)
         isAddingTask = true
       } label: {
-        Label("Add Task…", systemImage: "plus.circle")
+        Label(AppLabels.Sidebar.addTask.title, systemImage: AppLabels.Sidebar.addTask.systemImage)
       }
 
       Divider()
@@ -200,7 +202,8 @@ struct ProviderSidebarView: View {
         let id = list.id
         Task { try? await writable.setDefaultList(id) }
       } label: {
-        Label("Set as Default", systemImage: "star")
+        Label(
+          AppLabels.Sidebar.setDefault.title, systemImage: AppLabels.Sidebar.setDefault.systemImage)
       }
       .disabled(isDefaultList)
 
@@ -209,7 +212,7 @@ struct ProviderSidebarView: View {
         renameBuffer = list.name
         renameFocused = list.id
       } label: {
-        Label("Rename", systemImage: "pencil")
+        Label(AppLabels.Sidebar.rename.title, systemImage: AppLabels.Sidebar.rename.systemImage)
       }
 
       Divider()
@@ -220,7 +223,8 @@ struct ProviderSidebarView: View {
           await loadLists(for: provider)
         }
       } label: {
-        Label("Delete", systemImage: "trash")
+        Label(
+          AppLabels.Sidebar.deleteList.title, systemImage: AppLabels.Sidebar.deleteList.systemImage)
       }
       .disabled(isDefaultList)
     }
@@ -315,8 +319,10 @@ struct ProviderSidebarView: View {
         }
       }
     } label: {
-      Label("Add Provider", systemImage: "plus.circle")
-        .frame(maxWidth: .infinity, alignment: .leading)
+      Label(
+        AppLabels.Sidebar.addProvider.title, systemImage: AppLabels.Sidebar.addProvider.systemImage
+      )
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
     .menuStyle(.borderlessButton)
   }

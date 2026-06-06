@@ -31,7 +31,10 @@ struct MainWindowView: View {
 
   var body: some View {
     TabView(selection: $nav.selectedTab) {
-      Tab("Tasks", systemImage: "checklist", value: MainTab.tasks) {
+      Tab(
+        AppLabels.Tab.tasks.title, systemImage: AppLabels.Tab.tasks.systemImage,
+        value: MainTab.tasks
+      ) {
         TasksTabView(
           selectionStore: selectionStore,
           registry: registry,
@@ -40,7 +43,10 @@ struct MainWindowView: View {
         )
       }
 
-      Tab("Timer", systemImage: "timer", value: MainTab.timer) {
+      Tab(
+        AppLabels.Tab.timer.title, systemImage: AppLabels.Tab.timer.systemImage,
+        value: MainTab.timer
+      ) {
         TimerTabView(
           engine: engine,
           settings: settings,
@@ -53,11 +59,48 @@ struct MainWindowView: View {
         )
       }
 
-      Tab("Stats", systemImage: "chart.bar", value: MainTab.stats) {
+      Tab(
+        AppLabels.Tab.stats.title, systemImage: AppLabels.Tab.stats.systemImage,
+        value: MainTab.stats
+      ) {
         StatsTabView(store: store)
       }
     }
     .frame(minWidth: 640, minHeight: 400)
+    .focusedSceneValue(\.selectedTab, nav.selectedTab)
+    .focusedSceneValue(\.timerToggle, timerToggleAction)
+    .focusedSceneValue(\.timerToggleTitle, timerToggleTitleValue)
+    .focusedSceneValue(\.timerSkip, { skipPhase() })
+    .focusedSceneValue(\.timerStop, engine.state != .idle ? { engine.stop() } : nil)
+  }
+
+  // MARK: - Timer command helpers
+
+  private var timerToggleAction: (() -> Void)? {
+    if engine.isRunning { return { engine.pause() } }
+    if case .paused = engine.state { return { engine.resume() } }
+    guard selectionStore.activeTask != nil else { return nil }
+    return { startSession() }
+  }
+
+  private var timerToggleTitleValue: String {
+    if engine.isRunning { return AppLabels.Timer.pause.title }
+    if case .paused = engine.state { return AppLabels.Timer.resume.title }
+    return AppLabels.Timer.start.title
+  }
+
+  private func startSession() {
+    engine.focusDuration = settings.focusDuration
+    engine.shortBreakDuration = settings.shortBreakDuration
+    engine.longBreakDuration = settings.longBreakDuration
+    engine.start(phase: engine.queuedPhase ?? .focus)
+  }
+
+  private func skipPhase() {
+    engine.focusDuration = settings.focusDuration
+    engine.shortBreakDuration = settings.shortBreakDuration
+    engine.longBreakDuration = settings.longBreakDuration
+    engine.skip(nextBreak: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions))
   }
 }
 

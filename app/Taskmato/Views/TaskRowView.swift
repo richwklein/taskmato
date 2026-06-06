@@ -60,7 +60,7 @@ struct TaskRowView: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help(TaskLabel.Tooltip.markAsCompleted)
+        .help(AppLabels.Tooltip.markAsCompleted)
       }
     case .completed(let onRestore, _):
       Button(action: onRestore) {
@@ -68,7 +68,7 @@ struct TaskRowView: View {
           .foregroundStyle(Color.accentColor)
       }
       .buttonStyle(.plain)
-      .help(TaskLabel.Tooltip.restore)
+      .help(AppLabels.Tooltip.restore)
     }
   }
 
@@ -125,7 +125,7 @@ struct TaskRowView: View {
           .foregroundStyle(.secondary)
       }
       .buttonStyle(.plain)
-      .help(TaskLabel.Tooltip.deletePermanently)
+      .help(AppLabels.Tooltip.deletePermanently)
     }
   }
 
