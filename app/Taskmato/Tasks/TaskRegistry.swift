@@ -475,8 +475,13 @@ final class TaskRegistry {
 // MARK: - Calendar helpers
 
 extension Calendar {
-  /// The last second of today: start of day + 86399 seconds.
+  /// The last instant of today, DST-safe.
+  ///
+  /// Advances `startOfDay` by one calendar day and subtracts one second, rather than
+  /// adding a fixed 86 400-second interval, so the result is correct on DST transition
+  /// days when a civil day is 23 or 25 hours long.
   fileprivate var endOfToday: Date {
-    startOfDay(for: Date()).addingTimeInterval(86400 - 1)
+    let tomorrow = date(byAdding: .day, value: 1, to: startOfDay(for: Date())) ?? Date()
+    return tomorrow.addingTimeInterval(-1)
   }
 }

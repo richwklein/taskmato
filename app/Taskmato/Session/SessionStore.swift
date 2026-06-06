@@ -5,6 +5,7 @@
 
 import Foundation
 import Observation
+import os
 
 /// Persists and provides access to the log of completed Pomodoro sessions.
 ///
@@ -19,6 +20,7 @@ final class SessionStore {
   private let fileURL: URL
   private let encoder = JSONEncoder()
   private let decoder = JSONDecoder()
+  private let logger = Logger(subsystem: "com.taskmato", category: "SessionStore")
 
   /// Creates a store using the default production file path.
   convenience init() {
@@ -94,7 +96,11 @@ final class SessionStore {
   }
 
   private func save() {
-    guard let data = try? encoder.encode(sessions) else { return }
-    try? data.write(to: fileURL, options: .atomic)
+    do {
+      let data = try encoder.encode(sessions)
+      try data.write(to: fileURL, options: .atomic)
+    } catch {
+      logger.error("SessionStore failed to save: \(error.localizedDescription, privacy: .public)")
+    }
   }
 }
