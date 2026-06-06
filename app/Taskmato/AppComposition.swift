@@ -49,7 +49,7 @@ struct AppComposition {
     let nav = MainNavigation(settings: settings)
     let urlHandler = URLSchemeHandler(
       registry: registry, selectionStore: selectionStore,
-      engine: engine, settings: settings, localProvider: localProvider,
+      engine: engine, settings: settings,
       nav: nav
     )
     engine.onPhaseEnded = { phase, startedAt, endedAt, wasCompleted in

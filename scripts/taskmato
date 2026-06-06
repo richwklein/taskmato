@@ -5,9 +5,16 @@
 # Usage:
 #   taskmato <title>
 #   taskmato --title <title> [--priority none|lowest|low|medium|high|highest]
-#             [--due YYYY-MM-DD] [--list <name>]
+#             [--due YYYY-MM-DD] [--list <name>] [--provider <id>]
 #   taskmato --provider <id> --id <native-id>
 #   taskmato --provider <id> --title <title>
+#
+# Ad-hoc task creation (zero title matches):
+#   Provider resolution order:
+#     1. --provider <id>  — write to the named provider if it is enabled and writable.
+#     2. Settings default — the "Default writable provider" set in Taskmato's Settings.
+#     3. First enabled writable provider in registration order.
+#   If no writable provider is available the task is transient (lost on quit).
 
 set -euo pipefail
 
@@ -49,7 +56,8 @@ Positional:
 
 Options:
   --title <title>         Task title (creates ad-hoc or searches providers)
-  --provider <id>         Scope lookup to a specific provider
+  --provider <id>         Scope lookup to a specific provider; also targets that provider
+                          for ad-hoc creation when no matching task is found
   --id <native-id>        Look up task by its native provider ID (requires --provider)
   --priority <level>      Priority: none, lowest, low, medium, high, highest
   --due <YYYY-MM-DD>      Due date for ad-hoc task creation

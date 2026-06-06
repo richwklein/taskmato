@@ -28,15 +28,18 @@ struct TasksTabView: View {
   @State private var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
 
-  /// Returns the writable provider for the current sidebar selection, or the first
-  /// enabled writable provider when the selection is `.today` or unresolved.
+  /// Returns the writable provider for the current sidebar selection, falling back to the
+  /// default writable provider (from settings, then first enabled in registration order).
   private var writableProvider: (any WritableTaskProvider)? {
     guard case .list(let sel) = registry.selection,
       let provider = registry.providers.first(where: {
         $0.id == sel.providerID && registry.isEnabled($0.id)
       }),
       let writable = provider as? (any WritableTaskProvider)
-    else { return registry.firstEnabledWritableProvider }
+    else {
+      return registry.resolveDefaultWritableProvider(
+        preferredID: settings.defaultWritableProviderID)
+    }
     return writable
   }
 

@@ -70,18 +70,18 @@ struct LocalProviderTests {
     #expect(second.defaultListID == storedID)
   }
 
-  @Test func setDefaultListChangesDefault() throws {
+  @Test func setDefaultListChangesDefault() async throws {
     let provider = makeProvider()
-    provider.createList(name: "Work")
+    try await provider.createList(name: "Work")
     let workID = provider.taskLists[1].id.uuidString
-    try provider.setDefaultList(workID)
+    try await provider.setDefaultList(workID)
     #expect(provider.defaultListID == workID)
   }
 
-  @Test func setDefaultListThrowsForUnknownID() {
+  @Test func setDefaultListThrowsForUnknownID() async {
     let provider = makeProvider()
-    #expect(throws: LocalProviderError.self) {
-      try provider.setDefaultList(UUID().uuidString)
+    await #expect(throws: LocalProviderError.self) {
+      try await provider.setDefaultList(UUID().uuidString)
     }
   }
 
@@ -129,7 +129,7 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "My task"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let tasks = try await provider.tasks(in: nil)
     #expect(tasks.count == 1)
     #expect(tasks[0].title == "My task")
@@ -140,7 +140,7 @@ struct LocalProviderTests {
     let before = Date()
     var draft = TaskDraft()
     draft.title = "Timestamped"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let after = Date()
     let tasks = try await provider.tasks(in: nil)
     let createdAt = try #require(tasks.first?.createdAt)
@@ -153,7 +153,7 @@ struct LocalProviderTests {
     let defaultID = provider.defaultListID!
     var draft = TaskDraft()
     draft.title = "Orphan"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
 
     let list = TaskList(id: defaultID, providerID: LocalProvider.providerID, name: "Default")
     let tasks = try await provider.tasks(in: list)
@@ -166,7 +166,7 @@ struct LocalProviderTests {
     let first = LocalProvider(fileURL: url)
     var draft = TaskDraft()
     draft.title = "Persisted"
-    first.addTask(draft)
+    try await first.addTask(draft)
 
     let second = LocalProvider(fileURL: url)
     let tasks = try await second.tasks(in: nil)
@@ -177,7 +177,7 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "To complete"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let ref = try await provider.tasks(in: nil)[0].id
     try await provider.complete(ref)
     let remaining = try await provider.tasks(in: nil)
@@ -188,7 +188,7 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "Done"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let ref = try await provider.tasks(in: nil)[0].id
     try await provider.complete(ref)
     let completed = try await provider.completedTasks()
@@ -200,7 +200,7 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "With Date"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let ref = try await provider.tasks(in: nil)[0].id
     let before = Date()
     try await provider.complete(ref)
@@ -216,7 +216,7 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "Reopen me"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let ref = try await provider.tasks(in: nil)[0].id
     try await provider.complete(ref)
     try await provider.reopen(ref)
@@ -231,10 +231,9 @@ struct LocalProviderTests {
     for title in ["A", "B", "C"] {
       var draft = TaskDraft()
       draft.title = title
-      provider.addTask(draft)
+      try await provider.addTask(draft)
     }
     let active = try await provider.tasks(in: nil)
-    // Complete only the first two.
     try await provider.complete(active[0].id)
     try await provider.complete(active[1].id)
     let completed = try await provider.completedTasks()
@@ -247,9 +246,9 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "Delete me"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let ref = try await provider.tasks(in: nil)[0].id
-    try provider.deleteTask(ref)
+    try await provider.deleteTask(ref)
     #expect(try await provider.tasks(in: nil).isEmpty)
     #expect(try await provider.completedTasks().isEmpty)
   }
@@ -258,7 +257,7 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "Completed and deleted"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let ref = try await provider.tasks(in: nil)[0].id
     try await provider.complete(ref)
     let writable: any WritableTaskProvider = provider
@@ -270,11 +269,11 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "Original"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let ref = try await provider.tasks(in: nil)[0].id
     var updated = TaskDraft()
     updated.title = "Updated"
-    try provider.updateTask(ref, draft: updated)
+    try await provider.updateTask(ref, draft: updated)
     let tasks = try await provider.tasks(in: nil)
     #expect(tasks[0].title == "Updated")
   }
@@ -283,7 +282,7 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "Markdown task"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     let tasks = try await provider.tasks(in: nil)
     #expect(tasks[0].format == .markdown)
   }
@@ -318,7 +317,7 @@ struct LocalProviderTests {
     let provider = makeProvider()
     var draft = TaskDraft()
     draft.title = "Count me"
-    provider.addTask(draft)
+    try await provider.addTask(draft)
     #expect(provider.activeTaskCount == 1)
     let ref = try await provider.tasks(in: nil)[0].id
     try await provider.complete(ref)
@@ -327,35 +326,35 @@ struct LocalProviderTests {
 
   // MARK: - List CRUD
 
-  @Test func createListAddsToProvider() {
+  @Test func createListAddsToProvider() async throws {
     let provider = makeProvider()
-    provider.createList(name: "Work")
+    try await provider.createList(name: "Work")
     #expect(provider.taskLists.count == 2)
     #expect(provider.taskLists.map(\.name).contains("Work"))
   }
 
-  @Test func renameListUpdatesName() throws {
+  @Test func renameListUpdatesName() async throws {
     let provider = makeProvider()
     let listID = provider.taskLists[0].id.uuidString
-    try provider.renameList(listID, name: "Personal")
+    try await provider.renameList(listID, name: "Personal")
     #expect(provider.taskLists[0].name == "Personal")
   }
 
   @Test func deleteNonDefaultListMovesTasksToDefault() async throws {
     let provider = makeProvider()
-    provider.createList(name: "Secondary")
+    try await provider.createList(name: "Secondary")
     let primaryID = provider.taskLists[0].id.uuidString  // Default = current default
     let secondaryID = provider.taskLists[1].id.uuidString
 
     // Promote "Secondary" so we can delete "Default"
-    try provider.setDefaultList(secondaryID)
+    try await provider.setDefaultList(secondaryID)
 
     var draft = TaskDraft()
     draft.title = "Orphaned"
     draft.listID = primaryID
-    provider.addTask(draft)
+    try await provider.addTask(draft)
 
-    try provider.deleteList(primaryID)
+    try await provider.deleteList(primaryID)
 
     let secondaryList = TaskList(
       id: secondaryID, providerID: LocalProvider.providerID, name: "Secondary")
@@ -363,27 +362,27 @@ struct LocalProviderTests {
     #expect(tasks.map(\.title).contains("Orphaned"))
   }
 
-  @Test func deleteDefaultListThrows() throws {
+  @Test func deleteDefaultListThrows() async {
     let provider = makeProvider()
     let defaultID = provider.defaultListID!
-    #expect(throws: LocalProviderError.self) {
-      try provider.deleteList(defaultID)
+    await #expect(throws: LocalProviderError.self) {
+      try await provider.deleteList(defaultID)
     }
   }
 
-  @Test func renameListThrowsForUnknownID() {
+  @Test func renameListThrowsForUnknownID() async {
     let provider = makeProvider()
     let unknown = UUID().uuidString
-    #expect(throws: (any Error).self) {
-      try provider.renameList(unknown, name: "Ghost")
+    await #expect(throws: (any Error).self) {
+      try await provider.renameList(unknown, name: "Ghost")
     }
   }
 
-  @Test func deleteTaskThrowsForUnknownRef() {
+  @Test func deleteTaskThrowsForUnknownRef() async {
     let provider = makeProvider()
     let ref = TaskRef(providerID: LocalProvider.providerID, nativeID: UUID().uuidString)
-    #expect(throws: (any Error).self) {
-      try provider.deleteTask(ref)
+    await #expect(throws: (any Error).self) {
+      try await provider.deleteTask(ref)
     }
   }
 }
