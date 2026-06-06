@@ -82,14 +82,10 @@ struct TaskCardView: View {
     HStack(alignment: .firstTextBaseline, spacing: 3) {
       if let icon = task.priority.icon {
         Image(systemName: icon)
-          .foregroundStyle(priorityColor)
+          .foregroundStyle(task.priority.accentColor)
           .font(.callout)
       }
-      Text(markdownTitle)
-        .font(.callout)
-        .foregroundStyle(isCompleted ? .secondary : .primary)
-        .lineLimit(3)
-        .frame(maxWidth: .infinity, alignment: .leading)
+      TaskMarkdownTitle(task: task, isCompleted: isCompleted, lineLimit: 3)
     }
   }
 
@@ -100,7 +96,7 @@ struct TaskCardView: View {
       if let due = task.dueDate {
         Text(due, format: .dateTime.month(.abbreviated).day().year())
           .font(.caption2)
-          .foregroundStyle(isUrgent(due) ? Color.red : Color.secondary)
+          .foregroundStyle(due.isUrgentDueDate ? Color.red : Color.secondary)
       }
     case .completed:
       Text(completedSubtitle)
@@ -148,26 +144,6 @@ struct TaskCardView: View {
     task.completedAt.map {
       RelativeDateTimeFormatter().localizedString(for: $0, relativeTo: Date())
     } ?? "Unknown date"
-  }
-
-  private func isUrgent(_ date: Date) -> Bool {
-    Calendar.current.isDateInToday(date) || date < Date.now
-  }
-
-  private var markdownTitle: AttributedString {
-    guard task.format == .markdown else { return AttributedString(task.title) }
-    let options = AttributedString.MarkdownParsingOptions(
-      interpretedSyntax: .inlineOnlyPreservingWhitespace
-    )
-    return (try? AttributedString(markdown: task.title, options: options))
-      ?? AttributedString(task.title)
-  }
-
-  private var priorityColor: Color {
-    switch task.priority {
-    case .highest, .high, .medium: return .orange
-    case .low, .lowest, .none: return .primary
-    }
   }
 }
 

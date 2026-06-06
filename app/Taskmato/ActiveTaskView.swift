@@ -189,36 +189,11 @@ struct ActiveTaskView: View {
   // MARK: - Text helpers
 
   private func displayTitle(for task: TaskItem) -> AttributedString {
-    let mark = priorityMark(for: task.priority)
-    guard !mark.isEmpty else { return markdownTitle(for: task) }
+    let mark = task.priority.mark
+    guard !mark.isEmpty else { return task.markdownTitle }
     var prefix = AttributedString(mark + " ")
-    prefix.swiftUI.foregroundColor = priorityColor(for: task.priority)
-    return prefix + markdownTitle(for: task)
-  }
-
-  private func markdownTitle(for task: TaskItem) -> AttributedString {
-    guard task.format == .markdown else { return AttributedString(task.title) }
-    let options = AttributedString.MarkdownParsingOptions(
-      interpretedSyntax: .inlineOnlyPreservingWhitespace
-    )
-    return (try? AttributedString(markdown: task.title, options: options))
-      ?? AttributedString(task.title)
-  }
-
-  private func priorityMark(for priority: TaskPriority) -> String {
-    switch priority {
-    case .highest: return "!!!"
-    case .high: return "!!"
-    case .medium: return "!"
-    case .low, .lowest, .none: return ""
-    }
-  }
-
-  private func priorityColor(for priority: TaskPriority) -> Color {
-    switch priority {
-    case .highest, .high, .medium: return .orange
-    case .low, .lowest, .none: return .primary
-    }
+    prefix.swiftUI.foregroundColor = task.priority.accentColor
+    return prefix + task.markdownTitle
   }
 }
 
