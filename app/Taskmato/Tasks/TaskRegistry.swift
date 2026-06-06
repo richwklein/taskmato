@@ -313,6 +313,12 @@ final class TaskRegistry {
     provider(for: ref) as? any ClosableTaskProvider
   }
 
+  /// Returns the provider for a task reference if it conforms to `WritableTaskProvider`, or `nil`.
+  /// - Parameter ref: The task reference whose writable provider to look up.
+  func writableProvider(for ref: TaskRef) -> (any WritableTaskProvider)? {
+    provider(for: ref) as? any WritableTaskProvider
+  }
+
   /// Returns the first enabled provider conforming to `WritableTaskProvider`, or `nil`.
   var firstEnabledWritableProvider: (any WritableTaskProvider)? {
     providers.first { isEnabled($0.id) && $0 is (any WritableTaskProvider) }
