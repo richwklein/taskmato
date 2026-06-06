@@ -325,6 +325,31 @@ final class TaskRegistry {
       as? (any WritableTaskProvider)
   }
 
+  /// Returns the enabled writable provider with the given ID, or `nil`.
+  /// - Parameter id: The provider ID to resolve exactly.
+  func enabledWritableProvider(id: String) -> (any WritableTaskProvider)? {
+    providers.first { $0.id == id && isEnabled($0.id) }
+      as? (any WritableTaskProvider)
+  }
+
+  /// Returns the preferred writable provider for new tasks.
+  ///
+  /// Resolution order:
+  /// 1. The provider with `preferredID` if it is currently enabled and conforms to
+  ///    ``WritableTaskProvider``.
+  /// 2. ``firstEnabledWritableProvider`` — the first enabled writable provider in
+  ///    registration order.
+  ///
+  /// Returns `nil` when no enabled writable provider is registered.
+  /// - Parameter preferredID: A provider ID to try first, typically from ``AppSettings``
+  ///   user preference. Pass `nil` to skip directly to the fallback.
+  func resolveDefaultWritableProvider(preferredID: String?) -> (any WritableTaskProvider)? {
+    if let preferredID, let writable = enabledWritableProvider(id: preferredID) {
+      return writable
+    }
+    return firstEnabledWritableProvider
+  }
+
   /// The authorization state of each registered provider, in registration order.
   ///
   /// Observe this in views to react when any provider's `isAuthorized` changes.

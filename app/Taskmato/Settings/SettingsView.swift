@@ -36,30 +36,47 @@ struct SettingsView: View {
           .foregroundStyle(.secondary)
       }
 
-      #if DEBUG
-        Section("Debug") {
-          if let task = selectionStore.activeTask {
-            LabeledContent("Active task", value: task.title)
+      Section("Tasks") {
+        Picker(
+          "Default writable provider",
+          selection: Binding(
+            get: { settings.defaultWritableProviderID ?? "" },
+            set: { settings.defaultWritableProviderID = $0.isEmpty ? nil : $0 }
+          )
+        ) {
+          Text("Automatic").tag("")
+          ForEach(writableProviderEntries) { entry in
+            Label(entry.displayName, systemImage: entry.icon).tag(entry.id)
           }
-          Button("Set test task") {
-            selectionStore.select(
-              TaskItem(
-                id: TaskRef(providerID: "debug", nativeID: "1"),
-                title: "Write release notes",
-                format: .plainText,
-                priority: .high
-              ))
-          }
-          Button("Clear active task", role: .destructive) {
-            selectionStore.clearActiveTask()
-          }
-          .disabled(selectionStore.activeTask == nil)
         }
-      #endif
+        Text(
+          "The provider used when creating ad-hoc tasks from the command line or the Add Task sheet."
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      }
     }
     .formStyle(.grouped)
     .navigationTitle("\(Bundle.main.appName) Settings")
   }
+
+  /// Registered providers that are currently enabled and conform to ``WritableTaskProvider``,
+  /// formatted for display in the default-provider picker.
+  private var writableProviderEntries: [ProviderEntry] {
+    registry.providers.compactMap { provider in
+      guard registry.isEnabled(provider.id),
+        provider is (any WritableTaskProvider)
+      else { return nil }
+      return ProviderEntry(id: provider.id, displayName: provider.displayName, icon: provider.icon)
+    }
+  }
+}
+
+/// A lightweight display model for a writable provider in the settings picker.
+private struct ProviderEntry: Identifiable {
+  let id: String
+  let displayName: String
+  let icon: String
 }
 
 /// A labelled row combining a text field for direct input and a stepper for nudging.

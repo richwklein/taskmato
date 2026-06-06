@@ -124,7 +124,7 @@ final class LocalProvider: WritableTaskProvider {
   ///
   /// If `draft.listID` is `nil`, the task is assigned to the provider's default list.
   @discardableResult
-  func addTask(_ draft: TaskDraft) -> TaskItem {
+  func addTask(_ draft: TaskDraft) async throws -> TaskItem {
     var resolved = draft
     if resolved.listID == nil {
       resolved.listID = defaultListID ?? taskLists.first?.id.uuidString
@@ -136,7 +136,7 @@ final class LocalProvider: WritableTaskProvider {
   }
 
   /// Persists `listID` as the default target for new tasks.
-  func setDefaultList(_ listID: String) throws {
+  func setDefaultList(_ listID: String) async throws {
     guard taskLists.contains(where: { $0.id.uuidString == listID }) else {
       throw LocalProviderError.listNotFound(listID)
     }
@@ -145,7 +145,7 @@ final class LocalProvider: WritableTaskProvider {
   }
 
   /// Applies `draft` to the task identified by `ref`.
-  func updateTask(_ ref: TaskRef, draft: TaskDraft) throws {
+  func updateTask(_ ref: TaskRef, draft: TaskDraft) async throws {
     guard let idx = allTasks.firstIndex(where: { $0.id.uuidString == ref.nativeID }) else {
       throw LocalProviderError.taskNotFound(ref.nativeID)
     }
@@ -154,7 +154,7 @@ final class LocalProvider: WritableTaskProvider {
   }
 
   /// Permanently removes the task identified by `ref` from the store.
-  func deleteTask(_ ref: TaskRef) throws {
+  func deleteTask(_ ref: TaskRef) async throws {
     guard allTasks.contains(where: { $0.id.uuidString == ref.nativeID }) else {
       throw LocalProviderError.taskNotFound(ref.nativeID)
     }
@@ -166,7 +166,7 @@ final class LocalProvider: WritableTaskProvider {
 
   /// Appends a new list with the given name and returns the provider-agnostic ``TaskList``.
   @discardableResult
-  func createList(name: String) -> TaskList {
+  func createList(name: String) async throws -> TaskList {
     let list = LocalList(id: UUID(), name: name)
     taskLists.append(list)
     save()
@@ -174,7 +174,7 @@ final class LocalProvider: WritableTaskProvider {
   }
 
   /// Renames the list identified by `listID` to `name`.
-  func renameList(_ listID: String, name: String) throws {
+  func renameList(_ listID: String, name: String) async throws {
     guard let idx = taskLists.firstIndex(where: { $0.id.uuidString == listID }) else {
       throw LocalProviderError.listNotFound(listID)
     }
@@ -186,7 +186,7 @@ final class LocalProvider: WritableTaskProvider {
   ///
   /// Throws ``LocalProviderError/cannotDeleteDefaultList(_:)`` when `listID` is the
   /// current default. Promote another list via ``setDefaultList(_:)`` first.
-  func deleteList(_ listID: String) throws {
+  func deleteList(_ listID: String) async throws {
     guard listID != defaultListID else {
       throw LocalProviderError.cannotDeleteDefaultList(listID)
     }

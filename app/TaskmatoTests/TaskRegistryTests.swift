@@ -359,6 +359,87 @@ struct TaskRegistryTests {
     #expect(registry.firstEnabledWritableProvider?.id == "writable")
   }
 
+  // MARK: enabledWritableProvider
+
+  @Test func enabledWritableProviderReturnsExactEnabledWritableProvider() {
+    let registry = makeRegistry()
+    let provider = StubWritableProvider(id: "writable")
+    registry.register(provider)
+    registry.enable(provider)
+    #expect(registry.enabledWritableProvider(id: "writable")?.id == "writable")
+  }
+
+  @Test func enabledWritableProviderReturnsNilForDisabledProvider() {
+    let registry = makeRegistry()
+    let provider = StubWritableProvider(id: "writable")
+    registry.register(provider)
+    #expect(registry.enabledWritableProvider(id: "writable") == nil)
+  }
+
+  @Test func enabledWritableProviderReturnsNilForReadOnlyProvider() {
+    let registry = makeRegistry()
+    let provider = StubProvider(id: "read-only")
+    registry.register(provider)
+    registry.enable(provider)
+    #expect(registry.enabledWritableProvider(id: "read-only") == nil)
+  }
+
+  // MARK: resolveDefaultWritableProvider
+
+  @Test func resolveDefaultWritableProviderNilIDFallsBackToFirst() {
+    let registry = makeRegistry()
+    let provider = StubWritableProvider(id: "writable")
+    registry.register(provider)
+    registry.enable(provider)
+    #expect(registry.resolveDefaultWritableProvider(preferredID: nil)?.id == "writable")
+  }
+
+  @Test func resolveDefaultWritableProviderNilIDReturnsNilWhenNoneRegistered() {
+    let registry = makeRegistry()
+    #expect(registry.resolveDefaultWritableProvider(preferredID: nil) == nil)
+  }
+
+  @Test func resolveDefaultWritableProviderReturnsPreferredWhenEnabled() {
+    let registry = makeRegistry()
+    let first = StubWritableProvider(id: "first")
+    let second = StubWritableProvider(id: "second")
+    registry.register(first)
+    registry.register(second)
+    registry.enable(first)
+    registry.enable(second)
+    #expect(registry.resolveDefaultWritableProvider(preferredID: "second")?.id == "second")
+  }
+
+  @Test func resolveDefaultWritableProviderFallsBackWhenPreferredIsDisabled() {
+    let registry = makeRegistry()
+    let first = StubWritableProvider(id: "first")
+    let second = StubWritableProvider(id: "second")
+    registry.register(first)
+    registry.register(second)
+    registry.enable(first)
+    // "second" is registered but not enabled
+    #expect(registry.resolveDefaultWritableProvider(preferredID: "second")?.id == "first")
+  }
+
+  @Test func resolveDefaultWritableProviderFallsBackWhenPreferredIsReadOnly() {
+    let registry = makeRegistry()
+    let readOnly = StubProvider(id: "read-only")
+    let writable = StubWritableProvider(id: "writable")
+    registry.register(readOnly)
+    registry.register(writable)
+    registry.enable(readOnly)
+    registry.enable(writable)
+    #expect(registry.resolveDefaultWritableProvider(preferredID: "read-only")?.id == "writable")
+  }
+
+  @Test func resolveDefaultWritableProviderFallsBackWhenPreferredIsUnknown() {
+    let registry = makeRegistry()
+    let provider = StubWritableProvider(id: "writable")
+    registry.register(provider)
+    registry.enable(provider)
+    #expect(registry.resolveDefaultWritableProvider(preferredID: "ghost")?.id == "writable")
+  }
+
   // MARK: Provider ordering
 
   @Test func registerSortsProvidersByDisplayOrder() {
