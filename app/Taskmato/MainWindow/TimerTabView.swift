@@ -13,6 +13,7 @@ struct TimerTabView: View {
   var store: SessionStore
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
+  var nav: MainNavigation
   /// The phase to start when the user presses Start from idle.
   var nextStartPhase: SessionPhase
   /// The break type to use when skipping from a focus session.
@@ -40,12 +41,13 @@ struct TimerTabView: View {
 
       if selectionStore.activeTask != nil {
         ActiveTaskView(
-          engine: engine, selectionStore: selectionStore, registry: registry, showNotes: true
+          engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
+          showNotes: true
         )
         .padding(.horizontal, 8)
       } else {
         Button {
-          NotificationCenter.default.post(name: .browseTasksAndPick, object: nil)
+          nav.browseTasksAndPick()
         } label: {
           Label("Browse Tasks…", systemImage: "checklist")
             .font(.caption)
@@ -167,6 +169,7 @@ struct TimerTabView: View {
     store: SessionStore(),
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
+    nav: MainNavigation(settings: AppSettings()),
     nextStartPhase: .focus,
     nextBreakPhase: .shortBreak
   )
