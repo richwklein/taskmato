@@ -82,7 +82,7 @@ struct TimerView: View {
           nav.openMainWindow()
           DispatchQueue.main.async { popover?.close() }
         } label: {
-          Label("Browse Tasks…", systemImage: "checklist")
+          Label(AppLabels.View.browseTask.title, systemImage: AppLabels.View.browseTask.systemImage)
             .font(.caption)
         }
         .buttonStyle(.plain)
@@ -120,19 +120,34 @@ struct TimerView: View {
   private var controls: some View {
     HStack(spacing: 12) {
       if engine.isRunning {
-        ControlButton(label: "Pause", icon: "pause.fill") { engine.pause() }
+        ControlButton(
+          label: AppLabels.Timer.pause.title,
+          icon: AppLabels.Timer.pause.systemImage
+        ) { engine.pause() }
       } else if case .paused = engine.state {
-        ControlButton(label: "Resume", icon: "play.fill") { engine.resume() }
+        ControlButton(
+          label: AppLabels.Timer.resume.title,
+          icon: AppLabels.Timer.resume.systemImage
+        ) { engine.resume() }
       } else {
-        ControlButton(label: "Start", icon: "play.fill") { startSession() }
-          .disabled(selectionStore.activeTask == nil)
-          .help(selectionStore.activeTask == nil ? "Select a task before starting" : "")
+        ControlButton(
+          label: AppLabels.Timer.start.title,
+          icon: AppLabels.Timer.start.systemImage
+        ) { startSession() }
+        .disabled(selectionStore.activeTask == nil)
+        .help(selectionStore.activeTask == nil ? AppLabels.Tooltip.selectTaskFirst : "")
       }
 
-      ControlButton(label: "Skip", icon: "forward.fill") { skipPhase() }
+      ControlButton(
+        label: AppLabels.Timer.skip.title,
+        icon: AppLabels.Timer.skip.systemImage
+      ) { skipPhase() }
 
-      ControlButton(label: "Stop", icon: "stop.fill") { engine.stop() }
-        .disabled(engine.state == .idle)
+      ControlButton(
+        label: AppLabels.Timer.stop.title,
+        icon: AppLabels.Timer.stop.systemImage
+      ) { engine.stop() }
+      .disabled(engine.state == .idle)
     }
   }
 
@@ -195,17 +210,9 @@ struct TimerView: View {
   private var phaseName: String {
     switch engine.state {
     case .idle:
-      switch nextStartPhase {
-      case .focus: return "Ready to focus"
-      case .shortBreak: return "Short Break"
-      case .longBreak: return "Long Break"
-      }
+      return nextStartPhase.idleLabel
     case .running(let phase, _, _), .paused(let phase, _):
-      switch phase {
-      case .focus: return "Focus"
-      case .shortBreak: return "Short Break"
-      case .longBreak: return "Long Break"
-      }
+      return phase.displayName
     }
   }
 }

@@ -20,10 +20,10 @@ extension TasksTabView {
         ForEach(TaskSortField.allCases, id: \.self) { field in
           Button {
             settings.taskSortField = field
-            settings.taskSortDirection = defaultDirection(for: field)
+            settings.taskSortDirection = field.defaultSortDirection
           } label: {
             Label(
-              displayName(for: field),
+              field.displayName,
               systemImage: settings.taskSortField == field ? "checkmark" : "")
           }
         }
@@ -33,53 +33,19 @@ extension TasksTabView {
         settings.taskSortDirection = .ascending
       } label: {
         Label(
-          ascendingLabel(for: settings.taskSortField),
+          settings.taskSortField.ascendingLabel,
           systemImage: settings.taskSortDirection == .ascending ? "checkmark" : "")
       }
       Button {
         settings.taskSortDirection = .descending
       } label: {
         Label(
-          descendingLabel(for: settings.taskSortField),
+          settings.taskSortField.descendingLabel,
           systemImage: settings.taskSortDirection == .descending ? "checkmark" : "")
       }
     } label: {
-      Label("Sort", systemImage: "arrow.up.arrow.down")
+      Label(AppLabels.View.sort.title, systemImage: AppLabels.View.sort.systemImage)
     }
     .help("Sort tasks")
-  }
-
-  func displayName(for field: TaskSortField) -> String {
-    switch field {
-    case .dueDate: return "Due Date"
-    case .priority: return "Priority"
-    case .title: return "Title"
-    case .creationDate: return "Creation Date"
-    }
-  }
-
-  /// The natural sort direction for a field: used when switching fields so the
-  /// user always lands in the most intuitive order without an extra click.
-  func defaultDirection(for field: TaskSortField) -> TaskSortDirection {
-    switch field {
-    case .dueDate, .creationDate, .title: return .ascending
-    case .priority: return .descending
-    }
-  }
-
-  func ascendingLabel(for field: TaskSortField) -> String {
-    switch field {
-    case .dueDate, .creationDate: return "Earliest First"
-    case .priority: return "Lowest First"
-    case .title: return "A → Z"
-    }
-  }
-
-  func descendingLabel(for field: TaskSortField) -> String {
-    switch field {
-    case .dueDate, .creationDate: return "Latest First"
-    case .priority: return "Highest First"
-    case .title: return "Z → A"
-    }
   }
 }

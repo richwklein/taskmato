@@ -83,6 +83,9 @@ struct TaskmatoApp: App {
     }
     .defaultSize(width: 480, height: 520)
     .windowResizability(.contentMinSize)
+    .commands {
+      TaskmatoCommands(nav: composition.nav, settings: composition.settings)
+    }
 
     Settings {
       SettingsView(
@@ -108,5 +111,141 @@ struct TaskmatoApp: App {
       seconds = Int(composition.engine.timeRemaining)
     }
     return String(format: "%02d:%02d", seconds / 60, seconds % 60)
+  }
+}
+
+// MARK: - Commands
+
+/// Menu commands and keyboard shortcuts for the main application window.
+struct TaskmatoCommands: Commands {
+
+  @FocusedValue(\.selectedTab) private var selectedTab
+  @FocusedValue(\.focusSearch) private var focusSearch
+  @FocusedValue(\.addTask) private var addTask
+  @FocusedValue(\.toggleCompleted) private var toggleCompleted
+  @FocusedValue(\.toggleCompletedTitle) private var toggleCompletedTitle
+  @FocusedValue(\.toggleCompletedIcon) private var toggleCompletedIcon
+  @FocusedValue(\.timerToggle) private var timerToggle
+  @FocusedValue(\.timerToggleTitle) private var timerToggleTitle
+  @FocusedValue(\.timerSkip) private var timerSkip
+  @FocusedValue(\.timerStop) private var timerStop
+
+  /// The navigation model used to switch tabs from the View menu.
+  var nav: MainNavigation
+  /// App settings used to read and write layout and sort state for View menu checkmarks.
+  @Bindable var settings: AppSettings
+
+  var body: some Commands {
+    // File → New Task (⌘N); disabled when no writable provider is available.
+    CommandGroup(replacing: .newItem) {
+      Button(AppLabels.Task.add.title) { addTask?() }
+        .keyboardShortcut("n")
+        .disabled(addTask == nil)
+    }
+    // Edit → Find… (⌘F); disabled when not on the Tasks tab.
+    CommandGroup(after: .textEditing) {
+      Divider()
+      Button(AppLabels.View.find.title) { focusSearch?() }
+        .keyboardShortcut("f")
+        .disabled(focusSearch == nil)
+    }
+    // View → Suppress the default broken sidebar toggle; our replacement lives at the bottom below.
+    CommandGroup(replacing: .sidebar) {}
+    // View → tab navigation (⌘1/2/3), layout, completed toggle (⌘⇧C), Sort By, then Show/Hide
+    // Sidebar (⌘⌃S) — placed last so it sits directly above the system "Enter Full Screen" item.
+    CommandGroup(after: .sidebar) {
+      Divider()
+      Button {
+        nav.showTasks()
+      } label: {
+        Label(AppLabels.Tab.tasks.title, systemImage: nav.selectedTab == .tasks ? "checkmark" : "")
+      }
+      .keyboardShortcut("1")
+      Button {
+        nav.showTimer()
+      } label: {
+        Label(AppLabels.Tab.timer.title, systemImage: nav.selectedTab == .timer ? "checkmark" : "")
+      }
+      .keyboardShortcut("2")
+      Button {
+        nav.showStats()
+      } label: {
+        Label(AppLabels.Tab.stats.title, systemImage: nav.selectedTab == .stats ? "checkmark" : "")
+      }
+      .keyboardShortcut("3")
+      Divider()
+      Picker("Layout", selection: $settings.taskPickerLayout) {
+        Label(AppLabels.View.listLayout.title, systemImage: AppLabels.View.listLayout.systemImage)
+          .tag(TaskPickerLayout.list)
+        Label(AppLabels.View.gridLayout.title, systemImage: AppLabels.View.gridLayout.systemImage)
+          .tag(TaskPickerLayout.grid)
+      }
+      .pickerStyle(.inline)
+      .disabled(selectedTab != .tasks)
+      Divider()
+      Button {
+        toggleCompleted?()
+      } label: {
+        Label(
+          toggleCompletedTitle ?? AppLabels.View.showCompleted.title,
+          systemImage: toggleCompletedIcon ?? AppLabels.View.showCompleted.systemImage
+        )
+      }
+      .keyboardShortcut("c", modifiers: [.command, .shift])
+      .disabled(toggleCompleted == nil)
+      Divider()
+      Menu {
+        ForEach(TaskSortField.allCases, id: \.self) { field in
+          Button {
+            settings.taskSortField = field
+            settings.taskSortDirection = field.defaultSortDirection
+          } label: {
+            Label(
+              field.displayName,
+              systemImage: settings.taskSortField == field ? "checkmark" : "")
+          }
+        }
+        Divider()
+        Button {
+          settings.taskSortDirection = .ascending
+        } label: {
+          Label(
+            settings.taskSortField.ascendingLabel,
+            systemImage: settings.taskSortDirection == .ascending ? "checkmark" : "")
+        }
+        Button {
+          settings.taskSortDirection = .descending
+        } label: {
+          Label(
+            settings.taskSortField.descendingLabel,
+            systemImage: settings.taskSortDirection == .descending ? "checkmark" : "")
+        }
+      } label: {
+        Label(AppLabels.View.sort.title, systemImage: AppLabels.View.sort.systemImage)
+      }
+      .disabled(selectedTab != .tasks)
+      Divider()
+      let sidebarSpec = nav.sidebarVisible ? AppLabels.View.hideSidebar : AppLabels.View.showSidebar
+      Button {
+        nav.sidebarVisible.toggle()
+      } label: {
+        Label(sidebarSpec.title, systemImage: sidebarSpec.systemImage)
+      }
+      .keyboardShortcut("s", modifiers: [.command, .control])
+      .disabled(selectedTab != .tasks)
+    }
+    // Timer menu — Start/Pause/Resume (⌘⏎), Skip Phase (⌘K), Stop (⌘.).
+    CommandMenu("Timer") {
+      Button(timerToggleTitle ?? AppLabels.Timer.start.title) { timerToggle?() }
+        .keyboardShortcut(.return)
+        .disabled(timerToggle == nil)
+      Button(AppLabels.Timer.skip.title) { timerSkip?() }
+        .keyboardShortcut("k")
+        .disabled(timerSkip == nil)
+      Divider()
+      Button(AppLabels.Timer.stop.title) { timerStop?() }
+        .keyboardShortcut(".", modifiers: .command)
+        .disabled(timerStop == nil)
+    }
   }
 }
