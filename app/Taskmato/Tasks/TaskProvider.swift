@@ -117,6 +117,10 @@ protocol WritableTaskProvider: ClosableTaskProvider {
   /// - Throws: if `listID` is the default list or does not identify a known list.
   func deleteList(_ listID: String) async throws
 
+  /// Updates the task identified by `ref` with values from `draft`.
+  /// - Throws: if the task cannot be found or the update fails.
+  func updateTask(_ ref: TaskRef, draft: TaskDraft) async throws
+
   /// Permanently removes the task identified by `ref` from the provider's store.
   /// - Throws: if the task cannot be found or removal fails.
   func deleteTask(_ ref: TaskRef) async throws

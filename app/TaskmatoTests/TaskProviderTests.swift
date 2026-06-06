@@ -64,6 +64,7 @@ private final class FakeWritableProvider: WritableTaskProvider {
     deleteListCalls.append(listID)
   }
 
+  func updateTask(_: TaskRef, draft _: TaskDraft) {}
   func deleteTask(_ ref: TaskRef) {
     deleteTaskCalls.append(ref)
   }

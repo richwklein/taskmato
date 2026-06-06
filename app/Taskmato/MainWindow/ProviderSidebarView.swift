@@ -16,6 +16,8 @@ import SwiftUI
 struct ProviderSidebarView: View {
 
   @Bindable var registry: TaskRegistry
+  /// Called after a task is successfully added from the list context-menu "Add Task…" item.
+  var onTaskAdded: (() -> Void)?
 
   /// Inline new-list name buffer keyed by provider ID.
   @State private var newListName: [String: String] = [:]
@@ -31,6 +33,12 @@ struct ProviderSidebarView: View {
 
   /// The provider whose configuration sheet is currently presented, or `nil`.
   @State private var configuringProvider: (any ConfigurableTaskProvider)?
+
+  /// Provider and list targeted by the "Add Task…" context-menu action, or `nil`.
+  @State private var addTaskTarget: AddTaskTarget?
+
+  /// Drives the "Add Task…" sheet opened from the list context menu.
+  @State private var isAddingTask = false
 
   // MARK: - Computed helpers
 
@@ -69,6 +77,9 @@ struct ProviderSidebarView: View {
       }
     }
     .task { await loadAllLists() }
+    .onChange(of: isAddingTask) { _, adding in
+      if !adding { onTaskAdded?() }
+    }
     .sheet(
       isPresented: Binding(
         get: { configuringProvider != nil },
@@ -81,6 +92,15 @@ struct ProviderSidebarView: View {
         }
       }
     )
+    .sheet(isPresented: $isAddingTask) {
+      if let target = addTaskTarget {
+        AddTaskView(
+          provider: target.provider,
+          isPresented: $isAddingTask,
+          initialListID: target.listID
+        )
+      }
+    }
   }
 
   // MARK: - Provider section
@@ -107,13 +127,17 @@ struct ProviderSidebarView: View {
       .contentShape(Rectangle())
       .contextMenu {
         if let configurable = provider as? (any ConfigurableTaskProvider) {
-          Button("Configure \(provider.displayName)…") {
+          Button {
             configuringProvider = configurable
+          } label: {
+            Label("Configure \(provider.displayName)…", systemImage: "gear")
           }
           Divider()
         }
-        Button("Remove \(provider.displayName)", role: .destructive) {
+        Button(role: .destructive) {
           registry.disable(providerID: provider.id)
+        } label: {
+          Label("Remove \(provider.displayName)", systemImage: "trash")
         }
       }
     }
@@ -153,8 +177,8 @@ struct ProviderSidebarView: View {
   /// Builds the contextual menu for a control-clicked sidebar selection.
   ///
   /// Activated via `contextMenu(forSelectionType:)` on the List, this looks up the
-  /// writable list referenced by the clicked row and renders the standard set/rename/delete
-  /// actions. Returns no items for `.today` or unknown rows.
+  /// writable list referenced by the clicked row and renders "Add Task…" plus the standard
+  /// set/rename/delete management actions. Returns no items for `.today` or read-only rows.
   @ViewBuilder
   private func listContextMenu(for selections: Set<SidebarSelection>) -> some View {
     if let resolved = resolveListAction(from: selections) {
@@ -163,25 +187,40 @@ struct ProviderSidebarView: View {
       let writable = resolved.writable
       let isDefaultList = isDefault(list.id, for: provider)
 
-      Button("Set as Default") {
-        let id = list.id
-        Task { try? await writable.setDefaultList(id) }
-      }
-      .disabled(isDefaultList)
-
-      Button("Rename") {
-        renamingListID = list.id
-        renameBuffer = list.name
-        renameFocused = list.id
+      Button {
+        addTaskTarget = AddTaskTarget(provider: writable, listID: list.id)
+        isAddingTask = true
+      } label: {
+        Label("Add Task…", systemImage: "plus.circle")
       }
 
       Divider()
 
-      Button("Delete", role: .destructive) {
+      Button {
+        let id = list.id
+        Task { try? await writable.setDefaultList(id) }
+      } label: {
+        Label("Set as Default", systemImage: "star")
+      }
+      .disabled(isDefaultList)
+
+      Button {
+        renamingListID = list.id
+        renameBuffer = list.name
+        renameFocused = list.id
+      } label: {
+        Label("Rename", systemImage: "pencil")
+      }
+
+      Divider()
+
+      Button(role: .destructive) {
         Task {
           try? await writable.deleteList(list.id)
           await loadLists(for: provider)
         }
+      } label: {
+        Label("Delete", systemImage: "trash")
       }
       .disabled(isDefaultList)
     }
@@ -204,6 +243,12 @@ struct ProviderSidebarView: View {
     let list: TaskList
     let provider: any TaskProvider
     let writable: any WritableTaskProvider
+  }
+
+  /// Provider and list ID targeted by the "Add Task…" context-menu sheet.
+  private struct AddTaskTarget {
+    let provider: any WritableTaskProvider
+    let listID: String
   }
 
   /// Inline name display that switches to an editable `TextField` during a rename.
