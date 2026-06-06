@@ -279,6 +279,41 @@ struct LocalProviderTests {
     #expect(tasks[0].title == "Updated")
   }
 
+  @Test func addTaskHasMarkdownFormat() async throws {
+    let provider = makeProvider()
+    var draft = TaskDraft()
+    draft.title = "Markdown task"
+    provider.addTask(draft)
+    let tasks = try await provider.tasks(in: nil)
+    #expect(tasks[0].format == .markdown)
+  }
+
+  @Test func existingTaskWithoutFormatFieldDecodesAsMarkdown() async throws {
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString + ".json")
+
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    encoder.dateEncodingStrategy = .iso8601
+
+    let rawList = RawLocalStore.RawList(id: UUID(), name: "Default")
+    let rawTask = RawLocalStore.RawTask(
+      id: UUID(),
+      title: "Legacy task",
+      priority: .none,
+      isCompleted: false,
+      createdAt: Date()
+    )
+    let raw = RawLocalStore(lists: [rawList], tasks: [rawTask])
+    let data = try encoder.encode(raw)
+    try data.write(to: url, options: [])
+
+    let provider = LocalProvider(fileURL: url)
+    let tasks = try await provider.tasks(in: nil)
+    #expect(tasks.count == 1)
+    #expect(tasks[0].format == .markdown)
+  }
+
   @Test func activeTaskCountExcludesCompleted() async throws {
     let provider = makeProvider()
     var draft = TaskDraft()

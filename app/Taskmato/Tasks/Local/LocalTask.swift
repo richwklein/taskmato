@@ -20,6 +20,12 @@ struct LocalTask: Codable, Identifiable {
   /// Optional supplementary notes or description.
   var notes: String?
 
+  /// How the task's `notes` string should be interpreted for display.
+  ///
+  /// Defaults to `.markdown` for all new tasks. Existing JSON records without this
+  /// field also decode as `.markdown` via ``init(from:)``.
+  var format: NoteFormat
+
   /// Priority level, used for sorting and badging in the picker.
   var priority: TaskPriority
 
@@ -44,6 +50,11 @@ struct LocalTask: Codable, Identifiable {
   /// Wall-clock time when the task was first created.
   let createdAt: Date
 
+  private enum CodingKeys: String, CodingKey {
+    case id, title, notes, format, priority, dueDate, scheduledDate, startDate
+    case listID, isCompleted, completedAt, createdAt
+  }
+
   /// Converts this task to the provider-agnostic ``TaskItem`` used by the picker and registry.
   ///
   /// - Parameter lists: The full list of ``LocalList`` values managed by the provider,
@@ -57,7 +68,7 @@ struct LocalTask: Codable, Identifiable {
       id: TaskRef(providerID: LocalProvider.providerID, nativeID: id.uuidString),
       title: title,
       notes: notes,
-      format: .plainText,
+      format: format,
       priority: priority,
       dueDate: dueDate,
       scheduledDate: scheduledDate,
@@ -80,11 +91,32 @@ struct LocalTask: Codable, Identifiable {
 
 extension LocalTask {
 
+  /// Decodes a ``LocalTask`` from `decoder`, defaulting `format` to `.markdown` when absent.
+  ///
+  /// The default preserves backward compatibility with JSON records written before the
+  /// `format` field was introduced.
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(UUID.self, forKey: .id)
+    title = try container.decode(String.self, forKey: .title)
+    notes = try container.decodeIfPresent(String.self, forKey: .notes)
+    format = try container.decodeIfPresent(NoteFormat.self, forKey: .format) ?? .markdown
+    priority = try container.decode(TaskPriority.self, forKey: .priority)
+    dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
+    scheduledDate = try container.decodeIfPresent(Date.self, forKey: .scheduledDate)
+    startDate = try container.decodeIfPresent(Date.self, forKey: .startDate)
+    listID = try container.decodeIfPresent(UUID.self, forKey: .listID)
+    isCompleted = try container.decode(Bool.self, forKey: .isCompleted)
+    completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+    createdAt = try container.decode(Date.self, forKey: .createdAt)
+  }
+
   /// Creates a new incomplete task from a ``TaskDraft``.
   init(from draft: TaskDraft) {
     id = UUID()
     title = draft.title
     notes = draft.notes.isEmpty ? nil : draft.notes
+    format = .markdown
     priority = draft.priority
     dueDate = draft.dueDate
     scheduledDate = nil

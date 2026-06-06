@@ -82,6 +82,7 @@ private final class SelectionWritableProvider: WritableTaskProvider {
   func createList(name _: String) async throws -> TaskList { fatalError("unused") }
   func renameList(_: String, name _: String) async throws {}
   func deleteList(_: String) async throws {}
+  func updateTask(_: TaskRef, draft _: TaskDraft) async throws {}
   func deleteTask(_: TaskRef) async throws {}
 }
 
