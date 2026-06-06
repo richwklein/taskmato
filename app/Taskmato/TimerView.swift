@@ -10,6 +10,8 @@ import SwiftUI
 /// The compact popover view shown when the user clicks the menu bar item.
 ///
 /// Provides quick timer controls and a button to open the main application window.
+/// On first appearance, binds the `openWindow` environment action onto ``MainNavigation``
+/// and reports the menu-bar scene ready to drain any buffered cold-launch URLs.
 struct TimerView: View {
 
   var engine: SessionEngine
@@ -17,6 +19,7 @@ struct TimerView: View {
   var store: SessionStore
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
+  var nav: MainNavigation
   /// The phase to start when the user presses Start from idle.
   var nextStartPhase: SessionPhase
   /// The break type to use when skipping from a focus session.
@@ -43,8 +46,7 @@ struct TimerView: View {
 
         Button {
           let popover = NSApp.keyWindow
-          NSApp.activate(ignoringOtherApps: true)
-          openWindow(id: "main")
+          nav.openMainWindow()
           DispatchQueue.main.async { popover?.close() }
         } label: {
           Image(systemName: "arrow.up.forward.app")
@@ -72,13 +74,12 @@ struct TimerView: View {
         .padding(.horizontal, 16)
 
       if selectionStore.activeTask != nil {
-        ActiveTaskView(engine: engine, selectionStore: selectionStore, registry: registry)
+        ActiveTaskView(engine: engine, selectionStore: selectionStore, registry: registry, nav: nav)
       } else {
         Button {
           let popover = NSApp.keyWindow
-          NSApp.activate(ignoringOtherApps: true)
-          openWindow(id: "main")
-          NotificationCenter.default.post(name: .browseTasksAndPick, object: nil)
+          nav.browseTasksAndPick()
+          nav.openMainWindow()
           DispatchQueue.main.async { popover?.close() }
         } label: {
           Label("Browse Tasks…", systemImage: "checklist")
@@ -95,9 +96,7 @@ struct TimerView: View {
 
       Button {
         let popover = NSApp.keyWindow
-        NSApp.activate(ignoringOtherApps: true)
-        openWindow(id: "main")
-        NotificationCenter.default.post(name: .showStatsTab, object: nil)
+        nav.showStatsInMainWindow()
         DispatchQueue.main.async { popover?.close() }
       } label: {
         SessionStatsView(count: store.todayFocusCount(), minutes: store.todayFocusMinutes())
@@ -107,9 +106,12 @@ struct TimerView: View {
       .padding(.vertical, 10)
     }
     .frame(width: 280)
-    .onReceive(NotificationCenter.default.publisher(for: .openMainWindow)) { _ in
-      NSApp.activate(ignoringOtherApps: true)
-      openWindow(id: "main")
+    .onAppear {
+      nav.bindOpenMainWindow {
+        NSApp.activate(ignoringOtherApps: true)
+        openWindow(id: "main")
+      }
+      (NSApp.delegate as? AppDelegate)?.reportScenesReady()
     }
   }
 
@@ -215,6 +217,7 @@ struct TimerView: View {
     store: SessionStore(),
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
+    nav: MainNavigation(settings: AppSettings()),
     nextStartPhase: .focus,
     nextBreakPhase: .shortBreak
   )

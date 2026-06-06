@@ -73,12 +73,14 @@ struct URLSchemeHandlerTests {
       registry.enable(stub)
     }
 
+    let settings = AppSettings(defaults: defaults)
     let handler = URLSchemeHandler(
       registry: registry,
       selectionStore: selectionStore,
       engine: engine,
-      settings: AppSettings(),
-      localProvider: localProvider
+      settings: settings,
+      localProvider: localProvider,
+      nav: MainNavigation(settings: settings)
     )
     return HandlerContext(
       handler: handler,

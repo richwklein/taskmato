@@ -27,6 +27,7 @@ struct AppComposition {
   let localProvider: LocalProvider
   let remindersProvider: RemindersProvider
   let urlHandler: URLSchemeHandler
+  let nav: MainNavigation
 
   /// Constructs every service, registers providers, and wires the phase-ended callback.
   init() {
@@ -45,9 +46,11 @@ struct AppComposition {
     registry.register(remindersProvider)
     // Auto-enable on first launch before any provider state is persisted.
     if registry.enabledIDs.isEmpty { registry.enable(localProvider) }
+    let nav = MainNavigation(settings: settings)
     let urlHandler = URLSchemeHandler(
       registry: registry, selectionStore: selectionStore,
-      engine: engine, settings: settings, localProvider: localProvider
+      engine: engine, settings: settings, localProvider: localProvider,
+      nav: nav
     )
     engine.onPhaseEnded = { phase, startedAt, endedAt, wasCompleted in
       store.append(
@@ -86,5 +89,6 @@ struct AppComposition {
     self.localProvider = localProvider
     self.remindersProvider = remindersProvider
     self.urlHandler = urlHandler
+    self.nav = nav
   }
 }
