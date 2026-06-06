@@ -52,10 +52,12 @@ struct TaskmatoApp: App {
         }
         if let params = composition.urlHandler.pendingAdHocParams {
           Button("Create new \"\(params.title)\"") {
-            let task = composition.urlHandler.makeAdHocTask(from: params)
-            composition.selectionStore.select(task)
-            composition.urlHandler.pendingDisambiguation = nil
-            composition.nav.showTimerInMainWindow()
+            Task {
+              let task = await composition.urlHandler.makeAdHocTask(from: params)
+              composition.selectionStore.select(task)
+              composition.urlHandler.pendingDisambiguation = nil
+              composition.nav.showTimerInMainWindow()
+            }
           }
         }
         Button("Cancel", role: .cancel) {

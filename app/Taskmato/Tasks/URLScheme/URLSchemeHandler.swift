@@ -16,6 +16,11 @@ struct AdHocTaskParams {
   let dueDate: Date?
   /// Raw list name from the URL, or `nil` if the param was absent.
   let listName: String?
+  /// Raw provider ID from the URL, or `nil` if the param was absent.
+  ///
+  /// When set and the named provider is an enabled ``WritableTaskProvider``, ad-hoc task
+  /// creation targets that provider regardless of the default-provider setting.
+  let providerID: String?
 }
 
 /// Parses and dispatches `taskmato://` deep links to select a task and, when auto-start is
@@ -44,7 +49,6 @@ final class URLSchemeHandler {
   private let selectionStore: TaskSelectionStore
   private let engine: SessionEngine
   private let settings: AppSettings
-  private let localProvider: LocalProvider
   private let nav: MainNavigation
 
   init(
@@ -52,14 +56,12 @@ final class URLSchemeHandler {
     selectionStore: TaskSelectionStore,
     engine: SessionEngine,
     settings: AppSettings,
-    localProvider: LocalProvider,
     nav: MainNavigation
   ) {
     self.registry = registry
     self.selectionStore = selectionStore
     self.engine = engine
     self.settings = settings
-    self.localProvider = localProvider
     self.nav = nav
   }
 
@@ -86,23 +88,44 @@ final class URLSchemeHandler {
 
   /// Creates an ad-hoc task from the given params.
   ///
-  /// If ``LocalProvider`` is enabled, the task is written to its default list (or to the
-  /// local list whose name matches `adHocParams.listName`, if one exists). Otherwise a
-  /// transient ``TaskItem`` is returned without persisting it to any provider.
-  func makeAdHocTask(from adHocParams: AdHocTaskParams) -> TaskItem {
-    if registry.isEnabled(LocalProvider.providerID) {
+  /// Provider resolution order:
+  /// 1. `adHocParams.providerID` (URL `provider=` param) if set and the named provider is
+  ///    an enabled ``WritableTaskProvider``.
+  /// 2. ``AppSettings/defaultWritableProviderID`` if set and the named provider is enabled.
+  /// 3. ``TaskRegistry/firstEnabledWritableProvider`` — the first enabled writable provider
+  ///    in registration order.
+  ///
+  /// Falls back to a transient ``TaskItem`` (providerID `"adhoc"`) when no enabled writable
+  /// provider is available.
+  func makeAdHocTask(from adHocParams: AdHocTaskParams) async -> TaskItem {
+    // Level 1: URL param targets a specific provider (strict — no implicit fallback within level).
+    let urlTargeted = adHocParams.providerID.flatMap(registry.enabledWritableProvider(id:))
+    // Level 2 & 3: settings default, then first enabled writable provider.
+    let writable =
+      urlTargeted
+      ?? registry.resolveDefaultWritableProvider(preferredID: settings.defaultWritableProviderID)
+
+    if let writable {
       var draft = TaskDraft()
       draft.title = adHocParams.title
       draft.priority = adHocParams.priority
       draft.dueDate = adHocParams.dueDate
       if let name = adHocParams.listName {
+        let lists: [TaskList]
+        if let cached = registry.providerLists[writable.id] {
+          lists = cached
+        } else {
+          lists = (try? await writable.lists()) ?? []
+        }
         draft.listID =
-          localProvider.taskLists.first {
-            $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
-          }?.id.uuidString ?? localProvider.defaultListID
+          lists.first { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }?.id
+          ?? writable.defaultListID
       }
-      return localProvider.addTask(draft)
+      if let item = try? await writable.addTask(draft) {
+        return item
+      }
     }
+
     let list = adHocParams.listName.map { name in
       TaskList(
         id: name.lowercased().replacingOccurrences(of: " ", with: "-"),
@@ -165,7 +188,7 @@ final class URLSchemeHandler {
         pendingAdHocParams = buildAdHocParams(from: params, title: title)
         return nil
       }
-      return makeAdHocTask(from: buildAdHocParams(from: params, title: title))
+      return await makeAdHocTask(from: buildAdHocParams(from: params, title: title))
     }
 
     return nil
@@ -190,7 +213,8 @@ final class URLSchemeHandler {
   }
 
   private func lookupByTitle(_ title: String, providerID: String) async -> TaskItem? {
-    guard let provider = registry.providers.first(where: { $0.id == providerID })
+    guard let provider = registry.providers.first(where: { $0.id == providerID }),
+      registry.isEnabled(provider.id)
     else { return nil }
     let all = (try? await provider.tasks(in: nil)) ?? []
     return all.first { $0.title.localizedCaseInsensitiveContains(title) }
@@ -207,7 +231,8 @@ final class URLSchemeHandler {
       title: title,
       priority: params["priority"].flatMap(TaskPriority.init(urlParam:)) ?? .none,
       dueDate: params["due"].flatMap(parseDate(_:)),
-      listName: params["list"]
+      listName: params["list"],
+      providerID: params["provider"]
     )
   }
 

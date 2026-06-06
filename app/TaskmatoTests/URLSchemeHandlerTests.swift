@@ -15,6 +15,7 @@ private struct HandlerContext {
   let registry: TaskRegistry
   let selectionStore: TaskSelectionStore
   let localProvider: LocalProvider
+  let settings: AppSettings
 }
 
 // MARK: - Fakes
@@ -38,6 +39,52 @@ private final class StubTaskProvider: TaskProvider {
   func observe() -> AsyncStream<[TaskItem]>? { nil }
 }
 
+private final class StubWritableProvider: WritableTaskProvider {
+  let id: String
+  let displayName: String
+  let icon: String = "square"
+  let entitlement: ProviderEntitlement = .free
+  let defaultListID: String? = nil
+
+  init(id: String) {
+    self.id = id
+    self.displayName = id
+  }
+
+  nonisolated func authorize() async throws {}
+  func lists() async throws -> [TaskList] { [] }
+  func tasks(in _: TaskList?) async throws -> [TaskItem] { [] }
+  func observe() -> AsyncStream<[TaskItem]>? { nil }
+  func complete(_: TaskRef) async throws {}
+  func reopen(_: TaskRef) async throws {}
+
+  @discardableResult
+  func addTask(_ draft: TaskDraft) async throws -> TaskItem {
+    TaskItem(
+      id: TaskRef(providerID: id, nativeID: UUID().uuidString),
+      title: draft.title,
+      notes: draft.notes,
+      format: .plainText,
+      priority: draft.priority,
+      dueDate: draft.dueDate,
+      scheduledDate: nil,
+      startDate: nil,
+      list: nil,
+      section: nil,
+      sourceURL: nil
+    )
+  }
+
+  func setDefaultList(_: String) async throws {}
+  func createList(name: String) async throws -> TaskList {
+    TaskList(id: UUID().uuidString, providerID: id, name: name)
+  }
+  func renameList(_: String, name _: String) async throws {}
+  func deleteList(_: String) async throws {}
+  func updateTask(_: TaskRef, draft _: TaskDraft) async throws {}
+  func deleteTask(_: TaskRef) async throws {}
+}
+
 // MARK: - Tests
 
 @MainActor
@@ -54,13 +101,16 @@ struct URLSchemeHandlerTests {
   /// Builds a fully wired handler. Pass `enableLocalProvider: false` to test the transient path.
   private func makeHandler(
     stubProviderTasks: [TaskItem] = [],
-    enableLocalProvider: Bool = true
+    enableLocalProvider: Bool = true,
+    defaultWritableProviderID: String? = nil
   ) -> HandlerContext {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let selectionStore = TaskSelectionStore(defaults: defaults)
     let engine = SessionEngine()
     let registry = TaskRegistry(defaults: defaults)
     let localProvider = LocalProvider(fileURL: makeTempURL())
+    let settings = AppSettings(defaults: defaults)
+    settings.defaultWritableProviderID = defaultWritableProviderID
 
     registry.register(localProvider)
     if enableLocalProvider {
@@ -73,20 +123,19 @@ struct URLSchemeHandlerTests {
       registry.enable(stub)
     }
 
-    let settings = AppSettings(defaults: defaults)
     let handler = URLSchemeHandler(
       registry: registry,
       selectionStore: selectionStore,
       engine: engine,
       settings: settings,
-      localProvider: localProvider,
       nav: MainNavigation(settings: settings)
     )
     return HandlerContext(
       handler: handler,
       registry: registry,
       selectionStore: selectionStore,
-      localProvider: localProvider
+      localProvider: localProvider,
+      settings: settings
     )
   }
 
@@ -106,7 +155,7 @@ struct URLSchemeHandlerTests {
     )
   }
 
-  // MARK: - Ad-hoc task creation (LocalProvider enabled)
+  // MARK: - Ad-hoc task creation (LocalProvider enabled — default provider)
 
   @Test func adHocTaskWrittenToLocalProviderWhenEnabled() async throws {
     let ctx = makeHandler(enableLocalProvider: true)
@@ -119,7 +168,7 @@ struct URLSchemeHandlerTests {
 
   @Test func adHocTaskMatchesLocalListByName() async throws {
     let ctx = makeHandler(enableLocalProvider: true)
-    ctx.localProvider.createList(name: "Work")
+    try await ctx.localProvider.createList(name: "Work")
     await ctx.handler.handle(URL(string: "taskmato://start?title=Meeting&list=Work")!)
     let tasks = try await ctx.localProvider.tasks(in: nil)
     #expect(tasks.first?.list?.name == "Work")
@@ -151,6 +200,67 @@ struct URLSchemeHandlerTests {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=Due+Task&due=2026-12-01")!)
     #expect(ctx.selectionStore.activeTask?.dueDate != nil)
+  }
+
+  // MARK: - Ad-hoc: URL param provider override
+
+  @Test func adHocTaskURLProviderParamTargetsSpecificProvider() async throws {
+    let ctx = makeHandler(enableLocalProvider: true)
+    await ctx.handler.handle(
+      URL(string: "taskmato://start?title=Override&provider=\(LocalProvider.providerID)")!)
+    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
+    let items = try await ctx.localProvider.tasks(in: nil)
+    #expect(items.map(\.title).contains("Override"))
+  }
+
+  @Test func adHocTaskURLProviderParamFallsBackWhenProviderDisabled() async {
+    // provider= refers to a disabled/unknown provider → falls back to settings/firstEnabled
+    let ctx = makeHandler(enableLocalProvider: true)
+    ctx.registry.disable(providerID: LocalProvider.providerID)
+    await ctx.handler.handle(
+      URL(string: "taskmato://start?title=Fallback&provider=\(LocalProvider.providerID)")!)
+    // No enabled writable provider → transient
+    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
+  }
+
+  @Test func adHocTaskURLProviderParamFallsBackToSettingsDefaultWhenDisabled() async {
+    let ctx = makeHandler(enableLocalProvider: false, defaultWritableProviderID: "zzz-default")
+    let first = StubWritableProvider(id: "aaa-first")
+    let defaultProvider = StubWritableProvider(id: "zzz-default")
+    let disabledTarget = StubWritableProvider(id: "target-disabled")
+    ctx.registry.register(first)
+    ctx.registry.register(defaultProvider)
+    ctx.registry.register(disabledTarget)
+    ctx.registry.enable(first)
+    ctx.registry.enable(defaultProvider)
+
+    await ctx.handler.handle(
+      URL(string: "taskmato://start?title=Fallback&provider=target-disabled")!)
+
+    #expect(ctx.selectionStore.activeTask?.id.providerID == "zzz-default")
+  }
+
+  // MARK: - Ad-hoc: settings default writable provider
+
+  @Test func adHocTaskUsesSettingsDefaultProvider() async throws {
+    let ctx = makeHandler(
+      enableLocalProvider: true,
+      defaultWritableProviderID: LocalProvider.providerID
+    )
+    await ctx.handler.handle(URL(string: "taskmato://start?title=Settings+Task")!)
+    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
+    let items = try await ctx.localProvider.tasks(in: nil)
+    #expect(items.map(\.title).contains("Settings Task"))
+  }
+
+  @Test func adHocTaskIgnoresSettingsDefaultWhenProviderDisabled() async {
+    let ctx = makeHandler(
+      enableLocalProvider: false,
+      defaultWritableProviderID: LocalProvider.providerID
+    )
+    await ctx.handler.handle(URL(string: "taskmato://start?title=No+Provider")!)
+    // Settings points at disabled provider → falls through to transient
+    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
   }
 
   // MARK: - Step 1: Lookup by provider + ID
@@ -211,6 +321,16 @@ struct URLSchemeHandlerTests {
     #expect(ctx.selectionStore.activeTask?.id == existing.id)
   }
 
+  @Test func lookupByTitleIgnoresDisabledProvider() async {
+    let existing = makeTask(title: "Disabled Title", providerID: "stub")
+    let ctx = makeHandler(stubProviderTasks: [existing])
+    ctx.registry.disable(providerID: "stub")
+    await ctx.handler.handle(
+      URL(string: "taskmato://start?provider=stub&title=Disabled%20Title")!)
+    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
+    #expect(ctx.selectionStore.activeTask?.title == "Disabled Title")
+  }
+
   // MARK: - Step 4: Cross-provider title search
 
   @Test func crossProviderSearchFindsBeforeAdHoc() async {
@@ -238,13 +358,13 @@ struct URLSchemeHandlerTests {
     #expect(ctx.handler.pendingAdHocParams?.priority == .high)
   }
 
-  @Test func makeAdHocTaskFromDisambiguationUsesLocalProvider() async throws {
+  @Test func makeAdHocTaskFromDisambiguationUsesDefaultProvider() async throws {
     let task1 = makeTask(title: "Deploy")
     let task2 = makeTask(title: "Deploy")
     let ctx = makeHandler(stubProviderTasks: [task1, task2], enableLocalProvider: true)
     await ctx.handler.handle(URL(string: "taskmato://start?title=Deploy")!)
     let params = ctx.handler.pendingAdHocParams!
-    let task = ctx.handler.makeAdHocTask(from: params)
+    let task = await ctx.handler.makeAdHocTask(from: params)
     #expect(task.id.providerID == LocalProvider.providerID)
     let localItems = try await ctx.localProvider.tasks(in: nil)
     #expect(localItems.map(\.title).contains("Deploy"))

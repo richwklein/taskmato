@@ -80,6 +80,12 @@ final class AppSettings {
     didSet { defaults.set(taskSortDirection.rawValue, forKey: Keys.taskSortDirection) }
   }
 
+  /// The provider ID of the preferred writable provider for new ad-hoc tasks and the
+  /// Add Task sheet, or `nil` to automatically select the first enabled writable provider.
+  var defaultWritableProviderID: String? {
+    didSet { defaults.set(defaultWritableProviderID, forKey: Keys.defaultWritableProviderID) }
+  }
+
   /// `focusMinutes` expressed as a `TimeInterval` in seconds.
   var focusDuration: TimeInterval { TimeInterval(focusMinutes * 60) }
 
@@ -114,6 +120,7 @@ final class AppSettings {
       defaults.string(forKey: Keys.taskSortField).flatMap(TaskSortField.init) ?? .dueDate
     taskSortDirection =
       defaults.string(forKey: Keys.taskSortDirection).flatMap(TaskSortDirection.init) ?? .ascending
+    defaultWritableProviderID = defaults.string(forKey: Keys.defaultWritableProviderID)
   }
 
   private enum Keys {
@@ -129,6 +136,7 @@ final class AppSettings {
     static let sidebarVisible = "taskRegistry.sidebarVisible"
     static let taskSortField = "taskSort.field"
     static let taskSortDirection = "taskSort.direction"
+    static let defaultWritableProviderID = "tasks.defaultWritableProviderID"
   }
 }
 
