@@ -5,6 +5,7 @@
 
 import Foundation
 import Observation
+import os
 
 /// A built-in task provider that persists tasks and lists to a JSON file in Application Support.
 ///
@@ -41,6 +42,7 @@ final class LocalProvider: WritableTaskProvider {
   private let fileURL: URL
   private let encoder = JSONEncoder()
   private let decoder = JSONDecoder()
+  private let logger = Logger(subsystem: "com.taskmato", category: "LocalProvider")
 
   /// Creates a provider backed by the default production file path.
   convenience init() {
@@ -230,8 +232,12 @@ final class LocalProvider: WritableTaskProvider {
 
   private func save() {
     let store = LocalStore(lists: taskLists, tasks: allTasks, defaultListID: defaultListID)
-    guard let data = try? encoder.encode(store) else { return }
-    try? data.write(to: fileURL, options: [])
+    do {
+      let data = try encoder.encode(store)
+      try data.write(to: fileURL, options: [])
+    } catch {
+      logger.error("LocalProvider failed to save: \(error.localizedDescription, privacy: .public)")
+    }
   }
 }
 
