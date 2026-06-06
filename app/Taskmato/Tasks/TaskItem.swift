@@ -53,3 +53,17 @@ struct TaskItem: Identifiable, Hashable, Codable, Sendable {
   /// Wall-clock time when the task was created in the source provider, if known.
   var createdAt: Date?
 }
+
+extension TaskItem {
+
+  /// The title rendered as an `AttributedString` with inline markdown interpretation.
+  ///
+  /// Falls back to plain text when `format` is not `.markdown` or when parsing fails.
+  var markdownTitle: AttributedString {
+    guard format == .markdown else { return AttributedString(title) }
+    let options = AttributedString.MarkdownParsingOptions(
+      interpretedSyntax: .inlineOnlyPreservingWhitespace
+    )
+    return (try? AttributedString(markdown: title, options: options)) ?? AttributedString(title)
+  }
+}

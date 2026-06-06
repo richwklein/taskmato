@@ -29,7 +29,7 @@ final class RemindersProvider: ClosableTaskProvider {
   private let store: any RemindersEventStore
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
   private var observer: NSObjectProtocol?
-  private var debounceTask: Task<Void, Never>?
+  private let debouncer = Debouncer()
 
   /// Production initializer using live EventKit.
   convenience init() {
@@ -114,18 +114,15 @@ final class RemindersProvider: ClosableTaskProvider {
   }
 
   private func scheduleDebounce() {
-    debounceTask?.cancel()
-    debounceTask = Task { [weak self] in
-      try? await Task.sleep(for: .milliseconds(250))
-      guard !Task.isCancelled, let self else { return }
+    debouncer.schedule { [weak self] in
+      guard let self else { return }
       let updated = (try? await self.tasks(in: nil)) ?? []
       self.streamContinuation?.yield(updated)
     }
   }
 
   private func stopObserving() {
-    debounceTask?.cancel()
-    debounceTask = nil
+    debouncer.cancel()
     if let observer {
       store.removeObserver(observer)
       self.observer = nil

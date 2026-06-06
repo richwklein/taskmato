@@ -5,14 +5,21 @@
 
 import SwiftUI
 
-/// A sheet for creating a new task via any writable task provider.
+/// A sheet for creating or editing a task via any writable task provider.
 ///
-/// Displayed as a modal sheet from the Tasks tab. The title field is auto-focused on appear.
-/// Submitting with an empty title is disabled. Lists are loaded asynchronously on appear.
+/// Pass a `taskToEdit` to open in edit mode; the form pre-fills with the task's existing
+/// values and the submit button calls ``WritableTaskProvider/updateTask(_:draft:)`` instead
+/// of ``WritableTaskProvider/addTask(_:)``. Pass `initialListID` to pre-select a specific
+/// list in add mode (e.g. when triggered from a sidebar list context menu). When both are
+/// `nil`, the sheet defaults to the provider's default list. The title field is auto-focused
+/// on appear.
 struct AddTaskView: View {
 
   var provider: any WritableTaskProvider
   @Binding var isPresented: Bool
+  var taskToEdit: TaskItem?
+  /// List to pre-select in add mode. Ignored when `taskToEdit` is non-nil.
+  var initialListID: String?
 
   @State private var title = ""
   @State private var notes = ""
@@ -25,13 +32,17 @@ struct AddTaskView: View {
 
   @FocusState private var isTitleFocused: Bool
 
+  private var isEditing: Bool { taskToEdit != nil }
+  private var sheetTitle: String { isEditing ? "Edit Task" : "New Task" }
+  private var submitLabel: String { isEditing ? "Save" : "Add Task" }
+
   private var canSubmit: Bool {
     !title.trimmingCharacters(in: .whitespaces).isEmpty
   }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      Text("New Task")
+      Text(sheetTitle)
         .font(.headline)
 
       TextField("Task title", text: $title)
@@ -93,17 +104,30 @@ struct AddTaskView: View {
         Spacer()
         Button("Cancel") { isPresented = false }
           .keyboardShortcut(.cancelAction)
-        Button("Add Task") { submit() }
+        Button(submitLabel) { submit() }
           .keyboardShortcut(.defaultAction)
           .disabled(!canSubmit)
       }
     }
     .padding()
     .frame(width: 360)
-    .onAppear { isTitleFocused = true }
+    .onAppear {
+      isTitleFocused = true
+      if let task = taskToEdit {
+        title = task.title
+        notes = task.notes ?? ""
+        priority = task.priority
+        hasDueDate = task.dueDate != nil
+        if let due = task.dueDate { dueDate = due }
+        showNotes = !(task.notes ?? "").isEmpty
+        selectedListID = task.list?.id ?? ""
+      } else if let listID = initialListID {
+        selectedListID = listID
+      }
+    }
     .task {
       taskLists = (try? await provider.lists()) ?? []
-      if selectedListID.isEmpty, let first = taskLists.first {
+      if taskToEdit == nil, selectedListID.isEmpty, let first = taskLists.first {
         selectedListID = provider.defaultListID ?? first.id
       }
     }
@@ -119,7 +143,11 @@ struct AddTaskView: View {
     draft.dueDate = hasDueDate ? dueDate : nil
     draft.listID = selectedListID.isEmpty ? nil : selectedListID
     isPresented = false
-    Task { try? await provider.addTask(draft) }
+    if let task = taskToEdit {
+      Task { try? await provider.updateTask(task.id, draft: draft) }
+    } else {
+      Task { try? await provider.addTask(draft) }
+    }
   }
 }
 

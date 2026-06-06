@@ -22,6 +22,8 @@ struct TasksTabView: View {
   @State private var sections: [TaskSection] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
+  @State private var isEditingTask = false
+  @State private var taskToEdit: TaskItem?
   @State private var showCompleted = false
   @State private var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
@@ -67,7 +69,7 @@ struct TasksTabView: View {
         set: { settings.sidebarVisible = $0 != .detailOnly }
       )
     ) {
-      ProviderSidebarView(registry: registry)
+      ProviderSidebarView(registry: registry, onTaskAdded: { Task { await refresh() } })
         .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
     } detail: {
       detailColumn
@@ -78,6 +80,9 @@ struct TasksTabView: View {
     .onAppear { Task { await refresh() } }
     .onChange(of: isAddingTask) { _, adding in
       if !adding { Task { await refresh() } }
+    }
+    .onChange(of: isEditingTask) { _, editing in
+      if !editing { Task { await refresh() } }
     }
     .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
     .onChange(of: registry.selection) { _, _ in
@@ -93,6 +98,11 @@ struct TasksTabView: View {
     .sheet(isPresented: $isAddingTask) {
       if let provider = writableProvider {
         AddTaskView(provider: provider, isPresented: $isAddingTask)
+      }
+    }
+    .sheet(isPresented: $isEditingTask) {
+      if let task = taskToEdit, let provider = registry.writableProvider(for: task.id) {
+        AddTaskView(provider: provider, isPresented: $isEditingTask, taskToEdit: task)
       }
     }
     .toolbar {
@@ -248,6 +258,14 @@ struct TasksTabView: View {
       select(task)
     } label: {
       Label(TaskLabel.Menu.trackTask, systemImage: "timer")
+    }
+    if registry.writableProvider(for: task.id) != nil {
+      Button {
+        taskToEdit = task
+        isEditingTask = true
+      } label: {
+        Label("Edit…", systemImage: "pencil")
+      }
     }
     Divider()
     if registry.closableProvider(for: task.id) != nil {

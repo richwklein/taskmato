@@ -46,7 +46,7 @@ final class ObsidianProvider: ClosableTaskProvider {
   private let parser = ObsidianTaskParser()
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
   private var fsEventStream: FSEventStreamRef?
-  private var debounceTask: Task<Void, Never>?
+  private let debouncer = Debouncer()
 
   private static let bookmarkKey = "obsidian.vaultBookmark"
   private static let patternsKey = "obsidian.filePatterns"
@@ -438,18 +438,15 @@ final class ObsidianProvider: ClosableTaskProvider {
 
   /// Cancels any pending rescan and schedules a new one 250 ms from now.
   private func scheduleDebounce() {
-    debounceTask?.cancel()
-    debounceTask = Task { [weak self] in
-      try? await Task.sleep(for: .milliseconds(250))
-      guard !Task.isCancelled, let self else { return }
+    debouncer.schedule { [weak self] in
+      guard let self else { return }
       let updated = (try? await self.tasks(in: nil)) ?? []
       self.streamContinuation?.yield(updated)
     }
   }
 
   private func stopWatching() {
-    debounceTask?.cancel()
-    debounceTask = nil
+    debouncer.cancel()
     if let stream = fsEventStream {
       FSEventStreamStop(stream)
       FSEventStreamRelease(stream)
