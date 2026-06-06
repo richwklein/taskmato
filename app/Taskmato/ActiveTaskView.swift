@@ -75,7 +75,7 @@ struct ActiveTaskView: View {
             .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
-        .help("Swap task — pauses the session and opens the task list")
+        .help(AppLabels.Tooltip.swapTask)
       }
 
       Button {
@@ -90,7 +90,7 @@ struct ActiveTaskView: View {
           .foregroundStyle(.secondary)
       }
       .buttonStyle(.plain)
-      .help("Clear task")
+      .help(AppLabels.Tooltip.clearTask)
     }
   }
 
@@ -156,7 +156,7 @@ struct ActiveTaskView: View {
       .onHover { isCompletionHovered = $0 }
       .help(
         sessionIsActive
-          ? TaskLabel.Tooltip.markAsCompletedActive : TaskLabel.Tooltip.markAsCompleted)
+          ? AppLabels.Tooltip.markAsCompletedActive : AppLabels.Tooltip.markAsCompleted)
     } else {
       Image(systemName: "circle.fill")
         .font(.caption2)

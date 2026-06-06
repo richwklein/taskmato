@@ -27,6 +27,7 @@ struct TasksTabView: View {
   @State private var showCompleted = false
   @State private var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
+  @FocusState private var isSearchFocused: Bool
 
   /// Returns the writable provider for the current sidebar selection, or the first
   /// enabled writable provider when the selection is `.today` or unresolved.
@@ -42,6 +43,11 @@ struct TasksTabView: View {
 
   private var hasClosableProvider: Bool {
     registry.providers.contains { registry.isEnabled($0.id) && $0 is (any ClosableTaskProvider) }
+  }
+
+  /// The label spec matching the current show/hide completed toolbar state.
+  private var completedToggleSpec: AppLabel {
+    showCompleted ? AppLabels.View.hideCompleted : AppLabels.View.showCompleted
   }
 
   private var totalCompletedCount: Int { completedTasks.count }
@@ -63,6 +69,108 @@ struct TasksTabView: View {
   }
 
   var body: some View {
+    splitView
+      .sheet(isPresented: $isAddingTask) {
+        if let provider = writableProvider {
+          AddTaskView(provider: provider, isPresented: $isAddingTask)
+        }
+      }
+      .sheet(isPresented: $isEditingTask) {
+        if let task = taskToEdit, let provider = registry.writableProvider(for: task.id) {
+          AddTaskView(provider: provider, isPresented: $isEditingTask, taskToEdit: task)
+        }
+      }
+      .toolbar {
+        if writableProvider != nil {
+          ToolbarItem(placement: .automatic) {
+            Button {
+              isAddingTask = true
+            } label: {
+              Label(AppLabels.Task.add.title, systemImage: AppLabels.Task.add.systemImage)
+            }
+            .help(AppLabels.Tooltip.addTask)
+          }
+        }
+
+        if hasClosableProvider {
+          ToolbarItem(placement: .automatic) {
+            Button {
+              showCompleted.toggle()
+              if showCompleted { Task { await loadCompleted() } }
+            } label: {
+              let spec = showCompleted ? AppLabels.View.hideCompleted : AppLabels.View.showCompleted
+              Label(spec.title, systemImage: spec.systemImage)
+            }
+            .help(showCompleted ? AppLabels.Tooltip.hideCompleted : AppLabels.Tooltip.showCompleted)
+          }
+        }
+
+        ToolbarItem(placement: .automatic) {
+          Picker("Layout", selection: $settings.taskPickerLayout) {
+            Label(
+              AppLabels.View.listLayout.title, systemImage: AppLabels.View.listLayout.systemImage
+            )
+            .tag(TaskPickerLayout.list)
+            Label(
+              AppLabels.View.gridLayout.title, systemImage: AppLabels.View.gridLayout.systemImage
+            )
+            .tag(TaskPickerLayout.grid)
+          }
+          .pickerStyle(.segmented)
+          .help("Toggle between list and grid view")
+        }
+
+        ToolbarItem(placement: .automatic) {
+          sortMenu
+        }
+      }
+      .focusedSceneValue(\.focusSearch, { isSearchFocused = true })
+      .focusedSceneValue(\.addTask, writableProvider != nil ? { isAddingTask = true } : nil)
+      .focusedSceneValue(
+        \.toggleCompleted,
+        hasClosableProvider
+          ? {
+            showCompleted.toggle()
+            if showCompleted { Task { await loadCompleted() } }
+          } : nil
+      )
+      .focusedSceneValue(
+        \.toggleCompletedTitle,
+        hasClosableProvider ? completedToggleSpec.title : nil
+      )
+      .focusedSceneValue(
+        \.toggleCompletedIcon,
+        hasClosableProvider ? completedToggleSpec.systemImage : nil
+      )
+  }
+
+  /// Change-tracking modifiers applied on top of ``navigationView``.
+  ///
+  /// Split from ``body`` to keep each property's modifier chain short enough
+  /// for the Swift type-checker.
+  private var splitView: some View {
+    navigationView
+      .onChange(of: isAddingTask) { _, adding in
+        if !adding { Task { await refresh() } }
+      }
+      .onChange(of: isEditingTask) { _, editing in
+        if !editing { Task { await refresh() } }
+      }
+      .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
+      .onChange(of: registry.selection) { _, _ in
+        query = ""
+        Task { await refresh() }
+      }
+      .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
+      .onChange(of: settings.taskSortField) { _, _ in Task { await refresh() } }
+      .onChange(of: settings.taskSortDirection) { _, _ in Task { await refresh() } }
+      .onChange(of: registry.providerAuthorizationStates) { _, _ in
+        Task { await refresh() }
+      }
+  }
+
+  /// The ``NavigationSplitView`` with search and initial data-loading modifiers.
+  private var navigationView: some View {
     NavigationSplitView(
       columnVisibility: Binding(
         get: { nav.sidebarVisible ? .all : .detailOnly },
@@ -75,76 +183,10 @@ struct TasksTabView: View {
       detailColumn
     }
     .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
+    .searchFocused($isSearchFocused)
     .task(id: query) { await refresh() }
     .task { await subscribeToProviderUpdates() }
     .onAppear { Task { await refresh() } }
-    .onChange(of: isAddingTask) { _, adding in
-      if !adding { Task { await refresh() } }
-    }
-    .onChange(of: isEditingTask) { _, editing in
-      if !editing { Task { await refresh() } }
-    }
-    .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
-    .onChange(of: registry.selection) { _, _ in
-      query = ""
-      Task { await refresh() }
-    }
-    .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
-    .onChange(of: settings.taskSortField) { _, _ in Task { await refresh() } }
-    .onChange(of: settings.taskSortDirection) { _, _ in Task { await refresh() } }
-    .onChange(of: registry.providerAuthorizationStates) { _, _ in
-      Task { await refresh() }
-    }
-    .sheet(isPresented: $isAddingTask) {
-      if let provider = writableProvider {
-        AddTaskView(provider: provider, isPresented: $isAddingTask)
-      }
-    }
-    .sheet(isPresented: $isEditingTask) {
-      if let task = taskToEdit, let provider = registry.writableProvider(for: task.id) {
-        AddTaskView(provider: provider, isPresented: $isEditingTask, taskToEdit: task)
-      }
-    }
-    .toolbar {
-      if writableProvider != nil {
-        ToolbarItem(placement: .automatic) {
-          Button {
-            isAddingTask = true
-          } label: {
-            Label("Add Task", systemImage: "plus")
-          }
-          .help("Add a task")
-        }
-      }
-
-      if hasClosableProvider {
-        ToolbarItem(placement: .automatic) {
-          Button {
-            showCompleted.toggle()
-            if showCompleted { Task { await loadCompleted() } }
-          } label: {
-            Label(
-              showCompleted ? "Hide Completed" : "Show Completed",
-              systemImage: showCompleted ? "eye.slash" : "eye"
-            )
-          }
-          .help(showCompleted ? "Hide completed tasks" : "Show completed tasks")
-        }
-      }
-
-      ToolbarItem(placement: .automatic) {
-        Picker("Layout", selection: $settings.taskPickerLayout) {
-          Label("List", systemImage: "list.bullet").tag(TaskPickerLayout.list)
-          Label("Grid", systemImage: "square.grid.2x2").tag(TaskPickerLayout.grid)
-        }
-        .pickerStyle(.segmented)
-        .help("Toggle between list and grid view")
-      }
-
-      ToolbarItem(placement: .automatic) {
-        sortMenu
-      }
-    }
   }
 
   // MARK: - Detail content
@@ -257,14 +299,14 @@ struct TasksTabView: View {
     Button {
       select(task)
     } label: {
-      Label(TaskLabel.Menu.trackTask, systemImage: "timer")
+      Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
     }
     if registry.writableProvider(for: task.id) != nil {
       Button {
         taskToEdit = task
         isEditingTask = true
       } label: {
-        Label("Edit…", systemImage: "pencil")
+        Label(AppLabels.Task.edit.title, systemImage: AppLabels.Task.edit.systemImage)
       }
     }
     Divider()
@@ -272,7 +314,7 @@ struct TasksTabView: View {
       Button {
         handleComplete(task)
       } label: {
-        Label(TaskLabel.Menu.markAsCompleted, systemImage: "checkmark.circle.fill")
+        Label(AppLabels.Task.complete.title, systemImage: AppLabels.Task.complete.systemImage)
       }
     }
   }
@@ -284,14 +326,14 @@ struct TasksTabView: View {
       Button {
         handleRestore(task)
       } label: {
-        Label(TaskLabel.Menu.restoreTask, systemImage: "arrow.counterclockwise")
+        Label(AppLabels.Task.restore.title, systemImage: AppLabels.Task.restore.systemImage)
       }
     }
     if registry.provider(for: task.id) is (any WritableTaskProvider) {
       Button(role: .destructive) {
         handleDelete(task)
       } label: {
-        Label(TaskLabel.Menu.deletePermanently, systemImage: "trash")
+        Label(AppLabels.Task.delete.title, systemImage: AppLabels.Task.delete.systemImage)
       }
     }
   }
