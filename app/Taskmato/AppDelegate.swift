@@ -17,6 +17,9 @@ import AppKit
 /// URL events are handled here rather than via `.onOpenURL` on SwiftUI views because
 /// `MenuBarExtra` content is not in the main window responder chain and misses URL events
 /// when the popover is collapsed.
+///
+/// URLs that arrive before the menu-bar scene has mounted are held in `urlBuffer` and
+/// drained by ``reportScenesReady()`` once a scene reports it is ready.
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
   /// Injected by `TaskmatoApp.init()`. Called from `applicationWillFinishLaunching`,
@@ -26,6 +29,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   /// The URL handler wired by ``wire(urlHandler:)`` after composition completes.
   private(set) var urlHandler: URLSchemeHandler?
+
+  /// URLs received before ``reportScenesReady()`` is called.
+  private var urlBuffer: [URL] = []
+  private var scenesReady = false
 
   func applicationWillFinishLaunching(_ notification: Notification) {
     bootstrap?()
@@ -38,11 +45,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func application(_ application: NSApplication, open urls: [URL]) {
-    guard let urlHandler else { return }
-    for url in urls {
-      Task { @MainActor in
-        await urlHandler.handle(url)
+    if scenesReady, let urlHandler {
+      for url in urls {
+        Task { @MainActor in await urlHandler.handle(url) }
       }
+    } else {
+      urlBuffer.append(contentsOf: urls)
+    }
+  }
+
+  /// Called once when the menu-bar scene first appears; drains any buffered URLs.
+  ///
+  /// Must be called from the menu-bar popover's `onAppear`, after `bindOpenMainWindow`
+  /// has been called on `MainNavigation`, so that URL handling can open the main window.
+  /// Subsequent calls are no-ops.
+  func reportScenesReady() {
+    guard !scenesReady else { return }
+    scenesReady = true
+    let buffered = urlBuffer
+    urlBuffer = []
+    guard let urlHandler else { return }
+    for url in buffered {
+      Task { @MainActor in await urlHandler.handle(url) }
     }
   }
 
