@@ -2,7 +2,23 @@
   "permissions": {
     "allow": [
       "Bash(codesign -d *)",
-      "mcp__github__pull_request_read"
+      "Bash(make lint)",
+      "Bash(make lint *)",
+      "Bash(make format-check)",
+      "Bash(make format-check *)",
+      "Bash(make test)",
+      "Bash(make test *)",
+      "Bash(xcodebuild test *)",
+      "Bash(xcodebuild build-for-testing *)",
+      "Bash(xcodebuild -project *)",
+      "Bash(gh label list *)",
+      "mcp__github__get_file_contents",
+      "mcp__github__pull_request_read",
+      "mcp__github__issue_read",
+      "mcp__github__search_issues",
+      "mcp__github__list_issues",
+      "mcp__xcode__XcodeListWindows",
+      "mcp__xcode__DocumentationSearch"
     ]
   }
 }
