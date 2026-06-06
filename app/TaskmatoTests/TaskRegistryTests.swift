@@ -71,6 +71,7 @@ private final class StubWritableProvider: WritableTaskProvider {
 
   func renameList(_: String, name _: String) async throws {}
   func deleteList(_: String) async throws {}
+  func updateTask(_: TaskRef, draft _: TaskDraft) async throws {}
   func deleteTask(_: TaskRef) async throws {}
 }
 
