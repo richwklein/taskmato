@@ -16,10 +16,9 @@ struct ActiveTaskView: View {
   var engine: SessionEngine
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
+  var nav: MainNavigation
   /// When `true`, renders task notes and source link below the title.
   var showNotes: Bool = false
-
-  @Environment(\.openWindow) private var openWindow
 
   @State private var isCompletionHovered: Bool = false
   @State private var pendingAction: ConfirmAction?
@@ -68,9 +67,8 @@ struct ActiveTaskView: View {
       if sessionIsActive {
         Button {
           if engine.isRunning { engine.pause() }
-          NSApp.activate(ignoringOtherApps: true)
-          openWindow(id: "main")
-          NotificationCenter.default.post(name: .browseTasksAndPick, object: nil)
+          nav.browseTasksAndPick()
+          nav.openMainWindow()
         } label: {
           Image(systemName: "arrow.triangle.swap")
             .font(.caption2)
@@ -177,12 +175,12 @@ struct ActiveTaskView: View {
       Task {
         try? await provider.complete(ref)
         selectionStore.clearActiveTask()
-        NotificationCenter.default.post(name: .showTasksTab, object: nil)
+        nav.showTasks()
       }
     case .clear:
       engine.stop()
       selectionStore.clearActiveTask()
-      NotificationCenter.default.post(name: .showTasksTab, object: nil)
+      nav.showTasks()
     }
   }
 

@@ -29,6 +29,7 @@ struct TaskmatoApp: App {
         store: composition.store,
         selectionStore: composition.selectionStore,
         registry: composition.registry,
+        nav: composition.nav,
         nextStartPhase: composition.engine.queuedPhase ?? .focus,
         nextBreakPhase: composition.engine.nextBreakPhase(
           longBreakAfter: composition.settings.longBreakAfterSessions)
@@ -46,7 +47,7 @@ struct TaskmatoApp: App {
           Button(task.title) {
             composition.selectionStore.select(task)
             composition.urlHandler.pendingDisambiguation = nil
-            NotificationCenter.default.post(name: .showTimerTab, object: nil)
+            composition.nav.showTimerInMainWindow()
           }
         }
         if let params = composition.urlHandler.pendingAdHocParams {
@@ -54,7 +55,7 @@ struct TaskmatoApp: App {
             let task = composition.urlHandler.makeAdHocTask(from: params)
             composition.selectionStore.select(task)
             composition.urlHandler.pendingDisambiguation = nil
-            NotificationCenter.default.post(name: .showTimerTab, object: nil)
+            composition.nav.showTimerInMainWindow()
           }
         }
         Button("Cancel", role: .cancel) {
@@ -76,7 +77,8 @@ struct TaskmatoApp: App {
         settings: composition.settings,
         store: composition.store,
         selectionStore: composition.selectionStore,
-        registry: composition.registry
+        registry: composition.registry,
+        nav: composition.nav
       )
     }
     .defaultSize(width: 480, height: 520)

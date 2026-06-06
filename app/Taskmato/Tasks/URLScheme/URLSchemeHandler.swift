@@ -45,19 +45,22 @@ final class URLSchemeHandler {
   private let engine: SessionEngine
   private let settings: AppSettings
   private let localProvider: LocalProvider
+  private let nav: MainNavigation
 
   init(
     registry: TaskRegistry,
     selectionStore: TaskSelectionStore,
     engine: SessionEngine,
     settings: AppSettings,
-    localProvider: LocalProvider
+    localProvider: LocalProvider,
+    nav: MainNavigation
   ) {
     self.registry = registry
     self.selectionStore = selectionStore
     self.engine = engine
     self.settings = settings
     self.localProvider = localProvider
+    self.nav = nav
   }
 
   /// Handles the given URL, selecting the resolved task and starting a focus session if
@@ -72,8 +75,7 @@ final class URLSchemeHandler {
     guard let task = await resolve(params: params) else { return }
 
     selectionStore.select(task)
-    NotificationCenter.default.post(name: .openMainWindow, object: nil)
-    NotificationCenter.default.post(name: .showTimerTab, object: nil)
+    nav.showTimerInMainWindow()
     if case .idle = engine.state, settings.autoStartNextPhase {
       engine.focusDuration = settings.focusDuration
       engine.shortBreakDuration = settings.shortBreakDuration

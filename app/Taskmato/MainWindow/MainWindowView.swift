@@ -18,7 +18,8 @@ enum MainTab: Int {
 /// The root view for the main application window, hosting three-tab navigation.
 ///
 /// Tabs in order: Tasks (landing), Timer, Stats. Settings opens in a separate window
-/// via ⌘, or the app menu.
+/// via ⌘, or the app menu. Tab selection and sidebar visibility are owned by the
+/// injected ``MainNavigation`` model.
 struct MainWindowView: View {
 
   var engine: SessionEngine
@@ -26,16 +27,15 @@ struct MainWindowView: View {
   var store: SessionStore
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
-
-  @State private var selectedTab: MainTab = .tasks
+  @Bindable var nav: MainNavigation
 
   var body: some View {
-    TabView(selection: $selectedTab) {
+    TabView(selection: $nav.selectedTab) {
       Tab("Tasks", systemImage: "checklist", value: MainTab.tasks) {
         TasksTabView(
           selectionStore: selectionStore,
           registry: registry,
-          selectedTab: $selectedTab,
+          nav: nav,
           settings: settings
         )
       }
@@ -47,6 +47,7 @@ struct MainWindowView: View {
           store: store,
           selectionStore: selectionStore,
           registry: registry,
+          nav: nav,
           nextStartPhase: engine.queuedPhase ?? .focus,
           nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
         )
@@ -57,19 +58,6 @@ struct MainWindowView: View {
       }
     }
     .frame(minWidth: 640, minHeight: 400)
-    .onReceive(NotificationCenter.default.publisher(for: .showTimerTab)) { _ in
-      selectedTab = .timer
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .showTasksTab)) { _ in
-      selectedTab = .tasks
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .showStatsTab)) { _ in
-      selectedTab = .stats
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .browseTasksAndPick)) { _ in
-      settings.sidebarVisible = true
-      selectedTab = .tasks
-    }
   }
 }
 
@@ -79,6 +67,7 @@ struct MainWindowView: View {
     settings: AppSettings(),
     store: SessionStore(),
     selectionStore: TaskSelectionStore(),
-    registry: TaskRegistry()
+    registry: TaskRegistry(),
+    nav: MainNavigation(settings: AppSettings())
   )
 }

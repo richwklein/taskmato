@@ -15,7 +15,7 @@ struct TasksTabView: View {
 
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
-  @Binding var selectedTab: MainTab
+  var nav: MainNavigation
   @Bindable var settings: AppSettings
 
   @State private var query: String = ""
@@ -63,8 +63,8 @@ struct TasksTabView: View {
   var body: some View {
     NavigationSplitView(
       columnVisibility: Binding(
-        get: { settings.sidebarVisible ? .all : .detailOnly },
-        set: { settings.sidebarVisible = $0 != .detailOnly }
+        get: { nav.sidebarVisible ? .all : .detailOnly },
+        set: { nav.sidebarVisible = $0 != .detailOnly }
       )
     ) {
       ProviderSidebarView(registry: registry)
@@ -431,7 +431,7 @@ extension TasksTabView {
 
   private func select(_ task: TaskItem) {
     selectionStore.select(task)
-    selectedTab = .timer
+    nav.showTimer()
   }
 
   private func onCompleteHandler(for task: TaskItem) -> (() -> Void)? {
@@ -471,7 +471,7 @@ extension TasksTabView {
   TasksTabView(
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
-    selectedTab: .constant(.tasks),
+    nav: MainNavigation(settings: AppSettings()),
     settings: AppSettings()
   )
 }
