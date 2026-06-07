@@ -94,6 +94,20 @@ struct AppSettingsTests {
     #expect(reader.taskSortDirection == .descending)
   }
 
+  // MARK: - Notification settings defaults
+
+  @Test func defaultSoundNameIsHero() {
+    #expect(makeSettings().soundName == "Hero")
+  }
+
+  // MARK: - Notification settings persistence
+
+  @Test func soundNamePersistsAcrossInstances() {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    AppSettings(defaults: defaults).soundName = "Glass"
+    #expect(AppSettings(defaults: defaults).soundName == "Glass")
+  }
+
   // MARK: - Persistence
 
   @Test func settingPersistsAcrossInstances() {

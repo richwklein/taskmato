@@ -38,7 +38,16 @@ final class AppSettings {
     didSet { defaults.set(soundEnabled, forKey: Keys.soundEnabled) }
   }
 
-  /// Whether a banner notification is shown when a phase completes naturally.
+  /// The name of the system sound file (without `.aiff` extension) played on phase completion.
+  ///
+  /// Defaults to `"Hero"`. Built-in values: `Hero`, `Glass`, `Tink`, `Sosumi`, `Ping`.
+  var soundName: String {
+    didSet { defaults.set(soundName, forKey: Keys.soundName) }
+  }
+
+  /// Whether phase-end alerts (banner and sound) are delivered.
+  ///
+  /// Acts as the master toggle — when `false`, no cues fire regardless of sub-toggle values.
   var notificationsEnabled: Bool {
     didSet { defaults.set(notificationsEnabled, forKey: Keys.notificationsEnabled) }
   }
@@ -110,6 +119,7 @@ final class AppSettings {
     longBreakMinutes = defaults.integer(forKey: Keys.longBreakMinutes).nonZero ?? 15
     longBreakAfterSessions = defaults.integer(forKey: Keys.longBreakAfterSessions).nonZero ?? 4
     soundEnabled = defaults.object(forKey: Keys.soundEnabled) as? Bool ?? true
+    soundName = defaults.string(forKey: Keys.soundName) ?? "Hero"
     notificationsEnabled = defaults.object(forKey: Keys.notificationsEnabled) as? Bool ?? true
     autoStartNextPhase = defaults.object(forKey: Keys.autoStartNextPhase) as? Bool ?? false
     showDockIcon = defaults.object(forKey: Keys.showDockIcon) as? Bool ?? false
@@ -129,6 +139,7 @@ final class AppSettings {
     static let longBreakMinutes = "longBreakMinutes"
     static let longBreakAfterSessions = "longBreakAfterSessions"
     static let soundEnabled = "soundEnabled"
+    static let soundName = "soundName"
     static let notificationsEnabled = "notificationsEnabled"
     static let autoStartNextPhase = "autoStartNextPhase"
     static let showDockIcon = "showDockIcon"

@@ -93,7 +93,8 @@ struct TaskmatoApp: App {
       SettingsView(
         settings: composition.settings,
         selectionStore: composition.selectionStore,
-        registry: composition.registry
+        registry: composition.registry,
+        notifications: composition.notifications
       )
     }
     .windowResizability(.contentSize)

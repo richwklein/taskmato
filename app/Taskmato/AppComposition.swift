@@ -5,6 +5,7 @@
 //  Created by Richard Klein on 5/2/26.
 //
 
+import AppKit
 import Foundation
 
 /// The composition root for Taskmato — constructs every service and exposes
@@ -22,7 +23,6 @@ struct AppComposition {
   let selectionStore: TaskSelectionStore
   let registry: TaskRegistry
   let notifications: NotificationService
-  let sounds: SoundService
   let obsidianProvider: ObsidianProvider
   let localProvider: LocalProvider
   let remindersProvider: RemindersProvider
@@ -36,11 +36,16 @@ struct AppComposition {
     let store = SessionStore()
     let selectionStore = TaskSelectionStore()
     let registry = TaskRegistry()
-    let notifications = NotificationService()
-    let sounds = SoundService()
+    let notifications = NotificationService(settings: settings)
     let obsidianProvider = ObsidianProvider()
     let localProvider = LocalProvider()
     let remindersProvider = RemindersProvider()
+    // Request notification auth once at launch; refresh on every app activation.
+    Task { await notifications.requestAuthorizationIfNeeded() }
+    NotificationCenter.default.addObserver(
+      forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+    ) { _ in Task { await notifications.refreshAuthStatus() } }
+
     registry.register(obsidianProvider)
     registry.register(localProvider)
     registry.register(remindersProvider)
@@ -61,8 +66,7 @@ struct AppComposition {
           taskTitle: selectionStore.activeTask?.title
         ))
       guard wasCompleted else { return }
-      if settings.soundEnabled { sounds.play() }
-      if settings.notificationsEnabled { notifications.send(phase: phase) }
+      notifications.send(phase: phase)
       engine.focusDuration = settings.focusDuration
       engine.shortBreakDuration = settings.shortBreakDuration
       engine.longBreakDuration = settings.longBreakDuration
@@ -84,7 +88,6 @@ struct AppComposition {
     self.selectionStore = selectionStore
     self.registry = registry
     self.notifications = notifications
-    self.sounds = sounds
     self.obsidianProvider = obsidianProvider
     self.localProvider = localProvider
     self.remindersProvider = remindersProvider
