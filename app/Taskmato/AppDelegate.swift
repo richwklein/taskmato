@@ -34,6 +34,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var urlBuffer: [URL] = []
   private var scenesReady = false
 
+  /// Whether the main window was visible when the app last resigned active.
+  ///
+  /// Used to suppress SwiftUI window restoration triggered by notification taps:
+  /// macOS activates the app before `didReceive` fires, so the delegate alone
+  /// cannot prevent the window from appearing.
+  private var mainWindowWasVisible = false
+
+  func applicationWillResignActive(_ notification: Notification) {
+    mainWindowWasVisible = NSApp.windows
+      .contains { $0.identifier?.rawValue == "main" && $0.isVisible }
+  }
+
+  func applicationDidBecomeActive(_ notification: Notification) {
+    guard !mainWindowWasVisible else { return }
+    NSApp.windows.first { $0.identifier?.rawValue == "main" }?.orderOut(nil)
+  }
+
   func applicationWillFinishLaunching(_ notification: Notification) {
     bootstrap?()
   }

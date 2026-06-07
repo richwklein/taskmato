@@ -3,7 +3,9 @@
 //  Taskmato
 //
 
+import AppKit
 import SwiftUI
+import UserNotifications
 
 /// The settings view, usable both as a navigation destination inside the popover
 /// and as a standalone window opened via ⌘,.
@@ -12,6 +14,7 @@ struct SettingsView: View {
   @Bindable var settings: AppSettings
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
+  var notifications: NotificationService
 
   var body: some View {
     Form {
@@ -26,9 +29,66 @@ struct SettingsView: View {
           "After every", value: $settings.longBreakAfterSessions, range: 1...8, unit: "sessions")
       }
 
+      Section("Phase-end Alerts") {
+        Toggle("Enable alerts", isOn: $settings.notificationsEnabled)
+
+        if settings.notificationsEnabled {
+          if notifications.authStatus == .denied {
+            HStack(spacing: 8) {
+              Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+              VStack(alignment: .leading, spacing: 2) {
+                Text("Notifications are disabled in System Settings")
+                  .foregroundStyle(.red)
+                Button("Open Notification Settings…") {
+                  openNotificationSettings()
+                }
+                .buttonStyle(.link)
+              }
+            }
+            .padding(.leading)
+          }
+
+          Toggle("Play sound", isOn: $settings.soundEnabled)
+            .padding(.leading)
+
+          if settings.soundEnabled {
+            Picker("Sound", selection: $settings.soundName) {
+              ForEach(SystemSound.all) { sound in
+                Text(sound.displayName).tag(sound.name)
+              }
+            }
+            .padding(.leading)
+          }
+
+          DisclosureGroup {
+            VStack(alignment: .leading, spacing: 6) {
+              Text(
+                "Taskmato's settings control which cues fire. "
+                  + "System Settings → Notifications → Taskmato controls how they appear:"
+              )
+              .foregroundStyle(.secondary)
+              .font(.callout)
+              BulletText("Sound only, no banner — Alert style: None")
+              BulletText("Banner without sound — turn off \"Play sound\" above")
+              BulletText("Persistent alert — Alert style: Alerts")
+              Text("Sound respects your Focus and Do Not Disturb settings.")
+                .foregroundStyle(.secondary)
+                .font(.callout)
+              Button("Open Notification Settings…") {
+                openNotificationSettings()
+              }
+              .buttonStyle(.link)
+            }
+          } label: {
+            Text("ⓘ Customizing how alerts are delivered")
+              .foregroundStyle(.secondary)
+          }
+          .padding(.leading)
+        }
+      }
+
       Section("Behavior") {
-        Toggle("Play sound on phase completion", isOn: $settings.soundEnabled)
-        Toggle("Show notification on phase completion", isOn: $settings.notificationsEnabled)
         Toggle("Auto-start next phase", isOn: $settings.autoStartNextPhase)
         Toggle("Show Dock icon", isOn: $settings.showDockIcon)
         Text("Takes effect the next time \(Bundle.main.appName) is launched.")
@@ -60,6 +120,15 @@ struct SettingsView: View {
     .navigationTitle("\(Bundle.main.appName) Settings")
   }
 
+  private func openNotificationSettings() {
+    guard let bundleID = Bundle.main.bundleIdentifier,
+      let url = URL(
+        string: "x-apple.systempreferences:com.apple.preference.notifications?id=\(bundleID)"
+      )
+    else { return }
+    NSWorkspace.shared.open(url)
+  }
+
   /// Registered providers that are currently enabled and conform to ``WritableTaskProvider``,
   /// formatted for display in the default-provider picker.
   private var writableProviderEntries: [ProviderEntry] {
@@ -72,11 +141,47 @@ struct SettingsView: View {
   }
 }
 
+// MARK: - Supporting types
+
+/// One of the five built-in system sounds available for phase-end alerts.
+private struct SystemSound: Identifiable {
+  let name: String
+  let displayName: String
+
+  var id: String { name }
+
+  /// All available sound options, with Hero first as the default.
+  static let all: [SystemSound] = [
+    SystemSound(name: "Hero", displayName: "Hero"),
+    SystemSound(name: "Glass", displayName: "Glass"),
+    SystemSound(name: "Tink", displayName: "Tink"),
+    SystemSound(name: "Sosumi", displayName: "Sosumi"),
+    SystemSound(name: "Ping", displayName: "Ping"),
+  ]
+}
+
 /// A lightweight display model for a writable provider in the settings picker.
 private struct ProviderEntry: Identifiable {
   let id: String
   let displayName: String
   let icon: String
+}
+
+/// A simple bullet-point text row for use inside the notification settings disclosure.
+private struct BulletText: View {
+  let text: String
+
+  init(_ text: String) {
+    self.text = text
+  }
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 4) {
+      Text("•").foregroundStyle(.secondary)
+      Text(text).foregroundStyle(.secondary)
+    }
+    .font(.callout)
+  }
 }
 
 /// A labelled row combining a text field for direct input and a stepper for nudging.
@@ -133,6 +238,7 @@ private struct DurationField: View {
   SettingsView(
     settings: AppSettings(),
     selectionStore: TaskSelectionStore(),
-    registry: TaskRegistry()
+    registry: TaskRegistry(),
+    notifications: NotificationService(settings: AppSettings())
   )
 }
