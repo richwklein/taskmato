@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.7.0](https://github.com/richwklein/taskmato/compare/v0.6.0...v0.7.0) (2026-06-08)
+
+
+### Features
+
+* **commands:** add app menus and keyboard shortcuts ([#427](https://github.com/richwklein/taskmato/issues/427)) ([2f9f969](https://github.com/richwklein/taskmato/commit/2f9f9692e5badb9eb0c1245024fd396f5014a23d))
+* **notifications:** phase-end alerts overhaul — auth-at-launch, sound picker, Focus-aware delivery ([#431](https://github.com/richwklein/taskmato/issues/431)) ([2fa5961](https://github.com/richwklein/taskmato/commit/2fa5961bddb8b1ac9058d162cb7cec71ca445ebb))
+* **providers:** add displayOrder for consistent provider ordering ([#391](https://github.com/richwklein/taskmato/issues/391)) ([be64adc](https://github.com/richwklein/taskmato/commit/be64adcebec58e0f047fd443f43d5e23fb9266f5))
+* **providers:** replace concrete-type checks with protocol capability dispatch ([#389](https://github.com/richwklein/taskmato/issues/389)) ([349d37d](https://github.com/richwklein/taskmato/commit/349d37d3a3d322ca219b66fe71adf9325059ac5e))
+* **tasks:** edit task sheet and markdown format for local provider ([#423](https://github.com/richwklein/taskmato/issues/423)) ([2b5e3ca](https://github.com/richwklein/taskmato/commit/2b5e3caa2d0b8a24c722517441d55bb51f31adc3))
+* **url-scheme:** provider targeting and default writable provider setting ([#428](https://github.com/richwklein/taskmato/issues/428)) ([b0b3787](https://github.com/richwklein/taskmato/commit/b0b378702bf40fc6d1c32aeb965dd920ef8510cd))
+* **views:** flat cross-provider display with per-task lineage ([#393](https://github.com/richwklein/taskmato/issues/393)) ([2f9b649](https://github.com/richwklein/taskmato/commit/2f9b6490fbc90aa782657b25f4ca45806674f685))
+
+
+### Bug Fixes
+
+* **hardening:** DST-safe endOfToday and os.Logger on write failures ([#429](https://github.com/richwklein/taskmato/issues/429)) ([c98294a](https://github.com/richwklein/taskmato/commit/c98294af444205bd78c72c1b551e5f39d1727c61))
+
 ## [0.6.0](https://github.com/richwklein/taskmato/compare/v0.5.0...v0.6.0) (2026-06-04)
 
 
