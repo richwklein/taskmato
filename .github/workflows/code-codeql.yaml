@@ -11,10 +11,22 @@ on:
 permissions:
   actions: read
   contents: read
+  pull-requests: read
   security-events: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: ./.github/actions/detect-relevant-changes
+        id: detect
+
   analyze:
+    needs: check
+    if: needs.check.outputs.relevant == 'true'
     name: analyze
     runs-on: ${{ matrix.runner }}
     strategy:
