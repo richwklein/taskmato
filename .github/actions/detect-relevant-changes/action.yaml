@@ -2,15 +2,15 @@ name: 'Detect Relevant Changes'
 description: >
   For pull_request events, sets relevant=true when any changed file matches one
   of the supplied regex patterns. For any other event (push, schedule,
-  workflow_run, workflow_call, etc.) sets relevant=true unconditionally so heavy
-  work is preserved on main branch and scheduled runs.
+  workflow_run, etc.) sets relevant=true unconditionally so heavy work is
+  preserved on main branch and scheduled runs.
 
 inputs:
   patterns:
     description: >
       Multi-line list of JavaScript-compatible regex patterns matched against
       the full path of each changed file. When empty, falls back to a default
-      set covering Swift sources, build scripts, and CI config.
+      set covering workflow and action edits.
     required: false
     default: ''
 
