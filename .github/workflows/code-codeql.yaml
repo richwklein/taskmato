@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '23 4 * * 1' # weekly, Monday 04:23 UTC
+    - cron: "23 4 * * 1" # weekly, Monday 04:23 UTC
 
 permissions:
   actions: read
@@ -32,6 +32,39 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Override per-repo: each `include` entry is (language, runner).
+        # 'actions' analyzes the workflow YAML itself and is always safe.
+        #
+        # Common (language, runner) pairings:
+        #   actions, javascript-typescript, python, ruby, go,
+        #   csharp, java-kotlin, c-cpp  -> ubuntu-latest
+        #   swift                       -> macos-latest
+        #     (Swift extractor only runs on macOS)
+        #
+        # PATH FILTERS: The detect-relevant-changes action defaults to
+        # .github/workflows/** and .github/actions/**. When adding a
+        # language entry here, pass the relevant source patterns via the
+        # `patterns` input so the job noop's when nothing important changed.
+        # Per-language pattern selection can be done inline:
+        #   patterns: ${{ matrix.language == 'actions' && '...' || '...' }}
+        #
+        # COMPILED LANGUAGES (swift, c-cpp, java-kotlin, csharp) require a
+        # build step BEFORE 'Perform CodeQL analysis' so the extractor can
+        # observe source compilation. Example for Swift:
+        #
+        #   - name: Build (Swift)
+        #     if: matrix.language == 'swift'
+        #     run: |
+        #       sudo xcode-select -s /Applications/Xcode_16.3.app
+        #       xcodebuild build -project Your.xcodeproj -scheme Your \
+        #         -configuration Debug -destination 'platform=macOS' \
+        #         CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+        #
+        # Each include entry registers its own status check, named
+        # `analyze (<language>, <runner>)`. Update branch protection
+        # rulesets to require those exact contexts. Keep this matrix
+        # free of extra keys — anything added here becomes part of the
+        # status check name and would break the required-check contexts.
         include:
           - language: actions
             runner: ubuntu-latest
