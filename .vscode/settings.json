@@ -20,6 +20,6 @@
   "[swift]": {
     "editor.defaultFormatter": "sweetpad.sweetpad"
   },
-  "cSpell.words": ["pomodoro", "swiftlint", "taskmato"],
+  "cSpell.words": ["codeql", "pomodoro", "richwklein", "swiftlint", "taskmato"],
   "sweetpad.build.xcodeWorkspacePath": "app/Taskmato.xcodeproj/project.xcworkspace"
 }

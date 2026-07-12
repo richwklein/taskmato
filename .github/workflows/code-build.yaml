@@ -13,30 +13,29 @@ permissions:
   pull-requests: read
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    outputs:
-      relevant: ${{ steps.detect.outputs.relevant }}
-    steps:
-      - uses: actions/checkout@v7.0.0
-      - uses: ./.github/actions/detect-relevant-changes
-        id: detect
-
   build:
-    needs: check
-    if: needs.check.outputs.relevant == 'true'
     runs-on: macos-15
     steps:
+      # Steps are conditionally skipped rather than the job, so the
+      # required status check is always registered. A job-level skip
+      # leaves that check unreported, which blocks PRs that require it.
       - name: Checkout source code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7
+
+      - name: Detect relevant changes
+        id: changes
+        uses: ./.github/actions/detect-relevant-changes
 
       - name: Select Xcode
+        if: steps.changes.outputs.relevant == 'true'
         run: sudo xcode-select -s /Applications/Xcode_16.3.app
 
       - name: Sync version
+        if: steps.changes.outputs.relevant == 'true'
         run: bash scripts/sync-version.sh
 
       - name: Build
+        if: steps.changes.outputs.relevant == 'true'
         run: |
           xcodebuild build \
             -project app/Taskmato.xcodeproj \

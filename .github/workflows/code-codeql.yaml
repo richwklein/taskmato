@@ -15,18 +15,7 @@ permissions:
   security-events: write
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    outputs:
-      relevant: ${{ steps.detect.outputs.relevant }}
-    steps:
-      - uses: actions/checkout@v7.0.0
-      - uses: ./.github/actions/detect-relevant-changes
-        id: detect
-
   analyze:
-    needs: check
-    if: needs.check.outputs.relevant == 'true'
     name: analyze
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -71,24 +60,38 @@ jobs:
           - language: swift
             runner: macos-15
     steps:
+      # Steps are conditionally skipped rather than the job, so the
+      # matrix-expanded status check (e.g. "analyze (actions, ubuntu-latest)")
+      # is always registered. A job-level skip leaves that check unreported,
+      # which blocks PRs that require it.
       - name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7
+
+      - name: Detect relevant changes
+        id: changes
+        uses: ./.github/actions/detect-relevant-changes
+        with:
+          # 'actions' language only cares about workflow/action edits;
+          # 'swift' falls back to the action's default source pattern set
+          # (app/, scripts/, Makefile, workflows) by passing an empty value.
+          patterns: ${{ matrix.language == 'actions' && '^\.github/(workflows|actions)/' || '' }}
 
       - name: Select Xcode
-        if: matrix.language == 'swift'
+        if: matrix.language == 'swift' && steps.changes.outputs.relevant == 'true'
         run: sudo xcode-select -s /Applications/Xcode_16.3.app
 
       - name: Initialize CodeQL
+        if: steps.changes.outputs.relevant == 'true'
         uses: github/codeql-action/init@v4.36.3
         with:
           languages: ${{ matrix.language }}
 
       - name: Sync version
-        if: matrix.language == 'swift'
+        if: matrix.language == 'swift' && steps.changes.outputs.relevant == 'true'
         run: bash scripts/sync-version.sh
 
       - name: Build Swift project (for CodeQL extraction)
-        if: matrix.language == 'swift'
+        if: matrix.language == 'swift' && steps.changes.outputs.relevant == 'true'
         run: |
           xcodebuild build \
             -project app/Taskmato.xcodeproj \
@@ -100,6 +103,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Perform CodeQL analysis
+        if: steps.changes.outputs.relevant == 'true'
         uses: github/codeql-action/analyze@v4.36.3
         with:
-          category: '/language:${{ matrix.language }}'
+          category: "/language:${{ matrix.language }}"
