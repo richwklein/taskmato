@@ -62,16 +62,23 @@ Clearly state when Xcode is **required** versus merely **convenient**.
     Assets.xcassets/       # app icon + accent colors
     Config/                # Version.xcconfig (driven by version.txt)
     Session/               # SessionEngine, SessionStore
+    Services/              # AppSettings, TaskSelectionStore, Notification service + API
     Tasks/                 # TaskProvider hierarchy, TaskRegistry
+      Models/              # value types (TaskItem, TaskList, TaskRef, TaskDraft, …)
       Local/               # LocalProvider (JSON-backed)
       Obsidian/            # ObsidianProvider (FSEvents)
       Reminders/           # RemindersProvider (EventKit)
       URLScheme/           # URL handler (taskmato://)
-    MainWindow/            # Timer/Tasks/Stats tab UI
-    Settings/              # Settings panes
-    Views/                 # Task rows, cards, notes
-    Notifications/         # Notification + sound services
-    TaskmatoApp.swift      # @main entry point + AppDelegate
+    Views/                 # all view concerns, grouped by tab/area
+      App/                 # MainWindowView, MainNavigation, focused values
+      MenuBar/             # MenuBarPopoverView
+      Timer/               # Timer tab + active task; Components/ (ring, buttons)
+      Tasks/               # Tasks tab, sidebar, add-task; Components/ (rows, cards)
+      Stats/               # Stats tab
+      Settings/            # Settings panes; per-provider setup sheets + adapters
+    TaskmatoApp.swift      # @main entry point + scene composition
+    AppDelegate.swift      # activation policy + URL buffer
+    AppComposition.swift   # service wiring
     Info.plist
   TaskmatoTests/           # Swift Testing unit tests
   TaskmatoUITests/         # UI tests
