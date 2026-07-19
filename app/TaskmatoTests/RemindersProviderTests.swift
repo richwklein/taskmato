@@ -193,6 +193,56 @@ struct RemindersProviderListTests {
     #expect(lists.map(\.name) == ["Work", "Personal"])
   }
 }
+// MARK: - List pattern tests
+@Suite("RemindersProvider — list patterns")
+@MainActor
+struct RemindersProviderListPatternTests {
+  private func authorizedProvider(
+    patterns: [String] = [],
+    calendarTitles: [String] = []
+  ) async throws -> RemindersProvider {
+    let store = FakeRemindersEventStore()
+    store.status = .fullAccess
+    store.stubbedCalendars = calendarTitles.map { store.makeCalendar(title: $0) }
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let provider = RemindersProvider(store: store, defaults: defaults)
+    try await provider.authorize()
+    if !patterns.isEmpty { provider.setListPatterns(patterns) }
+    return provider
+  }
+
+  @Test func emptyPatternsReturnsAllLists() async throws {
+    let provider = try await authorizedProvider(
+      patterns: [], calendarTitles: ["Work", "Personal", "Shopping"])
+    #expect(try await provider.lists().count == 3)
+  }
+
+  @Test func singlePatternFiltersToMatchingLists() async throws {
+    let provider = try await authorizedProvider(
+      patterns: ["Work"], calendarTitles: ["Work", "Personal"])
+    let lists = try await provider.lists()
+    #expect(lists.count == 1)
+    #expect(lists.first?.name == "Work")
+  }
+
+  @Test func wildcardGlobMatchesMultipleLists() async throws {
+    let provider = try await authorizedProvider(
+      patterns: ["Work*"], calendarTitles: ["Work", "Work Projects", "Personal"])
+    #expect(try await provider.lists().map(\.name).sorted() == ["Work", "Work Projects"])
+  }
+
+  @Test func matchingIsCaseInsensitive() async throws {
+    let provider = try await authorizedProvider(
+      patterns: ["work"], calendarTitles: ["Work", "Personal"])
+    #expect(try await provider.lists().count == 1)
+  }
+
+  @Test func nonMatchingPatternReturnsEmptyArray() async throws {
+    let provider = try await authorizedProvider(
+      patterns: ["Nonexistent*"], calendarTitles: ["Work", "Personal"])
+    #expect(try await provider.lists().isEmpty)
+  }
+}
 
 // MARK: - Tasks tests
 @Suite("RemindersProvider — tasks")

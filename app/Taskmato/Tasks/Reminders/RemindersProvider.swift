@@ -26,19 +26,27 @@ final class RemindersProvider: ClosableTaskProvider {
   /// Whether the user has granted full Reminders access.
   private(set) var isAuthorized = false
 
+  /// Glob patterns used to restrict which calendars ``lists()`` returns.
+  /// Empty array means no filtering — all calendars are returned.
+  private(set) var listPatterns: [String]
+
   private let store: any RemindersEventStore
+  private let defaults: UserDefaults
+  private static let patternsKey = "reminders.listPatterns"
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
   private var observer: NSObjectProtocol?
   private let debouncer = Debouncer()
 
   /// Production initializer using live EventKit.
   convenience init() {
-    self.init(store: LiveRemindersEventStore())
+    self.init(store: LiveRemindersEventStore(), defaults: .standard)
   }
 
   /// Test-friendly initializer accepting any ``RemindersEventStore`` conformer.
-  init(store: any RemindersEventStore) {
+  init(store: any RemindersEventStore, defaults: UserDefaults = .standard) {
     self.store = store
+    self.defaults = defaults
+    self.listPatterns = defaults.array(forKey: Self.patternsKey) as? [String] ?? []
     isAuthorized = store.authorizationStatus() == .fullAccess
   }
 
@@ -68,17 +76,40 @@ final class RemindersProvider: ClosableTaskProvider {
     }
   }
 
+  // MARK: - List pattern filtering
+
+  /// Replaces the stored list-pattern array and persists it to UserDefaults.
+  func setListPatterns(_ patterns: [String]) {
+    listPatterns = patterns
+    defaults.set(listPatterns, forKey: Self.patternsKey)
+  }
+
+  /// Returns titles of all Reminders calendars without applying ``listPatterns``.
+  /// Used by the settings UI to compute the N-of-M match preview.
+  func allCalendarTitles() -> [String] {
+    guard isAuthorized else { return [] }
+    return store.calendars(for: .reminder).map(\.title)
+  }
+
+  /// Returns `true` if `title` matches any element of `patterns` using `fnmatch`
+  /// with `FNM_CASEFOLD`. Internal so the settings view can reuse it for live preview.
+  func matchesAnyPattern(title: String, patterns: [String]) -> Bool {
+    patterns.contains { fnmatch($0, title, FNM_CASEFOLD) == 0 }
+  }
+
   // MARK: - TaskProvider
 
   func lists() async throws -> [TaskList] {
     guard isAuthorized else { return [] }
-    return store.calendars(for: .reminder).map { calendar in
+    let all = store.calendars(for: .reminder).map { calendar in
       TaskList(
         id: calendar.calendarIdentifier,
         providerID: Self.providerID,
         name: calendar.title
       )
     }
+    guard !listPatterns.isEmpty else { return all }
+    return all.filter { matchesAnyPattern(title: $0.name, patterns: listPatterns) }
   }
 
   func tasks(in list: TaskList?) async throws -> [TaskItem] {

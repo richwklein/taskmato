@@ -14,7 +14,20 @@ struct RemindersSetupSheet: View {
   @Environment(\.dismiss) private var dismiss
 
   @State private var error: RemindersProviderError?
-  @State private var listCount: Int?
+  @State private var allCalendarTitles: [String] = []
+  @State private var patternText: String = ""
+  @FocusState private var isPatternFocused: Bool
+
+  private var listSummaryText: String {
+    let total = allCalendarTitles.count
+    if provider.listPatterns.isEmpty {
+      return "\(total) reminder list\(total == 1 ? "" : "s") available"
+    }
+    let matched = allCalendarTitles.filter {
+      provider.matchesAnyPattern(title: $0, patterns: provider.listPatterns)
+    }.count
+    return "\(matched) of \(total) lists match"
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -26,8 +39,11 @@ struct RemindersSetupSheet: View {
 
       HStack {
         Spacer()
-        Button("Done") { dismiss() }
-          .keyboardShortcut(.defaultAction)
+        Button("Done") {
+          commitPatterns()
+          dismiss()
+        }
+        .keyboardShortcut(.defaultAction)
       }
     }
     .padding(24)
@@ -46,6 +62,8 @@ struct RemindersSetupSheet: View {
   private var content: some View {
     if provider.isAuthorized {
       authorizedView
+        .task { await loadAllCalendarTitles() }
+        .onAppear { patternText = provider.listPatterns.joined(separator: ", ") }
     } else if error == .accessRestricted {
       restrictedView
     } else {
@@ -59,13 +77,18 @@ struct RemindersSetupSheet: View {
       Image(systemName: "checkmark.circle.fill")
         .foregroundStyle(.green)
         .imageScale(.large)
-      if let count = listCount {
-        Text("\(count) reminder list\(count == 1 ? "" : "s") available")
-      } else {
-        Text("Reminders access granted")
-      }
+      Text(listSummaryText)
     }
-    .task { await loadListCount() }
+
+    LabeledContent("List patterns") {
+      TextField("e.g. Work*, *Personal*", text: $patternText)
+        .autocorrectionDisabled()
+        .focused($isPatternFocused)
+        .onSubmit { commitPatterns() }
+        .onChange(of: isPatternFocused) { _, focused in
+          if !focused { commitPatterns() }
+        }
+    }
   }
 
   private var grantAccessView: some View {
@@ -130,13 +153,23 @@ struct RemindersSetupSheet: View {
   private func requestAccess() async {
     do {
       try await provider.authorize()
-      await loadListCount()
+      await loadAllCalendarTitles()
     } catch let err as RemindersProviderError {
       error = err
     } catch {}
   }
 
-  private func loadListCount() async {
-    listCount = (try? await provider.lists())?.count
+  private func loadAllCalendarTitles() async {
+    allCalendarTitles = provider.allCalendarTitles()
+  }
+
+  private func commitPatterns() {
+    let patterns =
+      patternText
+      .components(separatedBy: ",")
+      .map { $0.trimmingCharacters(in: .whitespaces) }
+      .filter { !$0.isEmpty }
+    provider.setListPatterns(patterns)
+    patternText = provider.listPatterns.joined(separator: ", ")
   }
 }
