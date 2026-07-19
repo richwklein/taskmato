@@ -23,7 +23,7 @@ struct TaskmatoApp: App {
 
   var body: some Scene {
     MenuBarExtra {
-      TimerView(
+      MenuBarPopoverView(
         engine: composition.engine,
         settings: composition.settings,
         store: composition.store,

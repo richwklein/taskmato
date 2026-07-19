@@ -6,7 +6,7 @@
 import AppKit
 import CoreServices
 import Foundation
-import SwiftUI
+import Observation
 
 /// A task provider that reads incomplete tasks from all matching markdown files in an Obsidian vault.
 ///

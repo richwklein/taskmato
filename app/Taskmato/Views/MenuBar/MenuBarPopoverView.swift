@@ -1,5 +1,5 @@
 //
-//  TimerView.swift
+//  MenuBarPopoverView.swift
 //  Taskmato
 //
 //  Created by Richard Klein on 5/2/26.
@@ -12,7 +12,7 @@ import SwiftUI
 /// Provides quick timer controls and a button to open the main application window.
 /// On first appearance, binds the `openWindow` environment action onto ``MainNavigation``
 /// and reports the menu-bar scene ready to drain any buffered cold-launch URLs.
-struct TimerView: View {
+struct MenuBarPopoverView: View {
 
   var engine: SessionEngine
   var settings: AppSettings
@@ -218,7 +218,7 @@ struct TimerView: View {
 }
 
 #Preview {
-  TimerView(
+  MenuBarPopoverView(
     engine: SessionEngine(),
     settings: AppSettings(),
     store: SessionStore(),
