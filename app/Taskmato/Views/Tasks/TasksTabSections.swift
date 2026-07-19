@@ -1,5 +1,5 @@
 //
-//  TasksTabViewTypes.swift
+//  TasksTabSections.swift
 //  Taskmato
 //
 
