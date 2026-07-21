@@ -5,46 +5,38 @@
 
 import Foundation
 import Observation
-import os
 
-/// Persists and provides access to the log of completed Pomodoro sessions.
+/// Observable, main-actor view facade over the session log.
 ///
-/// Sessions are stored as a JSON array at the path passed to `init(fileURL:)`.
-/// The production path is `~/Library/Application Support/Taskmato/sessions.json`.
+/// Holds a published mirror of the recorded sessions for synchronous SwiftUI access and
+/// delegates all persistence to an injected ``SessionRepository``. The authoritative cache
+/// lives in the repository; this facade's aggregation helpers move to the stats view model
+/// as the storage layer evolves.
 @Observable
+@MainActor
 final class SessionStore {
 
-  /// All recorded sessions, ordered oldest-first.
+  /// All recorded sessions, ordered oldest-first. A mirror of the repository's cache.
   private(set) var sessions: [Session] = []
 
-  private let fileURL: URL
-  private let encoder = JSONEncoder()
-  private let decoder = JSONDecoder()
-  private let logger = Logger(subsystem: "com.taskmato", category: "SessionStore")
+  private let repository: SessionRepository
 
-  /// Creates a store using the default production file path.
+  /// Creates a store backed by the default JSON repository.
   convenience init() {
-    let appSupport = FileManager.default.urls(
-      for: .applicationSupportDirectory, in: .userDomainMask
-    ).first!
-    let dir = appSupport.appendingPathComponent("Taskmato", isDirectory: true)
-    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    self.init(fileURL: dir.appendingPathComponent("sessions.json"))
+    self.init(repository: JSONSessionRepository(fileURL: JSONSessionRepository.defaultFileURL()))
   }
 
-  /// Creates a store using a specific file URL. Pass a temporary path in tests.
-  init(fileURL: URL) {
-    self.fileURL = fileURL
-    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    encoder.dateEncodingStrategy = .iso8601
-    decoder.dateDecodingStrategy = .iso8601
-    load()
+  /// Creates a store backed by a specific repository. Pass a fake or temporary-file
+  /// repository in tests.
+  init(repository: SessionRepository) {
+    self.repository = repository
+    Task { await reload() }
   }
 
-  /// Appends a session record to the log and writes it to disk.
+  /// Appends a session record and persists it via the repository.
   func append(_ session: Session) {
     sessions.append(session)
-    save()
+    Task { try? await repository.append(session) }
   }
 
   /// Returns a ``SessionSummary`` for sessions whose `startedAt` falls within `interval`.
@@ -90,17 +82,10 @@ final class SessionStore {
 
   // MARK: - Private
 
-  private func load() {
-    guard let data = try? Data(contentsOf: fileURL) else { return }
-    sessions = (try? decoder.decode([Session].self, from: data)) ?? []
-  }
-
-  private func save() {
-    do {
-      let data = try encoder.encode(sessions)
-      try data.write(to: fileURL, options: .atomic)
-    } catch {
-      logger.error("SessionStore failed to save: \(error.localizedDescription, privacy: .public)")
-    }
+  /// Refreshes the observable mirror from the repository's full log.
+  private func reload() async {
+    let all = try? await repository.sessions(
+      over: DateInterval(start: .distantPast, end: .distantFuture))
+    sessions = all ?? []
   }
 }
