@@ -4,6 +4,8 @@
 
 Accepted — 2026-05-22. Revisited at 0.8.0 when stats aggregation helpers land; revisited again if stats querying outgrows JSON.
 
+**Amended for the session log by [design doc 0007](../design/0007-session-repository-swiftdata.md) (2026-07-21):** the session log moves from JSON to SwiftData at 0.8.0, a clean cutover with no migration. `LocalTasks.json` and the `UserDefaults` settings store are unchanged by that decision and remain governed by this ADR.
+
 ## Context
 
 Taskmato stores three things: app settings, the local task list (for `LocalProvider`), and the session log (for stats). The session log is append-mostly with occasional aggregation reads. The local task list is small (~hundreds of items, not millions). Settings are tiny.

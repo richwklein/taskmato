@@ -8,22 +8,6 @@ import Testing
 
 @testable import Taskmato
 
-/// In-memory repository seeded with fixed sessions; stands in for the SwiftData fixture
-/// that #402 will make extractable.
-@MainActor
-private final class FakeSessionRepository: SessionRepository {
-
-  private var stored: [Session]
-
-  init(sessions: [Session]) { self.stored = sessions }
-
-  func sessions(over interval: DateInterval) async throws -> [Session] {
-    stored.filter { interval.contains($0.startedAt) }
-  }
-
-  func append(_ session: Session) async throws { stored.append(session) }
-}
-
 @MainActor
 struct StatsViewModelTests {
 

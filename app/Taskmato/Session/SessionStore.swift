@@ -20,12 +20,7 @@ final class SessionStore {
 
   private let repository: SessionRepository
 
-  /// Creates a store backed by the default JSON repository.
-  convenience init() {
-    self.init(repository: JSONSessionRepository(fileURL: JSONSessionRepository.defaultFileURL()))
-  }
-
-  /// Creates a store backed by a specific repository. Pass a fake or temporary-file
+  /// Creates a store backed by a specific repository. Pass a fake or in-memory
   /// repository in tests.
   init(repository: SessionRepository) {
     self.repository = repository
