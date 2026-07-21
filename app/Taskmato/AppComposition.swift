@@ -33,7 +33,8 @@ struct AppComposition {
   init() {
     let engine = SessionEngine()
     let settings = AppSettings()
-    let store = SessionStore()
+    let sessionRepository = JSONSessionRepository(fileURL: JSONSessionRepository.defaultFileURL())
+    let store = SessionStore(repository: sessionRepository)
     let selectionStore = TaskSelectionStore()
     let registry = TaskRegistry()
     let notifications = NotificationService(settings: settings)

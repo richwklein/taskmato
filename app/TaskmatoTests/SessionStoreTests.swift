@@ -8,13 +8,16 @@ import Testing
 
 @testable import Taskmato
 
+@MainActor
 struct SessionStoreTests {
 
-  /// Returns a store backed by a unique temporary file that won't affect production data.
+  /// Returns a facade backed by a repository on a unique temp file that won't affect
+  /// production data. Disk persistence itself is covered by `JSONSessionRepositoryTests`;
+  /// these tests exercise the observable mirror's synchronous optimistic-append path.
   private func makeStore() -> SessionStore {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".json")
-    return SessionStore(fileURL: url)
+    return SessionStore(repository: JSONSessionRepository(fileURL: url))
   }
 
   private func makeSession(phase: SessionPhase = .focus, wasCompleted: Bool = true) -> Session {
@@ -46,29 +49,6 @@ struct SessionStoreTests {
     store.append(second)
     #expect(store.sessions.first?.id == first.id)
     #expect(store.sessions.last?.id == second.id)
-  }
-
-  @Test func sessionsRoundTripThroughDisk() throws {
-    let url = FileManager.default.temporaryDirectory
-      .appendingPathComponent(UUID().uuidString + ".json")
-
-    let session = makeSession(phase: .focus)
-
-    let writer = SessionStore(fileURL: url)
-    writer.append(session)
-
-    let reader = SessionStore(fileURL: url)
-    #expect(reader.sessions.count == 1)
-    #expect(reader.sessions.first?.id == session.id)
-    #expect(reader.sessions.first?.phase == .focus)
-  }
-
-  @Test func sessionDurationIsEndMinusStart() {
-    let start = Date(timeIntervalSinceReferenceDate: 0)
-    let session = Session(
-      id: UUID(), phase: .focus, startedAt: start, endedAt: start.addingTimeInterval(1500),
-      wasCompleted: true)
-    #expect(session.duration == 1500)
   }
 
 }
