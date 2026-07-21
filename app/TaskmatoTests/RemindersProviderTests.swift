@@ -15,7 +15,6 @@ import Testing
 
 @MainActor
 struct RemindersEventStoreTests {
-
   @Test func fakeStoreReturnsConfiguredStatus() {
     let store = FakeRemindersEventStore()
     store.status = .fullAccess
@@ -51,7 +50,6 @@ struct RemindersEventStoreTests {
 @Suite("RemindersProvider — authorization")
 @MainActor
 struct RemindersProviderAuthorizationTests {
-
   private func makeProvider(
     status: EKAuthorizationStatus = .notDetermined,
     grantAccess: Bool = true
@@ -59,7 +57,8 @@ struct RemindersProviderAuthorizationTests {
     let store = FakeRemindersEventStore()
     store.status = status
     store.grantAccess = grantAccess
-    let provider = RemindersProvider(store: store)
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let provider = RemindersProvider(store: store, defaults: defaults)
     return (provider, store)
   }
 
@@ -143,13 +142,13 @@ struct RemindersProviderAuthorizationTests {
 @Suite("RemindersProvider — lists")
 @MainActor
 struct RemindersProviderListTests {
-
   private func makeAuthorizedProvider() async throws -> (
     provider: RemindersProvider, store: FakeRemindersEventStore
   ) {
     let store = FakeRemindersEventStore()
     store.status = .fullAccess
-    let provider = RemindersProvider(store: store)
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let provider = RemindersProvider(store: store, defaults: defaults)
     try await provider.authorize()
     return (provider, store)
   }
@@ -248,13 +247,13 @@ struct RemindersProviderListPatternTests {
 @Suite("RemindersProvider — tasks")
 @MainActor
 struct RemindersProviderTaskTests {
-
   private func makeAuthorizedProvider() async throws -> (
     provider: RemindersProvider, store: FakeRemindersEventStore
   ) {
     let store = FakeRemindersEventStore()
     store.status = .fullAccess
-    let provider = RemindersProvider(store: store)
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let provider = RemindersProvider(store: store, defaults: defaults)
     try await provider.authorize()
     return (provider, store)
   }
@@ -401,13 +400,13 @@ struct RemindersProviderTaskTests {
 @Suite("RemindersProvider — mutations")
 @MainActor
 struct RemindersProviderMutationTests {
-
   private func makeAuthorizedProvider() async throws -> (
     provider: RemindersProvider, store: FakeRemindersEventStore
   ) {
     let store = FakeRemindersEventStore()
     store.status = .fullAccess
-    let provider = RemindersProvider(store: store)
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let provider = RemindersProvider(store: store, defaults: defaults)
     try await provider.authorize()
     return (provider, store)
   }
@@ -504,13 +503,13 @@ struct RemindersProviderMutationTests {
 @Suite("RemindersProvider — completedTasks")
 @MainActor
 struct RemindersProviderCompletedTasksTests {
-
   private func makeAuthorizedProvider() async throws -> (
     provider: RemindersProvider, store: FakeRemindersEventStore
   ) {
     let store = FakeRemindersEventStore()
     store.grantAccess = true
-    let provider = RemindersProvider(store: store)
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let provider = RemindersProvider(store: store, defaults: defaults)
     try await provider.authorize()
     return (provider, store)
   }
@@ -543,7 +542,8 @@ struct RemindersProviderCompletedTasksTests {
     store.stubbedReminders = [
       store.makeReminder(title: "Done", isCompleted: true)
     ]
-    let provider = RemindersProvider(store: store)
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let provider = RemindersProvider(store: store, defaults: defaults)
     let tasks = try await provider.completedTasks()
     #expect(tasks.isEmpty)
   }
