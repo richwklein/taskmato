@@ -20,6 +20,7 @@ final class StatsViewModel {
 
   private let repository: SessionRepository
   private let providerLabel: (String) -> String
+  private let providerTint: (String) -> ProviderTint
 
   /// The full session log, oldest-first; the source for every derived value.
   private var sessions: [Session] = []
@@ -36,9 +37,15 @@ final class StatsViewModel {
   /// - Parameters:
   ///   - repository: The session log to aggregate.
   ///   - providerLabel: Resolves a `providerID` to a display name; defaults to the raw ID.
-  init(repository: SessionRepository, providerLabel: @escaping (String) -> String = { $0 }) {
+  ///   - providerTint: Resolves a `providerID` to a display color; defaults to ``ProviderTint/gray``.
+  init(
+    repository: SessionRepository,
+    providerLabel: @escaping (String) -> String = { $0 },
+    providerTint: @escaping (String) -> ProviderTint = { _ in .gray }
+  ) {
     self.repository = repository
     self.providerLabel = providerLabel
+    self.providerTint = providerTint
     Task { await refresh() }
   }
 
@@ -74,6 +81,9 @@ final class StatsViewModel {
   /// Whether period navigation applies; always hidden for all-time.
   var canNavigateBack: Bool { scope != .allTime }
 
+  /// The date range the current scope and offset resolve to, for the navigation label.
+  var currentInterval: DateInterval { scopedInterval }
+
   // MARK: - Aggregated outputs
 
   /// Whether any sessions have been recorded at all.
@@ -107,7 +117,8 @@ final class StatsViewModel {
       .compactMap { key -> DayTotal? in
         guard let entry = accumulated[key] else { return nil }
         return DayTotal(
-          day: entry.day, providerID: entry.providerID, minutes: Int(entry.seconds / 60))
+          day: entry.day, providerID: entry.providerID,
+          tint: displayTint(for: entry.providerID), minutes: Int(entry.seconds / 60))
       }
       .sorted { ($0.day, $0.providerID) < ($1.day, $1.providerID) }
   }
@@ -129,6 +140,7 @@ final class StatsViewModel {
         ProviderSlice(
           providerID: providerID,
           label: displayLabel(for: providerID),
+          tint: displayTint(for: providerID),
           minutes: Int((accumulated[providerID] ?? 0) / 60))
       }
       .sorted { $0.minutes > $1.minutes }
@@ -243,6 +255,11 @@ final class StatsViewModel {
     providerID == Self.untrackedKey ? "Untracked" : providerLabel(providerID)
   }
 
+  /// Display color for a provider grouping key, gray for the untracked sentinel.
+  private func displayTint(for providerID: String) -> ProviderTint {
+    providerID == Self.untrackedKey ? .gray : providerTint(providerID)
+  }
+
   /// The date range the scope-dependent outputs are computed over, honoring `offset`.
   private var scopedInterval: DateInterval {
     let calendar = Calendar.current
@@ -276,12 +293,56 @@ final class StatsViewModel {
 #if DEBUG
   extension StatsViewModel {
 
-    /// A view model backed by a throwaway temp-file repository, for SwiftUI previews.
+    /// Sample provider display names and tints used by the seeded preview.
+    private static let previewProviders: [String: (label: String, tint: ProviderTint)] = [
+      "local": ("Local", .green),
+      "reminders": ("Reminders", .orange),
+      "obsidian": ("Obsidian", .purple),
+    ]
+
+    /// A view model backed by an empty throwaway temp-file repository, for SwiftUI previews.
     static var preview: StatsViewModel {
-      StatsViewModel(
-        repository: JSONSessionRepository(
-          fileURL: FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString + ".json")))
+      seeded([])
+    }
+
+    /// A view model seeded with two weeks of sample sessions across providers.
+    static var previewSeeded: StatsViewModel {
+      let calendar = Calendar.current
+      let today = calendar.startOfDay(for: Date())
+      let providers = ["local", "reminders", "obsidian", nil]
+      var sessions: [Session] = []
+      for dayOffset in 0..<14 {
+        guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: today) else {
+          continue
+        }
+        for slot in 0...(dayOffset % 3) {
+          let provider = providers[(dayOffset + slot) % providers.count]
+          let start = day.addingTimeInterval(TimeInterval((9 + slot) * 3_600))
+          let ref = provider.map { TaskRef(providerID: $0, nativeID: "task-\(slot)") }
+          sessions.append(
+            Session(
+              id: UUID(), phase: .focus, startedAt: start,
+              endedAt: start.addingTimeInterval(25 * 60), wasCompleted: true,
+              taskRef: ref, taskTitle: provider.map { "\($0.capitalized) task \(slot)" }))
+        }
+      }
+      return seeded(sessions)
+    }
+
+    /// Builds a preview view model backed by a temp file seeded with `sessions`.
+    private static func seeded(_ sessions: [Session]) -> StatsViewModel {
+      let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString + ".json")
+      let encoder = JSONEncoder()
+      encoder.dateEncodingStrategy = .iso8601
+      if let data = try? encoder.encode(sessions) { try? data.write(to: url) }
+      let viewModel = StatsViewModel(
+        repository: JSONSessionRepository(fileURL: url),
+        providerLabel: { previewProviders[$0]?.label ?? $0 },
+        providerTint: { previewProviders[$0]?.tint ?? .gray })
+      // Seed the cache synchronously so previews render without waiting on the async refresh.
+      viewModel.sessions = sessions
+      return viewModel
     }
   }
 #endif

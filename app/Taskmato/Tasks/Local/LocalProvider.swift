@@ -24,6 +24,7 @@ final class LocalProvider: WritableTaskProvider {
   let displayName: String = "Local"
   let displayOrder: Int = 0
   let icon: String = "tray"
+  let tint: ProviderTint = .green
   let entitlement: ProviderEntitlement = .free
 
   /// Lists managed by this provider, in creation order.

@@ -21,11 +21,14 @@ enum StatScope: CaseIterable {
   case allTime
 
   /// Human-readable title shown in the scope picker.
+  ///
+  /// Generalized to the period *kind* (Day, Week, Month) so it reads correctly alongside the
+  /// navigation label, which names the specific period being viewed.
   var label: String {
     switch self {
-    case .today: return "Today"
-    case .thisWeek: return "7 Days"
-    case .thisMonth: return "This Month"
+    case .today: return "Day"
+    case .thisWeek: return "Week"
+    case .thisMonth: return "Month"
     case .allTime: return "All Time"
     }
   }
@@ -39,6 +42,9 @@ struct DayTotal: Identifiable {
 
   /// Provider that owns the focus time, or `"__untracked__"` when no task was selected.
   let providerID: String
+
+  /// Semantic color of the owning provider, used for the stacked bar segment.
+  let tint: ProviderTint
 
   /// Focus minutes attributed to this provider on this day.
   let minutes: Int
@@ -55,6 +61,9 @@ struct ProviderSlice: Identifiable {
 
   /// Human-readable provider name shown in the legend.
   let label: String
+
+  /// Semantic color of the provider, used for the legend swatch and bar segments.
+  let tint: ProviderTint
 
   /// Focus minutes attributed to this provider.
   let minutes: Int
