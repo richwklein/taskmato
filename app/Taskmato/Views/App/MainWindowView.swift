@@ -24,7 +24,7 @@ struct MainWindowView: View {
 
   var engine: SessionEngine
   var settings: AppSettings
-  var store: SessionStore
+  var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
   @Bindable var nav: MainNavigation
@@ -50,7 +50,7 @@ struct MainWindowView: View {
         TimerTabView(
           engine: engine,
           settings: settings,
-          store: store,
+          statsViewModel: statsViewModel,
           selectionStore: selectionStore,
           registry: registry,
           nav: nav,
@@ -63,7 +63,7 @@ struct MainWindowView: View {
         AppLabels.Tab.stats.title, systemImage: AppLabels.Tab.stats.systemImage,
         value: MainTab.stats
       ) {
-        StatsTabView(store: store)
+        StatsTabView(statsViewModel: statsViewModel)
       }
     }
     .frame(minWidth: 640, minHeight: 400)
@@ -108,7 +108,7 @@ struct MainWindowView: View {
   MainWindowView(
     engine: SessionEngine(),
     settings: AppSettings(),
-    store: SessionStore(),
+    statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
     nav: MainNavigation(settings: AppSettings())

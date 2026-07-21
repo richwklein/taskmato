@@ -10,7 +10,7 @@ struct TimerTabView: View {
 
   var engine: SessionEngine
   var settings: AppSettings
-  var store: SessionStore
+  var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
   var nav: MainNavigation
@@ -61,9 +61,11 @@ struct TimerTabView: View {
       Divider()
         .padding(.horizontal, 24)
 
-      SessionStatsView(count: store.todayFocusCount(), minutes: store.todayFocusMinutes())
-        .padding(.horizontal, 24)
-        .padding(.vertical, 12)
+      SessionStatsView(
+        count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes
+      )
+      .padding(.horizontal, 24)
+      .padding(.vertical, 12)
     }
   }
 
@@ -173,7 +175,7 @@ struct TimerTabView: View {
   TimerTabView(
     engine: SessionEngine(),
     settings: AppSettings(),
-    store: SessionStore(),
+    statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
     nav: MainNavigation(settings: AppSettings()),
