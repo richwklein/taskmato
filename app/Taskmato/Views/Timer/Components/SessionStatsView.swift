@@ -5,19 +5,21 @@
 
 import SwiftUI
 
-/// A compact summary row showing today's focus session count and total focused time.
+/// A compact summary row showing today's focus session count, focused time, and current streak.
 struct SessionStatsView: View {
 
   /// Number of completed focus sessions today.
   let count: Int
   /// Total minutes of completed focus time today.
   let minutes: Int
+  /// Current consecutive-day focus streak; `0` hides the streak indicator.
+  var streak: Int = 0
 
   var body: some View {
     HStack {
-      Label(sessionLabel, systemImage: "timer")
+      Text(sessionLabel)
       Spacer()
-      Label(minuteLabel, systemImage: "clock")
+      Text(minuteLabel)
     }
     .font(.caption)
     .foregroundStyle(.secondary)
@@ -28,6 +30,6 @@ struct SessionStatsView: View {
   }
 
   private var minuteLabel: String {
-    "\(minutes) min focused"
+    streak > 0 ? "\(minutes) min · 🔥\(streak)" : "\(minutes) min focused"
   }
 }

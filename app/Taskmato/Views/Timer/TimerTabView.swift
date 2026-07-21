@@ -62,7 +62,8 @@ struct TimerTabView: View {
         .padding(.horizontal, 24)
 
       SessionStatsView(
-        count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes
+        count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes,
+        streak: statsViewModel.currentStreak
       )
       .padding(.horizontal, 24)
       .padding(.vertical, 12)

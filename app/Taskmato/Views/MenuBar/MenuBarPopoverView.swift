@@ -100,7 +100,8 @@ struct MenuBarPopoverView: View {
         DispatchQueue.main.async { popover?.close() }
       } label: {
         SessionStatsView(
-          count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes)
+          count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes,
+          streak: statsViewModel.currentStreak)
       }
       .buttonStyle(.plain)
       .padding(.horizontal, 16)
