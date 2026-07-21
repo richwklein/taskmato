@@ -46,6 +46,9 @@ struct AppComposition {
       repository: sessionRepository,
       providerLabel: { [registry] providerID in
         registry.providers.first { $0.id == providerID }?.displayName ?? providerID
+      },
+      providerTint: { [registry] providerID in
+        registry.providers.first { $0.id == providerID }?.tint ?? .gray
       })
     Self.configureNotifications(notifications)
     Self.registerProviders(

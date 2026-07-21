@@ -26,6 +26,11 @@ protocol TaskProvider: AnyObject, Sendable {
   /// SF Symbol name used to represent this provider in the UI.
   var icon: String { get }
 
+  /// Semantic color used to represent this provider in charts and legends.
+  ///
+  /// Defaults to ``ProviderTint/gray``; providers override it to claim a distinct hue.
+  var tint: ProviderTint { get }
+
   /// Whether this provider is free or requires a StoreKit purchase.
   var entitlement: ProviderEntitlement { get }
 
@@ -57,6 +62,7 @@ protocol TaskProvider: AnyObject, Sendable {
 extension TaskProvider {
   var isAuthorized: Bool { true }
   var displayOrder: Int { Int.max }
+  var tint: ProviderTint { .gray }
 }
 
 /// A `TaskProvider` that supports toggling task completion state in the source system.

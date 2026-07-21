@@ -54,10 +54,12 @@ struct StatsViewModelTests {
   }
 
   private func makeViewModel(
-    _ sessions: [Session], providerLabel: @escaping (String) -> String = { $0 }
+    _ sessions: [Session], providerLabel: @escaping (String) -> String = { $0 },
+    providerTint: @escaping (String) -> ProviderTint = { _ in .gray }
   ) async -> StatsViewModel {
     let viewModel = StatsViewModel(
-      repository: FakeSessionRepository(sessions: sessions), providerLabel: providerLabel)
+      repository: FakeSessionRepository(sessions: sessions), providerLabel: providerLabel,
+      providerTint: providerTint)
     await viewModel.refresh()
     return viewModel
   }
@@ -272,6 +274,48 @@ struct StatsViewModelTests {
       $0.providerID == "__untracked__" && Self.calendar.isDate($0.day, inSameDayAs: dayTwo)
     }
     #expect(untrackedDayTwo?.minutes == 10)
+  }
+
+  // MARK: - Current interval (navigation label)
+
+  @Test func currentIntervalTracksScopeAndOffset() async {
+    let viewModel = await makeViewModel([])
+    let cal = Self.calendar
+    let today = cal.startOfDay(for: Date())
+
+    viewModel.scope = .today
+    #expect(viewModel.currentInterval.start == today)
+    #expect(viewModel.currentInterval.end == cal.date(byAdding: .day, value: 1, to: today))
+
+    viewModel.navigateBack()
+    let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+    #expect(viewModel.currentInterval.start == yesterday)
+    #expect(viewModel.currentInterval.end == today)
+
+    viewModel.scope = .allTime
+    #expect(viewModel.currentInterval.start == .distantPast)
+    #expect(viewModel.currentInterval.end == .distantFuture)
+  }
+
+  // MARK: - Provider tint resolution
+
+  @Test func outputsCarryProviderTint() async {
+    let day = Self.fixedNoon(day: 300)
+    let viewModel = await makeViewModel(
+      [
+        focus(start: day, minutes: 25, provider: "local"),
+        focus(start: day, minutes: 10, provider: nil),
+      ],
+      providerTint: { ["local": ProviderTint.green][$0] ?? .gray })
+    viewModel.scope = .allTime
+
+    let providers = viewModel.providerBreakdown
+    #expect(providers.first { $0.providerID == "local" }?.tint == .green)
+    #expect(providers.first { $0.providerID == "__untracked__" }?.tint == .gray)
+
+    let totals = viewModel.dailyFocusTotals
+    #expect(totals.first { $0.providerID == "local" }?.tint == .green)
+    #expect(totals.first { $0.providerID == "__untracked__" }?.tint == .gray)
   }
 
   // MARK: - Optimistic append

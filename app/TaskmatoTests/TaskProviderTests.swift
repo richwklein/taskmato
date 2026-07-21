@@ -267,6 +267,16 @@ struct TaskProviderTests {
     #expect(provider.isAuthorized)
   }
 
+  @Test func tintDefaultsToGray() {
+    #expect(FakeReadOnlyProvider().tint == .gray)
+  }
+
+  @Test @MainActor func localProviderDeclaresGreenTint() {
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString + ".json")
+    #expect(LocalProvider(fileURL: url).tint == .green)
+  }
+
   @Test func isAuthorizedCanBeOverridden() {
     let provider = FakeUnauthorizedProvider()
     #expect(!provider.isAuthorized)

@@ -3,13 +3,14 @@
 //  Taskmato
 //
 
-import Charts
 import SwiftUI
 
 /// The statistics tab shown in the main application window.
 ///
-/// Displays a scope picker, four summary stat cards, and a donut chart of focus time broken
-/// down by task. All data is derived from ``StatsViewModel``.
+/// Shows a scope picker and, for every scope except All Time, period back/forward navigation.
+/// Each scope renders its own visualisation — a task donut (Today), a stacked daily bar chart
+/// with a ranked task list (7 Days / This Month), or a sortable all-time task table. All data
+/// is derived from ``StatsViewModel``.
 struct StatsTabView: View {
 
   @Bindable var statsViewModel: StatsViewModel
@@ -17,25 +18,66 @@ struct StatsTabView: View {
   var body: some View {
     VStack(spacing: 0) {
       scopePicker
+      navigationRow
+      content
+    }
+  }
 
-      if statsViewModel.isEmpty {
-        ContentUnavailableView(
-          "No Sessions Yet",
-          systemImage: "chart.bar",
-          description: Text("Complete a focus session to see your statistics here.")
-        )
+  // MARK: - Content
+
+  @ViewBuilder
+  private var content: some View {
+    if statsViewModel.isEmpty {
+      emptyState(
+        "No Sessions Yet",
+        description: "Complete a focus session to see your statistics here.")
+    } else {
+      let summary = statsViewModel.statCards
+      if summary.focusCount == 0 && summary.breakCount == 0 {
+        emptyState(
+          "No Sessions",
+          description: "No focus sessions in this period.")
       } else {
-        let summary = statsViewModel.statCards
-        ScrollView {
-          VStack(alignment: .leading, spacing: 20) {
-            statGrid(summary)
-            if !summary.taskBreakdown.isEmpty {
-              taskBreakdownSection(summary)
-            }
-          }
-          .padding()
-        }
+        scopeContent(summary)
       }
+    }
+  }
+
+  @ViewBuilder
+  private func scopeContent(_ summary: SessionSummary) -> some View {
+    switch statsViewModel.scope {
+    case .allTime:
+      VStack(alignment: .leading, spacing: 20) {
+        statGrid(summary).padding([.horizontal, .top])
+        AllTimeTaskTable(rows: statsViewModel.allTaskRows)
+      }
+    default:
+      ScrollView {
+        VStack(alignment: .leading, spacing: 20) {
+          statGrid(summary)
+          scopeCharts(summary)
+        }
+        .padding()
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func scopeCharts(_ summary: SessionSummary) -> some View {
+    switch statsViewModel.scope {
+    case .today:
+      if !summary.taskBreakdown.isEmpty {
+        TaskDonutChart(slices: summary.taskBreakdown, totalSeconds: summary.focusSeconds)
+      }
+    case .thisWeek, .thisMonth:
+      DailyBarChart(
+        totals: statsViewModel.dailyFocusTotals,
+        providers: statsViewModel.providerBreakdown)
+      if !summary.taskBreakdown.isEmpty {
+        RankedTaskList(slices: summary.taskBreakdown)
+      }
+    case .allTime:
+      EmptyView()
     }
   }
 
@@ -48,8 +90,67 @@ struct StatsTabView: View {
       }
     }
     .pickerStyle(.segmented)
+    .labelsHidden()
     .padding([.horizontal, .top])
+    .padding(.bottom, 16)
+  }
+
+  // MARK: - Period navigation
+
+  /// Always rendered so its height is constant across scopes; the arrows are hidden for All
+  /// Time (which has no period navigation) to keep the layout from jumping.
+  private var navigationRow: some View {
+    let showsArrows = statsViewModel.canNavigateBack
+    return HStack(spacing: 8) {
+      Button {
+        statsViewModel.navigateBack()
+      } label: {
+        Image(systemName: "chevron.left")
+      }
+      .disabled(!showsArrows)
+      .opacity(showsArrows ? 1 : 0)
+      .accessibilityLabel("Previous period")
+
+      Text(periodLabel)
+        .font(.subheadline.weight(.medium))
+        .monospacedDigit()
+        .frame(width: 160)
+
+      Button {
+        statsViewModel.navigateForward()
+      } label: {
+        Image(systemName: "chevron.right")
+      }
+      .disabled(!statsViewModel.canNavigateForward)
+      .opacity(showsArrows ? 1 : 0)
+      .accessibilityLabel("Next period")
+    }
+    .buttonStyle(.borderless)
+    .frame(maxWidth: .infinity)
+    .padding(.horizontal)
     .padding(.bottom, 8)
+  }
+
+  /// The navigated period rendered for the current scope and offset.
+  private var periodLabel: String {
+    let interval = statsViewModel.currentInterval
+    switch statsViewModel.scope {
+    case .today:
+      switch statsViewModel.offset {
+      case 0: return "Today"
+      case -1: return "Yesterday"
+      default: return interval.start.formatted(.dateTime.month(.abbreviated).day())
+      }
+    case .thisWeek:
+      let lastDay = interval.end.addingTimeInterval(-1)
+      let start = interval.start.formatted(.dateTime.month(.abbreviated).day())
+      let end = lastDay.formatted(.dateTime.month(.abbreviated).day())
+      return "\(start) – \(end)"
+    case .thisMonth:
+      return interval.start.formatted(.dateTime.month(.wide).year())
+    case .allTime:
+      return "All Time"
+    }
   }
 
   // MARK: - Stat grid
@@ -59,7 +160,7 @@ struct StatsTabView: View {
       StatCardView(icon: "target", value: "\(summary.focusCount)", label: "Sessions")
       StatCardView(
         icon: "timer",
-        value: formatDuration(summary.focusSeconds),
+        value: FocusDuration.label(seconds: summary.focusSeconds),
         label: "Focus Time"
       )
       StatCardView(icon: "cup.and.saucer", value: "\(summary.breakCount)", label: "Breaks")
@@ -67,105 +168,38 @@ struct StatsTabView: View {
     }
   }
 
-  // MARK: - Task breakdown
+  // MARK: - Empty state
 
-  private func taskBreakdownSection(_ summary: SessionSummary) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Task Breakdown")
-        .font(.headline)
-
-      Chart(summary.taskBreakdown) { slice in
-        SectorMark(
-          angle: .value("Time", slice.seconds),
-          innerRadius: .ratio(0.5),
-          angularInset: 1.5
-        )
-        .cornerRadius(3)
-        .foregroundStyle(by: .value("Task", slice.label))
-      }
-      .chartForegroundStyleScale(
-        domain: summary.taskBreakdown.map(\.label),
-        range: chartColors(count: summary.taskBreakdown.count)
-      )
-      .chartLegend(.hidden)
-      .frame(height: 160)
-
-      VStack(spacing: 6) {
-        ForEach(Array(summary.taskBreakdown.enumerated()), id: \.element.id) { idx, slice in
-          HStack(spacing: 8) {
-            Circle()
-              .fill(sliceColor(idx))
-              .frame(width: 10, height: 10)
-            Text(slice.label)
-              .lineLimit(1)
-            Spacer()
-            let pct =
-              summary.focusSeconds > 0
-              ? Int(slice.seconds / summary.focusSeconds * 100) : 0
-            Text("\(slice.minutes) min · \(pct)%")
-              .foregroundStyle(.secondary)
-              .font(.caption)
-          }
-        }
-      }
-    }
-  }
-
-  // MARK: - Helpers
-
-  private static let palette: [Color] = [
-    .blue, .green, .orange, .purple, .red, .teal, .indigo, .pink,
-  ]
-
-  private func sliceColor(_ index: Int) -> Color {
-    Self.palette[index % Self.palette.count]
-  }
-
-  private func chartColors(count: Int) -> [Color] {
-    (0..<count).map { sliceColor($0) }
-  }
-
-  /// Formats a duration in seconds as `"Xh Ym"` when ≥ 60 min, otherwise `"Xm"`.
-  private func formatDuration(_ seconds: TimeInterval) -> String {
-    let minutes = Int(seconds / 60)
-    if minutes >= 60 {
-      let hours = minutes / 60
-      let mins = minutes % 60
-      return mins > 0 ? "\(hours)h \(mins)m" : "\(hours)h"
-    }
-    return "\(minutes)m"
+  private func emptyState(_ title: String, description: String) -> some View {
+    ContentUnavailableView(
+      title,
+      systemImage: "chart.bar",
+      description: Text(description)
+    )
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }
 
-// MARK: - StatCardView
-
-/// A compact summary card showing a single metric with an icon, value, and label.
-private struct StatCardView: View {
-
-  let icon: String
-  let value: String
-  let label: String
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Image(systemName: icon)
-        .font(.title2)
-        .foregroundStyle(.secondary)
-      Text(value)
-        .font(.title)
-        .fontWeight(.semibold)
-        .monospacedDigit()
-      Text(label)
-        .font(.caption)
-        .foregroundStyle(.secondary)
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(12)
-    .background(.background.secondary)
-    .clipShape(RoundedRectangle(cornerRadius: 8))
-  }
+#Preview("Today") {
+  StatsTabView(statsViewModel: .previewSeeded)
+    .frame(width: 420, height: 560)
 }
 
-#Preview {
+#Preview("7 Days") {
+  let viewModel = StatsViewModel.previewSeeded
+  viewModel.scope = .thisWeek
+  return StatsTabView(statsViewModel: viewModel)
+    .frame(width: 420, height: 560)
+}
+
+#Preview("All Time") {
+  let viewModel = StatsViewModel.previewSeeded
+  viewModel.scope = .allTime
+  return StatsTabView(statsViewModel: viewModel)
+    .frame(width: 420, height: 560)
+}
+
+#Preview("Empty") {
   StatsTabView(statsViewModel: .preview)
+    .frame(width: 420, height: 560)
 }
