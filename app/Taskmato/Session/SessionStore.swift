@@ -10,8 +10,7 @@ import Observation
 ///
 /// Holds a published mirror of the recorded sessions for synchronous SwiftUI access and
 /// delegates all persistence to an injected ``SessionRepository``. The authoritative cache
-/// lives in the repository; this facade's aggregation helpers move to the stats view model
-/// as the storage layer evolves.
+/// lives in the repository; all scope-shaping and aggregation now lives in ``StatsViewModel``.
 @Observable
 @MainActor
 final class SessionStore {
@@ -43,41 +42,6 @@ final class SessionStore {
   /// - Parameter interval: The date range to scope results to.
   func summary(for interval: DateInterval) -> SessionSummary {
     SessionSummary(sessions: sessions, over: interval)
-  }
-
-  /// Returns a summary scoped to the current calendar day (local time zone).
-  func todaySummary() -> SessionSummary {
-    let calendar = Calendar.current
-    let start = calendar.startOfDay(for: Date())
-    let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
-    return summary(for: DateInterval(start: start, end: end))
-  }
-
-  /// Returns a summary scoped to a rolling seven-day window ending now.
-  func thisWeekSummary() -> SessionSummary {
-    let calendar = Calendar.current
-    let todayStart = calendar.startOfDay(for: Date())
-    let start = calendar.date(byAdding: .day, value: -6, to: todayStart) ?? todayStart
-    return summary(for: DateInterval(start: start, end: Date()))
-  }
-
-  /// Number of completed focus sessions that started today (calendar day, local time zone).
-  func todayFocusCount() -> Int {
-    let calendar = Calendar.current
-    let today = calendar.startOfDay(for: Date())
-    return sessions.filter {
-      $0.phase == .focus && $0.wasCompleted && calendar.startOfDay(for: $0.startedAt) == today
-    }.count
-  }
-
-  /// Total elapsed minutes across all completed focus sessions that started today.
-  func todayFocusMinutes() -> Int {
-    let calendar = Calendar.current
-    let today = calendar.startOfDay(for: Date())
-    let total = sessions.filter {
-      $0.phase == .focus && $0.wasCompleted && calendar.startOfDay(for: $0.startedAt) == today
-    }.reduce(0) { $0 + $1.duration }
-    return Int(total / 60)
   }
 
   // MARK: - Private

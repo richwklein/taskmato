@@ -8,26 +8,24 @@ import SwiftUI
 
 /// The statistics tab shown in the main application window.
 ///
-/// Displays a scope picker (Today / 7 Days), four summary stat cards, and a donut
-/// chart of focus time broken down by task. Data is derived from ``SessionStore``.
+/// Displays a scope picker, four summary stat cards, and a donut chart of focus time broken
+/// down by task. All data is derived from ``StatsViewModel``.
 struct StatsTabView: View {
 
-  var store: SessionStore
-
-  @State private var scope: StatScope = .today
+  @Bindable var statsViewModel: StatsViewModel
 
   var body: some View {
     VStack(spacing: 0) {
       scopePicker
 
-      if store.sessions.isEmpty {
+      if statsViewModel.isEmpty {
         ContentUnavailableView(
           "No Sessions Yet",
           systemImage: "chart.bar",
           description: Text("Complete a focus session to see your statistics here.")
         )
       } else {
-        let summary = currentSummary
+        let summary = statsViewModel.statCards
         ScrollView {
           VStack(alignment: .leading, spacing: 20) {
             statGrid(summary)
@@ -44,7 +42,7 @@ struct StatsTabView: View {
   // MARK: - Scope picker
 
   private var scopePicker: some View {
-    Picker("Scope", selection: $scope) {
+    Picker("Scope", selection: $statsViewModel.scope) {
       ForEach(StatScope.allCases, id: \.self) { statScope in
         Text(statScope.label).tag(statScope)
       }
@@ -115,10 +113,6 @@ struct StatsTabView: View {
 
   // MARK: - Helpers
 
-  private var currentSummary: SessionSummary {
-    scope == .today ? store.todaySummary() : store.thisWeekSummary()
-  }
-
   private static let palette: [Color] = [
     .blue, .green, .orange, .purple, .red, .teal, .indigo, .pink,
   ]
@@ -140,20 +134,6 @@ struct StatsTabView: View {
       return mins > 0 ? "\(hours)h \(mins)m" : "\(hours)h"
     }
     return "\(minutes)m"
-  }
-}
-
-// MARK: - Scope
-
-private enum StatScope: CaseIterable {
-  case today
-  case thisWeek
-
-  var label: String {
-    switch self {
-    case .today: return "Today"
-    case .thisWeek: return "7 Days"
-    }
   }
 }
 
@@ -187,5 +167,5 @@ private struct StatCardView: View {
 }
 
 #Preview {
-  StatsTabView(store: SessionStore())
+  StatsTabView(statsViewModel: .preview)
 }

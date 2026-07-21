@@ -16,7 +16,7 @@ struct MenuBarPopoverView: View {
 
   var engine: SessionEngine
   var settings: AppSettings
-  var store: SessionStore
+  var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
   var nav: MainNavigation
@@ -99,7 +99,8 @@ struct MenuBarPopoverView: View {
         nav.showStatsInMainWindow()
         DispatchQueue.main.async { popover?.close() }
       } label: {
-        SessionStatsView(count: store.todayFocusCount(), minutes: store.todayFocusMinutes())
+        SessionStatsView(
+          count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes)
       }
       .buttonStyle(.plain)
       .padding(.horizontal, 16)
@@ -221,7 +222,7 @@ struct MenuBarPopoverView: View {
   MenuBarPopoverView(
     engine: SessionEngine(),
     settings: AppSettings(),
-    store: SessionStore(),
+    statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
     nav: MainNavigation(settings: AppSettings()),

@@ -26,7 +26,7 @@ struct TaskmatoApp: App {
       MenuBarPopoverView(
         engine: composition.engine,
         settings: composition.settings,
-        store: composition.store,
+        statsViewModel: composition.statsViewModel,
         selectionStore: composition.selectionStore,
         registry: composition.registry,
         nav: composition.nav,
@@ -77,7 +77,7 @@ struct TaskmatoApp: App {
       MainWindowView(
         engine: composition.engine,
         settings: composition.settings,
-        store: composition.store,
+        statsViewModel: composition.statsViewModel,
         selectionStore: composition.selectionStore,
         registry: composition.registry,
         nav: composition.nav
