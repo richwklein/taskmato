@@ -34,7 +34,7 @@ struct AppComposition {
   init() {
     let engine = SessionEngine()
     let settings = AppSettings()
-    let sessionRepository = JSONSessionRepository(fileURL: JSONSessionRepository.defaultFileURL())
+    let sessionRepository = Self.makeSessionRepository()
     let store = SessionStore(repository: sessionRepository)
     let selectionStore = TaskSelectionStore()
     let registry = TaskRegistry()
@@ -73,6 +73,20 @@ struct AppComposition {
     self.urlHandler = urlHandler
     self.nav = nav
     engine.onPhaseEnded = makePhaseEndedHandler()
+  }
+
+  /// Opens the SwiftData session store, trapping if it cannot be created.
+  ///
+  /// A container failure is unrecoverable — the app cannot function without its session log —
+  /// and `AppComposition.init` cannot cleanly throw, so it traps with a clear message.
+  private static func makeSessionRepository() -> SwiftDataSessionRepository {
+    do {
+      let container = try SwiftDataSessionRepository.makeContainer(
+        url: SwiftDataSessionRepository.defaultStoreURL())
+      return SwiftDataSessionRepository(modelContainer: container)
+    } catch {
+      fatalError("Unable to open the Taskmato session store: \(error)")
+    }
   }
 
   /// Requests notification authorization at launch and refreshes it on each app activation.

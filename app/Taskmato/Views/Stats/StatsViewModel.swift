@@ -329,15 +329,13 @@ final class StatsViewModel {
       return seeded(sessions)
     }
 
-    /// Builds a preview view model backed by a temp file seeded with `sessions`.
+    /// Builds a preview view model seeded with `sessions`.
     private static func seeded(_ sessions: [Session]) -> StatsViewModel {
-      let url = FileManager.default.temporaryDirectory
-        .appendingPathComponent(UUID().uuidString + ".json")
-      let encoder = JSONEncoder()
-      encoder.dateEncodingStrategy = .iso8601
-      if let data = try? encoder.encode(sessions) { try? data.write(to: url) }
+      guard let repository = try? SwiftDataSessionRepository.makeInMemory() else {
+        fatalError("Failed to build in-memory preview repository")
+      }
       let viewModel = StatsViewModel(
-        repository: JSONSessionRepository(fileURL: url),
+        repository: repository,
         providerLabel: { previewProviders[$0]?.label ?? $0 },
         providerTint: { previewProviders[$0]?.tint ?? .gray })
       // Seed the cache synchronously so previews render without waiting on the async refresh.

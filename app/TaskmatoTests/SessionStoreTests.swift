@@ -11,13 +11,11 @@ import Testing
 @MainActor
 struct SessionStoreTests {
 
-  /// Returns a facade backed by a repository on a unique temp file that won't affect
-  /// production data. Disk persistence itself is covered by `JSONSessionRepositoryTests`;
-  /// these tests exercise the observable mirror's synchronous optimistic-append path.
+  /// Returns a facade backed by an in-memory fake repository. Persistence itself is covered by
+  /// `SwiftDataSessionRepositoryTests`; these tests exercise the observable mirror's synchronous
+  /// optimistic-append path.
   private func makeStore() -> SessionStore {
-    let url = FileManager.default.temporaryDirectory
-      .appendingPathComponent(UUID().uuidString + ".json")
-    return SessionStore(repository: JSONSessionRepository(fileURL: url))
+    SessionStore(repository: FakeSessionRepository())
   }
 
   private func makeSession(phase: SessionPhase = .focus, wasCompleted: Bool = true) -> Session {
