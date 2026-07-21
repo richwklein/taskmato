@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/richwklein/taskmato/compare/v0.7.0...v0.8.0) (2026-07-21)
+
+
+### Features
+
+* **stats:** Day / Week / Month / All Time charts in StatsView ([#453](https://github.com/richwklein/taskmato/issues/453)) ([c626d79](https://github.com/richwklein/taskmato/commit/c626d795bad5a0bc71297d771806d7f857235cd5))
+* **stats:** show streak in session stats footer ([#452](https://github.com/richwklein/taskmato/issues/452)) ([818099d](https://github.com/richwklein/taskmato/commit/818099ddd404afe0dc9aad89b095c16febc2cc74))
+
+
+### Bug Fixes
+
+* **reminders:** isolate UserDefaults in RemindersProvider tests ([#449](https://github.com/richwklein/taskmato/issues/449)) ([c9f8805](https://github.com/richwklein/taskmato/commit/c9f8805b2423d1f0c495da978a0f938f6417ce5f))
+
 ## [0.7.0](https://github.com/richwklein/taskmato/compare/v0.6.0...v0.7.0) (2026-07-19)
 
 
