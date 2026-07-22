@@ -182,6 +182,10 @@ Allowed types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `build`, `ci`
 
 Breaking changes: append `!` (e.g., `feat!: rename public API`) or include a `BREAKING CHANGE:` footer.
 
+### CHANGELOG sections
+
+`release-please-config.json` sets `changelog-sections` so the generated `CHANGELOG.md` surfaces substantive work, not just `feat`/`fix`. Visible sections: `feat` (Features), `fix` (Bug Fixes), `perf` (Performance Improvements), `refactor` (Code Refactoring), `docs` (Documentation), `chore` (Miscellaneous Chores). The remaining types (`build`, `ci`, `test`, `style`) are hidden to keep dependency-bump and CI churn out of release notes. This affects only what is listed in the changelog — it does not change which types trigger a version bump.
+
 ## Branching
 
 - `main` is the default branch and is protected by a ruleset.
