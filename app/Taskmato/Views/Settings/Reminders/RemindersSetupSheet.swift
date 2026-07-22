@@ -30,10 +30,9 @@ struct RemindersSetupSheet: View {
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .leading, spacing: .sectionGap) {
       Text("Apple Reminders")
-        .font(.title2)
-        .fontWeight(.semibold)
+        .font(.sheetTitle)
 
       content
 
@@ -46,7 +45,7 @@ struct RemindersSetupSheet: View {
         .keyboardShortcut(.defaultAction)
       }
     }
-    .padding(24)
+    .padding(.screenPadding)
     .frame(minWidth: 360)
     .alert(
       "Reminders Access Denied",
@@ -73,9 +72,9 @@ struct RemindersSetupSheet: View {
 
   @ViewBuilder
   private var authorizedView: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: .contentGap) {
       Image(systemName: "checkmark.circle.fill")
-        .foregroundStyle(.green)
+        .foregroundStyle(Color.statusSuccess)
         .imageScale(.large)
       Text(listSummaryText)
     }
@@ -92,7 +91,7 @@ struct RemindersSetupSheet: View {
   }
 
   private var grantAccessView: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: .groupGap) {
       Text(
         "Taskmato needs access to your reminders so you can "
           + "select one as your focus task."

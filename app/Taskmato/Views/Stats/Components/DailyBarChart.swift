@@ -24,16 +24,16 @@ struct DailyBarChart: View {
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: .groupGap) {
       Text("Daily Focus")
-        .font(.headline)
+        .font(.chartTitle)
 
       Chart(totals) { total in
         BarMark(
           x: .value("Day", total.day, unit: .day),
           y: .value("Minutes", total.minutes)
         )
-        .cornerRadius(2)
+        .cornerRadius(.barCornerRadius)
         .foregroundStyle(by: .value("Provider", labelByID[total.providerID] ?? total.providerID))
       }
       .chartForegroundStyleScale(

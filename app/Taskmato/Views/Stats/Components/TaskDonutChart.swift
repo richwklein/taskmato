@@ -18,19 +18,14 @@ struct TaskDonutChart: View {
   /// Total focus seconds in the period, used to compute each slice's percentage.
   let totalSeconds: TimeInterval
 
-  /// Ordered palette assigned to slices by index.
-  private static let palette: [Color] = [
-    .blue, .green, .orange, .purple, .red, .teal, .indigo, .pink,
-  ]
-
   private func color(_ index: Int) -> Color {
-    Self.palette[index % Self.palette.count]
+    Color.chartPalette[index % Color.chartPalette.count]
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: .groupGap) {
       Text("Task Breakdown")
-        .font(.headline)
+        .font(.chartTitle)
 
       Chart(slices) { slice in
         SectorMark(
@@ -38,7 +33,7 @@ struct TaskDonutChart: View {
           innerRadius: .ratio(0.5),
           angularInset: 1.5
         )
-        .cornerRadius(3)
+        .cornerRadius(.barCornerRadius)
         .foregroundStyle(by: .value("Task", slice.label))
       }
       .chartForegroundStyleScale(
@@ -48,9 +43,9 @@ struct TaskDonutChart: View {
       .chartLegend(.hidden)
       .frame(height: 160)
 
-      VStack(spacing: 6) {
+      VStack(spacing: .iconLabel) {
         ForEach(Array(slices.enumerated()), id: \.element.id) { index, slice in
-          HStack(spacing: 8) {
+          HStack(spacing: .contentGap) {
             Circle()
               .fill(color(index))
               .frame(width: 10, height: 10)

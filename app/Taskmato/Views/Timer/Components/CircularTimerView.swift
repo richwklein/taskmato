@@ -21,7 +21,7 @@ struct CircularTimerView: View {
   var body: some View {
     ZStack {
       Circle()
-        .stroke(Color.secondary.opacity(0.2), lineWidth: strokeWidth)
+        .stroke(Color.timerRingTrack, lineWidth: strokeWidth)
 
       // Elapsed arc grows clockwise from 12 o'clock as time passes.
       Circle()
@@ -33,12 +33,12 @@ struct CircularTimerView: View {
         .rotationEffect(.degrees(-90))
         .animation(.linear(duration: 1), value: progress)
 
-      VStack(spacing: 4) {
+      VStack(spacing: .rowVertical) {
         Text(label)
-          .font(.system(size: 36, weight: .light, design: .monospaced))
+          .font(.timerCountdown)
           .foregroundStyle(.primary)
         Text(phase)
-          .font(.subheadline)
+          .font(.timerPhaseLabel)
           .foregroundStyle(.secondary)
       }
     }

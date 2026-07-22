@@ -22,6 +22,9 @@ extension CGFloat {
   /// Interior padding of a card.
   static let cardPadding: CGFloat = 10
 
+  /// Gap between grouped items or grid cells; one step looser than `contentGap`.
+  static let groupGap: CGFloat = 12
+
   /// Gap between distinct sections of content.
   static let sectionGap: CGFloat = 16
 

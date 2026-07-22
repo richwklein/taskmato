@@ -70,8 +70,8 @@ struct ProviderSidebarView: View {
         VStack(spacing: 0) {
           Divider()
           addProviderMenu
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, .groupGap)
+            .padding(.vertical, .contentGap)
         }
         .background(.bar)
       }
@@ -116,14 +116,14 @@ struct ProviderSidebarView: View {
         newListRow(providerID: provider.id)
       }
     } header: {
-      HStack(spacing: 6) {
+      HStack(spacing: .iconLabel) {
         Image(systemName: provider.icon)
           .imageScale(.small)
         Text(provider.displayName)
         Spacer()
       }
       .font(.callout)
-      .padding(.vertical, 2)
+      .padding(.vertical, .stackTight)
       .contentShape(Rectangle())
       .contextMenu {
         if let configurable = provider as? (any ConfigurableTaskProvider) {
@@ -152,7 +152,7 @@ struct ProviderSidebarView: View {
     let writable = provider as? (any WritableTaskProvider)
     let isDefaultList = isDefault(list.id, for: provider)
 
-    HStack(spacing: 6) {
+    HStack(spacing: .iconLabel) {
       Image(systemName: "list.bullet")
         .imageScale(.small)
         .foregroundStyle(.secondary)
@@ -170,7 +170,7 @@ struct ProviderSidebarView: View {
             .imageScale(.small)
         }
         .buttonStyle(.borderless)
-        .foregroundStyle(isDefaultList ? Color.yellow : Color.secondary)
+        .foregroundStyle(isDefaultList ? Color.favoriteStar : Color.secondary)
         .help(isDefaultList ? "Default list" : "Set as default list")
       }
     }
@@ -279,7 +279,7 @@ struct ProviderSidebarView: View {
       set: { newListName[providerID] = $0 }
     )
 
-    HStack(spacing: 6) {
+    HStack(spacing: .iconLabel) {
       Image(systemName: "plus")
         .imageScale(.small)
         .foregroundStyle(.secondary)

@@ -13,21 +13,19 @@ struct StatCardView: View {
   let label: String
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: .rowVertical) {
       Image(systemName: icon)
         .font(.title2)
         .foregroundStyle(.secondary)
       Text(value)
-        .font(.title)
-        .fontWeight(.semibold)
-        .monospacedDigit()
+        .font(.statValue)
       Text(label)
-        .font(.caption)
+        .font(.statLabel)
         .foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(12)
-    .background(.background.secondary)
-    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .padding(.cardPadding)
+    .background(Color.cardSurface)
+    .clipShape(RoundedRectangle.card)
   }
 }

@@ -32,19 +32,19 @@ struct TimerTabView: View {
       controls
         .frame(height: 44)
         .padding(.top, 20)
-        .padding(.bottom, 24)
+        .padding(.bottom, .screenPadding)
 
       Spacer()
 
       Divider()
-        .padding(.horizontal, 24)
+        .padding(.horizontal, .screenPadding)
 
       if selectionStore.activeTask != nil {
         ActiveTaskView(
           engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
           showNotes: true
         )
-        .padding(.horizontal, 8)
+        .padding(.horizontal, .contentGap)
       } else {
         Button {
           nav.browseTasksAndPick()
@@ -54,26 +54,26 @@ struct TimerTabView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 6)
+        .padding(.horizontal, .screenPadding)
+        .padding(.vertical, .iconLabel)
       }
 
       Divider()
-        .padding(.horizontal, 24)
+        .padding(.horizontal, .screenPadding)
 
       SessionStatsView(
         count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes,
         streak: statsViewModel.currentStreak
       )
-      .padding(.horizontal, 24)
-      .padding(.vertical, 12)
+      .padding(.horizontal, .screenPadding)
+      .padding(.vertical, .groupGap)
     }
   }
 
   // MARK: - Controls
 
   private var controls: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: .groupGap) {
       if engine.isRunning {
         ControlButton(
           label: AppLabels.Timer.pause.title,

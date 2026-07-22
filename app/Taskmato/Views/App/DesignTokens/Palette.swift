@@ -25,6 +25,12 @@ extension Color {
   /// Marker on the provider's default (favorite) list.
   static let favoriteStar: Color = .yellow
 
+  /// Error or warning indicator (permission failure, validation).
+  static let statusError: Color = .red
+
+  /// Success or authorized-state indicator.
+  static let statusSuccess: Color = .green
+
   /// Ordered colors assigned to slices/series in stats charts.
   static let chartPalette: [Color] = [
     .blue, .green, .orange, .purple, .red, .teal, .indigo, .pink,

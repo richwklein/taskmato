@@ -34,20 +34,20 @@ struct ActiveTaskView: View {
           taskRow(for: task)
         }
       }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 8)
+      .padding(.horizontal, .sectionGap)
+      .padding(.vertical, .contentGap)
     }
   }
 
   // MARK: - Row variants
 
   private func taskRow(for task: TaskItem) -> some View {
-    HStack(alignment: .top, spacing: 8) {
+    HStack(alignment: .top, spacing: .contentGap) {
       leadingIndicator(for: task)
 
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: .stackTight) {
         Text(displayTitle(for: task))
-          .font(.callout)
+          .font(.taskTitle)
           .lineLimit(1)
           .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -96,7 +96,7 @@ struct ActiveTaskView: View {
 
   /// An inline prompt that replaces the normal row while a destructive action awaits confirmation.
   private func confirmationRow(for action: ConfirmAction, task: TaskItem) -> some View {
-    HStack(spacing: 8) {
+    HStack(spacing: .contentGap) {
       Image(systemName: "exclamationmark.triangle")
         .font(.caption2)
         .foregroundStyle(.secondary)

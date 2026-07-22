@@ -55,9 +55,9 @@ struct MenuBarPopoverView: View {
         .buttonStyle(.plain)
         .help("Open \(Bundle.main.appName)")
       }
-      .padding(.horizontal, 16)
-      .padding(.top, 12)
-      .padding(.bottom, 8)
+      .padding(.horizontal, .sectionGap)
+      .padding(.top, .groupGap)
+      .padding(.bottom, .contentGap)
 
       CircularTimerView(
         progress: progress,
@@ -67,11 +67,11 @@ struct MenuBarPopoverView: View {
 
       controls
         .frame(height: 44)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.top, .sectionGap)
+        .padding(.bottom, .groupGap)
 
       Divider()
-        .padding(.horizontal, 16)
+        .padding(.horizontal, .sectionGap)
 
       if selectionStore.activeTask != nil {
         ActiveTaskView(engine: engine, selectionStore: selectionStore, registry: registry, nav: nav)
@@ -87,12 +87,12 @@ struct MenuBarPopoverView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
+        .padding(.horizontal, .sectionGap)
+        .padding(.vertical, .iconLabel)
       }
 
       Divider()
-        .padding(.horizontal, 16)
+        .padding(.horizontal, .sectionGap)
 
       Button {
         let popover = NSApp.keyWindow
@@ -104,8 +104,8 @@ struct MenuBarPopoverView: View {
           streak: statsViewModel.currentStreak)
       }
       .buttonStyle(.plain)
-      .padding(.horizontal, 16)
-      .padding(.vertical, 10)
+      .padding(.horizontal, .sectionGap)
+      .padding(.vertical, .cardPadding)
     }
     .frame(width: 280)
     .onAppear {
@@ -120,7 +120,7 @@ struct MenuBarPopoverView: View {
   // MARK: - Controls
 
   private var controls: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: .groupGap) {
       if engine.isRunning {
         ControlButton(
           label: AppLabels.Timer.pause.title,
