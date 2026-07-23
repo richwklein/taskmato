@@ -22,6 +22,7 @@ enum MainTab: Int {
 /// injected ``MainNavigation`` model.
 struct MainWindowView: View {
 
+  var presenter: TimerPresenter
   var engine: SessionEngine
   var settings: AppSettings
   var statsViewModel: StatsViewModel
@@ -48,14 +49,12 @@ struct MainWindowView: View {
         value: MainTab.timer
       ) {
         TimerTabView(
+          presenter: presenter,
           engine: engine,
-          settings: settings,
           statsViewModel: statsViewModel,
           selectionStore: selectionStore,
           registry: registry,
-          nav: nav,
-          nextStartPhase: engine.queuedPhase ?? .focus,
-          nextBreakPhase: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions)
+          nav: nav
         )
       }
 
@@ -70,47 +69,36 @@ struct MainWindowView: View {
     .focusedSceneValue(\.selectedTab, nav.selectedTab)
     .focusedSceneValue(\.timerToggle, timerToggleAction)
     .focusedSceneValue(\.timerToggleTitle, timerToggleTitleValue)
-    .focusedSceneValue(\.timerSkip, { skipPhase() })
-    .focusedSceneValue(\.timerStop, engine.state != .idle ? { engine.stop() } : nil)
+    .focusedSceneValue(\.timerSkip, { presenter.skip() })
+    .focusedSceneValue(\.timerStop, presenter.canStop ? { presenter.stop() } : nil)
   }
 
   // MARK: - Timer command helpers
 
   private var timerToggleAction: (() -> Void)? {
-    if engine.isRunning { return { engine.pause() } }
-    if case .paused = engine.state { return { engine.resume() } }
+    if presenter.isRunning { return { presenter.pause() } }
+    if presenter.isPaused { return { presenter.resume() } }
     guard selectionStore.activeTask != nil else { return nil }
-    return { startSession() }
+    return { presenter.start() }
   }
 
   private var timerToggleTitleValue: String {
-    if engine.isRunning { return AppLabels.Timer.pause.title }
-    if case .paused = engine.state { return AppLabels.Timer.resume.title }
+    if presenter.isRunning { return AppLabels.Timer.pause.title }
+    if presenter.isPaused { return AppLabels.Timer.resume.title }
     return AppLabels.Timer.start.title
-  }
-
-  private func startSession() {
-    engine.focusDuration = settings.focusDuration
-    engine.shortBreakDuration = settings.shortBreakDuration
-    engine.longBreakDuration = settings.longBreakDuration
-    engine.start(phase: engine.queuedPhase ?? .focus)
-  }
-
-  private func skipPhase() {
-    engine.focusDuration = settings.focusDuration
-    engine.shortBreakDuration = settings.shortBreakDuration
-    engine.longBreakDuration = settings.longBreakDuration
-    engine.skip(nextBreak: engine.nextBreakPhase(longBreakAfter: settings.longBreakAfterSessions))
   }
 }
 
 #Preview {
-  MainWindowView(
-    engine: SessionEngine(),
-    settings: AppSettings(),
+  let engine = SessionEngine()
+  let settings = AppSettings()
+  return MainWindowView(
+    presenter: TimerPresenter(engine: engine, settings: settings),
+    engine: engine,
+    settings: settings,
     statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
     registry: TaskRegistry(),
-    nav: MainNavigation(settings: AppSettings())
+    nav: MainNavigation(settings: settings)
   )
 }

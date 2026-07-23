@@ -62,6 +62,18 @@ struct SessionEngineTests {
     #expect(engine.state == .idle)
   }
 
+  @Test func applyDurationsCopiesSettingsIntoEngine() {
+    let engine = SessionEngine(focusDuration: 1, shortBreakDuration: 1, longBreakDuration: 1)
+    let settings = AppSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    settings.focusMinutes = 25
+    settings.shortBreakMinutes = 5
+    settings.longBreakMinutes = 15
+    engine.applyDurations(from: settings)
+    #expect(engine.focusDuration == 25 * 60)
+    #expect(engine.shortBreakDuration == 5 * 60)
+    #expect(engine.longBreakDuration == 15 * 60)
+  }
+
   @Test func skipFocusStartsShortBreak() {
     let engine = SessionEngine()
     engine.start()
