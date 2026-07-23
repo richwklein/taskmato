@@ -15,7 +15,7 @@ import SwiftUI
 /// currently disabled provider.
 struct ProviderSidebarView: View {
 
-  var registry: TaskRegistry
+  var registry: ProviderRegistry
   @Bindable var sidebarSelection: SelectionStore
   /// Called after a task is successfully added from the list context-menu "Add Task…" item.
   var onTaskAdded: (() -> Void)?
@@ -373,7 +373,7 @@ struct ProviderSidebarView: View {
 }
 
 #Preview {
-  let registry = TaskRegistry()
+  let registry = ProviderRegistry()
   return ProviderSidebarView(
     registry: registry, sidebarSelection: SelectionStore(registry: registry)
   )

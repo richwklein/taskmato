@@ -31,30 +31,6 @@ private final class SelectionStubProvider: TaskProvider {
   func observe() -> AsyncStream<[TaskItem]>? { nil }
 }
 
-private final class SelectionScopedProvider: TaskProvider {
-  let id: String
-  let displayName: String
-  let icon: String = "square"
-  let entitlement: ProviderEntitlement = .free
-  private let stubbedLists: [TaskList]
-  private let tasksByListID: [String: [TaskItem]]
-
-  init(id: String, listTasks: [(TaskList, [TaskItem])]) {
-    self.id = id
-    self.displayName = id
-    self.stubbedLists = listTasks.map(\.0)
-    self.tasksByListID = Dictionary(uniqueKeysWithValues: listTasks.map { ($0.0.id, $0.1) })
-  }
-
-  func authorize() async throws {}
-  func lists() async throws -> [TaskList] { stubbedLists }
-  func tasks(in list: TaskList?) async throws -> [TaskItem] {
-    guard let list else { return tasksByListID.values.flatMap { $0 } }
-    return tasksByListID[list.id] ?? []
-  }
-  func observe() -> AsyncStream<[TaskItem]>? { nil }
-}
-
 private final class SelectionWritableProvider: WritableTaskProvider {
   let id: String
   let displayName: String
@@ -86,28 +62,6 @@ private final class SelectionWritableProvider: WritableTaskProvider {
   func deleteTask(_: TaskRef) async throws {}
 }
 
-private func selectionItem(
-  providerID: String,
-  title: String,
-  dueDate: Date? = nil
-) -> TaskItem {
-  TaskItem(
-    id: TaskRef(providerID: providerID, nativeID: UUID().uuidString),
-    title: title,
-    notes: nil,
-    format: .plainText,
-    priority: .none,
-    dueDate: dueDate,
-    scheduledDate: nil,
-    startDate: nil,
-    list: nil,
-    section: nil,
-    sourceURL: nil,
-    completedAt: nil,
-    createdAt: nil
-  )
-}
-
 // MARK: - Tests
 
 @Suite("SelectionStore")
@@ -118,10 +72,10 @@ struct SelectionStoreTests {
   /// `onProviderStateChanged` hook exactly as the composition root does so that
   /// `setLists`/`disable` re-validate the selection.
   private func makeStore(defaults: UserDefaults? = nil) -> (
-    registry: TaskRegistry, store: SelectionStore
+    registry: ProviderRegistry, store: SelectionStore
   ) {
     let defaults = defaults ?? UserDefaults(suiteName: UUID().uuidString)!
-    let registry = TaskRegistry(defaults: defaults)
+    let registry = ProviderRegistry(defaults: defaults)
     let store = SelectionStore(registry: registry, defaults: defaults)
     registry.onProviderStateChanged = { [weak store] in store?.validateSelection() }
     return (registry, store)
@@ -244,93 +198,6 @@ struct SelectionStoreTests {
     #expect(store.selection == .today)
   }
 
-  // MARK: - Today fan-out
-
-  @Test func todayFanOutFiltersToTasksDueOnOrBeforeToday() async {
-    let (registry, _) = makeStore()
-    let yesterday = Date().addingTimeInterval(-86400)
-    let tomorrow = Date().addingTimeInterval(86400)
-
-    let provider = SelectionStubProvider(
-      id: "alpha",
-      tasks: [
-        selectionItem(providerID: "alpha", title: "Overdue", dueDate: yesterday),
-        selectionItem(providerID: "alpha", title: "Due now", dueDate: Date()),
-        selectionItem(providerID: "alpha", title: "Future", dueDate: tomorrow),
-        selectionItem(providerID: "alpha", title: "No date"),
-      ]
-    )
-    registry.register(provider)
-    registry.enable(provider)
-
-    let (tasks, _) = await registry.tasks(
-      query: .crossProvider(filter: .dueUpToToday), sortBy: .priority, direction: .descending)
-    let titles = tasks.map(\.title)
-    #expect(titles.contains("Overdue"))
-    #expect(titles.contains("Due now"))
-    #expect(!titles.contains("Future"))
-    #expect(!titles.contains("No date"))
-  }
-
-  // MARK: - List-scoped fan-out
-
-  @Test func listSelectionScopesFanOutToOneList() async {
-    let (registry, _) = makeStore()
-    let listA = TaskList(id: "a", providerID: "alpha", name: "A")
-    let listB = TaskList(id: "b", providerID: "alpha", name: "B")
-    let taskA = selectionItem(providerID: "alpha", title: "Task in A")
-    let taskB = selectionItem(providerID: "alpha", title: "Task in B")
-    let provider = SelectionScopedProvider(
-      id: "alpha", listTasks: [(listA, [taskA]), (listB, [taskB])])
-    registry.register(provider)
-    registry.enable(provider)
-    registry.setLists([listA, listB], forProviderID: "alpha")
-
-    let (tasks, _) = await registry.tasks(
-      query: .singleList(SelectedList(providerID: "alpha", listID: "a")),
-      sortBy: .priority, direction: .descending)
-    #expect(tasks.count == 1)
-    #expect(tasks[0].title == "Task in A")
-  }
-
-  @Test func listSelectionReturnsEmptyWhenCacheNotPopulated() async {
-    let (registry, _) = makeStore()
-    let provider = SelectionStubProvider(
-      id: "alpha",
-      tasks: [selectionItem(providerID: "alpha", title: "Some task")]
-    )
-    registry.register(provider)
-    registry.enable(provider)
-    // Do NOT call setLists — cache is empty.
-    let (tasks, _) = await registry.tasks(
-      query: .singleList(SelectedList(providerID: "alpha", listID: "x")),
-      sortBy: .priority, direction: .descending)
-    #expect(tasks.isEmpty)
-  }
-
-  // MARK: - Global search ignores selection
-
-  @Test func nonEmptyQueryIgnoresSelectionAndFansOutGlobally() async {
-    let (registry, _) = makeStore()
-    let listA = TaskList(id: "a", providerID: "alpha", name: "A")
-    let listB = TaskList(id: "b", providerID: "alpha", name: "B")
-    let taskA = selectionItem(providerID: "alpha", title: "Write tests")
-    let taskB = selectionItem(providerID: "alpha", title: "Review PR")
-    let provider = SelectionScopedProvider(
-      id: "alpha", listTasks: [(listA, [taskA]), (listB, [taskB])])
-    registry.register(provider)
-    registry.enable(provider)
-    registry.setLists([listA, listB], forProviderID: "alpha")
-
-    // Only list A is selected, but "Write tests" is there; "Review PR" is in B.
-    // A non-empty query fans out across all lists.
-    let (tasks, _) = await registry.tasks(
-      query: .crossProvider(filter: .titleContains("Review")), sortBy: .priority,
-      direction: .descending)
-    #expect(tasks.count == 1)
-    #expect(tasks[0].title == "Review PR")
-  }
-
   // MARK: - Legacy key cleanup
 
   @Test func legacyScopeKeysAreRemovedOnInit() {
@@ -339,7 +206,7 @@ struct SelectionStoreTests {
     defaults.set(Data([1, 2, 3]), forKey: "taskRegistry.providerListScopes")
     defaults.set(Data([4, 5, 6]), forKey: "taskRegistry.selectedList")
     // The registry clears the list-scope key; the selection store clears the selected-list key.
-    let registry = TaskRegistry(defaults: defaults)
+    let registry = ProviderRegistry(defaults: defaults)
     _ = SelectionStore(registry: registry, defaults: defaults)
     #expect(defaults.data(forKey: "taskRegistry.providerListScopes") == nil)
     #expect(defaults.data(forKey: "taskRegistry.selectedList") == nil)

@@ -8,7 +8,7 @@ import Observation
 
 /// Owns the sidebar's active selection and keeps it valid as providers and lists change.
 ///
-/// This is the selection concern extracted from the former `TaskRegistry` façade. It is the
+/// This is the selection concern extracted from the former `ProviderRegistry` façade. It is the
 /// task-scope selection **sink**: the sidebar binds ``selection`` directly today, and the
 /// window-first shell later forwards destinations into it via ``select(_:)`` (design doc 0008,
 /// D4). Either way `SelectionStore` owns the 3-step validation cascade.
@@ -36,14 +36,14 @@ final class SelectionStore {
   // Held strongly: the composition root owns both, and the registry only references this
   // store weakly (via `onProviderStateChanged`), so there is no retain cycle. A strong
   // reference keeps the cascade safe even if no other owner outlives this store.
-  @ObservationIgnored private let registry: TaskRegistry
+  @ObservationIgnored private let registry: ProviderRegistry
   @ObservationIgnored private let defaults: UserDefaults
   private static let selectionKey = "taskRegistry.selection"
 
   /// - Parameters:
   ///   - registry: The registry supplying providers, enabled state, and the list cache.
   ///   - defaults: `UserDefaults` store for persistence. Override in tests.
-  init(registry: TaskRegistry, defaults: UserDefaults = .standard) {
+  init(registry: ProviderRegistry, defaults: UserDefaults = .standard) {
     self.registry = registry
     self.defaults = defaults
 

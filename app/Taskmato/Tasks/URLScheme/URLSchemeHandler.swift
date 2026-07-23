@@ -45,20 +45,23 @@ final class URLSchemeHandler {
   /// Saved params for the "Create new" button shown alongside disambiguation choices.
   var pendingAdHocParams: AdHocTaskParams?
 
-  private let registry: TaskRegistry
+  private let registry: ProviderRegistry
+  private let queryService: TaskQueryService
   private let selectionStore: TaskSelectionStore
   private let engine: SessionEngine
   private let settings: AppSettings
   private let nav: MainNavigation
 
   init(
-    registry: TaskRegistry,
+    registry: ProviderRegistry,
+    queryService: TaskQueryService,
     selectionStore: TaskSelectionStore,
     engine: SessionEngine,
     settings: AppSettings,
     nav: MainNavigation
   ) {
     self.registry = registry
+    self.queryService = queryService
     self.selectionStore = selectionStore
     self.engine = engine
     self.settings = settings
@@ -90,7 +93,7 @@ final class URLSchemeHandler {
   /// 1. `adHocParams.providerID` (URL `provider=` param) if set and the named provider is
   ///    an enabled ``WritableTaskProvider``.
   /// 2. ``AppSettings/defaultWritableProviderID`` if set and the named provider is enabled.
-  /// 3. ``TaskRegistry/firstEnabledWritableProvider`` — the first enabled writable provider
+  /// 3. ``ProviderRegistry/firstEnabledWritableProvider`` — the first enabled writable provider
   ///    in registration order.
   ///
   /// Falls back to a transient ``TaskItem`` (providerID `"adhoc"`) when no enabled writable
@@ -219,7 +222,7 @@ final class URLSchemeHandler {
   }
 
   private func crossProviderTitleSearch(title: String) async -> [TaskItem] {
-    let (tasks, _) = await registry.tasks(
+    let (tasks, _) = await queryService.tasks(
       query: .crossProvider(filter: .titleContains(title)), sortBy: .title, direction: .ascending)
     return tasks
   }

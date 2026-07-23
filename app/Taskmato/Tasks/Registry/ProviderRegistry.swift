@@ -1,24 +1,24 @@
 //
-//  TaskRegistry.swift
+//  ProviderRegistry.swift
 //  Taskmato
 //
 
 import Foundation
 import Observation
 
-/// Manages the set of registered task providers and fans out queries across all enabled ones.
+/// Manages the set of registered task providers, their enabled state, and their list cache.
 ///
 /// Providers are registered programmatically at app startup. The enabled/disabled state of
-/// each provider is persisted to `UserDefaults` and restored on next launch.
-///
-/// Sidebar selection and its validation cascade live in ``SelectionStore``; the registry
-/// notifies it via ``onProviderStateChanged`` whenever the enabled set or list cache changes.
+/// each provider is persisted to `UserDefaults` and restored on next launch. Query fan-out
+/// lives in ``TaskQueryService`` and sidebar selection in ``SelectionStore``; the registry
+/// notifies the latter via ``onProviderStateChanged`` whenever the enabled set or list cache
+/// changes.
 ///
 /// **Migration**: on first launch after upgrading from the list-scope model, the initializer
 /// removes the abandoned `"taskRegistry.providerListScopes"` key from `UserDefaults`.
 @Observable
 @MainActor
-final class TaskRegistry {
+final class ProviderRegistry {
 
   /// All providers that have been registered, ordered by `displayOrder` then `displayName`.
   private(set) var providers: [any TaskProvider] = []
@@ -42,23 +42,11 @@ final class TaskRegistry {
   var onProviderStateChanged: (() -> Void)?
 
   private let defaults: UserDefaults
-  private let sorter: TaskSorter
-
-  /// Fans out and orders task queries over this registry's enabled providers.
-  ///
-  /// Constructed lazily so it can capture `self`; the registry delegates its `tasks` and
-  /// `completedTasks` methods to it during the registry split.
-  @ObservationIgnored
-  private(set) lazy var queryService = TaskQueryService(registry: self, sorter: sorter)
-
   private static let enabledKey = "taskRegistry.enabledProviderIDs"
 
-  /// - Parameters:
-  ///   - defaults: `UserDefaults` store for persistence. Override in tests.
-  ///   - sorter: The task sorter used to order query results.
-  init(defaults: UserDefaults = .standard, sorter: TaskSorter = TaskSorter()) {
+  /// - Parameter defaults: `UserDefaults` store for persistence. Override in tests.
+  init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
-    self.sorter = sorter
 
     // One-shot migration: remove the abandoned list-scope blob from prior versions.
     defaults.removeObject(forKey: "taskRegistry.providerListScopes")
@@ -119,30 +107,6 @@ final class TaskRegistry {
   func setLists(_ lists: [TaskList], forProviderID providerID: String) {
     providerLists[providerID] = lists
     onProviderStateChanged?()
-  }
-
-  // MARK: - Queries
-
-  /// Returns tasks described by the given query, sorted by the specified field and direction.
-  ///
-  /// Delegates to ``queryService``; see ``TaskQueryService/tasks(query:sortBy:direction:)``.
-  func tasks(
-    query: TaskQuery,
-    sortBy field: TaskSortField,
-    direction: TaskSortDirection
-  ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
-    await queryService.tasks(query: query, sortBy: field, direction: direction)
-  }
-
-  /// Returns completed tasks described by the given query, sorted by the specified field and direction.
-  ///
-  /// Delegates to ``queryService``; see ``TaskQueryService/completedTasks(query:sortBy:direction:)``.
-  func completedTasks(
-    query: TaskQuery,
-    sortBy field: TaskSortField,
-    direction: TaskSortDirection
-  ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
-    await queryService.completedTasks(query: query, sortBy: field, direction: direction)
   }
 
   // MARK: - Provider lookup

@@ -9,7 +9,7 @@ import Foundation
 ///
 /// Sorting is stateless, so `TaskSorter` carries no configuration and is safe to share
 /// across concurrency domains. It is the sort concern extracted from the former
-/// `TaskRegistry` façade; the query layer owns an instance and delegates ordering to it.
+/// `ProviderRegistry` façade; the query layer owns an instance and delegates ordering to it.
 struct TaskSorter: Sendable {
 
   /// Sorts `items` by `field`/`direction`.

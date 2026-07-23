@@ -15,7 +15,7 @@ struct ActiveTaskView: View {
 
   var engine: SessionEngine
   var selectionStore: TaskSelectionStore
-  var registry: TaskRegistry
+  var registry: ProviderRegistry
   var nav: MainNavigation
   /// When `true`, renders task notes and source link below the title.
   var showNotes: Bool = false

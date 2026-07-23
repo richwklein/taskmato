@@ -1,5 +1,5 @@
 //
-//  TaskRegistryTests.swift
+//  ProviderRegistryTests.swift
 //  TaskmatoTests
 //
 
@@ -115,40 +115,14 @@ private final class StubClosableProvider: ClosableTaskProvider {
   func reopen(_: TaskRef) async throws {}
 }
 
-private func makeItem(
-  providerID: String,
-  nativeID: String,
-  title: String,
-  priority: TaskPriority = .none,
-  dueDate: Date? = nil,
-  list: TaskList? = nil,
-  section: String? = nil
-) -> TaskItem {
-  TaskItem(
-    id: TaskRef(providerID: providerID, nativeID: nativeID),
-    title: title,
-    notes: nil,
-    format: .plainText,
-    priority: priority,
-    dueDate: dueDate,
-    scheduledDate: nil,
-    startDate: nil,
-    list: list,
-    section: section,
-    sourceURL: nil,
-    completedAt: nil,
-    createdAt: nil
-  )
-}
-
 // MARK: - Tests
 
-@Suite("TaskRegistry")
+@Suite("ProviderRegistry")
 @MainActor
-struct TaskRegistryTests {
+struct ProviderRegistryTests {
 
-  private func makeRegistry() -> TaskRegistry {
-    TaskRegistry(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+  private func makeRegistry() -> ProviderRegistry {
+    ProviderRegistry(defaults: UserDefaults(suiteName: UUID().uuidString)!)
   }
 
   // MARK: Registration
@@ -191,115 +165,6 @@ struct TaskRegistryTests {
     let provider = StubProvider(id: "alpha")
     registry.register(provider)
     #expect(!registry.isEnabled("alpha"))
-  }
-
-  // MARK: Fan-out
-
-  @Test func tasksAcrossTwoProviders() async {
-    let registry = makeRegistry()
-    let alpha = StubProvider(
-      id: "alpha", tasks: [makeItem(providerID: "alpha", nativeID: "1", title: "Alpha task")])
-    let beta = StubProvider(
-      id: "beta", tasks: [makeItem(providerID: "beta", nativeID: "2", title: "Beta task")])
-    registry.register(alpha)
-    registry.register(beta)
-    registry.enable(alpha)
-    registry.enable(beta)
-
-    let (tasks, errors) = await registry.tasks(
-      query: .crossProvider(), sortBy: .priority, direction: .descending)
-    #expect(tasks.count == 2)
-    #expect(errors.isEmpty)
-  }
-
-  @Test func disabledProviderExcludedFromFanOut() async {
-    let registry = makeRegistry()
-    let alpha = StubProvider(
-      id: "alpha", tasks: [makeItem(providerID: "alpha", nativeID: "1", title: "Alpha task")])
-    let beta = StubProvider(
-      id: "beta", tasks: [makeItem(providerID: "beta", nativeID: "2", title: "Beta task")])
-    registry.register(alpha)
-    registry.register(beta)
-    registry.enable(alpha)
-
-    let (tasks, errors) = await registry.tasks(
-      query: .crossProvider(), sortBy: .priority, direction: .descending)
-    #expect(tasks.count == 1)
-    #expect(tasks[0].id.providerID == "alpha")
-    #expect(errors.isEmpty)
-  }
-
-  @Test func taskSearchFiltersOnTitle() async {
-    let registry = makeRegistry()
-    let provider = StubProvider(
-      id: "alpha",
-      tasks: [
-        makeItem(providerID: "alpha", nativeID: "1", title: "Write tests"),
-        makeItem(providerID: "alpha", nativeID: "2", title: "Review PR"),
-      ])
-    registry.register(provider)
-    registry.enable(provider)
-
-    let (tasks, errors) = await registry.tasks(
-      query: .crossProvider(filter: .titleContains("write")),
-      sortBy: .priority, direction: .descending)
-    #expect(tasks.count == 1)
-    #expect(tasks[0].title == "Write tests")
-    #expect(errors.isEmpty)
-  }
-
-  @Test func tasksSortedByPriorityDescending() async {
-    let registry = makeRegistry()
-    let provider = StubProvider(
-      id: "alpha",
-      tasks: [
-        makeItem(providerID: "alpha", nativeID: "1", title: "Low", priority: .low),
-        makeItem(providerID: "alpha", nativeID: "2", title: "High", priority: .high),
-        makeItem(providerID: "alpha", nativeID: "3", title: "Medium", priority: .medium),
-      ])
-    registry.register(provider)
-    registry.enable(provider)
-
-    let (tasks, _) = await registry.tasks(
-      query: .crossProvider(), sortBy: .priority, direction: .descending)
-    #expect(tasks.map(\.title) == ["High", "Medium", "Low"])
-  }
-
-  @Test func samePriorityTasksSortedByDueDateAscending() async {
-    let registry = makeRegistry()
-    let earlier = Date(timeIntervalSince1970: 1_000)
-    let later = Date(timeIntervalSince1970: 2_000)
-    let provider = StubProvider(
-      id: "alpha",
-      tasks: [
-        makeItem(providerID: "alpha", nativeID: "1", title: "Later", dueDate: later),
-        makeItem(providerID: "alpha", nativeID: "2", title: "Earlier", dueDate: earlier),
-      ])
-    registry.register(provider)
-    registry.enable(provider)
-
-    let (tasks, _) = await registry.tasks(
-      query: .crossProvider(), sortBy: .priority, direction: .descending)
-    #expect(tasks.map(\.title) == ["Earlier", "Later"])
-  }
-
-  @Test func failingProviderErrorSurfacedOtherTasksReturned() async {
-    let registry = makeRegistry()
-    let good = StubProvider(
-      id: "good", tasks: [makeItem(providerID: "good", nativeID: "1", title: "Good task")])
-    let bad = StubProvider(id: "bad", shouldThrow: true)
-    registry.register(good)
-    registry.register(bad)
-    registry.enable(good)
-    registry.enable(bad)
-
-    let (tasks, errors) = await registry.tasks(
-      query: .crossProvider(), sortBy: .priority, direction: .descending)
-    #expect(tasks.count == 1)
-    #expect(tasks[0].id.providerID == "good")
-    #expect(errors.count == 1)
-    #expect(errors[0].providerID == "bad")
-    #expect(errors[0].error is StubError)
   }
 
   // MARK: Provider lookup

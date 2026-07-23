@@ -23,7 +23,8 @@ struct AppComposition {
   let store: SessionStore
   let statsViewModel: StatsViewModel
   let selectionStore: TaskSelectionStore
-  let registry: TaskRegistry
+  let registry: ProviderRegistry
+  let queryService: TaskQueryService
   let sidebarSelection: SelectionStore
   let notifications: NotificationService
   let obsidianProvider: ObsidianProvider
@@ -39,7 +40,7 @@ struct AppComposition {
     let sessionRepository = Self.makeSessionRepository()
     let store = SessionStore(repository: sessionRepository)
     let selectionStore = TaskSelectionStore()
-    let registry = TaskRegistry()
+    let registry = ProviderRegistry()
     let notifications = NotificationService(settings: settings)
     let obsidianProvider = ObsidianProvider()
     let localProvider = LocalProvider()
@@ -56,13 +57,14 @@ struct AppComposition {
     Self.registerProviders(
       [obsidianProvider, localProvider, remindersProvider], into: registry,
       fallback: localProvider)
+    let queryService = TaskQueryService(registry: registry, sorter: TaskSorter())
     let sidebarSelection = SelectionStore(registry: registry)
     registry.onProviderStateChanged = { [weak sidebarSelection] in
       sidebarSelection?.validateSelection()
     }
     let nav = MainNavigation(settings: settings)
     let urlHandler = URLSchemeHandler(
-      registry: registry, selectionStore: selectionStore,
+      registry: registry, queryService: queryService, selectionStore: selectionStore,
       engine: engine, settings: settings,
       nav: nav
     )
@@ -73,6 +75,7 @@ struct AppComposition {
     self.statsViewModel = statsViewModel
     self.selectionStore = selectionStore
     self.registry = registry
+    self.queryService = queryService
     self.sidebarSelection = sidebarSelection
     self.notifications = notifications
     self.obsidianProvider = obsidianProvider
@@ -107,7 +110,7 @@ struct AppComposition {
 
   /// Registers each provider, enabling `fallback` on first launch when nothing is persisted.
   private static func registerProviders(
-    _ providers: [any TaskProvider], into registry: TaskRegistry, fallback: any TaskProvider
+    _ providers: [any TaskProvider], into registry: ProviderRegistry, fallback: any TaskProvider
   ) {
     for provider in providers { registry.register(provider) }
     if registry.enabledIDs.isEmpty { registry.enable(fallback) }

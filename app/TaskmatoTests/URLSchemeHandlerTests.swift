@@ -12,7 +12,7 @@ import Testing
 
 private struct HandlerContext {
   let handler: URLSchemeHandler
-  let registry: TaskRegistry
+  let registry: ProviderRegistry
   let selectionStore: TaskSelectionStore
   let localProvider: LocalProvider
   let settings: AppSettings
@@ -107,7 +107,7 @@ struct URLSchemeHandlerTests {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let selectionStore = TaskSelectionStore(defaults: defaults)
     let engine = SessionEngine()
-    let registry = TaskRegistry(defaults: defaults)
+    let registry = ProviderRegistry(defaults: defaults)
     let localProvider = LocalProvider(fileURL: makeTempURL())
     let settings = AppSettings(defaults: defaults)
     settings.defaultWritableProviderID = defaultWritableProviderID
@@ -125,6 +125,7 @@ struct URLSchemeHandlerTests {
 
     let handler = URLSchemeHandler(
       registry: registry,
+      queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
       selectionStore: selectionStore,
       engine: engine,
       settings: settings,

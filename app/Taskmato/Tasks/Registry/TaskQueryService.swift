@@ -8,21 +8,25 @@ import Foundation
 /// A per-provider error returned alongside tasks when a provider fetch fails.
 typealias ProviderFetchError = (providerID: String, error: any Error)
 
-/// Fans out task queries across the enabled providers in a ``TaskRegistry`` and orders the result.
+/// Fans out task queries across the enabled providers in a ``ProviderRegistry`` and orders the result.
 ///
-/// This is the query concern extracted from the former `TaskRegistry` façade. It reads the
+/// This is the query concern extracted from the former `ProviderRegistry` façade. It reads the
 /// registry's provider set, enabled state, and list cache, performs the fetch (single-list or
 /// cross-provider fan-out), applies the query filter, and delegates ordering to a ``TaskSorter``.
 @MainActor
 final class TaskQueryService {
 
-  private unowned let registry: TaskRegistry
+  /// Held strongly: the registry references nothing here (its only back-path is a
+  /// `[weak]` `onProviderStateChanged` closure to `SelectionStore`), so there is no
+  /// cycle, and a strong hold keeps the service usable regardless of who else retains
+  /// the registry — matching `SelectionStore`.
+  private let registry: ProviderRegistry
   private let sorter: TaskSorter
 
   /// - Parameters:
   ///   - registry: The registry supplying providers, enabled state, and the list cache.
   ///   - sorter: The sorter used to order query results.
-  init(registry: TaskRegistry, sorter: TaskSorter) {
+  init(registry: ProviderRegistry, sorter: TaskSorter) {
     self.registry = registry
     self.sorter = sorter
   }

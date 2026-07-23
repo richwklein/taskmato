@@ -14,7 +14,8 @@ import SwiftUI
 struct TasksTabView: View {
 
   var selectionStore: TaskSelectionStore
-  var registry: TaskRegistry
+  var registry: ProviderRegistry
+  var queryService: TaskQueryService
   var sidebarSelection: SelectionStore
   var nav: MainNavigation
   @Bindable var settings: AppSettings
@@ -434,7 +435,7 @@ extension TasksTabView {
       return
     }
     isLoading = sections.isEmpty
-    let (tasks, _) = await registry.tasks(
+    let (tasks, _) = await queryService.tasks(
       query: currentQuery,
       sortBy: settings.taskSortField, direction: settings.taskSortDirection)
     sections = buildDisplaySections(from: tasks, query: currentQuery)
@@ -448,7 +449,7 @@ extension TasksTabView {
 
   private func loadCompleted() async {
     isLoadingCompleted = true
-    let (tasks, _) = await registry.completedTasks(
+    let (tasks, _) = await queryService.completedTasks(
       query: currentQuery,
       sortBy: settings.taskSortField,
       direction: settings.taskSortDirection
@@ -535,10 +536,11 @@ extension TasksTabView {
 }
 
 #Preview {
-  let registry = TaskRegistry()
+  let registry = ProviderRegistry()
   return TasksTabView(
     selectionStore: TaskSelectionStore(),
     registry: registry,
+    queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
     sidebarSelection: SelectionStore(registry: registry),
     nav: MainNavigation(settings: AppSettings()),
     settings: AppSettings()

@@ -12,7 +12,7 @@ struct TimerTabView: View {
   var engine: SessionEngine
   var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
-  var registry: TaskRegistry
+  var registry: ProviderRegistry
   var nav: MainNavigation
 
   var body: some View {
@@ -79,7 +79,7 @@ struct TimerTabView: View {
     engine: engine,
     statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
-    registry: TaskRegistry(),
+    registry: ProviderRegistry(),
     nav: MainNavigation(settings: settings)
   )
 }
