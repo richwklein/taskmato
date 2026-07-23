@@ -79,9 +79,7 @@ final class URLSchemeHandler {
     selectionStore.select(task)
     nav.showTimerInMainWindow()
     if case .idle = engine.state, settings.autoStartNextPhase {
-      engine.focusDuration = settings.focusDuration
-      engine.shortBreakDuration = settings.shortBreakDuration
-      engine.longBreakDuration = settings.longBreakDuration
+      engine.applyDurations(from: settings)
       engine.start(phase: .focus)
     }
   }

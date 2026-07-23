@@ -249,6 +249,17 @@ final class SessionEngine {
     queuedPhase = phase
   }
 
+  /// Copies the configured phase durations from `settings` into the engine.
+  ///
+  /// The single point where user-configured durations enter the engine — call it at each
+  /// phase boundary (start, skip, auto-advance) so a mid-session settings change takes
+  /// effect on the next phase rather than the current one.
+  func applyDurations(from settings: AppSettings) {
+    focusDuration = settings.focusDuration
+    shortBreakDuration = settings.shortBreakDuration
+    longBreakDuration = settings.longBreakDuration
+  }
+
   // Recomputes timeRemaining from the stored start timestamp.
   // Called on each timer tick and immediately before pausing.
   // Detects natural phase completion when remaining time reaches zero.

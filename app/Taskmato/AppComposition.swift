@@ -19,6 +19,7 @@ struct AppComposition {
 
   let engine: SessionEngine
   let settings: AppSettings
+  let timerPresenter: TimerPresenter
   let store: SessionStore
   let statsViewModel: StatsViewModel
   let selectionStore: TaskSelectionStore
@@ -62,6 +63,7 @@ struct AppComposition {
     )
     self.engine = engine
     self.settings = settings
+    self.timerPresenter = TimerPresenter(engine: engine, settings: settings)
     self.store = store
     self.statsViewModel = statsViewModel
     self.selectionStore = selectionStore
@@ -120,9 +122,7 @@ struct AppComposition {
       self.statsViewModel.recordAppended(session)
       guard wasCompleted else { return }
       self.notifications.send(phase: phase)
-      self.engine.focusDuration = self.settings.focusDuration
-      self.engine.shortBreakDuration = self.settings.shortBreakDuration
-      self.engine.longBreakDuration = self.settings.longBreakDuration
+      self.engine.applyDurations(from: self.settings)
       let next: SessionPhase
       switch phase {
       case .focus:

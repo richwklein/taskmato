@@ -24,15 +24,12 @@ struct TaskmatoApp: App {
   var body: some Scene {
     MenuBarExtra {
       MenuBarPopoverView(
+        presenter: composition.timerPresenter,
         engine: composition.engine,
-        settings: composition.settings,
         statsViewModel: composition.statsViewModel,
         selectionStore: composition.selectionStore,
         registry: composition.registry,
-        nav: composition.nav,
-        nextStartPhase: composition.engine.queuedPhase ?? .focus,
-        nextBreakPhase: composition.engine.nextBreakPhase(
-          longBreakAfter: composition.settings.longBreakAfterSessions)
+        nav: composition.nav
       )
       .confirmationDialog(
         "Multiple tasks match — which one?",
@@ -68,13 +65,14 @@ struct TaskmatoApp: App {
     } label: {
       HStack(spacing: 4) {
         Image("MenuIcon")
-        Text(menuBarLabel)
+        Text(composition.timerPresenter.label)
       }
     }
     .menuBarExtraStyle(.window)
 
     Window(Bundle.main.appName, id: "main") {
       MainWindowView(
+        presenter: composition.timerPresenter,
         engine: composition.engine,
         settings: composition.settings,
         statsViewModel: composition.statsViewModel,
@@ -98,22 +96,6 @@ struct TaskmatoApp: App {
       )
     }
     .windowResizability(.contentSize)
-  }
-
-  /// Formats the active or idle time as `"MM:SS"` for display in the menu bar.
-  private var menuBarLabel: String {
-    let seconds: Int
-    if case .idle = composition.engine.state {
-      let phase = composition.engine.queuedPhase ?? SessionPhase.focus
-      switch phase {
-      case .focus: seconds = Int(composition.settings.focusDuration)
-      case .shortBreak: seconds = Int(composition.settings.shortBreakDuration)
-      case .longBreak: seconds = Int(composition.settings.longBreakDuration)
-      }
-    } else {
-      seconds = Int(composition.engine.timeRemaining)
-    }
-    return String(format: "%02d:%02d", seconds / 60, seconds % 60)
   }
 }
 
