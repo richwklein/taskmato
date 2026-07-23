@@ -373,13 +373,11 @@ struct URLSchemeHandlerTests {
   // MARK: - URL scheme ignores sidebar selection
 
   @Test func urlSchemeTitleSearchIgnoresSidebarSelection() async {
-    // Task lives in the stub provider (providerID: "stub").
-    // We scope the registry selection to a nonexistent list — the URL handler must
-    // resolve globally regardless of the active sidebar selection.
+    // Task lives in the stub provider (providerID: "stub"). The URL handler resolves
+    // titles globally and has no access to the sidebar `SelectionStore`, so it is
+    // structurally independent of the active sidebar selection.
     let existing = makeTask(title: "Global Task", providerID: "stub")
     let ctx = makeHandler(stubProviderTasks: [existing])
-    ctx.registry.select(
-      .list(SelectedList(providerID: "other-provider", listID: "other-list")))
     await ctx.handler.handle(URL(string: "taskmato://start?title=Global%20Task")!)
     #expect(ctx.selectionStore.activeTask?.id == existing.id)
   }

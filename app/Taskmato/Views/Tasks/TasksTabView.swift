@@ -15,6 +15,7 @@ struct TasksTabView: View {
 
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
+  var sidebarSelection: SelectionStore
   var nav: MainNavigation
   @Bindable var settings: AppSettings
 
@@ -32,7 +33,7 @@ struct TasksTabView: View {
   /// Returns the writable provider for the current sidebar selection, falling back to the
   /// default writable provider (from settings, then first enabled in registration order).
   private var writableProvider: (any WritableTaskProvider)? {
-    guard case .list(let sel) = registry.selection,
+    guard case .list(let sel) = sidebarSelection.selection,
       let provider = registry.providers.first(where: {
         $0.id == sel.providerID && registry.isEnabled($0.id)
       }),
@@ -62,8 +63,8 @@ struct TasksTabView: View {
       let label = isLoading ? "Searching…" : "\(count) \(count == 1 ? "result" : "results")"
       return ("magnifyingglass", label)
     }
-    if registry.selection == .today { return ("calendar", "Today") }
-    guard case .list(let sel) = registry.selection,
+    if sidebarSelection.selection == .today { return ("calendar", "Today") }
+    guard case .list(let sel) = sidebarSelection.selection,
       let listName = registry.providerLists[sel.providerID]?
         .first(where: { $0.id == sel.listID })?.name
     else { return nil }
@@ -160,7 +161,7 @@ struct TasksTabView: View {
         if !editing { Task { await refresh() } }
       }
       .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
-      .onChange(of: registry.selection) { _, _ in
+      .onChange(of: sidebarSelection.selection) { _, _ in
         query = ""
         Task { await refresh() }
       }
@@ -180,8 +181,11 @@ struct TasksTabView: View {
         set: { nav.sidebarVisible = $0 != .detailOnly }
       )
     ) {
-      ProviderSidebarView(registry: registry, onTaskAdded: { Task { await refresh() } })
-        .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
+      ProviderSidebarView(
+        registry: registry, sidebarSelection: sidebarSelection,
+        onTaskAdded: { Task { await refresh() } }
+      )
+      .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
     } detail: {
       detailColumn
     }
@@ -219,7 +223,7 @@ struct TasksTabView: View {
         systemImage: "plus.circle",
         description: Text("Enable a provider in the sidebar to get started.")
       )
-    } else if registry.selection == nil {
+    } else if sidebarSelection.selection == nil {
       ContentUnavailableView(
         "Select a List",
         systemImage: "sidebar.left",
@@ -235,7 +239,7 @@ struct TasksTabView: View {
           systemImage: "magnifyingglass",
           description: Text("No tasks match \"\(query)\".")
         )
-      } else if registry.selection == .today {
+      } else if sidebarSelection.selection == .today {
         ContentUnavailableView(
           "No Tasks Due Today",
           systemImage: "sun.max",
@@ -420,12 +424,12 @@ extension TasksTabView {
 
   private var currentQuery: TaskQuery {
     if !query.isEmpty { return .crossProvider(filter: .titleContains(query)) }
-    if case .list(let sel) = registry.selection { return .singleList(sel) }
+    if case .list(let sel) = sidebarSelection.selection { return .singleList(sel) }
     return .crossProvider(filter: .dueUpToToday)
   }
 
   private func loadTasks() async {
-    guard !query.isEmpty || registry.selection != nil else {
+    guard !query.isEmpty || sidebarSelection.selection != nil else {
       sections = []
       return
     }
@@ -531,9 +535,11 @@ extension TasksTabView {
 }
 
 #Preview {
-  TasksTabView(
+  let registry = TaskRegistry()
+  return TasksTabView(
     selectionStore: TaskSelectionStore(),
-    registry: TaskRegistry(),
+    registry: registry,
+    sidebarSelection: SelectionStore(registry: registry),
     nav: MainNavigation(settings: AppSettings()),
     settings: AppSettings()
   )

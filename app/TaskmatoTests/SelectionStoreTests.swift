@@ -1,5 +1,5 @@
 //
-//  TaskRegistrySelectionTests.swift
+//  SelectionStoreTests.swift
 //  TaskmatoTests
 //
 
@@ -110,44 +110,53 @@ private func selectionItem(
 
 // MARK: - Tests
 
-@Suite("TaskRegistry – Selection")
+@Suite("SelectionStore")
 @MainActor
-struct TaskRegistrySelectionTests {
+struct SelectionStoreTests {
 
-  private func makeRegistry(defaults: UserDefaults? = nil) -> TaskRegistry {
-    TaskRegistry(defaults: defaults ?? UserDefaults(suiteName: UUID().uuidString)!)
+  /// Builds a registry and its selection store over shared `defaults`, wiring the
+  /// `onProviderStateChanged` hook exactly as the composition root does so that
+  /// `setLists`/`disable` re-validate the selection.
+  private func makeStore(defaults: UserDefaults? = nil) -> (
+    registry: TaskRegistry, store: SelectionStore
+  ) {
+    let defaults = defaults ?? UserDefaults(suiteName: UUID().uuidString)!
+    let registry = TaskRegistry(defaults: defaults)
+    let store = SelectionStore(registry: registry, defaults: defaults)
+    registry.onProviderStateChanged = { [weak store] in store?.validateSelection() }
+    return (registry, store)
   }
 
   // MARK: - Default selection
 
   @Test func selectionDefaultsTodayOnFirstLaunch() {
-    let registry = makeRegistry()
-    #expect(registry.selection == .today)
+    let (_, store) = makeStore()
+    #expect(store.selection == .today)
   }
 
   // MARK: - Persistence
 
-  @Test func selectionPersistsAcrossRegistryReloadForToday() {
+  @Test func selectionPersistsAcrossReloadForToday() {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let first = makeRegistry(defaults: defaults)
+    let (_, first) = makeStore(defaults: defaults)
     first.select(.today)
-    let second = makeRegistry(defaults: defaults)
+    let (_, second) = makeStore(defaults: defaults)
     #expect(second.selection == .today)
   }
 
-  @Test func selectionPersistsAcrossRegistryReloadForList() {
+  @Test func selectionPersistsAcrossReloadForList() {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let target = SidebarSelection.list(SelectedList(providerID: "alpha", listID: "list-1"))
-    let first = makeRegistry(defaults: defaults)
+    let (_, first) = makeStore(defaults: defaults)
     first.select(target)
-    let second = makeRegistry(defaults: defaults)
+    let (_, second) = makeStore(defaults: defaults)
     #expect(second.selection == target)
   }
 
   // MARK: - providerLists cache
 
   @Test func setListsPopulatesProviderListsCache() {
-    let registry = makeRegistry()
+    let (registry, _) = makeStore()
     let lists = [
       TaskList(id: "a", providerID: "alpha", name: "A"),
       TaskList(id: "b", providerID: "alpha", name: "B"),
@@ -157,7 +166,7 @@ struct TaskRegistrySelectionTests {
   }
 
   @Test func disableProviderClearsItsListsCache() {
-    let registry = makeRegistry()
+    let (registry, _) = makeStore()
     let provider = SelectionStubProvider(id: "alpha")
     registry.register(provider)
     registry.enable(provider)
@@ -169,50 +178,49 @@ struct TaskRegistrySelectionTests {
   // MARK: - validateSelection
 
   @Test func todaySelectionIsAlwaysValid() {
-    let registry = makeRegistry()
+    let (registry, store) = makeStore()
     let provider = SelectionStubProvider(id: "alpha")
     registry.register(provider)
     registry.enable(provider)
-    registry.select(.today)
+    store.select(.today)
     // With no lists loaded, validateSelection should still leave Today unchanged.
-    registry.validateSelection()
-    #expect(registry.selection == .today)
+    store.validateSelection()
+    #expect(store.selection == .today)
   }
 
   @Test func setListsTriggersValidationAndLeavesTodayUnchanged() {
-    let registry = makeRegistry()
+    let (registry, store) = makeStore()
     let provider = SelectionStubProvider(id: "alpha")
     registry.register(provider)
     registry.enable(provider)
-    // Selection is .today by default; setLists calls validateSelection internally.
+    // Selection is .today by default; setLists fires the hook into validateSelection.
     registry.setLists([TaskList(id: "a", providerID: "alpha", name: "A")], forProviderID: "alpha")
-    #expect(registry.selection == .today)
+    #expect(store.selection == .today)
   }
 
   @Test func validateSelectionDropsUnknownProvider() {
-    let registry = makeRegistry()
+    let (_, store) = makeStore()
     let staleSelection = SidebarSelection.list(
       SelectedList(providerID: "unknown-provider", listID: "list-1"))
-    registry.select(staleSelection)
-    registry.validateSelection()
-    #expect(registry.selection == .today)
+    store.select(staleSelection)
+    store.validateSelection()
+    #expect(store.selection == .today)
   }
 
   @Test func validateSelectionDropsUnknownListID() {
-    let registry = makeRegistry()
+    let (registry, store) = makeStore()
     let provider = SelectionStubProvider(id: "alpha")
     registry.register(provider)
     registry.enable(provider)
-    registry.select(.list(SelectedList(providerID: "alpha", listID: "missing-list")))
-    // Populate cache with a different list ID.
+    store.select(.list(SelectedList(providerID: "alpha", listID: "missing-list")))
+    // Populate cache with a different list ID; the hook re-validates.
     registry.setLists(
       [TaskList(id: "other", providerID: "alpha", name: "Other")], forProviderID: "alpha")
-    #expect(registry.selection == .list(SelectedList(providerID: "alpha", listID: "other")))
+    #expect(store.selection == .list(SelectedList(providerID: "alpha", listID: "other")))
   }
 
   @Test func validateSelectionFallsBackToWritableDefaultList() {
-    let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let registry = makeRegistry(defaults: defaults)
+    let (registry, store) = makeStore()
     let writable = SelectionWritableProvider(id: "local", defaultListID: "inbox")
     registry.register(writable)
     registry.enable(writable)
@@ -220,26 +228,26 @@ struct TaskRegistrySelectionTests {
     let inboxList = TaskList(id: "inbox", providerID: "local", name: "Inbox")
     registry.setLists([inboxList], forProviderID: "local")
     // Now select a nonexistent list elsewhere.
-    registry.select(.list(SelectedList(providerID: "ghost", listID: "gone")))
-    registry.validateSelection()
-    #expect(registry.selection == .list(SelectedList(providerID: "local", listID: "inbox")))
+    store.select(.list(SelectedList(providerID: "ghost", listID: "gone")))
+    store.validateSelection()
+    #expect(store.selection == .list(SelectedList(providerID: "local", listID: "inbox")))
   }
 
   @Test func validateSelectionFallsBackToTodayWhenNoListsAvailable() {
-    let registry = makeRegistry()
+    let (registry, store) = makeStore()
     let provider = SelectionStubProvider(id: "alpha")
     registry.register(provider)
     registry.enable(provider)
-    registry.select(.list(SelectedList(providerID: "alpha", listID: "old-list")))
-    // Populate cache with an empty list array.
+    store.select(.list(SelectedList(providerID: "alpha", listID: "old-list")))
+    // Populate cache with an empty list array; the hook re-validates.
     registry.setLists([], forProviderID: "alpha")
-    #expect(registry.selection == .today)
+    #expect(store.selection == .today)
   }
 
   // MARK: - Today fan-out
 
   @Test func todayFanOutFiltersToTasksDueOnOrBeforeToday() async {
-    let registry = makeRegistry()
+    let (registry, _) = makeStore()
     let yesterday = Date().addingTimeInterval(-86400)
     let tomorrow = Date().addingTimeInterval(86400)
 
@@ -267,7 +275,7 @@ struct TaskRegistrySelectionTests {
   // MARK: - List-scoped fan-out
 
   @Test func listSelectionScopesFanOutToOneList() async {
-    let registry = makeRegistry()
+    let (registry, _) = makeStore()
     let listA = TaskList(id: "a", providerID: "alpha", name: "A")
     let listB = TaskList(id: "b", providerID: "alpha", name: "B")
     let taskA = selectionItem(providerID: "alpha", title: "Task in A")
@@ -286,7 +294,7 @@ struct TaskRegistrySelectionTests {
   }
 
   @Test func listSelectionReturnsEmptyWhenCacheNotPopulated() async {
-    let registry = makeRegistry()
+    let (registry, _) = makeStore()
     let provider = SelectionStubProvider(
       id: "alpha",
       tasks: [selectionItem(providerID: "alpha", title: "Some task")]
@@ -303,7 +311,7 @@ struct TaskRegistrySelectionTests {
   // MARK: - Global search ignores selection
 
   @Test func nonEmptyQueryIgnoresSelectionAndFansOutGlobally() async {
-    let registry = makeRegistry()
+    let (registry, _) = makeStore()
     let listA = TaskList(id: "a", providerID: "alpha", name: "A")
     let listB = TaskList(id: "b", providerID: "alpha", name: "B")
     let taskA = selectionItem(providerID: "alpha", title: "Write tests")
@@ -330,7 +338,9 @@ struct TaskRegistrySelectionTests {
     // Write dummy blobs for both legacy keys.
     defaults.set(Data([1, 2, 3]), forKey: "taskRegistry.providerListScopes")
     defaults.set(Data([4, 5, 6]), forKey: "taskRegistry.selectedList")
-    _ = TaskRegistry(defaults: defaults)
+    // The registry clears the list-scope key; the selection store clears the selected-list key.
+    let registry = TaskRegistry(defaults: defaults)
+    _ = SelectionStore(registry: registry, defaults: defaults)
     #expect(defaults.data(forKey: "taskRegistry.providerListScopes") == nil)
     #expect(defaults.data(forKey: "taskRegistry.selectedList") == nil)
   }

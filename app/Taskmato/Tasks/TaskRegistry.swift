@@ -11,15 +11,11 @@ import Observation
 /// Providers are registered programmatically at app startup. The enabled/disabled state of
 /// each provider is persisted to `UserDefaults` and restored on next launch.
 ///
-/// **Selection model**: `selection` persists the sidebar's active view — either `.today` (the
-/// smart Today list) or `.list(SelectedList)` (a specific provider list). The value is stored
-/// verbatim and validated lazily once `providerLists` is populated via `setLists`. `.today` is
-/// always immediately valid; `.list(...)` selections are treated as "no scope" (empty results)
-/// until the first `setLists` call confirms the list exists.
+/// Sidebar selection and its validation cascade live in ``SelectionStore``; the registry
+/// notifies it via ``onProviderStateChanged`` whenever the enabled set or list cache changes.
 ///
 /// **Migration**: on first launch after upgrading from the list-scope model, the initializer
-/// removes the abandoned `"taskRegistry.providerListScopes"` and `"taskRegistry.selectedList"`
-/// keys from `UserDefaults`.
+/// removes the abandoned `"taskRegistry.providerListScopes"` key from `UserDefaults`.
 @Observable
 @MainActor
 final class TaskRegistry {
@@ -37,14 +33,13 @@ final class TaskRegistry {
   /// observe this property to react when list data becomes available.
   private(set) var providerLists: [String: [TaskList]] = [:]
 
-  /// The currently active sidebar selection.
+  /// Invoked after the enabled set or list cache changes, so the selection can be re-validated.
   ///
-  /// `.today` is always valid. `.list(...)` selections are validated lazily after
-  /// `providerLists` is populated; treat a transient invalid `.list` as "no scope".
-  /// Defaults to `.today` on first launch. Assignment auto-persists via `didSet`.
-  var selection: SidebarSelection? {
-    didSet { persistSelection() }
-  }
+  /// Wired by the composition root to ``SelectionStore/validateSelection()``. Kept as an
+  /// injected closure rather than a direct dependency so the registry stays unaware of the
+  /// selection concern.
+  @ObservationIgnored
+  var onProviderStateChanged: (() -> Void)?
 
   private let defaults: UserDefaults
   private let sorter: TaskSorter
@@ -57,7 +52,6 @@ final class TaskRegistry {
   private(set) lazy var queryService = TaskQueryService(registry: self, sorter: sorter)
 
   private static let enabledKey = "taskRegistry.enabledProviderIDs"
-  private static let selectionKey = "taskRegistry.selection"
 
   /// - Parameters:
   ///   - defaults: `UserDefaults` store for persistence. Override in tests.
@@ -66,17 +60,11 @@ final class TaskRegistry {
     self.defaults = defaults
     self.sorter = sorter
 
-    // One-shot migration: remove abandoned list-scope blobs from prior versions.
+    // One-shot migration: remove the abandoned list-scope blob from prior versions.
     defaults.removeObject(forKey: "taskRegistry.providerListScopes")
-    defaults.removeObject(forKey: "taskRegistry.selectedList")
 
     let stored = defaults.stringArray(forKey: Self.enabledKey) ?? []
     self.enabledIDs = Set(stored)
-
-    self.selection =
-      defaults.data(forKey: Self.selectionKey).flatMap {
-        try? JSONDecoder().decode(SidebarSelection.self, from: $0)
-      } ?? .today
   }
 
   // MARK: - Registration
@@ -114,7 +102,7 @@ final class TaskRegistry {
     enabledIDs.remove(providerID)
     providerLists.removeValue(forKey: providerID)
     persist()
-    validateSelection()
+    onProviderStateChanged?()
   }
 
   /// Returns `true` if the provider with the given ID is currently enabled.
@@ -125,63 +113,12 @@ final class TaskRegistry {
 
   // MARK: - List cache
 
-  /// Updates the list cache for `providerID` and validates the current selection.
+  /// Updates the list cache for `providerID` and re-validates the current selection.
   ///
   /// Call this after every `provider.lists()` load — on appear, after add, delete, or rename.
   func setLists(_ lists: [TaskList], forProviderID providerID: String) {
     providerLists[providerID] = lists
-    validateSelection()
-  }
-
-  // MARK: - Selection
-
-  /// Sets the active sidebar selection. Persistence happens automatically via `selection`'s `didSet`.
-  /// - Parameter newSelection: The new selection, or `nil` to clear.
-  func select(_ newSelection: SidebarSelection?) {
-    selection = newSelection
-  }
-
-  /// Validates the current selection against the loaded `providerLists` cache and
-  /// applies a fallback cascade when the selected list is no longer reachable.
-  ///
-  /// `.today` is always valid and is never changed. `.list(...)` selections are
-  /// checked against `providerLists`; if the list is missing the cascade is:
-  /// 1. First enabled writable provider's `defaultListID` (if in cache).
-  /// 2. First list of the first enabled provider with lists in cache.
-  /// 3. `.today`.
-  func validateSelection() {
-    guard case .list(let selectedList) = selection else { return }
-
-    // Treat a nil cache as indeterminate only for registered, enabled providers whose
-    // lists have not yet been loaded. Unknown or disabled providers get an empty cache
-    // so the cascade fires normally.
-    let providerKnown = providers.contains(where: {
-      $0.id == selectedList.providerID && isEnabled($0.id)
-    })
-    let cache: [TaskList]? = providerKnown ? providerLists[selectedList.providerID] : []
-    let listExists = cache?.contains(where: { $0.id == selectedList.listID }) ?? true
-    if listExists { return }
-
-    // Cascade 1: writable provider's default list.
-    for provider in providers where isEnabled(provider.id) {
-      guard let writable = provider as? (any WritableTaskProvider) else { continue }
-      guard let defaultID = writable.defaultListID else { continue }
-      guard providerLists[provider.id]?.contains(where: { $0.id == defaultID }) == true
-      else { continue }
-      select(.list(SelectedList(providerID: provider.id, listID: defaultID)))
-      return
-    }
-
-    // Cascade 2: first list of first enabled provider.
-    for provider in providers where isEnabled(provider.id) {
-      if let lists = providerLists[provider.id], let first = lists.first {
-        select(.list(SelectedList(providerID: provider.id, listID: first.id)))
-        return
-      }
-    }
-
-    // Cascade 3: always-valid Today.
-    select(.today)
+    onProviderStateChanged?()
   }
 
   // MARK: - Queries
@@ -270,16 +207,6 @@ final class TaskRegistry {
 
   private func persist() {
     defaults.set(Array(enabledIDs), forKey: Self.enabledKey)
-  }
-
-  private func persistSelection() {
-    guard let selection,
-      let data = try? JSONEncoder().encode(selection)
-    else {
-      defaults.removeObject(forKey: Self.selectionKey)
-      return
-    }
-    defaults.set(data, forKey: Self.selectionKey)
   }
 }
 

@@ -28,6 +28,7 @@ struct MainWindowView: View {
   var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
   var registry: TaskRegistry
+  var sidebarSelection: SelectionStore
   @Bindable var nav: MainNavigation
 
   var body: some View {
@@ -39,6 +40,7 @@ struct MainWindowView: View {
         TasksTabView(
           selectionStore: selectionStore,
           registry: registry,
+          sidebarSelection: sidebarSelection,
           nav: nav,
           settings: settings
         )
@@ -92,13 +94,15 @@ struct MainWindowView: View {
 #Preview {
   let engine = SessionEngine()
   let settings = AppSettings()
+  let registry = TaskRegistry()
   return MainWindowView(
     presenter: TimerPresenter(engine: engine, settings: settings),
     engine: engine,
     settings: settings,
     statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
-    registry: TaskRegistry(),
+    registry: registry,
+    sidebarSelection: SelectionStore(registry: registry),
     nav: MainNavigation(settings: settings)
   )
 }

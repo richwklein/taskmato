@@ -24,6 +24,7 @@ struct AppComposition {
   let statsViewModel: StatsViewModel
   let selectionStore: TaskSelectionStore
   let registry: TaskRegistry
+  let sidebarSelection: SelectionStore
   let notifications: NotificationService
   let obsidianProvider: ObsidianProvider
   let localProvider: LocalProvider
@@ -55,6 +56,10 @@ struct AppComposition {
     Self.registerProviders(
       [obsidianProvider, localProvider, remindersProvider], into: registry,
       fallback: localProvider)
+    let sidebarSelection = SelectionStore(registry: registry)
+    registry.onProviderStateChanged = { [weak sidebarSelection] in
+      sidebarSelection?.validateSelection()
+    }
     let nav = MainNavigation(settings: settings)
     let urlHandler = URLSchemeHandler(
       registry: registry, selectionStore: selectionStore,
@@ -68,6 +73,7 @@ struct AppComposition {
     self.statsViewModel = statsViewModel
     self.selectionStore = selectionStore
     self.registry = registry
+    self.sidebarSelection = sidebarSelection
     self.notifications = notifications
     self.obsidianProvider = obsidianProvider
     self.localProvider = localProvider

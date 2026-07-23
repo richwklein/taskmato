@@ -78,6 +78,7 @@ struct TaskmatoApp: App {
         statsViewModel: composition.statsViewModel,
         selectionStore: composition.selectionStore,
         registry: composition.registry,
+        sidebarSelection: composition.sidebarSelection,
         nav: composition.nav
       )
     }
