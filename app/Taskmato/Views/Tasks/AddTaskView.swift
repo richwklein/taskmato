@@ -41,9 +41,9 @@ struct AddTaskView: View {
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .leading, spacing: .sectionGap) {
       Text(sheetTitle)
-        .font(.headline)
+        .font(.sheetTitle)
 
       TextField("Task title", text: $title)
         .textFieldStyle(.roundedBorder)

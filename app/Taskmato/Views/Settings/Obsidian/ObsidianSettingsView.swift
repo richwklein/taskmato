@@ -25,7 +25,7 @@ struct ObsidianSettingsView: View {
         LabeledContent("Vault", value: provider.vaultName)
 
         LabeledContent("File patterns") {
-          VStack(alignment: .leading, spacing: 4) {
+          VStack(alignment: .leading, spacing: .rowVertical) {
             TextField("e.g. **/*.md", text: $patternText)
               .autocorrectionDisabled()
               .focused($isPatternFocused)

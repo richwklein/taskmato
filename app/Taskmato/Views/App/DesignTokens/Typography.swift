@@ -33,4 +33,7 @@ extension Font {
 
   /// Title above a chart or stats visualization.
   static let chartTitle: Font = .headline
+
+  /// Title at the top of a modal sheet.
+  static let sheetTitle: Font = .title2.weight(.semibold)
 }

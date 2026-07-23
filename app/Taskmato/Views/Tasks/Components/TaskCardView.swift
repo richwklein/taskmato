@@ -19,9 +19,9 @@ struct TaskCardView: View {
   @State private var showDeleteConfirmation = false
 
   var body: some View {
-    HStack(alignment: .top, spacing: 6) {
+    HStack(alignment: .top, spacing: .iconLabel) {
       leadingButton
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: .rowVertical) {
         titleRow
         if let notes = task.notes {
           TaskNoteView(notes: notes, format: task.format)
@@ -35,13 +35,13 @@ struct TaskCardView: View {
       }
       trailingButton
     }
-    .padding(10)
+    .padding(.cardPadding)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .background(
-      RoundedRectangle(cornerRadius: 10)
-        .fill(.secondary.opacity(0.1))
+      RoundedRectangle.card
+        .fill(Color.cardSurface)
     )
-    .contentShape(RoundedRectangle(cornerRadius: 10))
+    .contentShape(RoundedRectangle.card)
     .onHover { hover in
       if case .completed = kind { isHovered = hover }
     }
@@ -79,11 +79,11 @@ struct TaskCardView: View {
   }
 
   private var titleRow: some View {
-    HStack(alignment: .firstTextBaseline, spacing: 3) {
+    HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
       if let icon = task.priority.icon {
         Image(systemName: icon)
           .foregroundStyle(task.priority.accentColor)
-          .font(.callout)
+          .font(.taskTitle)
       }
       TaskMarkdownTitle(task: task, isCompleted: isCompleted, lineLimit: 3)
     }
@@ -95,18 +95,18 @@ struct TaskCardView: View {
     case .active:
       if let due = task.dueDate {
         Text(due, format: .dateTime.month(.abbreviated).day().year())
-          .font(.caption2)
-          .foregroundStyle(due.isUrgentDueDate ? Color.red : Color.secondary)
+          .font(.taskMetadata)
+          .foregroundStyle(due.isUrgentDueDate ? Color.dueUrgent : Color.secondary)
       }
     case .completed:
       Text(completedSubtitle)
-        .font(.caption2)
+        .font(.taskMetadata)
         .foregroundStyle(.tertiary)
     }
   }
 
   private func lineageRow(_ lin: TaskLineage) -> some View {
-    HStack(spacing: 3) {
+    HStack(spacing: .iconLabel) {
       if let icon = lin.providerIcon {
         Image(systemName: icon)
       }
@@ -117,7 +117,7 @@ struct TaskCardView: View {
         Text(ctx)
       }
     }
-    .font(.caption2)
+    .font(.taskLineage)
     .foregroundStyle(.tertiary)
   }
 

@@ -17,7 +17,7 @@ struct TaskMarkdownTitle: View {
 
   var body: some View {
     Text(task.markdownTitle)
-      .font(.callout)
+      .font(.taskTitle)
       .foregroundStyle(isCompleted ? .secondary : .primary)
       .lineLimit(lineLimit)
       .frame(maxWidth: .infinity, alignment: .leading)

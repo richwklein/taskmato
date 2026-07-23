@@ -47,13 +47,13 @@ struct StatsTabView: View {
   private func scopeContent(_ summary: SessionSummary) -> some View {
     switch statsViewModel.scope {
     case .allTime:
-      VStack(alignment: .leading, spacing: 20) {
+      VStack(alignment: .leading, spacing: .sectionGap) {
         statGrid(summary).padding([.horizontal, .top])
         AllTimeTaskTable(rows: statsViewModel.allTaskRows)
       }
     default:
       ScrollView {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: .sectionGap) {
           statGrid(summary)
           scopeCharts(summary)
         }
@@ -92,7 +92,7 @@ struct StatsTabView: View {
     .pickerStyle(.segmented)
     .labelsHidden()
     .padding([.horizontal, .top])
-    .padding(.bottom, 16)
+    .padding(.bottom, .sectionGap)
   }
 
   // MARK: - Period navigation
@@ -101,7 +101,7 @@ struct StatsTabView: View {
   /// Time (which has no period navigation) to keep the layout from jumping.
   private var navigationRow: some View {
     let showsArrows = statsViewModel.canNavigateBack
-    return HStack(spacing: 8) {
+    return HStack(spacing: .contentGap) {
       Button {
         statsViewModel.navigateBack()
       } label: {
@@ -112,7 +112,7 @@ struct StatsTabView: View {
       .accessibilityLabel("Previous period")
 
       Text(periodLabel)
-        .font(.subheadline.weight(.medium))
+        .font(.sectionHeader)
         .monospacedDigit()
         .frame(width: 160)
 
@@ -128,7 +128,7 @@ struct StatsTabView: View {
     .buttonStyle(.borderless)
     .frame(maxWidth: .infinity)
     .padding(.horizontal)
-    .padding(.bottom, 8)
+    .padding(.bottom, .contentGap)
   }
 
   /// The navigated period rendered for the current scope and offset.
@@ -156,7 +156,7 @@ struct StatsTabView: View {
   // MARK: - Stat grid
 
   private func statGrid(_ summary: SessionSummary) -> some View {
-    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: .groupGap) {
       StatCardView(icon: "target", value: "\(summary.focusCount)", label: "Sessions")
       StatCardView(
         icon: "timer",

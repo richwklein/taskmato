@@ -198,13 +198,13 @@ struct TasksTabView: View {
   private var detailColumn: some View {
     VStack(spacing: 0) {
       if let info = navigationContext {
-        HStack(spacing: 6) {
+        HStack(spacing: .iconLabel) {
           Image(systemName: info.icon).foregroundStyle(Color.accentColor)
           Text(info.label).foregroundStyle(.secondary)
           Spacer()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, .sectionGap)
+        .padding(.vertical, .contentGap)
       }
       detailContent
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -291,7 +291,7 @@ struct TasksTabView: View {
       }
     } header: {
       if shouldShowHeader(section) {
-        Text(section.header).font(.subheadline).fontWeight(.semibold)
+        Text(section.header).font(.sectionHeader)
       }
     }
   }
@@ -344,17 +344,17 @@ struct TasksTabView: View {
   // MARK: - Grid layout
 
   private var taskGrid: some View {
-    let columns = [GridItem(.adaptive(minimum: 180), spacing: 10)]
+    let columns = [GridItem(.adaptive(minimum: 180), spacing: .groupGap)]
     return ScrollView {
-      VStack(alignment: .leading, spacing: 16) {
+      VStack(alignment: .leading, spacing: .sectionGap) {
         ForEach(sections) { section in
-          VStack(alignment: .leading, spacing: 8) {
+          VStack(alignment: .leading, spacing: .contentGap) {
             if shouldShowHeader(section) {
               Text(section.header)
-                .font(.subheadline).fontWeight(.semibold).padding(.horizontal, 2)
+                .font(.sectionHeader).padding(.horizontal, .stackTight)
             }
 
-            LazyVGrid(columns: columns, spacing: 10) {
+            LazyVGrid(columns: columns, spacing: .groupGap) {
               ForEach(section.tasks) { task in
                 Button {
                   select(task)
@@ -374,16 +374,16 @@ struct TasksTabView: View {
         }
 
         if showCompleted && !completedTasks.isEmpty {
-          VStack(alignment: .leading, spacing: 8) {
+          VStack(alignment: .leading, spacing: .contentGap) {
             completedSectionHeader
-              .padding(.horizontal, 2)
-            LazyVGrid(columns: columns, spacing: 10) {
+              .padding(.horizontal, .stackTight)
+            LazyVGrid(columns: columns, spacing: .groupGap) {
               ForEach(completedTasks) { task in completedCard(task) }
             }
           }
         }
       }
-      .padding(10)
+      .padding(.cardPadding)
     }
   }
 
@@ -391,7 +391,7 @@ struct TasksTabView: View {
   private var completedSectionHeader: some View {
     HStack {
       Text("\(completedTasks.count) Completed")
-        .font(.subheadline).fontWeight(.semibold)
+        .font(.sectionHeader)
       Spacer()
       Button("Hide") { showCompleted = false }
         .buttonStyle(.plain)

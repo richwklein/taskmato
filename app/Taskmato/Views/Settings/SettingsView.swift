@@ -34,12 +34,12 @@ struct SettingsView: View {
 
         if settings.notificationsEnabled {
           if notifications.authStatus == .denied {
-            HStack(spacing: 8) {
+            HStack(spacing: .contentGap) {
               Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-              VStack(alignment: .leading, spacing: 2) {
+                .foregroundStyle(Color.statusError)
+              VStack(alignment: .leading, spacing: .stackTight) {
                 Text("Notifications are disabled in System Settings")
-                  .foregroundStyle(.red)
+                  .foregroundStyle(Color.statusError)
                 Button("Open Notification Settings…") {
                   openNotificationSettings()
                 }
@@ -62,7 +62,7 @@ struct SettingsView: View {
           }
 
           DisclosureGroup {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: .iconLabel) {
               Text(
                 "Taskmato's settings control which cues fire. "
                   + "System Settings → Notifications → Taskmato controls how they appear:"
@@ -176,7 +176,7 @@ private struct BulletText: View {
   }
 
   var body: some View {
-    HStack(alignment: .top, spacing: 4) {
+    HStack(alignment: .top, spacing: .rowVertical) {
       Text("•").foregroundStyle(.secondary)
       Text(text).foregroundStyle(.secondary)
     }

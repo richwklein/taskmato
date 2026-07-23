@@ -14,13 +14,13 @@ struct RankedTaskList: View {
   let slices: [SessionSummary.TaskSlice]
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: .groupGap) {
       Text("By Task")
-        .font(.headline)
+        .font(.chartTitle)
 
-      VStack(spacing: 6) {
+      VStack(spacing: .iconLabel) {
         ForEach(slices) { slice in
-          HStack(spacing: 8) {
+          HStack(spacing: .contentGap) {
             Text(slice.label)
               .lineLimit(1)
             Spacer()

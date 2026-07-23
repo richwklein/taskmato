@@ -12,10 +12,9 @@ struct ObsidianSetupSheet: View {
   @Environment(\.dismiss) private var dismiss
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .leading, spacing: .sectionGap) {
       Text("Configure \(provider.displayName)")
-        .font(.title2)
-        .fontWeight(.semibold)
+        .font(.sheetTitle)
 
       ObsidianSettingsView(provider: provider)
 
@@ -25,7 +24,7 @@ struct ObsidianSetupSheet: View {
           .keyboardShortcut(.defaultAction)
       }
     }
-    .padding(24)
+    .padding(.screenPadding)
     .frame(minWidth: 360)
   }
 }

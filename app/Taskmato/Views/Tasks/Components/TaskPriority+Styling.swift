@@ -10,8 +10,8 @@ extension TaskPriority {
   /// The accent color used to tint priority icons in task views.
   var accentColor: Color {
     switch self {
-    case .highest, .high, .medium: return .orange
-    case .low, .lowest, .none: return .primary
+    case .highest, .high, .medium: return .priorityHigh
+    case .low, .lowest, .none: return .priorityNeutral
     }
   }
 

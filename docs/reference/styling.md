@@ -23,6 +23,7 @@ are used directly — they are not re-exported as tokens.
 | `statLabel` | `.caption` | Caption describing a stat value |
 | `sectionHeader` | `.subheadline.weight(.semibold)` | Header above a section of rows or cards |
 | `chartTitle` | `.headline` | Title above a chart or stats visualization |
+| `sheetTitle` | `.title2.weight(.semibold)` | Title at the top of a modal sheet |
 
 ## Color
 
@@ -36,7 +37,11 @@ are used directly — they are not re-exported as tokens.
 | `timerRingTrack` | `.secondary.opacity(.muted)` | Unfilled portion of the circular timer ring |
 | `cardSurface` | `.secondary.opacity(.subtle)` | Fill behind a card to lift it off the background |
 | `favoriteStar` | `.yellow` | Marker on a provider's default (favorite) list |
+| `statusError` | `.red` | Error or warning indicator (permission failure, validation) |
+| `statusSuccess` | `.green` | Success or authorized-state indicator |
 | `chartPalette` | `[.blue, .green, .orange, .purple, .red, .teal, .indigo, .pink]` | Ordered colors for chart slices/series |
+
+`statusError` shares the `.red` value with `dueUrgent` — same color, distinct semantics.
 
 ## Spacing
 
@@ -49,6 +54,7 @@ are used directly — they are not re-exported as tokens.
 | `iconLabel` | `6` | Gap between an icon and its adjacent label |
 | `contentGap` | `8` | Standard gap between sibling elements in a group |
 | `cardPadding` | `10` | Interior padding of a card |
+| `groupGap` | `12` | Gap between grouped items or grid cells; one step looser than `contentGap` |
 | `sectionGap` | `16` | Gap between distinct sections of content |
 | `screenPadding` | `24` | Padding between content and a screen/sheet/popover edge |
 
