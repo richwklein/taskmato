@@ -6,9 +6,6 @@
 import Foundation
 import Observation
 
-/// A per-provider error returned alongside tasks when a provider fetch fails.
-typealias ProviderFetchError = (providerID: String, error: any Error)
-
 /// Manages the set of registered task providers and fans out queries across all enabled ones.
 ///
 /// Providers are registered programmatically at app startup. The enabled/disabled state of
@@ -51,6 +48,14 @@ final class TaskRegistry {
 
   private let defaults: UserDefaults
   private let sorter: TaskSorter
+
+  /// Fans out and orders task queries over this registry's enabled providers.
+  ///
+  /// Constructed lazily so it can capture `self`; the registry delegates its `tasks` and
+  /// `completedTasks` methods to it during the registry split.
+  @ObservationIgnored
+  private(set) lazy var queryService = TaskQueryService(registry: self, sorter: sorter)
+
   private static let enabledKey = "taskRegistry.enabledProviderIDs"
   private static let selectionKey = "taskRegistry.selection"
 
@@ -183,124 +188,24 @@ final class TaskRegistry {
 
   /// Returns tasks described by the given query, sorted by the specified field and direction.
   ///
-  /// - `.singleList`: returns tasks from the named list, preserving provider section order.
-  ///   Uses the `providerLists` cache to resolve the `TaskList`; falls back to a live fetch
-  ///   if the cache is not yet populated.
-  /// - `.crossProvider`: fans out across all enabled providers, applies the optional filter,
-  ///   and sorts results globally (section boundaries are not preserved).
-  ///
-  /// - Parameters:
-  ///   - query: Describes the scope and optional filter for the fetch.
-  ///   - sortBy: The field to sort by.
-  ///   - direction: The sort direction.
-  /// - Returns: Matched tasks and any per-provider errors that occurred.
+  /// Delegates to ``queryService``; see ``TaskQueryService/tasks(query:sortBy:direction:)``.
   func tasks(
     query: TaskQuery,
     sortBy field: TaskSortField,
     direction: TaskSortDirection
   ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
-    let active = providers.filter { isEnabled($0.id) }
-
-    switch query {
-    case .singleList(let selectedList):
-      guard
-        let provider = providers.first(where: { $0.id == selectedList.providerID }),
-        isEnabled(provider.id)
-      else {
-        return (tasks: [], errors: [])
-      }
-      let available: [TaskList]
-      if let cached = providerLists[selectedList.providerID] {
-        available = cached
-      } else {
-        available = (try? await provider.lists()) ?? []
-      }
-      guard let list = available.first(where: { $0.id == selectedList.listID }) else {
-        return (tasks: [], errors: [])
-      }
-      let items = (try? await provider.tasks(in: list)) ?? []
-      return (tasks: sorter.sorted(items, by: field, direction: direction), errors: [])
-
-    case .crossProvider(let filter):
-      let (all, errors) = await globalFanOut(providers: active)
-      let filtered: [TaskItem]
-      switch filter {
-      case nil:
-        filtered = all
-      case .dueUpToToday:
-        filtered = all.filter { item in
-          guard let due = item.dueDate else { return false }
-          return due <= Calendar.current.endOfToday
-        }
-      case .titleContains(let titleQuery):
-        filtered = all.filter { $0.title.localizedCaseInsensitiveContains(titleQuery) }
-      }
-      return (
-        tasks: sorter.sorted(filtered, by: field, direction: direction, preserveSections: false),
-        errors: errors
-      )
-    }
+    await queryService.tasks(query: query, sortBy: field, direction: direction)
   }
 
   /// Returns completed tasks described by the given query, sorted by the specified field and direction.
   ///
-  /// Fans out `completedTasks()` across all enabled ``ClosableTaskProvider``s, applies the same
-  /// filter logic as ``tasks(query:sortBy:direction:)``, and sorts the flat result globally.
-  ///
-  /// - Parameters:
-  ///   - query: Describes the scope and optional filter for the fetch.
-  ///   - sortBy: The field to sort by.
-  ///   - direction: The sort direction.
-  /// - Returns: Matched completed tasks and any per-provider errors that occurred.
+  /// Delegates to ``queryService``; see ``TaskQueryService/completedTasks(query:sortBy:direction:)``.
   func completedTasks(
     query: TaskQuery,
     sortBy field: TaskSortField,
     direction: TaskSortDirection
   ) async -> (tasks: [TaskItem], errors: [ProviderFetchError]) {
-    var all: [TaskItem] = []
-    var providerErrors: [ProviderFetchError] = []
-
-    await withTaskGroup(of: (items: [TaskItem], fetchError: ProviderFetchError?).self) { group in
-      for provider in providers where isEnabled(provider.id) {
-        guard let closable = provider as? (any ClosableTaskProvider) else { continue }
-        let providerID = provider.id
-        group.addTask {
-          do {
-            let items = try await closable.completedTasks()
-            return (items: items, fetchError: nil)
-          } catch {
-            return (items: [], fetchError: (providerID: providerID, error: error))
-          }
-        }
-      }
-      for await result in group {
-        all.append(contentsOf: result.items)
-        if let fetchError = result.fetchError {
-          providerErrors.append(fetchError)
-        }
-      }
-    }
-
-    let filtered: [TaskItem]
-    switch query {
-    case .singleList(let selectedList):
-      filtered = all.filter { $0.list?.id == selectedList.listID }
-    case .crossProvider(let filter):
-      switch filter {
-      case nil:
-        filtered = all
-      case .dueUpToToday:
-        let startOfToday = Calendar.current.startOfDay(for: Date())
-        filtered = all.filter { ($0.completedAt ?? .distantPast) >= startOfToday }
-      case .titleContains(let titleQuery):
-        filtered = all.filter { $0.title.localizedCaseInsensitiveContains(titleQuery) }
-      }
-    }
-
-    return (
-      tasks: sorter.sorted(filtered, by: field, direction: direction, preserveSections: false),
-      errors: providerErrors
-    )
+    await queryService.completedTasks(query: query, sortBy: field, direction: direction)
   }
 
   // MARK: - Provider lookup
@@ -359,47 +264,6 @@ final class TaskRegistry {
   /// Observe this in views to react when any provider's `isAuthorized` changes.
   var providerAuthorizationStates: [Bool] {
     providers.map(\.isAuthorized)
-  }
-
-  // MARK: - Private helpers
-
-  private func globalFanOut(providers: [any TaskProvider]) async -> (
-    [TaskItem], [ProviderFetchError]
-  ) {
-    var merged: [TaskItem] = []
-    var providerErrors: [ProviderFetchError] = []
-
-    await withTaskGroup(of: (items: [TaskItem], fetchError: ProviderFetchError?).self) { group in
-      for provider in providers {
-        let providerID = provider.id
-        group.addTask {
-          do {
-            let allLists = try await provider.lists()
-            let items: [TaskItem]
-            if allLists.isEmpty {
-              items = try await provider.tasks(in: nil)
-            } else {
-              var scoped: [TaskItem] = []
-              for list in allLists {
-                scoped += try await provider.tasks(in: list)
-              }
-              items = scoped
-            }
-            return (items: items, fetchError: nil)
-          } catch {
-            return (items: [], fetchError: (providerID: providerID, error: error))
-          }
-        }
-      }
-      for await result in group {
-        merged.append(contentsOf: result.items)
-        if let fetchError = result.fetchError {
-          providerErrors.append(fetchError)
-        }
-      }
-    }
-
-    return (merged, providerErrors)
   }
 
   // MARK: - Persistence
