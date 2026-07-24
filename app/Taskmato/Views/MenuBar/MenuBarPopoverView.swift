@@ -7,36 +7,67 @@
 
 import SwiftUI
 
-/// The compact popover view shown when the user clicks the menu bar item.
+/// The slim companion popover shown when the user clicks the menu bar item.
 ///
-/// Provides quick timer controls and a button to open the main application window.
-/// On first appearance, binds the `openWindow` environment action onto ``MainNavigation``
-/// and reports the menu-bar scene ready to drain any buffered cold-launch URLs.
+/// Glanceable timer state and controls only — countdown, phase, start/pause/skip/stop, a
+/// display-only active-task line, today's session summary, and "Open Taskmato". Task
+/// browsing and swapping live in the main window (design doc 0008, D1). On first
+/// appearance, binds the `openWindow` environment action onto ``MainNavigation`` and
+/// reports the menu-bar scene ready to drain any buffered cold-launch URLs.
 struct MenuBarPopoverView: View {
 
   var presenter: TimerPresenter
-  var engine: SessionEngine
   var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
-  var registry: ProviderRegistry
   var nav: MainNavigation
 
-  @Environment(\.openSettings) private var openSettings
   @Environment(\.openWindow) private var openWindow
 
   var body: some View {
     VStack(spacing: 0) {
+      TimerReadout(label: presenter.label, phase: presenter.phaseName)
+        .padding(.top, .groupGap)
+
+      TimerControlsView(
+        presenter: presenter,
+        size: .compact,
+        startDisabled: selectionStore.activeTask == nil,
+        startDisabledHelp: AppLabels.Tooltip.selectTaskFirst
+      )
+      .padding(.top, .sectionGap)
+      .padding(.bottom, .groupGap)
+
+      Divider()
+        .padding(.horizontal, .sectionGap)
+
+      if selectionStore.activeTask != nil {
+        PopoverActiveTaskLine(selectionStore: selectionStore)
+          .padding(.horizontal, .sectionGap)
+          .padding(.vertical, .contentGap)
+      } else {
+        Text(AppLabels.Tooltip.selectTaskFirst)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.horizontal, .sectionGap)
+          .padding(.vertical, .contentGap)
+      }
+
+      Divider()
+        .padding(.horizontal, .sectionGap)
+
       HStack {
         Button {
           let popover = NSApp.keyWindow
-          NSApp.activate(ignoringOtherApps: true)
-          openSettings()
+          nav.showStatsInMainWindow()
           DispatchQueue.main.async { popover?.close() }
         } label: {
-          Image(systemName: "gearshape")
+          Text(summaryText)
+            .font(.statLabel)
             .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
+        .help(AppLabels.Tab.stats.title)
 
         Spacer()
 
@@ -45,67 +76,12 @@ struct MenuBarPopoverView: View {
           nav.openMainWindow()
           DispatchQueue.main.async { popover?.close() }
         } label: {
-          Image(systemName: "arrow.up.forward.app")
-            .foregroundStyle(.secondary)
+          Text("Open \(Bundle.main.appName)")
         }
-        .buttonStyle(.plain)
-        .help("Open \(Bundle.main.appName)")
+        .controlSize(.small)
       }
       .padding(.horizontal, .sectionGap)
-      .padding(.top, .groupGap)
-      .padding(.bottom, .contentGap)
-
-      CircularTimerView(
-        progress: presenter.progress,
-        label: presenter.label,
-        phase: presenter.phaseName
-      )
-
-      TimerControlsView(
-        presenter: presenter,
-        startDisabled: selectionStore.activeTask == nil,
-        startDisabledHelp: AppLabels.Tooltip.selectTaskFirst
-      )
-      .frame(height: 44)
-      .padding(.top, .sectionGap)
-      .padding(.bottom, .groupGap)
-
-      Divider()
-        .padding(.horizontal, .sectionGap)
-
-      if selectionStore.activeTask != nil {
-        ActiveTaskView(engine: engine, selectionStore: selectionStore, registry: registry, nav: nav)
-      } else {
-        Button {
-          let popover = NSApp.keyWindow
-          nav.openMainWindow()
-          nav.showTasks()
-          DispatchQueue.main.async { popover?.close() }
-        } label: {
-          Label(AppLabels.View.browseTask.title, systemImage: AppLabels.View.browseTask.systemImage)
-            .font(.caption)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, .sectionGap)
-        .padding(.vertical, .iconLabel)
-      }
-
-      Divider()
-        .padding(.horizontal, .sectionGap)
-
-      Button {
-        let popover = NSApp.keyWindow
-        nav.showStatsInMainWindow()
-        DispatchQueue.main.async { popover?.close() }
-      } label: {
-        SessionStatsView(
-          count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes,
-          streak: statsViewModel.currentStreak)
-      }
-      .buttonStyle(.plain)
-      .padding(.horizontal, .sectionGap)
-      .padding(.vertical, .cardPadding)
+      .padding(.vertical, .groupGap)
     }
     .frame(width: 280)
     .onAppear {
@@ -116,6 +92,18 @@ struct MenuBarPopoverView: View {
       (NSApp.delegate as? AppDelegate)?.reportScenesReady()
     }
   }
+
+  /// A compact one-line focus summary for the bottom bar: sessions · minutes · streak.
+  private var summaryText: String {
+    let sessions =
+      statsViewModel.todayFocusCount == 1
+      ? "1 session" : "\(statsViewModel.todayFocusCount) sessions"
+    var text = "\(sessions) · \(statsViewModel.todayFocusMinutes) min"
+    if statsViewModel.currentStreak > 0 {
+      text += " · 🔥\(statsViewModel.currentStreak)"
+    }
+    return text
+  }
 }
 
 #Preview {
@@ -124,10 +112,8 @@ struct MenuBarPopoverView: View {
   let registry = ProviderRegistry()
   return MenuBarPopoverView(
     presenter: TimerPresenter(engine: engine, settings: settings),
-    engine: engine,
     statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
-    registry: registry,
     nav: MainNavigation(
       settings: settings, selectionStore: SelectionStore(registry: registry),
       statsViewModel: .preview)
