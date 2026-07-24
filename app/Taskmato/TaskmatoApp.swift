@@ -25,12 +25,33 @@ struct TaskmatoApp: App {
     MenuBarExtra {
       MenuBarPopoverView(
         presenter: composition.timerPresenter,
+        statsViewModel: composition.statsViewModel,
+        selectionStore: composition.selectionStore,
+        nav: composition.nav
+      )
+    } label: {
+      HStack(spacing: 4) {
+        Image("MenuIcon")
+        Text(composition.timerPresenter.label)
+      }
+    }
+    .menuBarExtraStyle(.window)
+
+    Window(Bundle.main.appName, id: "main") {
+      MainWindowView(
+        presenter: composition.timerPresenter,
         engine: composition.engine,
+        settings: composition.settings,
         statsViewModel: composition.statsViewModel,
         selectionStore: composition.selectionStore,
         registry: composition.registry,
+        queryService: composition.queryService,
+        sidebarSelection: composition.sidebarSelection,
         nav: composition.nav
       )
+      // Task-disambiguation for `taskmato://` deep links presents on the main window, the
+      // app's primary surface (design doc 0008, D5). `URLSchemeHandler` opens the window
+      // when a match is ambiguous so this dialog has a surface to appear on.
       .confirmationDialog(
         "Multiple tasks match — which one?",
         isPresented: Binding(
@@ -62,26 +83,6 @@ struct TaskmatoApp: App {
           composition.urlHandler.pendingAdHocParams = nil
         }
       }
-    } label: {
-      HStack(spacing: 4) {
-        Image("MenuIcon")
-        Text(composition.timerPresenter.label)
-      }
-    }
-    .menuBarExtraStyle(.window)
-
-    Window(Bundle.main.appName, id: "main") {
-      MainWindowView(
-        presenter: composition.timerPresenter,
-        engine: composition.engine,
-        settings: composition.settings,
-        statsViewModel: composition.statsViewModel,
-        selectionStore: composition.selectionStore,
-        registry: composition.registry,
-        queryService: composition.queryService,
-        sidebarSelection: composition.sidebarSelection,
-        nav: composition.nav
-      )
     }
     .defaultSize(width: 480, height: 520)
     .windowResizability(.contentMinSize)

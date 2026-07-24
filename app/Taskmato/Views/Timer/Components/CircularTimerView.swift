@@ -33,14 +33,7 @@ struct CircularTimerView: View {
         .rotationEffect(.degrees(-90))
         .animation(.linear(duration: 1), value: progress)
 
-      VStack(spacing: .rowVertical) {
-        Text(label)
-          .font(.timerCountdown)
-          .foregroundStyle(.primary)
-        Text(phase)
-          .font(.timerPhaseLabel)
-          .foregroundStyle(.secondary)
-      }
+      TimerReadout(label: label, phase: phase)
     }
     .frame(width: ringDiameter, height: ringDiameter)
   }

@@ -187,6 +187,9 @@ final class URLSchemeHandler {
       } else if matches.count > 1 {
         pendingDisambiguation = matches
         pendingAdHocParams = buildAdHocParams(from: params, title: title)
+        // Open the main window so the relocated disambiguation dialog has a surface to
+        // present on (design doc 0008, D5); the success path opens it via the selection.
+        nav.openMainWindow()
         return nil
       }
       return await makeAdHocTask(from: buildAdHocParams(from: params, title: title))
