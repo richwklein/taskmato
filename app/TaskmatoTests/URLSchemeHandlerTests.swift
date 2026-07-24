@@ -12,7 +12,7 @@ import Testing
 
 private struct HandlerContext {
   let handler: URLSchemeHandler
-  let registry: TaskRegistry
+  let registry: ProviderRegistry
   let selectionStore: TaskSelectionStore
   let localProvider: LocalProvider
   let settings: AppSettings
@@ -107,7 +107,7 @@ struct URLSchemeHandlerTests {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let selectionStore = TaskSelectionStore(defaults: defaults)
     let engine = SessionEngine()
-    let registry = TaskRegistry(defaults: defaults)
+    let registry = ProviderRegistry(defaults: defaults)
     let localProvider = LocalProvider(fileURL: makeTempURL())
     let settings = AppSettings(defaults: defaults)
     settings.defaultWritableProviderID = defaultWritableProviderID
@@ -125,6 +125,7 @@ struct URLSchemeHandlerTests {
 
     let handler = URLSchemeHandler(
       registry: registry,
+      queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
       selectionStore: selectionStore,
       engine: engine,
       settings: settings,
@@ -373,13 +374,11 @@ struct URLSchemeHandlerTests {
   // MARK: - URL scheme ignores sidebar selection
 
   @Test func urlSchemeTitleSearchIgnoresSidebarSelection() async {
-    // Task lives in the stub provider (providerID: "stub").
-    // We scope the registry selection to a nonexistent list — the URL handler must
-    // resolve globally regardless of the active sidebar selection.
+    // Task lives in the stub provider (providerID: "stub"). The URL handler resolves
+    // titles globally and has no access to the sidebar `SelectionStore`, so it is
+    // structurally independent of the active sidebar selection.
     let existing = makeTask(title: "Global Task", providerID: "stub")
     let ctx = makeHandler(stubProviderTasks: [existing])
-    ctx.registry.select(
-      .list(SelectedList(providerID: "other-provider", listID: "other-list")))
     await ctx.handler.handle(URL(string: "taskmato://start?title=Global%20Task")!)
     #expect(ctx.selectionStore.activeTask?.id == existing.id)
   }

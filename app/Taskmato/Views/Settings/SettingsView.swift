@@ -13,7 +13,7 @@ struct SettingsView: View {
 
   @Bindable var settings: AppSettings
   var selectionStore: TaskSelectionStore
-  var registry: TaskRegistry
+  var registry: ProviderRegistry
   var notifications: NotificationService
 
   var body: some View {
@@ -238,7 +238,7 @@ private struct DurationField: View {
   SettingsView(
     settings: AppSettings(),
     selectionStore: TaskSelectionStore(),
-    registry: TaskRegistry(),
+    registry: ProviderRegistry(),
     notifications: NotificationService(settings: AppSettings())
   )
 }

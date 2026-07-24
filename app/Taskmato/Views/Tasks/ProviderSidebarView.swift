@@ -15,7 +15,8 @@ import SwiftUI
 /// currently disabled provider.
 struct ProviderSidebarView: View {
 
-  @Bindable var registry: TaskRegistry
+  var registry: ProviderRegistry
+  @Bindable var sidebarSelection: SelectionStore
   /// Called after a task is successfully added from the list context-menu "Add Task…" item.
   var onTaskAdded: (() -> Void)?
 
@@ -53,7 +54,7 @@ struct ProviderSidebarView: View {
   // MARK: - Body
 
   var body: some View {
-    List(selection: $registry.selection) {
+    List(selection: $sidebarSelection.selection) {
       Label("Today", systemImage: "calendar")
         .tag(SidebarSelection.today)
 
@@ -372,6 +373,9 @@ struct ProviderSidebarView: View {
 }
 
 #Preview {
-  ProviderSidebarView(registry: TaskRegistry())
-    .frame(width: 200, height: 400)
+  let registry = ProviderRegistry()
+  return ProviderSidebarView(
+    registry: registry, sidebarSelection: SelectionStore(registry: registry)
+  )
+  .frame(width: 200, height: 400)
 }
