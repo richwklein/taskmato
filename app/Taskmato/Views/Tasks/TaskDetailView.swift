@@ -1,17 +1,19 @@
 //
-//  TasksTabView.swift
+//  TaskDetailView.swift
 //  Taskmato
 //
 
 import SwiftUI
 
-/// The task picker tab, showing tasks grouped into sections with live search.
+/// The task detail surface for the Today and list destinations of the window-first shell.
 ///
-/// A ``NavigationSplitView`` places the ``ProviderSidebarView`` in the sidebar and the
-/// task list/grid in the detail column. Supports list and grid layouts. When at least one
-/// enabled provider conforms to ``ClosableTaskProvider``, a "Show Completed" toolbar
-/// button becomes available.
-struct TasksTabView: View {
+/// Renders the current task-scope selection (``SelectionStore``) as a grouped list or grid
+/// with live search, an add/show-completed/layout/sort toolbar, and per-task context menus.
+/// It is placed in the root ``NavigationSplitView``'s detail column by ``MainWindowView``; the
+/// universal sidebar and column visibility live in the shell, not here. When at least one
+/// enabled provider conforms to ``ClosableTaskProvider``, a "Show Completed" toolbar button
+/// becomes available.
+struct TaskDetailView: View {
 
   var selectionStore: TaskSelectionStore
   var registry: ProviderRegistry
@@ -19,6 +21,8 @@ struct TasksTabView: View {
   var sidebarSelection: SelectionStore
   var nav: MainNavigation
   @Bindable var settings: AppSettings
+  /// Bumped by the sidebar after adding a task, so the detail reloads the affected list.
+  var refreshToken: Int = 0
 
   @State private var query: String = ""
   @State private var sections: [TaskSection] = []
@@ -74,7 +78,7 @@ struct TasksTabView: View {
   }
 
   var body: some View {
-    splitView
+    trackedDetail
       .sheet(isPresented: $isAddingTask) {
         if let provider = writableProvider {
           AddTaskView(provider: provider, isPresented: $isAddingTask)
@@ -149,12 +153,18 @@ struct TasksTabView: View {
       )
   }
 
-  /// Change-tracking modifiers applied on top of ``navigationView``.
+  /// The detail content plus search and change-tracking modifiers.
   ///
   /// Split from ``body`` to keep each property's modifier chain short enough
   /// for the Swift type-checker.
-  private var splitView: some View {
-    navigationView
+  private var trackedDetail: some View {
+    detailColumn
+      .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
+      .searchFocused($isSearchFocused)
+      .task(id: query) { await refresh() }
+      .task { await subscribeToProviderUpdates() }
+      .onAppear { Task { await refresh() } }
+      .onChange(of: refreshToken) { _, _ in Task { await refresh() } }
       .onChange(of: isAddingTask) { _, adding in
         if !adding { Task { await refresh() } }
       }
@@ -172,29 +182,6 @@ struct TasksTabView: View {
       .onChange(of: registry.providerAuthorizationStates) { _, _ in
         Task { await refresh() }
       }
-  }
-
-  /// The ``NavigationSplitView`` with search and initial data-loading modifiers.
-  private var navigationView: some View {
-    NavigationSplitView(
-      columnVisibility: Binding(
-        get: { nav.sidebarVisible ? .all : .detailOnly },
-        set: { nav.sidebarVisible = $0 != .detailOnly }
-      )
-    ) {
-      ProviderSidebarView(
-        registry: registry, sidebarSelection: sidebarSelection,
-        onTaskAdded: { Task { await refresh() } }
-      )
-      .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 280)
-    } detail: {
-      detailColumn
-    }
-    .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
-    .searchFocused($isSearchFocused)
-    .task(id: query) { await refresh() }
-    .task { await subscribeToProviderUpdates() }
-    .onAppear { Task { await refresh() } }
   }
 
   // MARK: - Detail content
@@ -408,7 +395,7 @@ struct TasksTabView: View {
 
 // MARK: - Data loading
 
-extension TasksTabView {
+extension TaskDetailView {
 
   private func subscribeToProviderUpdates() async {
     await withTaskGroup(of: Void.self) { group in
@@ -537,12 +524,15 @@ extension TasksTabView {
 
 #Preview {
   let registry = ProviderRegistry()
-  return TasksTabView(
+  let settings = AppSettings()
+  let selectionStore = SelectionStore(registry: registry)
+  return TaskDetailView(
     selectionStore: TaskSelectionStore(),
     registry: registry,
     queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
-    sidebarSelection: SelectionStore(registry: registry),
-    nav: MainNavigation(settings: AppSettings()),
-    settings: AppSettings()
+    sidebarSelection: selectionStore,
+    nav: MainNavigation(
+      settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+    settings: settings
   )
 }

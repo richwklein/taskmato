@@ -1,22 +1,23 @@
 //
-//  ProviderSidebarView.swift
+//  AppSidebarView.swift
 //  Taskmato
 //
 
 import SwiftUI
 
-/// Sidebar column for the Tasks tab.
+/// The universal sidebar — the window-first shell's entire navigation.
 ///
-/// Shows each enabled task provider as a collapsible ``Section``. Inside each section,
-/// list rows carry a leading icon and, for writable providers, a star button to promote
-/// the default list. Writable provider sections also expose an inline "New list" row at
-/// the bottom. A context menu on each section header provides configure, rename, and
-/// delete actions. The "Add Provider" menu at the bottom enables any registered but
-/// currently disabled provider.
-struct ProviderSidebarView: View {
+/// A single `List` bound to ``MainNavigation/destination`` holds every destination: the
+/// pinned Timer and Today rows, one collapsible ``Section`` per enabled provider (list rows,
+/// inline rename, star-default, and a "New list" row for writable providers), and a
+/// collapsible Stats section of scope rows. Section expansion is persisted via
+/// ``AppSettings/collapsedSidebarSections``; enabling or configuring a provider re-expands
+/// its section. When no provider is enabled, the provider area is replaced by an add hint.
+struct AppSidebarView: View {
 
+  @Bindable var nav: MainNavigation
   var registry: ProviderRegistry
-  @Bindable var sidebarSelection: SelectionStore
+  var settings: AppSettings
   /// Called after a task is successfully added from the list context-menu "Add Task…" item.
   var onTaskAdded: (() -> Void)?
 
@@ -51,33 +52,36 @@ struct ProviderSidebarView: View {
     registry.providers.filter { !registry.isEnabled($0.id) }
   }
 
+  /// Section id used for the Stats section's persisted expansion state.
+  private static let statsSectionID = "stats"
+
   // MARK: - Body
 
   var body: some View {
-    List(selection: $sidebarSelection.selection) {
+    List(selection: $nav.destination) {
+      Label("Timer", systemImage: "timer")
+        .tag(AppDestination.timer)
       Label("Today", systemImage: "calendar")
-        .tag(SidebarSelection.today)
+        .tag(AppDestination.today)
 
-      ForEach(enabledProviders, id: \.id) { provider in
-        providerSection(provider)
+      if enabledProviders.isEmpty {
+        emptyProvidersHint
+      } else {
+        ForEach(enabledProviders, id: \.id) { provider in
+          providerSection(provider)
+        }
       }
+
+      statsSection
     }
     .listStyle(.sidebar)
-    .contextMenu(forSelectionType: SidebarSelection.self) { selections in
-      listContextMenu(for: selections)
-    }
-    .safeAreaInset(edge: .bottom, spacing: 0) {
-      if !disabledProviders.isEmpty {
-        VStack(spacing: 0) {
-          Divider()
-          addProviderMenu
-            .padding(.horizontal, .groupGap)
-            .padding(.vertical, .contentGap)
-        }
-        .background(.bar)
-      }
+    .contextMenu(forSelectionType: AppDestination.self) { selections in
+      sidebarContextMenu(for: selections)
     }
     .task { await loadAllLists() }
+    .onChange(of: registry.enabledIDs) { old, new in
+      handleNewlyEnabled(new.subtracting(old))
+    }
     .onChange(of: isAddingTask) { _, adding in
       if !adding { onTaskAdded?() }
     }
@@ -104,14 +108,30 @@ struct ProviderSidebarView: View {
     }
   }
 
+  // MARK: - Empty state
+
+  @ViewBuilder
+  private var emptyProvidersHint: some View {
+    VStack(spacing: .contentGap) {
+      Text("No providers enabled")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+      addProviderMenu
+        .fixedSize()
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, .sectionGap)
+    .listRowSeparator(.hidden)
+  }
+
   // MARK: - Provider section
 
   @ViewBuilder
   private func providerSection(_ provider: any TaskProvider) -> some View {
-    Section {
+    Section(isExpanded: expansionBinding(for: provider.id)) {
       ForEach(lists(for: provider)) { list in
         listRow(list, provider: provider)
-          .tag(SidebarSelection.list(SelectedList(providerID: provider.id, listID: list.id)))
+          .tag(AppDestination.list(SelectedList(providerID: provider.id, listID: list.id)))
       }
       if provider is (any WritableTaskProvider) {
         newListRow(providerID: provider.id)
@@ -143,6 +163,22 @@ struct ProviderSidebarView: View {
           Label("Remove \(provider.displayName)", systemImage: AppLabels.Sidebar.remove.systemImage)
         }
       }
+    }
+  }
+
+  // MARK: - Stats section
+
+  @ViewBuilder
+  private var statsSection: some View {
+    Section(isExpanded: expansionBinding(for: Self.statsSectionID)) {
+      ForEach(StatScope.allCases, id: \.self) { scope in
+        Label(scope.sidebarLabel, systemImage: "chart.bar")
+          .tag(AppDestination.stats(scope))
+      }
+    } header: {
+      Text("Stats")
+        .font(.callout)
+        .padding(.vertical, .stackTight)
     }
   }
 
@@ -179,60 +215,67 @@ struct ProviderSidebarView: View {
 
   /// Builds the contextual menu for a control-clicked sidebar selection.
   ///
-  /// Activated via `contextMenu(forSelectionType:)` on the List, this looks up the
-  /// writable list referenced by the clicked row and renders "Add Task…" plus the standard
-  /// set/rename/delete management actions. Returns no items for `.today` or read-only rows.
+  /// Empty-area clicks (empty `selections`) surface the "Add Provider" menu; a control-click
+  /// on a writable list row surfaces "Add Task…" plus the set/rename/delete actions. Timer,
+  /// Today, Stats, and read-only rows produce no items.
   @ViewBuilder
-  private func listContextMenu(for selections: Set<SidebarSelection>) -> some View {
+  private func sidebarContextMenu(for selections: Set<AppDestination>) -> some View {
     if let resolved = resolveListAction(from: selections) {
-      let list = resolved.list
-      let provider = resolved.provider
-      let writable = resolved.writable
-      let isDefaultList = isDefault(list.id, for: provider)
-
-      Button {
-        addTaskTarget = AddTaskTarget(provider: writable, listID: list.id)
-        isAddingTask = true
-      } label: {
-        Label(AppLabels.Sidebar.addTask.title, systemImage: AppLabels.Sidebar.addTask.systemImage)
-      }
-
-      Divider()
-
-      Button {
-        let id = list.id
-        Task { try? await writable.setDefaultList(id) }
-      } label: {
-        Label(
-          AppLabels.Sidebar.setDefault.title, systemImage: AppLabels.Sidebar.setDefault.systemImage)
-      }
-      .disabled(isDefaultList)
-
-      Button {
-        renamingListID = list.id
-        renameBuffer = list.name
-        renameFocused = list.id
-      } label: {
-        Label(AppLabels.Sidebar.rename.title, systemImage: AppLabels.Sidebar.rename.systemImage)
-      }
-
-      Divider()
-
-      Button(role: .destructive) {
-        Task {
-          try? await writable.deleteList(list.id)
-          await loadLists(for: provider)
-        }
-      } label: {
-        Label(
-          AppLabels.Sidebar.deleteList.title, systemImage: AppLabels.Sidebar.deleteList.systemImage)
-      }
-      .disabled(isDefaultList)
+      listContextMenu(for: resolved)
+    } else if selections.isEmpty {
+      addProviderMenuItems
     }
   }
 
+  @ViewBuilder
+  private func listContextMenu(for resolved: ListAction) -> some View {
+    let list = resolved.list
+    let provider = resolved.provider
+    let writable = resolved.writable
+    let isDefaultList = isDefault(list.id, for: provider)
+
+    Button {
+      addTaskTarget = AddTaskTarget(provider: writable, listID: list.id)
+      isAddingTask = true
+    } label: {
+      Label(AppLabels.Sidebar.addTask.title, systemImage: AppLabels.Sidebar.addTask.systemImage)
+    }
+
+    Divider()
+
+    Button {
+      let id = list.id
+      Task { try? await writable.setDefaultList(id) }
+    } label: {
+      Label(
+        AppLabels.Sidebar.setDefault.title, systemImage: AppLabels.Sidebar.setDefault.systemImage)
+    }
+    .disabled(isDefaultList)
+
+    Button {
+      renamingListID = list.id
+      renameBuffer = list.name
+      renameFocused = list.id
+    } label: {
+      Label(AppLabels.Sidebar.rename.title, systemImage: AppLabels.Sidebar.rename.systemImage)
+    }
+
+    Divider()
+
+    Button(role: .destructive) {
+      Task {
+        try? await writable.deleteList(list.id)
+        await loadLists(for: provider)
+      }
+    } label: {
+      Label(
+        AppLabels.Sidebar.deleteList.title, systemImage: AppLabels.Sidebar.deleteList.systemImage)
+    }
+    .disabled(isDefaultList)
+  }
+
   /// Resolves the row-targeted context-menu action from a selection set, or `nil` for non-writable rows.
-  private func resolveListAction(from selections: Set<SidebarSelection>) -> ListAction? {
+  private func resolveListAction(from selections: Set<AppDestination>) -> ListAction? {
     guard let selection = selections.first,
       case .list(let selectedList) = selection,
       let provider = registry.providers.first(where: { $0.id == selectedList.providerID }),
@@ -296,7 +339,7 @@ struct ProviderSidebarView: View {
           else { return }
           newListName[providerID] = ""
           Task {
-            try? await writable.createList(name: trimmed)
+            _ = try? await writable.createList(name: trimmed)
             await loadLists(for: writable)
           }
         }
@@ -306,26 +349,65 @@ struct ProviderSidebarView: View {
 
   // MARK: - Add Provider menu
 
+  /// Menu items enabling any registered-but-disabled provider. Used by the empty-area
+  /// context menu and the empty-state hint. Post-enable handling (expand, configure, load
+  /// lists) runs in ``handleNewlyEnabled(_:)`` so it is uniform across every entry point,
+  /// including the File → Add Provider command.
+  @ViewBuilder
+  private var addProviderMenuItems: some View {
+    ForEach(disabledProviders, id: \.id) { provider in
+      Button {
+        registry.enable(provider)
+      } label: {
+        Label(provider.displayName, systemImage: provider.icon)
+      }
+    }
+  }
+
   private var addProviderMenu: some View {
     Menu {
-      ForEach(disabledProviders, id: \.id) { provider in
-        Button {
-          registry.enable(provider)
-          if let configurable = provider as? (any ConfigurableTaskProvider) {
-            configuringProvider = configurable
-          }
-          Task { await loadLists(for: provider) }
-        } label: {
-          Label(provider.displayName, systemImage: provider.icon)
-        }
-      }
+      addProviderMenuItems
     } label: {
       Label(
         AppLabels.Sidebar.addProvider.title, systemImage: AppLabels.Sidebar.addProvider.systemImage
       )
-      .frame(maxWidth: .infinity, alignment: .leading)
     }
     .menuStyle(.borderlessButton)
+  }
+
+  /// Reacts to providers becoming enabled from any source: re-expands each section, opens the
+  /// configuration sheet for a configurable provider that is not yet authorized (so lists can
+  /// load), and refreshes its list cache.
+  private func handleNewlyEnabled(_ addedIDs: Set<String>) {
+    guard !addedIDs.isEmpty else { return }
+    let added = registry.providers.filter { addedIDs.contains($0.id) }
+    for provider in added {
+      settings.collapsedSidebarSections.remove(provider.id)
+      if let configurable = provider as? (any ConfigurableTaskProvider), !provider.isAuthorized {
+        configuringProvider = configurable
+      }
+    }
+    Task {
+      for provider in added {
+        await loadLists(for: provider)
+      }
+    }
+  }
+
+  // MARK: - Expansion state
+
+  /// A binding that maps a section's persisted collapsed state to `Section(isExpanded:)`.
+  private func expansionBinding(for id: String) -> Binding<Bool> {
+    Binding(
+      get: { !settings.collapsedSidebarSections.contains(id) },
+      set: { expanded in
+        if expanded {
+          settings.collapsedSidebarSections.remove(id)
+        } else {
+          settings.collapsedSidebarSections.insert(id)
+        }
+      }
+    )
   }
 
   // MARK: - Data helpers
@@ -374,8 +456,13 @@ struct ProviderSidebarView: View {
 
 #Preview {
   let registry = ProviderRegistry()
-  return ProviderSidebarView(
-    registry: registry, sidebarSelection: SelectionStore(registry: registry)
+  let settings = AppSettings()
+  let selectionStore = SelectionStore(registry: registry)
+  return AppSidebarView(
+    nav: MainNavigation(
+      settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+    registry: registry,
+    settings: settings
   )
-  .frame(width: 200, height: 400)
+  .frame(width: 220, height: 500)
 }

@@ -95,6 +95,16 @@ final class AppSettings {
     didSet { defaults.set(defaultWritableProviderID, forKey: Keys.defaultWritableProviderID) }
   }
 
+  /// Sidebar section IDs (a provider `id`, or `"stats"`) the user has collapsed.
+  ///
+  /// Empty by default, so every section starts expanded. Enabling or configuring a provider,
+  /// and programmatic list selection, re-expands a section by removing its ID from this set.
+  var collapsedSidebarSections: Set<String> {
+    didSet {
+      defaults.set(Array(collapsedSidebarSections), forKey: Keys.collapsedSidebarSections)
+    }
+  }
+
   /// `focusMinutes` expressed as a `TimeInterval` in seconds.
   var focusDuration: TimeInterval { TimeInterval(focusMinutes * 60) }
 
@@ -131,6 +141,8 @@ final class AppSettings {
     taskSortDirection =
       defaults.string(forKey: Keys.taskSortDirection).flatMap(TaskSortDirection.init) ?? .ascending
     defaultWritableProviderID = defaults.string(forKey: Keys.defaultWritableProviderID)
+    collapsedSidebarSections = Set(
+      defaults.stringArray(forKey: Keys.collapsedSidebarSections) ?? [])
   }
 
   private enum Keys {
@@ -148,6 +160,7 @@ final class AppSettings {
     static let taskSortField = "taskSort.field"
     static let taskSortDirection = "taskSort.direction"
     static let defaultWritableProviderID = "tasks.defaultWritableProviderID"
+    static let collapsedSidebarSections = "sidebar.collapsedSections"
   }
 }
 

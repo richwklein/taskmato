@@ -32,6 +32,19 @@ enum StatScope: CaseIterable {
     case .allTime: return "All Time"
     }
   }
+
+  /// Human-readable title shown as a sidebar scope row.
+  ///
+  /// Names the specific period (unlike ``label``, which names the period *kind* for the
+  /// segmented picker), since the sidebar row is the whole selection affordance.
+  var sidebarLabel: String {
+    switch self {
+    case .today: return "Today"
+    case .thisWeek: return "7 Days"
+    case .thisMonth: return "This Month"
+    case .allTime: return "All Time"
+    }
+  }
 }
 
 /// One day's focus contribution from a single provider, used in the stacked bar chart.

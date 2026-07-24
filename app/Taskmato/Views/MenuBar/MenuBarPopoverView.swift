@@ -78,8 +78,8 @@ struct MenuBarPopoverView: View {
       } else {
         Button {
           let popover = NSApp.keyWindow
-          nav.browseTasksAndPick()
           nav.openMainWindow()
+          nav.showTasks()
           DispatchQueue.main.async { popover?.close() }
         } label: {
           Label(AppLabels.View.browseTask.title, systemImage: AppLabels.View.browseTask.systemImage)
@@ -121,12 +121,15 @@ struct MenuBarPopoverView: View {
 #Preview {
   let engine = SessionEngine()
   let settings = AppSettings()
+  let registry = ProviderRegistry()
   return MenuBarPopoverView(
     presenter: TimerPresenter(engine: engine, settings: settings),
     engine: engine,
     statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
-    registry: ProviderRegistry(),
-    nav: MainNavigation(settings: settings)
+    registry: registry,
+    nav: MainNavigation(
+      settings: settings, selectionStore: SelectionStore(registry: registry),
+      statsViewModel: .preview)
   )
 }

@@ -1,5 +1,5 @@
 //
-//  TasksTabSortMenu.swift
+//  TaskDetailSortMenu.swift
 //  Taskmato
 //
 
@@ -7,7 +7,7 @@ import SwiftUI
 
 // MARK: - Sort menu
 
-extension TasksTabView {
+extension TaskDetailView {
 
   /// Sort menu placed in the toolbar.
   ///
