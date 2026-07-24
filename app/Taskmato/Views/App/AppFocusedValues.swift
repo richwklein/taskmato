@@ -43,27 +43,27 @@ private struct TimerStopKey: FocusedValueKey {
   typealias Value = () -> Void
 }
 
-private struct SelectedTabKey: FocusedValueKey {
-  typealias Value = MainTab
+private struct DestinationKey: FocusedValueKey {
+  typealias Value = AppDestination
 }
 
 // MARK: - FocusedValues extensions
 
 extension FocusedValues {
 
-  /// Moves keyboard focus into the Tasks tab search field. Published by ``TasksTabView``.
+  /// Moves keyboard focus into the Tasks tab search field. Published by ``TaskDetailView``.
   var focusSearch: (() -> Void)? {
     get { self[FocusSearchKey.self] }
     set { self[FocusSearchKey.self] = newValue }
   }
 
-  /// Opens the Add Task sheet. Published by ``TasksTabView`` when a writable provider is active.
+  /// Opens the Add Task sheet. Published by ``TaskDetailView`` when a writable provider is active.
   var addTask: (() -> Void)? {
     get { self[AddTaskKey.self] }
     set { self[AddTaskKey.self] = newValue }
   }
 
-  /// Toggles the completed tasks section. Published by ``TasksTabView`` when a closable provider is enabled.
+  /// Toggles the completed tasks section. Published by ``TaskDetailView`` when a closable provider is enabled.
   var toggleCompleted: (() -> Void)? {
     get { self[ToggleCompletedKey.self] }
     set { self[ToggleCompletedKey.self] = newValue }
@@ -105,9 +105,9 @@ extension FocusedValues {
     set { self[TimerStopKey.self] = newValue }
   }
 
-  /// The currently selected tab in the main window. Published by ``MainWindowView``.
-  var selectedTab: MainTab? {
-    get { self[SelectedTabKey.self] }
-    set { self[SelectedTabKey.self] = newValue }
+  /// The currently selected destination in the main window. Published by ``MainWindowView``.
+  var destination: AppDestination? {
+    get { self[DestinationKey.self] }
+    set { self[DestinationKey.self] = newValue }
   }
 }
