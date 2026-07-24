@@ -86,7 +86,8 @@ struct TaskmatoApp: App {
     .defaultSize(width: 480, height: 520)
     .windowResizability(.contentMinSize)
     .commands {
-      TaskmatoCommands(nav: composition.nav, settings: composition.settings)
+      TaskmatoCommands(
+        nav: composition.nav, settings: composition.settings, registry: composition.registry)
     }
 
     Settings {
@@ -106,7 +107,7 @@ struct TaskmatoApp: App {
 /// Menu commands and keyboard shortcuts for the main application window.
 struct TaskmatoCommands: Commands {
 
-  @FocusedValue(\.selectedTab) private var selectedTab
+  @FocusedValue(\.destination) private var destination
   @FocusedValue(\.focusSearch) private var focusSearch
   @FocusedValue(\.addTask) private var addTask
   @FocusedValue(\.toggleCompleted) private var toggleCompleted
@@ -117,47 +118,84 @@ struct TaskmatoCommands: Commands {
   @FocusedValue(\.timerSkip) private var timerSkip
   @FocusedValue(\.timerStop) private var timerStop
 
-  /// The navigation model used to switch tabs from the View menu.
+  /// The navigation model used to switch destinations from the View menu.
   var nav: MainNavigation
   /// App settings used to read and write layout and sort state for View menu checkmarks.
   @Bindable var settings: AppSettings
+  /// The provider registry used to populate the File → Add Provider submenu.
+  var registry: ProviderRegistry
+
+  /// Whether the focused window is showing a task-scope destination (Today or a list).
+  ///
+  /// Read from the focused value so task-scope commands gate on what the window shows,
+  /// which absorbs the #426 pattern where Layout/Sort stayed enabled off the task surface.
+  private var isTaskScope: Bool {
+    if case .today = destination { return true }
+    if case .list = destination { return true }
+    return false
+  }
+
+  /// Whether the current navigation destination is any Stats scope.
+  private var isStatsDestination: Bool {
+    if case .stats = nav.destination { return true }
+    return false
+  }
+
+  /// Registered providers that are not currently enabled.
+  private var disabledProviders: [any TaskProvider] {
+    registry.providers.filter { !registry.isEnabled($0.id) }
+  }
 
   var body: some Commands {
-    // File → New Task (⌘N); disabled when no writable provider is available.
+    // File → New Task (⌘N) and Add Provider ▸.
     CommandGroup(replacing: .newItem) {
       Button(AppLabels.Task.add.title) { addTask?() }
         .keyboardShortcut("n")
         .disabled(addTask == nil)
+
+      // Disabled placeholder when every provider is already enabled — an empty submenu
+      // reads as broken, a greyed item reads as "nothing to add". Enabling here is picked up
+      // by the sidebar, which expands the section, opens configuration, and loads lists.
+      if disabledProviders.isEmpty {
+        Button(AppLabels.Sidebar.addProvider.title) {}
+          .disabled(true)
+      } else {
+        Menu(AppLabels.Sidebar.addProvider.title) {
+          ForEach(disabledProviders, id: \.id) { provider in
+            Button(provider.displayName) { registry.enable(provider) }
+          }
+        }
+      }
     }
-    // Edit → Find… (⌘F); disabled when not on the Tasks tab.
+    // Edit → Find… (⌘F); disabled when not on a task destination (focusSearch is only
+    // published by the task detail surface).
     CommandGroup(after: .textEditing) {
       Divider()
       Button(AppLabels.View.find.title) { focusSearch?() }
         .keyboardShortcut("f")
         .disabled(focusSearch == nil)
     }
-    // View → Suppress the default broken sidebar toggle; our replacement lives at the bottom below.
-    CommandGroup(replacing: .sidebar) {}
-    // View → tab navigation (⌘1/2/3), layout, completed toggle (⌘⇧C), Sort By, then Show/Hide
-    // Sidebar (⌘⌃S) — placed last so it sits directly above the system "Enter Full Screen" item.
+    // View → destination navigation (⌘1/2/3), layout, completed toggle (⌘⇧C), Sort By.
+    // The system Show/Hide Sidebar command (⌃⌘S) is restored automatically now that a
+    // single NavigationSplitView sits at the window root, so no custom toggle is needed.
     CommandGroup(after: .sidebar) {
       Divider()
       Button {
-        nav.showTasks()
+        nav.showTimer()
       } label: {
-        Label(AppLabels.Tab.tasks.title, systemImage: nav.selectedTab == .tasks ? "checkmark" : "")
+        Label(AppLabels.Tab.timer.title, systemImage: nav.destination == .timer ? "checkmark" : "")
       }
       .keyboardShortcut("1")
       Button {
-        nav.showTimer()
+        nav.destination = .today
       } label: {
-        Label(AppLabels.Tab.timer.title, systemImage: nav.selectedTab == .timer ? "checkmark" : "")
+        Label(AppLabels.Tab.today.title, systemImage: nav.destination == .today ? "checkmark" : "")
       }
       .keyboardShortcut("2")
       Button {
         nav.showStats()
       } label: {
-        Label(AppLabels.Tab.stats.title, systemImage: nav.selectedTab == .stats ? "checkmark" : "")
+        Label(AppLabels.Tab.stats.title, systemImage: isStatsDestination ? "checkmark" : "")
       }
       .keyboardShortcut("3")
       Divider()
@@ -168,7 +206,7 @@ struct TaskmatoCommands: Commands {
           .tag(TaskPickerLayout.grid)
       }
       .pickerStyle(.inline)
-      .disabled(selectedTab != .tasks)
+      .disabled(!isTaskScope)
       Divider()
       Button {
         toggleCompleted?()
@@ -210,16 +248,7 @@ struct TaskmatoCommands: Commands {
       } label: {
         Label(AppLabels.View.sort.title, systemImage: AppLabels.View.sort.systemImage)
       }
-      .disabled(selectedTab != .tasks)
-      Divider()
-      let sidebarSpec = nav.sidebarVisible ? AppLabels.View.hideSidebar : AppLabels.View.showSidebar
-      Button {
-        nav.sidebarVisible.toggle()
-      } label: {
-        Label(sidebarSpec.title, systemImage: sidebarSpec.systemImage)
-      }
-      .keyboardShortcut("s", modifiers: [.command, .control])
-      .disabled(selectedTab != .tasks)
+      .disabled(!isTaskScope)
     }
     // Timer menu — Start/Pause/Resume (⌘⏎), Skip Phase (⌘K), Stop (⌘.).
     CommandMenu("Timer") {

@@ -102,9 +102,10 @@ enum AppLabels {
     static let stop = AppLabel("Stop", systemImage: "stop.fill")
   }
 
-  /// Labels for the three main-window tabs.
+  /// Labels for the primary window destinations.
   enum Tab {
     static let tasks = AppLabel("Tasks", systemImage: "checklist")
+    static let today = AppLabel("Today", systemImage: "calendar")
     static let timer = AppLabel("Timer", systemImage: "timer")
     static let stats = AppLabel("Stats", systemImage: "chart.bar")
   }
