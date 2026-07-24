@@ -7,17 +7,17 @@ import SwiftUI
 
 /// The statistics tab shown in the main application window.
 ///
-/// Shows a scope picker and, for every scope except All Time, period back/forward navigation.
-/// Each scope renders its own visualisation — a task donut (Today), a stacked daily bar chart
-/// with a ranked task list (7 Days / This Month), or a sortable all-time task table. All data
-/// is derived from ``StatsViewModel``.
+/// The scope is chosen from the sidebar's Stats section (which sets ``StatsViewModel/scope``);
+/// for every scope except All Time this view shows period back/forward navigation. Each scope
+/// renders its own visualisation — a task donut (Today), a stacked daily bar chart with a
+/// ranked task list (7 Days / This Month), or a sortable all-time task table. All data is
+/// derived from ``StatsViewModel``.
 struct StatsTabView: View {
 
   @Bindable var statsViewModel: StatsViewModel
 
   var body: some View {
     VStack(spacing: 0) {
-      scopePicker
       navigationRow
       content
     }
@@ -81,20 +81,6 @@ struct StatsTabView: View {
     }
   }
 
-  // MARK: - Scope picker
-
-  private var scopePicker: some View {
-    Picker("Scope", selection: $statsViewModel.scope) {
-      ForEach(StatScope.allCases, id: \.self) { statScope in
-        Text(statScope.label).tag(statScope)
-      }
-    }
-    .pickerStyle(.segmented)
-    .labelsHidden()
-    .padding([.horizontal, .top])
-    .padding(.bottom, .sectionGap)
-  }
-
   // MARK: - Period navigation
 
   /// Always rendered so its height is constant across scopes; the arrows are hidden for All
@@ -127,7 +113,7 @@ struct StatsTabView: View {
     }
     .buttonStyle(.borderless)
     .frame(maxWidth: .infinity)
-    .padding(.horizontal)
+    .padding([.horizontal, .top])
     .padding(.bottom, .contentGap)
   }
 
