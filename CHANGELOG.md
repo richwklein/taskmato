@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.9.0](https://github.com/richwklein/taskmato/compare/v0.8.0...v0.9.0) (2026-07-24)
+
+
+### Features
+
+* **menubar:** slim companion popover; move disambiguation to the window ([#464](https://github.com/richwklein/taskmato/issues/464)) ([bd237d2](https://github.com/richwklein/taskmato/commit/bd237d2e6b8baa1e1c0774399930343a1f3e3484))
+* **shell:** window-first NavigationSplitView shell ([#442](https://github.com/richwklein/taskmato/issues/442)) ([#462](https://github.com/richwklein/taskmato/issues/462)) ([2309f69](https://github.com/richwklein/taskmato/commit/2309f69adf09024a4f673eba240f33a1b817102a))
+
+
+### Code Refactoring
+
+* **design:** adopt design tokens across existing views ([#456](https://github.com/richwklein/taskmato/issues/456)) ([962c16e](https://github.com/richwklein/taskmato/commit/962c16ea6b8c30990bb3ea6ab33087f41407bbb0))
+* **design:** establish design token vocabulary and styling reference ([#455](https://github.com/richwklein/taskmato/issues/455)) ([4702e97](https://github.com/richwklein/taskmato/commit/4702e97f0e107444e146cc06698205b047967f54))
+* **tasks:** split TaskRegistry into ProviderRegistry, SelectionStore, TaskQueryService, TaskSorter ([#461](https://github.com/richwklein/taskmato/issues/461)) ([b5da54e](https://github.com/richwklein/taskmato/commit/b5da54ebe4befd92dac0879322a938cf4c46a009))
+* **timer:** centralize timer display and intent in TimerPresenter ([#459](https://github.com/richwklein/taskmato/issues/459)) ([f1aa9de](https://github.com/richwklein/taskmato/commit/f1aa9de0ca2960111b7d4f87c515da196c3f93fc))
+
+
+### Miscellaneous Chores
+
+* **audit:** adopt changelog-sections from template ([#457](https://github.com/richwklein/taskmato/issues/457)) ([a8c9a32](https://github.com/richwklein/taskmato/commit/a8c9a32801a23e9a2c9ea39882f1358b8d306b73))
+
 ## [0.8.0](https://github.com/richwklein/taskmato/compare/v0.7.0...v0.8.0) (2026-07-21)
 
 
