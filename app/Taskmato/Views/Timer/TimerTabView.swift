@@ -27,10 +27,10 @@ struct TimerTabView: View {
 
       TimerControlsView(
         presenter: presenter,
+        size: .regular,
         startDisabled: selectionStore.activeTask == nil,
         startDisabledHelp: AppLabels.Tooltip.selectTaskFirst
       )
-      .frame(height: 44)
       .padding(.top, 20)
       .padding(.bottom, .screenPadding)
 
