@@ -67,8 +67,8 @@ struct ActiveTaskView: View {
       if sessionIsActive {
         Button {
           if engine.isRunning { engine.pause() }
-          nav.browseTasksAndPick()
           nav.openMainWindow()
+          nav.showTasks()
         } label: {
           Image(systemName: "arrow.triangle.swap")
             .font(.caption2)

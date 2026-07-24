@@ -129,7 +129,10 @@ struct URLSchemeHandlerTests {
       selectionStore: selectionStore,
       engine: engine,
       settings: settings,
-      nav: MainNavigation(settings: settings)
+      nav: MainNavigation(
+        settings: settings,
+        selectionStore: SelectionStore(registry: registry, defaults: defaults),
+        statsViewModel: .preview)
     )
     return HandlerContext(
       handler: handler,

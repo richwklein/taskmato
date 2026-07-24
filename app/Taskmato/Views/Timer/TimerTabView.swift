@@ -47,7 +47,7 @@ struct TimerTabView: View {
         .padding(.horizontal, .contentGap)
       } else {
         Button {
-          nav.browseTasksAndPick()
+          nav.showTasks()
         } label: {
           Label(AppLabels.View.browseTask.title, systemImage: AppLabels.View.browseTask.systemImage)
             .font(.caption)
@@ -74,12 +74,15 @@ struct TimerTabView: View {
 #Preview {
   let engine = SessionEngine()
   let settings = AppSettings()
+  let registry = ProviderRegistry()
   return TimerTabView(
     presenter: TimerPresenter(engine: engine, settings: settings),
     engine: engine,
     statsViewModel: .preview,
     selectionStore: TaskSelectionStore(),
-    registry: ProviderRegistry(),
-    nav: MainNavigation(settings: settings)
+    registry: registry,
+    nav: MainNavigation(
+      settings: settings, selectionStore: SelectionStore(registry: registry),
+      statsViewModel: .preview)
   )
 }

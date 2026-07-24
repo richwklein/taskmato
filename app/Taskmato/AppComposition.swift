@@ -62,7 +62,8 @@ struct AppComposition {
     registry.onProviderStateChanged = { [weak sidebarSelection] in
       sidebarSelection?.validateSelection()
     }
-    let nav = MainNavigation(settings: settings)
+    let nav = MainNavigation(
+      settings: settings, selectionStore: sidebarSelection, statsViewModel: statsViewModel)
     let urlHandler = URLSchemeHandler(
       registry: registry, queryService: queryService, selectionStore: selectionStore,
       engine: engine, settings: settings,
