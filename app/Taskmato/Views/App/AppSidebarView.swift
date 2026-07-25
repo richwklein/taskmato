@@ -16,6 +16,7 @@ import SwiftUI
 struct AppSidebarView: View {
 
   @Bindable var nav: MainNavigation
+  var presenter: TimerPresenter
   var registry: ProviderRegistry
   var settings: AppSettings
   /// Called after a task is successfully added from the list context-menu "Add Task…" item.
@@ -59,7 +60,7 @@ struct AppSidebarView: View {
 
   var body: some View {
     List(selection: $nav.destination) {
-      Label("Timer", systemImage: "timer")
+      SidebarTimerRow(presenter: presenter)
         .tag(AppDestination.timer)
       Label("Today", systemImage: "calendar")
         .tag(AppDestination.today)
@@ -454,6 +455,30 @@ struct AppSidebarView: View {
   }
 }
 
+/// The pinned Timer sidebar row with its ambient countdown.
+///
+/// Renders the countdown as trailing text rather than a `.badge`, which on a `.sidebar`-style
+/// `List` blocks the row's hit-testing and makes it unselectable. Reads the presenter directly
+/// so the countdown updates live. The countdown shows whenever the session is non-idle — the
+/// ambient half of the ``SessionIndicators`` contract.
+private struct SidebarTimerRow: View {
+
+  /// The presenter supplying the non-idle state and countdown label.
+  let presenter: TimerPresenter
+
+  var body: some View {
+    HStack(spacing: .iconLabel) {
+      Label("Timer", systemImage: "timer")
+      Spacer(minLength: .contentGap)
+      if presenter.canStop {
+        Text(presenter.label)
+          .font(.callout.monospacedDigit())
+          .foregroundStyle(.secondary)
+      }
+    }
+  }
+}
+
 #Preview {
   let registry = ProviderRegistry()
   let settings = AppSettings()
@@ -461,6 +486,7 @@ struct AppSidebarView: View {
   return AppSidebarView(
     nav: MainNavigation(
       settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+    presenter: TimerPresenter(engine: SessionEngine(), settings: settings),
     registry: registry,
     settings: settings
   )

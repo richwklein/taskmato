@@ -26,6 +26,11 @@ struct MainWindowView: View {
   /// Bumped when the sidebar adds a task, forwarded into the task detail so it reloads.
   @State private var taskAddedToken = 0
 
+  /// Which session indicators (strip / sidebar badge) the window shows right now.
+  private var indicators: SessionIndicators {
+    SessionIndicators(isNonIdle: presenter.canStop, onTimer: nav.destination == .timer)
+  }
+
   var body: some View {
     NavigationSplitView(
       columnVisibility: Binding(
@@ -35,13 +40,22 @@ struct MainWindowView: View {
     ) {
       AppSidebarView(
         nav: nav,
+        presenter: presenter,
         registry: registry,
         settings: settings,
         onTaskAdded: { taskAddedToken += 1 }
       )
       .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 300)
     } detail: {
-      detail
+      VStack(spacing: 0) {
+        detail
+        if indicators.showStrip {
+          Divider()
+          TimerStripView(presenter: presenter, selectionStore: selectionStore) {
+            nav.destination = .timer
+          }
+        }
+      }
     }
     .frame(minWidth: 640, minHeight: 400)
     .focusedSceneValue(\.destination, nav.destination)

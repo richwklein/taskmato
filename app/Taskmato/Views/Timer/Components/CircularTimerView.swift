@@ -20,21 +20,8 @@ struct CircularTimerView: View {
 
   var body: some View {
     ZStack {
-      Circle()
-        .stroke(Color.timerRingTrack, lineWidth: strokeWidth)
-
-      // Elapsed arc grows clockwise from 12 o'clock as time passes.
-      Circle()
-        .trim(from: 0, to: 1 - progress)
-        .stroke(
-          Color.accentColor,
-          style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
-        )
-        .rotationEffect(.degrees(-90))
-        .animation(.linear(duration: 1), value: progress)
-
+      TimerRing(progress: progress, diameter: ringDiameter, strokeWidth: strokeWidth)
       TimerReadout(label: label, phase: phase)
     }
-    .frame(width: ringDiameter, height: ringDiameter)
   }
 }

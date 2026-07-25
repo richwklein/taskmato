@@ -22,21 +22,12 @@ struct PopoverActiveTaskLine: View {
           .font(.caption2)
           .foregroundStyle(Color.accentColor)
 
-        Text(displayTitle(for: task))
+        Text(activeTaskDisplayTitle(for: task))
           .font(.taskTitle)
           .lineLimit(1)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
     }
-  }
-
-  /// The task title prefixed with its coloured priority mark, when the priority carries one.
-  private func displayTitle(for task: TaskItem) -> AttributedString {
-    let mark = task.priority.mark
-    guard !mark.isEmpty else { return task.markdownTitle }
-    var prefix = AttributedString(mark + " ")
-    prefix.swiftUI.foregroundColor = task.priority.accentColor
-    return prefix + task.markdownTitle
   }
 }
 
