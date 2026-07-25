@@ -86,6 +86,10 @@ struct TaskmatoApp: App {
     }
     .defaultSize(width: 480, height: 520)
     .windowResizability(.contentMinSize)
+    // A `MenuBarExtra` in the scene graph suppresses `Window` presentation at launch, so the
+    // window-first shell asks for it explicitly (design doc 0008, D6 — launch surfaces the
+    // window at its last destination).
+    .defaultLaunchBehavior(.presented)
     .commands {
       TaskmatoCommands(
         nav: composition.nav, settings: composition.settings, registry: composition.registry)

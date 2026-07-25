@@ -64,6 +64,8 @@ struct AppComposition {
     }
     let nav = MainNavigation(
       settings: settings, selectionStore: sidebarSelection, statsViewModel: statsViewModel)
+    // A notification tap opens the main window at Timer (design doc 0008, D5).
+    notifications.onNotificationTapped = { nav.showTimerInMainWindow() }
     let urlHandler = URLSchemeHandler(
       registry: registry, queryService: queryService, selectionStore: selectionStore,
       engine: engine, settings: settings,

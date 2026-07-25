@@ -19,6 +19,13 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
   /// `becomeActive`, the user toggling the master alert switch, and before `send()`.
   private(set) var authStatus: UNAuthorizationStatus = .notDetermined
 
+  /// Invoked when the user taps a delivered notification.
+  ///
+  /// Wired by the composition root to open the main window at the Timer destination
+  /// (design doc 0008, D5). Kept as a closure so the service stays decoupled from the
+  /// navigation layer.
+  var onNotificationTapped: (() -> Void)?
+
   private let settings: AppSettings
   private let center: NotificationCenterAPI
 
@@ -85,16 +92,16 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     completionHandler([.banner, .sound])
   }
 
-  /// Handles a tap on a delivered notification.
+  /// Handles a tap on a delivered notification by opening the main window at Timer.
   ///
-  /// Calling `completionHandler` without activating the app prevents macOS from
-  /// applying its default "bring app to foreground" behavior, which would open the
-  /// main Window scene unexpectedly for a menu-bar-only app.
+  /// The window-first shell surfaces the window on activation (design doc 0008, D5); the
+  /// tap routes through ``onNotificationTapped`` on the main actor.
   func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
+    Task { @MainActor in onNotificationTapped?() }
     completionHandler()
   }
 }

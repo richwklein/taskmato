@@ -13,10 +13,10 @@ import Observation
 /// ``SelectionStore`` sink and stats destinations into ``StatsViewModel/scope``, so the
 /// task-query and stats layers never learn about each other's surfaces (design doc 0008, D4).
 ///
-/// The SwiftUI `openWindow` environment action is bound onto the model once from the
-/// menu-bar popover's `onAppear` via ``bindOpenMainWindow(_:)``; while the app is still an
-/// accessory (`LSUIElement`), popover-originated navigation opens the window through the
-/// stored action. This plumbing is removed with the lifecycle flip (#444).
+/// The SwiftUI `openWindow` environment action is bound onto the model once from the main
+/// window's `onAppear` via ``bindOpenMainWindow(_:)``. The main window is the primary surface
+/// and owns this plumbing; external activations (notification tap, `taskmato://`) and the
+/// popover route through the stored action to reopen the window when it has been closed.
 @Observable
 @MainActor
 final class MainNavigation {
@@ -69,8 +69,9 @@ final class MainNavigation {
 
   /// Stores the `openWindow` environment action so routing methods can open the main window.
   ///
-  /// Call once from the menu-bar popover's `onAppear`. Subsequent calls on popover
-  /// re-open overwrite with the same action and are harmless.
+  /// Call once from the main window's `onAppear`. Subsequent calls overwrite with the same
+  /// action and are harmless. The stored `OpenWindowAction` remains valid after the window
+  /// closes, so it can reopen the window on a warm-start external activation.
   func bindOpenMainWindow(_ action: @escaping () -> Void) {
     openMainWindowAction = action
   }
