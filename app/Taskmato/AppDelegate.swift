@@ -7,19 +7,15 @@
 
 import AppKit
 
-/// Applies the dock icon activation policy once the application has fully launched,
-/// and forwards URL scheme events directly to ``URLSchemeHandler``.
-///
-/// `NSApp.setActivationPolicy` must not be called during `App.init()` — the launch
-/// sequence is incomplete at that point and the call traps on restart. Deferring to
-/// `applicationDidFinishLaunching` is the documented safe window.
+/// Forwards URL scheme events directly to ``URLSchemeHandler`` and keeps the app alive when
+/// the main window closes.
 ///
 /// URL events are handled here rather than via `.onOpenURL` on SwiftUI views because
 /// `MenuBarExtra` content is not in the main window responder chain and misses URL events
 /// when the popover is collapsed.
 ///
-/// URLs that arrive before the menu-bar scene has mounted are held in `urlBuffer` and
-/// drained by ``reportScenesReady()`` once a scene reports it is ready.
+/// URLs that arrive before the main window scene has mounted are held in `urlBuffer` and
+/// drained by ``reportScenesReady()`` once the window reports it is ready.
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
   /// Injected by `TaskmatoApp.init()`. Called from `applicationWillFinishLaunching`,
@@ -34,31 +30,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var urlBuffer: [URL] = []
   private var scenesReady = false
 
-  /// Whether the main window was visible when the app last resigned active.
-  ///
-  /// Used to suppress SwiftUI window restoration triggered by notification taps:
-  /// macOS activates the app before `didReceive` fires, so the delegate alone
-  /// cannot prevent the window from appearing.
-  private var mainWindowWasVisible = false
-
-  func applicationWillResignActive(_ notification: Notification) {
-    mainWindowWasVisible = NSApp.windows
-      .contains { $0.identifier?.rawValue == "main" && $0.isVisible }
-  }
-
-  func applicationDidBecomeActive(_ notification: Notification) {
-    guard !mainWindowWasVisible else { return }
-    NSApp.windows.first { $0.identifier?.rawValue == "main" }?.orderOut(nil)
-  }
-
   func applicationWillFinishLaunching(_ notification: Notification) {
     bootstrap?()
   }
 
-  func applicationDidFinishLaunching(_ notification: Notification) {
-    if UserDefaults.standard.bool(forKey: "showDockIcon") {
-      NSApp.setActivationPolicy(.regular)
-    }
+  /// Keeps the app running in the menu bar after its last window closes (design doc 0008, D6).
+  ///
+  /// The window-first shell treats window close as "hide", not "quit"; the Dock icon or the
+  /// popover's "Open Taskmato" reopens it, and quit is ⌘Q.
+  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+    false
   }
 
   func application(_ application: NSApplication, open urls: [URL]) {
@@ -71,11 +52,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
   }
 
-  /// Called once when the menu-bar scene first appears; drains any buffered URLs.
+  /// Called once when the main window scene first appears; drains any buffered URLs.
   ///
-  /// Must be called from the menu-bar popover's `onAppear`, after `bindOpenMainWindow`
-  /// has been called on `MainNavigation`, so that URL handling can open the main window.
-  /// Subsequent calls are no-ops.
+  /// Must be called from the main window's `onAppear`, after `bindOpenMainWindow` has been
+  /// called on `MainNavigation`, so that URL handling can open the main window. Subsequent
+  /// calls are no-ops.
   func reportScenesReady() {
     guard !scenesReady else { return }
     scenesReady = true

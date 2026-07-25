@@ -11,17 +11,14 @@ import SwiftUI
 ///
 /// Glanceable timer state and controls only — countdown, phase, start/pause/skip/stop, a
 /// display-only active-task line, today's session summary, and "Open Taskmato". Task
-/// browsing and swapping live in the main window (design doc 0008, D1). On first
-/// appearance, binds the `openWindow` environment action onto ``MainNavigation`` and
-/// reports the menu-bar scene ready to drain any buffered cold-launch URLs.
+/// browsing and swapping live in the main window (design doc 0008, D1). Opening the window
+/// goes through ``MainNavigation``, whose reopen action is bound by the main window itself.
 struct MenuBarPopoverView: View {
 
   var presenter: TimerPresenter
   var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
   var nav: MainNavigation
-
-  @Environment(\.openWindow) private var openWindow
 
   var body: some View {
     VStack(spacing: 0) {
@@ -84,13 +81,6 @@ struct MenuBarPopoverView: View {
       .padding(.vertical, .groupGap)
     }
     .frame(width: 280)
-    .onAppear {
-      nav.bindOpenMainWindow {
-        NSApp.activate(ignoringOtherApps: true)
-        openWindow(id: "main")
-      }
-      (NSApp.delegate as? AppDelegate)?.reportScenesReady()
-    }
   }
 
   /// A compact one-line focus summary for the bottom bar: sessions · minutes · streak.

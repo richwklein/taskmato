@@ -3,6 +3,7 @@
 //  Taskmato
 //
 
+import AppKit
 import SwiftUI
 
 /// The root view for the main application window.
@@ -22,6 +23,8 @@ struct MainWindowView: View {
   var queryService: TaskQueryService
   var sidebarSelection: SelectionStore
   var nav: MainNavigation
+
+  @Environment(\.openWindow) private var openWindow
 
   /// Bumped when the sidebar adds a task, forwarded into the task detail so it reloads.
   @State private var taskAddedToken = 0
@@ -63,6 +66,17 @@ struct MainWindowView: View {
     .focusedSceneValue(\.timerToggleTitle, timerToggleTitleValue)
     .focusedSceneValue(\.timerSkip, { presenter.skip() })
     .focusedSceneValue(\.timerStop, presenter.canStop ? { presenter.stop() } : nil)
+    .onAppear {
+      // The main window is the primary surface, so it owns the `openWindow` plumbing: it
+      // binds the reopen action (used by external activations to restore a closed window)
+      // and reports the scene ready to drain any buffered cold-launch URLs (design doc
+      // 0008, D1/D5).
+      nav.bindOpenMainWindow {
+        NSApp.activate(ignoringOtherApps: true)
+        openWindow(id: "main")
+      }
+      (NSApp.delegate as? AppDelegate)?.reportScenesReady()
+    }
   }
 
   /// The detail surface for the current destination.
