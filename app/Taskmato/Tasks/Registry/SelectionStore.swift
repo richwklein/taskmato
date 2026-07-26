@@ -17,9 +17,6 @@ import Observation
 /// `.list(SelectedList)` (a specific provider list). The value is stored verbatim and validated
 /// once the registry's `providerLists` cache is populated. `.today` is always immediately valid;
 /// a `.list(...)` selection is treated as "no scope" until the cache confirms the list exists.
-///
-/// **Migration**: on first launch after upgrading from the list-scope model, the initializer
-/// removes the abandoned `"taskRegistry.selectedList"` key from `UserDefaults`.
 @Observable
 @MainActor
 final class SelectionStore {
@@ -46,10 +43,6 @@ final class SelectionStore {
   init(registry: ProviderRegistry, defaults: UserDefaults = .standard) {
     self.registry = registry
     self.defaults = defaults
-
-    // One-shot migration: remove the abandoned selected-list blob from prior versions.
-    defaults.removeObject(forKey: "taskRegistry.selectedList")
-
     self.selection =
       defaults.data(forKey: Self.selectionKey).flatMap {
         try? JSONDecoder().decode(SidebarSelection.self, from: $0)

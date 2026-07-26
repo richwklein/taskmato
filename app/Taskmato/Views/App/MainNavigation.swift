@@ -26,7 +26,10 @@ final class MainNavigation {
   /// Assignment forwards task scopes into ``SelectionStore`` and stats scopes into
   /// ``StatsViewModel``; `.timer` forwards nothing.
   var destination: AppDestination {
-    didSet { forward(destination) }
+    didSet {
+      forward(destination)
+      persistDestination()
+    }
   }
 
   /// Whether the sidebar column is visible in the root split view.
@@ -41,18 +44,33 @@ final class MainNavigation {
   @ObservationIgnored private let settings: AppSettings
   @ObservationIgnored private let selectionStore: SelectionStore
   @ObservationIgnored private let statsViewModel: StatsViewModel
+  @ObservationIgnored private let defaults: UserDefaults
   @ObservationIgnored private var openMainWindowAction: (() -> Void)?
 
   /// - Parameters:
   ///   - settings: App settings that persist `sidebarVisible`.
   ///   - selectionStore: The task-scope selection sink that task destinations forward into.
   ///   - statsViewModel: The stats view model whose scope stats destinations forward into.
-  init(settings: AppSettings, selectionStore: SelectionStore, statsViewModel: StatsViewModel) {
+  ///   - defaults: `UserDefaults` store for the persisted destination. Override in tests.
+  init(
+    settings: AppSettings, selectionStore: SelectionStore, statsViewModel: StatsViewModel,
+    defaults: UserDefaults = .standard
+  ) {
     self.settings = settings
     self.selectionStore = selectionStore
     self.statsViewModel = statsViewModel
-    // Restore the last task scope (Today by default); Timer/Stats are not persisted until #445.
-    self.destination = AppDestination(taskSelection: selectionStore.selection) ?? .today
+    self.defaults = defaults
+    // Restore the last surface (design doc 0008, D9). `didSet` does not fire during `init`, so
+    // the Stats scope is forwarded explicitly; the task scope is owned by `SelectionStore`.
+    switch Self.decodePersistedDestination(from: defaults) {
+    case .timer:
+      self.destination = .timer
+    case .stats(let scope):
+      statsViewModel.scope = scope
+      self.destination = .stats(scope)
+    case .tasks, .none:
+      self.destination = AppDestination(taskSelection: selectionStore.selection) ?? .today
+    }
   }
 
   /// Forwards a destination into the sink that owns its state, for task and stats scopes.
@@ -63,6 +81,51 @@ final class MainNavigation {
     if case .stats(let scope) = destination {
       statsViewModel.scope = scope
     }
+  }
+
+  /// Mirrors ``SelectionStore``'s validated selection back into ``destination`` after its
+  /// vanished-list cascade, so a persisted list that no longer exists falls back to Today.
+  ///
+  /// A no-op unless the current destination is a task scope, and idempotent when the two are
+  /// already in sync — safe to call on every `onProviderStateChanged` (design doc 0008, D9).
+  func reconcileTaskScope() {
+    guard destination.taskSelection != nil else { return }
+    let mirrored = AppDestination(taskSelection: selectionStore.selection) ?? .today
+    if mirrored != destination { destination = mirrored }
+  }
+
+  // MARK: - Destination persistence
+
+  /// The last surface, persisted to restore navigation on the next launch. The task scope is
+  /// owned by ``SelectionStore``, so only the surface discriminator is stored here.
+  private enum PersistedDestination: Codable {
+    /// The Timer surface.
+    case timer
+    /// Any task scope; the specific list/Today is restored from ``SelectionStore``.
+    case tasks
+    /// The Stats surface at a specific scope.
+    case stats(StatScope)
+  }
+
+  private static let destinationKey = "shell.destination"
+
+  private static func decodePersistedDestination(
+    from defaults: UserDefaults
+  ) -> PersistedDestination? {
+    defaults.data(forKey: destinationKey).flatMap {
+      try? JSONDecoder().decode(PersistedDestination.self, from: $0)
+    }
+  }
+
+  private func persistDestination() {
+    let persisted: PersistedDestination
+    switch destination {
+    case .timer: persisted = .timer
+    case .today, .list: persisted = .tasks
+    case .stats(let scope): persisted = .stats(scope)
+    }
+    guard let data = try? JSONEncoder().encode(persisted) else { return }
+    defaults.set(data, forKey: Self.destinationKey)
   }
 
   // MARK: - Window binding
