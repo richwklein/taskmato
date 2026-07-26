@@ -23,6 +23,7 @@ struct MainWindowView: View {
   var queryService: TaskQueryService
   var sidebarSelection: SelectionStore
   var nav: MainNavigation
+  var errorPresenter: ErrorPresenter
 
   @Environment(\.openWindow) private var openWindow
 
@@ -46,11 +47,13 @@ struct MainWindowView: View {
         presenter: presenter,
         registry: registry,
         settings: settings,
+        errorPresenter: errorPresenter,
         onTaskAdded: { taskAddedToken += 1 }
       )
       .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 300)
     } detail: {
       VStack(spacing: 0) {
+        ErrorBannerView(presenter: errorPresenter)
         detail
         if indicators.showStrip {
           Divider()
@@ -59,6 +62,7 @@ struct MainWindowView: View {
           }
         }
       }
+      .animation(.default, value: errorPresenter.current)
     }
     .frame(minWidth: 640, minHeight: 400)
     .focusedSceneValue(\.destination, nav.destination)
@@ -90,7 +94,8 @@ struct MainWindowView: View {
         statsViewModel: statsViewModel,
         selectionStore: selectionStore,
         registry: registry,
-        nav: nav
+        nav: nav,
+        errorPresenter: errorPresenter
       )
     case .today, .list:
       TaskDetailView(
@@ -100,6 +105,7 @@ struct MainWindowView: View {
         sidebarSelection: sidebarSelection,
         nav: nav,
         settings: settings,
+        errorPresenter: errorPresenter,
         refreshToken: taskAddedToken
       )
     case .stats:
@@ -138,6 +144,7 @@ struct MainWindowView: View {
     queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
     sidebarSelection: selectionStore,
     nav: MainNavigation(
-      settings: settings, selectionStore: selectionStore, statsViewModel: .preview)
+      settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+    errorPresenter: ErrorPresenter()
   )
 }

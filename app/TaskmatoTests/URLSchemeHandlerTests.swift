@@ -16,6 +16,7 @@ private struct HandlerContext {
   let selectionStore: TaskSelectionStore
   let localProvider: LocalProvider
   let settings: AppSettings
+  let errorPresenter: ErrorPresenter
 }
 
 // MARK: - Fakes
@@ -123,6 +124,7 @@ struct URLSchemeHandlerTests {
       registry.enable(stub)
     }
 
+    let errorPresenter = ErrorPresenter()
     let handler = URLSchemeHandler(
       registry: registry,
       queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
@@ -132,14 +134,16 @@ struct URLSchemeHandlerTests {
       nav: MainNavigation(
         settings: settings,
         selectionStore: SelectionStore(registry: registry, defaults: defaults),
-        statsViewModel: .preview)
+        statsViewModel: .preview),
+      errorPresenter: errorPresenter
     )
     return HandlerContext(
       handler: handler,
       registry: registry,
       selectionStore: selectionStore,
       localProvider: localProvider,
-      settings: settings
+      settings: settings,
+      errorPresenter: errorPresenter
     )
   }
 
@@ -185,13 +189,14 @@ struct URLSchemeHandlerTests {
     #expect(tasks.first?.list != nil)
   }
 
-  // MARK: - Ad-hoc task creation (LocalProvider disabled — transient)
+  // MARK: - Ad-hoc task creation (no writable provider — error, no fallback)
 
-  @Test func adHocTaskIsTransientWhenLocalDisabled() async {
+  @Test func adHocTaskSurfacesErrorWhenNoWritableProvider() async {
     let ctx = makeHandler(enableLocalProvider: false)
     await ctx.handler.handle(URL(string: "taskmato://start?title=Transient+Task")!)
-    #expect(ctx.selectionStore.activeTask?.title == "Transient Task")
-    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
+    // No enabled writable provider → no session starts and the failure is surfaced.
+    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.errorPresenter.current != nil)
   }
 
   @Test func adHocTaskWithHighPriority() async {
@@ -217,14 +222,14 @@ struct URLSchemeHandlerTests {
     #expect(items.map(\.title).contains("Override"))
   }
 
-  @Test func adHocTaskURLProviderParamFallsBackWhenProviderDisabled() async {
-    // provider= refers to a disabled/unknown provider → falls back to settings/firstEnabled
+  @Test func adHocTaskURLProviderParamSurfacesErrorWhenNoEnabledWritable() async {
+    // provider= refers to a disabled provider and none other is enabled → error, no session.
     let ctx = makeHandler(enableLocalProvider: true)
     ctx.registry.disable(providerID: LocalProvider.providerID)
     await ctx.handler.handle(
       URL(string: "taskmato://start?title=Fallback&provider=\(LocalProvider.providerID)")!)
-    // No enabled writable provider → transient
-    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
+    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.errorPresenter.current != nil)
   }
 
   @Test func adHocTaskURLProviderParamFallsBackToSettingsDefaultWhenDisabled() async {
@@ -263,8 +268,9 @@ struct URLSchemeHandlerTests {
       defaultWritableProviderID: LocalProvider.providerID
     )
     await ctx.handler.handle(URL(string: "taskmato://start?title=No+Provider")!)
-    // Settings points at disabled provider → falls through to transient
-    #expect(ctx.selectionStore.activeTask?.id.providerID == "adhoc")
+    // Settings points at a disabled provider and none is enabled → error, no session.
+    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.errorPresenter.current != nil)
   }
 
   // MARK: - Step 1: Lookup by provider + ID
@@ -368,7 +374,7 @@ struct URLSchemeHandlerTests {
     let ctx = makeHandler(stubProviderTasks: [task1, task2], enableLocalProvider: true)
     await ctx.handler.handle(URL(string: "taskmato://start?title=Deploy")!)
     let params = ctx.handler.pendingAdHocParams!
-    let task = await ctx.handler.makeAdHocTask(from: params)
+    let task = try #require(await ctx.handler.makeAdHocTask(from: params))
     #expect(task.id.providerID == LocalProvider.providerID)
     let localItems = try await ctx.localProvider.tasks(in: nil)
     #expect(localItems.map(\.title).contains("Deploy"))

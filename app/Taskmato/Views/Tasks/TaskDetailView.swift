@@ -21,6 +21,7 @@ struct TaskDetailView: View {
   var sidebarSelection: SelectionStore
   var nav: MainNavigation
   @Bindable var settings: AppSettings
+  var errorPresenter: ErrorPresenter
   /// Bumped by the sidebar after adding a task, so the detail reloads the affected list.
   var refreshToken: Int = 0
 
@@ -81,12 +82,15 @@ struct TaskDetailView: View {
     trackedDetail
       .sheet(isPresented: $isAddingTask) {
         if let provider = writableProvider {
-          AddTaskView(provider: provider, isPresented: $isAddingTask)
+          AddTaskView(
+            provider: provider, isPresented: $isAddingTask, errorPresenter: errorPresenter)
         }
       }
       .sheet(isPresented: $isEditingTask) {
         if let task = taskToEdit, let provider = registry.writableProvider(for: task.id) {
-          AddTaskView(provider: provider, isPresented: $isEditingTask, taskToEdit: task)
+          AddTaskView(
+            provider: provider, isPresented: $isEditingTask, errorPresenter: errorPresenter,
+            taskToEdit: task)
         }
       }
       .toolbar {
@@ -496,7 +500,9 @@ extension TaskDetailView {
   private func handleComplete(_ task: TaskItem) {
     Task {
       if let provider = registry.closableProvider(for: task.id) {
-        try? await provider.complete(task.id)
+        await errorPresenter.attempt(AppLabels.Error.completeFailed) {
+          try await provider.complete(task.id)
+        }
       }
       await refresh()
     }
@@ -505,7 +511,9 @@ extension TaskDetailView {
   private func handleRestore(_ task: TaskItem) {
     Task {
       if let provider = registry.closableProvider(for: task.id) {
-        try? await provider.reopen(task.id)
+        await errorPresenter.attempt(AppLabels.Error.restoreFailed) {
+          try await provider.reopen(task.id)
+        }
       }
       await refresh()
     }
@@ -514,7 +522,9 @@ extension TaskDetailView {
   private func handleDelete(_ task: TaskItem) {
     Task {
       if let provider = registry.provider(for: task.id) as? (any WritableTaskProvider) {
-        try? await provider.deleteTask(task.id)
+        await errorPresenter.attempt(AppLabels.Error.deleteFailed) {
+          try await provider.deleteTask(task.id)
+        }
       }
       await loadCompleted()
     }
@@ -533,6 +543,7 @@ extension TaskDetailView {
     sidebarSelection: selectionStore,
     nav: MainNavigation(
       settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
-    settings: settings
+    settings: settings,
+    errorPresenter: ErrorPresenter()
   )
 }

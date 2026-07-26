@@ -19,6 +19,7 @@ struct AppSidebarView: View {
   var presenter: TimerPresenter
   var registry: ProviderRegistry
   var settings: AppSettings
+  var errorPresenter: ErrorPresenter
   /// Called after a task is successfully added from the list context-menu "Add Task…" item.
   var onTaskAdded: (() -> Void)?
 
@@ -103,6 +104,7 @@ struct AppSidebarView: View {
         AddTaskView(
           provider: target.provider,
           isPresented: $isAddingTask,
+          errorPresenter: errorPresenter,
           initialListID: target.listID
         )
       }
@@ -202,7 +204,11 @@ struct AppSidebarView: View {
       if writable != nil {
         Button {
           let id = list.id
-          Task { try? await writable?.setDefaultList(id) }
+          Task {
+            await errorPresenter.attempt(AppLabels.Error.setDefaultFailed) {
+              try await writable?.setDefaultList(id)
+            }
+          }
         } label: {
           Image(systemName: isDefaultList ? "star.fill" : "star")
             .imageScale(.small)
@@ -246,7 +252,11 @@ struct AppSidebarView: View {
 
     Button {
       let id = list.id
-      Task { try? await writable.setDefaultList(id) }
+      Task {
+        await errorPresenter.attempt(AppLabels.Error.setDefaultFailed) {
+          try await writable.setDefaultList(id)
+        }
+      }
     } label: {
       Label(
         AppLabels.Sidebar.setDefault.title, systemImage: AppLabels.Sidebar.setDefault.systemImage)
@@ -265,7 +275,9 @@ struct AppSidebarView: View {
 
     Button(role: .destructive) {
       Task {
-        try? await writable.deleteList(list.id)
+        await errorPresenter.attempt(AppLabels.Error.listDeleteFailed) {
+          try await writable.deleteList(list.id)
+        }
         await loadLists(for: provider)
       }
     } label: {
@@ -340,7 +352,9 @@ struct AppSidebarView: View {
           else { return }
           newListName[providerID] = ""
           Task {
-            _ = try? await writable.createList(name: trimmed)
+            await errorPresenter.attempt(AppLabels.Error.listCreateFailed) {
+              _ = try await writable.createList(name: trimmed)
+            }
             await loadLists(for: writable)
           }
         }
@@ -431,7 +445,9 @@ struct AppSidebarView: View {
     }
     renamingListID = nil
     Task {
-      try? await writable.renameList(list.id, name: trimmed)
+      await errorPresenter.attempt(AppLabels.Error.listRenameFailed) {
+        try await writable.renameList(list.id, name: trimmed)
+      }
       await loadLists(for: provider)
     }
   }
@@ -440,16 +456,21 @@ struct AppSidebarView: View {
     renamingListID = nil
     renameBuffer = ""
   }
+}
 
-  // MARK: - Async list loading
+// MARK: - Async list loading
 
-  private func loadAllLists() async {
+extension AppSidebarView {
+
+  /// Loads every enabled provider's lists into the registry.
+  fileprivate func loadAllLists() async {
     for provider in enabledProviders {
       await loadLists(for: provider)
     }
   }
 
-  private func loadLists(for provider: any TaskProvider) async {
+  /// Loads and caches a single provider's lists, ignoring read failures.
+  fileprivate func loadLists(for provider: any TaskProvider) async {
     let loaded = (try? await provider.lists()) ?? []
     registry.setLists(loaded, forProviderID: provider.id)
   }
@@ -488,7 +509,8 @@ private struct SidebarTimerRow: View {
       settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
     presenter: TimerPresenter(engine: SessionEngine(), settings: settings),
     registry: registry,
-    settings: settings
+    settings: settings,
+    errorPresenter: ErrorPresenter()
   )
   .frame(width: 220, height: 500)
 }

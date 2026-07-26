@@ -32,6 +32,7 @@ struct AppComposition {
   let remindersProvider: RemindersProvider
   let urlHandler: URLSchemeHandler
   let nav: MainNavigation
+  let errorPresenter: ErrorPresenter
 
   /// Constructs every service, registers providers, and wires the phase-ended callback.
   init() {
@@ -67,10 +68,11 @@ struct AppComposition {
     }
     // A notification tap opens the main window at Timer (design doc 0008, D5).
     notifications.onNotificationTapped = { nav.showTimerInMainWindow() }
+    let errorPresenter = ErrorPresenter()
     let urlHandler = URLSchemeHandler(
       registry: registry, queryService: queryService, selectionStore: selectionStore,
       engine: engine, settings: settings,
-      nav: nav
+      nav: nav, errorPresenter: errorPresenter
     )
     self.engine = engine
     self.settings = settings
@@ -87,6 +89,7 @@ struct AppComposition {
     self.remindersProvider = remindersProvider
     self.urlHandler = urlHandler
     self.nav = nav
+    self.errorPresenter = errorPresenter
     engine.onPhaseEnded = makePhaseEndedHandler()
   }
 

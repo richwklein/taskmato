@@ -110,6 +110,31 @@ enum AppLabels {
     static let stats = AppLabel("Stats", systemImage: "chart.bar")
   }
 
+  /// Banner titles for failed user-initiated provider operations — sentence-style
+  /// capitalization; the failing error's `localizedDescription` supplies the detail.
+  enum Error {
+    /// A task could not be marked completed.
+    static let completeFailed = "Couldn't complete task"
+    /// A completed task could not be restored.
+    static let restoreFailed = "Couldn't restore task"
+    /// A task could not be deleted.
+    static let deleteFailed = "Couldn't delete task"
+    /// A new task could not be added.
+    static let addFailed = "Couldn't add task"
+    /// An edited task could not be saved.
+    static let updateFailed = "Couldn't save task"
+    /// A new list could not be created.
+    static let listCreateFailed = "Couldn't create list"
+    /// A list could not be renamed.
+    static let listRenameFailed = "Couldn't rename list"
+    /// A list could not be deleted.
+    static let listDeleteFailed = "Couldn't delete list"
+    /// A list could not be set as the provider default.
+    static let setDefaultFailed = "Couldn't set default list"
+    /// An ad-hoc task from a `taskmato://` link could not be created.
+    static let adhocCreateFailed = "Couldn't create task"
+  }
+
   /// Labels for provider sidebar actions.
   enum Sidebar {
     /// Opens the Add Task sheet targeted at a specific list.
