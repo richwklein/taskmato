@@ -207,3 +207,35 @@ struct ObsidianProviderTokenExpansionTests {
     #expect(tasks[0].title == "Weekly task")
   }
 }
+
+// MARK: - Vault bookmark restore
+
+@Suite("ObsidianProvider — vault bookmark restore")
+@MainActor
+struct ObsidianProviderBookmarkRestoreTests {
+
+  /// A provider constructed over a store that already holds a vault bookmark must expose
+  /// `vaultURL` synchronously from `init` — before any list load — so the sidebar's first
+  /// `lists()` call after a cold launch sees a configured vault. A deferred assignment races
+  /// that load and leaves the vault appearing unconfigured.
+  @Test func restoresVaultSynchronouslyFromPersistedBookmark() throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+
+    let settings = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    try ObsidianProvider(store: settings).saveVaultBookmark(for: vault)
+
+    // A fresh provider over the same store resolves the bookmark during init — no await.
+    let restored = ObsidianProvider(store: settings)
+    #expect(restored.isConfigured)
+    #expect(restored.vaultURL?.standardizedFileURL == vault.standardizedFileURL)
+  }
+
+  /// An empty store leaves the provider unconfigured rather than resolving a phantom vault.
+  @Test func staysUnconfiguredWithoutPersistedBookmark() {
+    let settings = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let provider = ObsidianProvider(store: settings)
+    #expect(!provider.isConfigured)
+    #expect(provider.vaultURL == nil)
+  }
+}

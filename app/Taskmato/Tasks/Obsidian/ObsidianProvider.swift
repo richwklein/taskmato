@@ -222,7 +222,13 @@ final class ObsidianProvider: ClosableTaskProvider {
 
   // MARK: - Private helpers
 
-  private nonisolated func restoreVaultBookmark() {
+  /// Resolves the persisted security-scoped bookmark into ``vaultURL``, refreshing the stored
+  /// bookmark when the system reports it stale.
+  ///
+  /// Runs synchronously from `init` so ``vaultURL`` is set before the sidebar's first `lists()`
+  /// load. A deferred assignment races that load and leaves the vault appearing unconfigured after
+  /// a cold launch, even though the bookmark persisted correctly.
+  private func restoreVaultBookmark() {
     guard let data = store.data(forKey: SettingsStore.Keys.obsidianVaultBookmark) else { return }
     var isStale = false
     guard
@@ -233,12 +239,8 @@ final class ObsidianProvider: ClosableTaskProvider {
         bookmarkDataIsStale: &isStale
       )
     else { return }
-    // vaultURL assignment and stale-refresh must happen on MainActor
-    Task { @MainActor [weak self] in
-      guard let self else { return }
-      if isStale { try? self.saveVaultBookmark(for: url) }
-      self.vaultURL = url
-    }
+    vaultURL = url
+    if isStale { try? saveVaultBookmark(for: url) }
   }
 
   /// Wraps `perform` with security-scoped resource access for `url`.
