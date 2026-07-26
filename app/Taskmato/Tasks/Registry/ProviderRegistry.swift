@@ -13,9 +13,6 @@ import Observation
 /// lives in ``TaskQueryService`` and sidebar selection in ``SelectionStore``; the registry
 /// notifies the latter via ``onProviderStateChanged`` whenever the enabled set or list cache
 /// changes.
-///
-/// **Migration**: on first launch after upgrading from the list-scope model, the initializer
-/// removes the abandoned `"taskRegistry.providerListScopes"` key from `UserDefaults`.
 @Observable
 @MainActor
 final class ProviderRegistry {
@@ -47,10 +44,6 @@ final class ProviderRegistry {
   /// - Parameter defaults: `UserDefaults` store for persistence. Override in tests.
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
-
-    // One-shot migration: remove the abandoned list-scope blob from prior versions.
-    defaults.removeObject(forKey: "taskRegistry.providerListScopes")
-
     let stored = defaults.stringArray(forKey: Self.enabledKey) ?? []
     self.enabledIDs = Set(stored)
   }

@@ -197,18 +197,4 @@ struct SelectionStoreTests {
     registry.setLists([], forProviderID: "alpha")
     #expect(store.selection == .today)
   }
-
-  // MARK: - Legacy key cleanup
-
-  @Test func legacyScopeKeysAreRemovedOnInit() {
-    let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    // Write dummy blobs for both legacy keys.
-    defaults.set(Data([1, 2, 3]), forKey: "taskRegistry.providerListScopes")
-    defaults.set(Data([4, 5, 6]), forKey: "taskRegistry.selectedList")
-    // The registry clears the list-scope key; the selection store clears the selected-list key.
-    let registry = ProviderRegistry(defaults: defaults)
-    _ = SelectionStore(registry: registry, defaults: defaults)
-    #expect(defaults.data(forKey: "taskRegistry.providerListScopes") == nil)
-    #expect(defaults.data(forKey: "taskRegistry.selectedList") == nil)
-  }
 }
