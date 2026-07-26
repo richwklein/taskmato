@@ -13,7 +13,8 @@ struct TimerPresenterTests {
 
   /// Builds isolated settings with the given phase lengths (in minutes).
   private func makeSettings(focus: Int = 25, short: Int = 5, long: Int = 15) -> AppSettings {
-    let settings = AppSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let settings = AppSettings(
+      store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
     settings.focusMinutes = focus
     settings.shortBreakMinutes = short
     settings.longBreakMinutes = long

@@ -32,22 +32,21 @@ final class RemindersProvider: ClosableTaskProvider {
   private(set) var listPatterns: [String]
 
   private let store: any RemindersEventStore
-  private let defaults: UserDefaults
-  private static let patternsKey = "reminders.listPatterns"
+  private let settings: SettingsStore
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
   private var observer: NSObjectProtocol?
   private let debouncer = Debouncer()
 
   /// Production initializer using live EventKit.
   convenience init() {
-    self.init(store: LiveRemindersEventStore(), defaults: .standard)
+    self.init(store: LiveRemindersEventStore(), settings: SettingsStore())
   }
 
   /// Test-friendly initializer accepting any ``RemindersEventStore`` conformer.
-  init(store: any RemindersEventStore, defaults: UserDefaults = .standard) {
+  init(store: any RemindersEventStore, settings: SettingsStore = SettingsStore()) {
     self.store = store
-    self.defaults = defaults
-    self.listPatterns = defaults.array(forKey: Self.patternsKey) as? [String] ?? []
+    self.settings = settings
+    self.listPatterns = settings[SettingsStore.Keys.remindersListPatterns]
     isAuthorized = store.authorizationStatus() == .fullAccess
   }
 
@@ -82,7 +81,7 @@ final class RemindersProvider: ClosableTaskProvider {
   /// Replaces the stored list-pattern array and persists it to UserDefaults.
   func setListPatterns(_ patterns: [String]) {
     listPatterns = patterns
-    defaults.set(listPatterns, forKey: Self.patternsKey)
+    settings[SettingsStore.Keys.remindersListPatterns] = listPatterns
   }
 
   /// Returns titles of all Reminders calendars without applying ``listPatterns``.

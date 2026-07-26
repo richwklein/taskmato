@@ -38,14 +38,12 @@ final class ProviderRegistry {
   @ObservationIgnored
   var onProviderStateChanged: (() -> Void)?
 
-  private let defaults: UserDefaults
-  private static let enabledKey = "taskRegistry.enabledProviderIDs"
+  private let store: SettingsStore
 
-  /// - Parameter defaults: `UserDefaults` store for persistence. Override in tests.
-  init(defaults: UserDefaults = .standard) {
-    self.defaults = defaults
-    let stored = defaults.stringArray(forKey: Self.enabledKey) ?? []
-    self.enabledIDs = Set(stored)
+  /// - Parameter store: The settings store for persistence. Override in tests.
+  init(store: SettingsStore = SettingsStore()) {
+    self.store = store
+    self.enabledIDs = store[SettingsStore.Keys.enabledProviderIDs]
   }
 
   // MARK: - Registration
@@ -163,7 +161,7 @@ final class ProviderRegistry {
   // MARK: - Persistence
 
   private func persist() {
-    defaults.set(Array(enabledIDs), forKey: Self.enabledKey)
+    store[SettingsStore.Keys.enabledProviderIDs] = enabledIDs
   }
 }
 

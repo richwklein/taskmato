@@ -21,14 +21,12 @@ final class TaskSelectionStore {
   /// Recent tasks keyed by provider ID, each capped at `recentsLimit` entries.
   private(set) var recentsByProvider: [String: [TaskItem]] = [:]
 
-  private let defaults: UserDefaults
-  private static let activeTaskKey = "taskSelection.activeTask"
-  private static let recentsKey = "taskSelection.recentsByProvider"
+  private let store: SettingsStore
   static let recentsLimit = 10
 
-  /// - Parameter defaults: `UserDefaults` store for persistence. Override in tests.
-  init(defaults: UserDefaults = .standard) {
-    self.defaults = defaults
+  /// - Parameter store: The settings store for persistence. Override in tests.
+  init(store: SettingsStore = SettingsStore()) {
+    self.store = store
     load()
   }
 
@@ -71,24 +69,14 @@ final class TaskSelectionStore {
   }
 
   private func persist() {
-    let encoder = JSONEncoder()
-    if let activeTask, let data = try? encoder.encode(activeTask) {
-      defaults.set(data, forKey: Self.activeTaskKey)
-    } else {
-      defaults.removeObject(forKey: Self.activeTaskKey)
-    }
-    if let data = try? encoder.encode(recentsByProvider) {
-      defaults.set(data, forKey: Self.recentsKey)
-    }
+    store.setValue(activeTask, forKey: SettingsStore.Keys.activeTask)
+    store.setValue(recentsByProvider, forKey: SettingsStore.Keys.recentsByProvider)
   }
 
   private func load() {
-    let decoder = JSONDecoder()
-    if let data = defaults.data(forKey: Self.activeTaskKey) {
-      activeTask = try? decoder.decode(TaskItem.self, from: data)
-    }
-    if let data = defaults.data(forKey: Self.recentsKey) {
-      recentsByProvider = (try? decoder.decode([String: [TaskItem]].self, from: data)) ?? [:]
-    }
+    activeTask = store.value(forKey: SettingsStore.Keys.activeTask, as: TaskItem.self)
+    recentsByProvider =
+      store.value(forKey: SettingsStore.Keys.recentsByProvider, as: [String: [TaskItem]].self)
+      ?? [:]
   }
 }

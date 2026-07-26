@@ -44,25 +44,25 @@ final class MainNavigation {
   @ObservationIgnored private let settings: AppSettings
   @ObservationIgnored private let selectionStore: SelectionStore
   @ObservationIgnored private let statsViewModel: StatsViewModel
-  @ObservationIgnored private let defaults: UserDefaults
+  @ObservationIgnored private let store: SettingsStore
   @ObservationIgnored private var openMainWindowAction: (() -> Void)?
 
   /// - Parameters:
   ///   - settings: App settings that persist `sidebarVisible`.
   ///   - selectionStore: The task-scope selection sink that task destinations forward into.
   ///   - statsViewModel: The stats view model whose scope stats destinations forward into.
-  ///   - defaults: `UserDefaults` store for the persisted destination. Override in tests.
+  ///   - store: The settings store for the persisted destination. Override in tests.
   init(
     settings: AppSettings, selectionStore: SelectionStore, statsViewModel: StatsViewModel,
-    defaults: UserDefaults = .standard
+    store: SettingsStore = SettingsStore()
   ) {
     self.settings = settings
     self.selectionStore = selectionStore
     self.statsViewModel = statsViewModel
-    self.defaults = defaults
+    self.store = store
     // Restore the last surface (design doc 0008, D9). `didSet` does not fire during `init`, so
     // the Stats scope is forwarded explicitly; the task scope is owned by `SelectionStore`.
-    switch Self.decodePersistedDestination(from: defaults) {
+    switch Self.decodePersistedDestination(from: store) {
     case .timer:
       self.destination = .timer
     case .stats(let scope):
@@ -107,14 +107,10 @@ final class MainNavigation {
     case stats(StatScope)
   }
 
-  private static let destinationKey = "shell.destination"
-
   private static func decodePersistedDestination(
-    from defaults: UserDefaults
+    from store: SettingsStore
   ) -> PersistedDestination? {
-    defaults.data(forKey: destinationKey).flatMap {
-      try? JSONDecoder().decode(PersistedDestination.self, from: $0)
-    }
+    store.value(forKey: SettingsStore.Keys.shellDestination, as: PersistedDestination.self)
   }
 
   private func persistDestination() {
@@ -124,8 +120,7 @@ final class MainNavigation {
     case .today, .list: persisted = .tasks
     case .stats(let scope): persisted = .stats(scope)
     }
-    guard let data = try? JSONEncoder().encode(persisted) else { return }
-    defaults.set(data, forKey: Self.destinationKey)
+    store.setValue(persisted, forKey: SettingsStore.Keys.shellDestination)
   }
 
   // MARK: - Window binding

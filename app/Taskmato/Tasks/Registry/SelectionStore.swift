@@ -34,19 +34,16 @@ final class SelectionStore {
   // store weakly (via `onProviderStateChanged`), so there is no retain cycle. A strong
   // reference keeps the cascade safe even if no other owner outlives this store.
   @ObservationIgnored private let registry: ProviderRegistry
-  @ObservationIgnored private let defaults: UserDefaults
-  private static let selectionKey = "taskRegistry.selection"
+  @ObservationIgnored private let store: SettingsStore
 
   /// - Parameters:
   ///   - registry: The registry supplying providers, enabled state, and the list cache.
-  ///   - defaults: `UserDefaults` store for persistence. Override in tests.
-  init(registry: ProviderRegistry, defaults: UserDefaults = .standard) {
+  ///   - store: The settings store for persistence. Override in tests.
+  init(registry: ProviderRegistry, store: SettingsStore = SettingsStore()) {
     self.registry = registry
-    self.defaults = defaults
+    self.store = store
     self.selection =
-      defaults.data(forKey: Self.selectionKey).flatMap {
-        try? JSONDecoder().decode(SidebarSelection.self, from: $0)
-      } ?? .today
+      store.value(forKey: SettingsStore.Keys.sidebarSelection, as: SidebarSelection.self) ?? .today
   }
 
   /// Sets the active sidebar selection. Persistence happens automatically via `selection`'s `didSet`.
@@ -99,12 +96,6 @@ final class SelectionStore {
   }
 
   private func persistSelection() {
-    guard let selection,
-      let data = try? JSONEncoder().encode(selection)
-    else {
-      defaults.removeObject(forKey: Self.selectionKey)
-      return
-    }
-    defaults.set(data, forKey: Self.selectionKey)
+    store.setValue(selection, forKey: SettingsStore.Keys.sidebarSelection)
   }
 }

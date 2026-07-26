@@ -122,7 +122,7 @@ private final class StubClosableProvider: ClosableTaskProvider {
 struct ProviderRegistryTests {
 
   private func makeRegistry() -> ProviderRegistry {
-    ProviderRegistry(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    ProviderRegistry(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
   }
 
   // MARK: Registration

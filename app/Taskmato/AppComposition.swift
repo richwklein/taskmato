@@ -37,15 +37,17 @@ struct AppComposition {
   /// Constructs every service, registers providers, and wires the phase-ended callback.
   init() {
     let engine = SessionEngine()
-    let settings = AppSettings()
+    let settingsStore = SettingsStore()
+    let settings = AppSettings(store: settingsStore)
     let sessionRepository = Self.makeSessionRepository()
     let store = SessionStore(repository: sessionRepository)
-    let selectionStore = TaskSelectionStore()
-    let registry = ProviderRegistry()
+    let selectionStore = TaskSelectionStore(store: settingsStore)
+    let registry = ProviderRegistry(store: settingsStore)
     let notifications = NotificationService(settings: settings)
-    let obsidianProvider = ObsidianProvider()
+    let obsidianProvider = ObsidianProvider(store: settingsStore)
     let localProvider = LocalProvider()
-    let remindersProvider = RemindersProvider()
+    let remindersProvider = RemindersProvider(
+      store: LiveRemindersEventStore(), settings: settingsStore)
     let statsViewModel = StatsViewModel(
       repository: sessionRepository,
       providerLabel: { [registry] providerID in
@@ -59,9 +61,10 @@ struct AppComposition {
       [obsidianProvider, localProvider, remindersProvider], into: registry,
       fallback: localProvider)
     let queryService = TaskQueryService(registry: registry, sorter: TaskSorter())
-    let sidebarSelection = SelectionStore(registry: registry)
+    let sidebarSelection = SelectionStore(registry: registry, store: settingsStore)
     let nav = MainNavigation(
-      settings: settings, selectionStore: sidebarSelection, statsViewModel: statsViewModel)
+      settings: settings, selectionStore: sidebarSelection, statsViewModel: statsViewModel,
+      store: settingsStore)
     registry.onProviderStateChanged = { [weak sidebarSelection, weak nav] in
       sidebarSelection?.validateSelection()
       nav?.reconcileTaskScope()

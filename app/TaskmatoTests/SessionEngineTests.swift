@@ -64,7 +64,8 @@ struct SessionEngineTests {
 
   @Test func applyDurationsCopiesSettingsIntoEngine() {
     let engine = SessionEngine(focusDuration: 1, shortBreakDuration: 1, longBreakDuration: 1)
-    let settings = AppSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let settings = AppSettings(
+      store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
     settings.focusMinutes = 25
     settings.shortBreakMinutes = 5
     settings.longBreakMinutes = 15

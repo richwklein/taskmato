@@ -29,7 +29,7 @@ private func write(_ content: String, at relativePath: String, in vault: URL) th
 @MainActor
 private func makeProvider(vaultURL: URL?) -> ObsidianProvider {
   ObsidianProvider(
-    defaults: UserDefaults(suiteName: UUID().uuidString)!,
+    store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
     vaultURL: vaultURL
   )
 }
@@ -134,7 +134,8 @@ struct ObsidianProviderCompletedTasksTests {
 struct ObsidianProviderTokenExpansionTests {
 
   private func makeProvider() -> ObsidianProvider {
-    ObsidianProvider(defaults: UserDefaults(suiteName: UUID().uuidString)!, vaultURL: nil)
+    ObsidianProvider(
+      store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!), vaultURL: nil)
   }
 
   private func date(year: Int, month: Int, day: Int) -> Date {
@@ -197,7 +198,7 @@ struct ObsidianProviderTokenExpansionTests {
     let filename = String(format: "%04d-W%02d.md", year, week)
     try write("- [ ] Weekly task", at: "Weekly/\(filename)", in: vault)
     let provider = ObsidianProvider(
-      defaults: UserDefaults(suiteName: UUID().uuidString)!,
+      store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
       vaultURL: vault,
       filePatterns: ["**/Weekly/{YYYY}-W{ww}.md"]
     )
