@@ -97,7 +97,7 @@ private func queryItem(
 struct TaskQueryServiceTests {
 
   private func makeRegistry() -> ProviderRegistry {
-    ProviderRegistry(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    ProviderRegistry(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
   }
 
   private func makeService(_ registry: ProviderRegistry) -> TaskQueryService {

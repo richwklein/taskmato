@@ -11,7 +11,7 @@ import Testing
 struct TaskPickerLayoutTests {
 
   private func makeSettings() -> AppSettings {
-    AppSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    AppSettings(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
   }
 
   @Test func defaultLayoutIsGrid() {
@@ -21,10 +21,10 @@ struct TaskPickerLayoutTests {
   @Test func layoutPersistsAcrossInstances() {
     let suite = UUID().uuidString
     let defaults = UserDefaults(suiteName: suite)!
-    let writer = AppSettings(defaults: defaults)
+    let writer = AppSettings(store: SettingsStore(defaults: defaults))
     writer.taskPickerLayout = .list
 
-    let reader = AppSettings(defaults: defaults)
+    let reader = AppSettings(store: SettingsStore(defaults: defaults))
     #expect(reader.taskPickerLayout == .list)
   }
 

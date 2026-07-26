@@ -29,7 +29,7 @@ private func makeItem(providerID: String, nativeID: String, title: String) -> Ta
 struct TaskSelectionStoreTests {
 
   private func makeStore() -> TaskSelectionStore {
-    TaskSelectionStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    TaskSelectionStore(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
   }
 
   // MARK: - Active task
@@ -129,10 +129,10 @@ struct TaskSelectionStoreTests {
     let defaults = UserDefaults(suiteName: suiteName)!
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Persisted task")
 
-    let store = TaskSelectionStore(defaults: defaults)
+    let store = TaskSelectionStore(store: SettingsStore(defaults: defaults))
     store.select(task)
 
-    let reloaded = TaskSelectionStore(defaults: defaults)
+    let reloaded = TaskSelectionStore(store: SettingsStore(defaults: defaults))
     #expect(reloaded.activeTask == task)
   }
 
@@ -141,10 +141,10 @@ struct TaskSelectionStoreTests {
     let defaults = UserDefaults(suiteName: suiteName)!
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Persisted task")
 
-    let store = TaskSelectionStore(defaults: defaults)
+    let store = TaskSelectionStore(store: SettingsStore(defaults: defaults))
     store.select(task)
 
-    let reloaded = TaskSelectionStore(defaults: defaults)
+    let reloaded = TaskSelectionStore(store: SettingsStore(defaults: defaults))
     #expect(reloaded.recents(for: "alpha") == [task])
   }
 
@@ -153,11 +153,11 @@ struct TaskSelectionStoreTests {
     let defaults = UserDefaults(suiteName: suiteName)!
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Temp task")
 
-    let store = TaskSelectionStore(defaults: defaults)
+    let store = TaskSelectionStore(store: SettingsStore(defaults: defaults))
     store.select(task)
     store.clearActiveTask()
 
-    let reloaded = TaskSelectionStore(defaults: defaults)
+    let reloaded = TaskSelectionStore(store: SettingsStore(defaults: defaults))
     #expect(reloaded.activeTask == nil)
   }
 }

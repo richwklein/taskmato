@@ -45,7 +45,8 @@ private struct ServiceContext {
 @MainActor
 private func makeContext(status: UNAuthorizationStatus = .notDetermined) -> ServiceContext {
   let center = FakeNotificationCenter(status: status)
-  let settings = AppSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+  let settings = AppSettings(
+    store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
   let service = NotificationService(settings: settings, center: center)
   return ServiceContext(service: service, center: center, settings: settings)
 }

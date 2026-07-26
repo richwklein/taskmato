@@ -12,7 +12,7 @@ struct AppSettingsTests {
 
   /// Returns settings backed by an isolated, temporary UserDefaults suite.
   private func makeSettings() -> AppSettings {
-    AppSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    AppSettings(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
   }
 
   // MARK: - Duration conversions
@@ -90,10 +90,10 @@ struct AppSettingsTests {
 
   @Test func sortSettingsPersistAcrossInstances() {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let writer = AppSettings(defaults: defaults)
+    let writer = AppSettings(store: SettingsStore(defaults: defaults))
     writer.taskSortField = .title
     writer.taskSortDirection = .descending
-    let reader = AppSettings(defaults: defaults)
+    let reader = AppSettings(store: SettingsStore(defaults: defaults))
     #expect(reader.taskSortField == .title)
     #expect(reader.taskSortDirection == .descending)
   }
@@ -108,8 +108,8 @@ struct AppSettingsTests {
 
   @Test func soundNamePersistsAcrossInstances() {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    AppSettings(defaults: defaults).soundName = "Glass"
-    #expect(AppSettings(defaults: defaults).soundName == "Glass")
+    AppSettings(store: SettingsStore(defaults: defaults)).soundName = "Glass"
+    #expect(AppSettings(store: SettingsStore(defaults: defaults)).soundName == "Glass")
   }
 
   // MARK: - Persistence
@@ -117,12 +117,12 @@ struct AppSettingsTests {
   @Test func settingPersistsAcrossInstances() {
     let suite = UUID().uuidString
     let defaults = UserDefaults(suiteName: suite)!
-    let writer = AppSettings(defaults: defaults)
+    let writer = AppSettings(store: SettingsStore(defaults: defaults))
     writer.focusMinutes = 42
     writer.soundEnabled = false
     writer.autoStartNextPhase = true
 
-    let reader = AppSettings(defaults: defaults)
+    let reader = AppSettings(store: SettingsStore(defaults: defaults))
     #expect(reader.focusMinutes == 42)
     #expect(reader.soundEnabled == false)
     #expect(reader.autoStartNextPhase == true)

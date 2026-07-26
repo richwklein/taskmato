@@ -75,8 +75,9 @@ struct SelectionStoreTests {
     registry: ProviderRegistry, store: SelectionStore
   ) {
     let defaults = defaults ?? UserDefaults(suiteName: UUID().uuidString)!
-    let registry = ProviderRegistry(defaults: defaults)
-    let store = SelectionStore(registry: registry, defaults: defaults)
+    let settings = SettingsStore(defaults: defaults)
+    let registry = ProviderRegistry(store: settings)
+    let store = SelectionStore(registry: registry, store: settings)
     registry.onProviderStateChanged = { [weak store] in store?.validateSelection() }
     return (registry, store)
   }

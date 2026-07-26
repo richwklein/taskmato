@@ -29,7 +29,7 @@ private func write(_ content: String, at relativePath: String, in vault: URL) th
 @MainActor
 private func makeProvider(vaultURL: URL?) -> ObsidianProvider {
   ObsidianProvider(
-    defaults: UserDefaults(suiteName: UUID().uuidString)!,
+    store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
     vaultURL: vaultURL
   )
 }
@@ -134,7 +134,8 @@ struct ObsidianProviderCompletedTasksTests {
 struct ObsidianProviderTokenExpansionTests {
 
   private func makeProvider() -> ObsidianProvider {
-    ObsidianProvider(defaults: UserDefaults(suiteName: UUID().uuidString)!, vaultURL: nil)
+    ObsidianProvider(
+      store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!), vaultURL: nil)
   }
 
   private func date(year: Int, month: Int, day: Int) -> Date {
@@ -197,12 +198,44 @@ struct ObsidianProviderTokenExpansionTests {
     let filename = String(format: "%04d-W%02d.md", year, week)
     try write("- [ ] Weekly task", at: "Weekly/\(filename)", in: vault)
     let provider = ObsidianProvider(
-      defaults: UserDefaults(suiteName: UUID().uuidString)!,
+      store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
       vaultURL: vault,
       filePatterns: ["**/Weekly/{YYYY}-W{ww}.md"]
     )
     let tasks = try await provider.tasks(in: nil)
     #expect(tasks.count == 1)
     #expect(tasks[0].title == "Weekly task")
+  }
+}
+
+// MARK: - Vault bookmark restore
+
+@Suite("ObsidianProvider — vault bookmark restore")
+@MainActor
+struct ObsidianProviderBookmarkRestoreTests {
+
+  /// A provider constructed over a store that already holds a vault bookmark must expose
+  /// `vaultURL` synchronously from `init` — before any list load — so the sidebar's first
+  /// `lists()` call after a cold launch sees a configured vault. A deferred assignment races
+  /// that load and leaves the vault appearing unconfigured.
+  @Test func restoresVaultSynchronouslyFromPersistedBookmark() throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+
+    let settings = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    try ObsidianProvider(store: settings).saveVaultBookmark(for: vault)
+
+    // A fresh provider over the same store resolves the bookmark during init — no await.
+    let restored = ObsidianProvider(store: settings)
+    #expect(restored.isConfigured)
+    #expect(restored.vaultURL?.standardizedFileURL == vault.standardizedFileURL)
+  }
+
+  /// An empty store leaves the provider unconfigured rather than resolving a phantom vault.
+  @Test func staysUnconfiguredWithoutPersistedBookmark() {
+    let settings = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let provider = ObsidianProvider(store: settings)
+    #expect(!provider.isConfigured)
+    #expect(provider.vaultURL == nil)
   }
 }

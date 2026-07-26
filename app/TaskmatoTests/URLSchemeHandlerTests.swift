@@ -106,11 +106,12 @@ struct URLSchemeHandlerTests {
     defaultWritableProviderID: String? = nil
   ) -> HandlerContext {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let selectionStore = TaskSelectionStore(defaults: defaults)
+    let settingsStore = SettingsStore(defaults: defaults)
+    let selectionStore = TaskSelectionStore(store: settingsStore)
     let engine = SessionEngine()
-    let registry = ProviderRegistry(defaults: defaults)
+    let registry = ProviderRegistry(store: settingsStore)
     let localProvider = LocalProvider(fileURL: makeTempURL())
-    let settings = AppSettings(defaults: defaults)
+    let settings = AppSettings(store: settingsStore)
     settings.defaultWritableProviderID = defaultWritableProviderID
 
     registry.register(localProvider)
@@ -133,7 +134,7 @@ struct URLSchemeHandlerTests {
       settings: settings,
       nav: MainNavigation(
         settings: settings,
-        selectionStore: SelectionStore(registry: registry, defaults: defaults),
+        selectionStore: SelectionStore(registry: registry, store: settingsStore),
         statsViewModel: .preview),
       errorPresenter: errorPresenter
     )

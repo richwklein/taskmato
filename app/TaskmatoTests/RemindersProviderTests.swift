@@ -58,7 +58,7 @@ struct RemindersProviderAuthorizationTests {
     store.status = status
     store.grantAccess = grantAccess
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let provider = RemindersProvider(store: store, defaults: defaults)
+    let provider = RemindersProvider(store: store, settings: SettingsStore(defaults: defaults))
     return (provider, store)
   }
 
@@ -148,7 +148,7 @@ struct RemindersProviderListTests {
     let store = FakeRemindersEventStore()
     store.status = .fullAccess
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let provider = RemindersProvider(store: store, defaults: defaults)
+    let provider = RemindersProvider(store: store, settings: SettingsStore(defaults: defaults))
     try await provider.authorize()
     return (provider, store)
   }
@@ -204,7 +204,7 @@ struct RemindersProviderListPatternTests {
     store.status = .fullAccess
     store.stubbedCalendars = calendarTitles.map { store.makeCalendar(title: $0) }
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let provider = RemindersProvider(store: store, defaults: defaults)
+    let provider = RemindersProvider(store: store, settings: SettingsStore(defaults: defaults))
     try await provider.authorize()
     if !patterns.isEmpty { provider.setListPatterns(patterns) }
     return provider
@@ -253,7 +253,7 @@ struct RemindersProviderTaskTests {
     let store = FakeRemindersEventStore()
     store.status = .fullAccess
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let provider = RemindersProvider(store: store, defaults: defaults)
+    let provider = RemindersProvider(store: store, settings: SettingsStore(defaults: defaults))
     try await provider.authorize()
     return (provider, store)
   }
@@ -406,7 +406,7 @@ struct RemindersProviderMutationTests {
     let store = FakeRemindersEventStore()
     store.status = .fullAccess
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let provider = RemindersProvider(store: store, defaults: defaults)
+    let provider = RemindersProvider(store: store, settings: SettingsStore(defaults: defaults))
     try await provider.authorize()
     return (provider, store)
   }
@@ -509,7 +509,7 @@ struct RemindersProviderCompletedTasksTests {
     let store = FakeRemindersEventStore()
     store.grantAccess = true
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let provider = RemindersProvider(store: store, defaults: defaults)
+    let provider = RemindersProvider(store: store, settings: SettingsStore(defaults: defaults))
     try await provider.authorize()
     return (provider, store)
   }
@@ -543,7 +543,7 @@ struct RemindersProviderCompletedTasksTests {
       store.makeReminder(title: "Done", isCompleted: true)
     ]
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
-    let provider = RemindersProvider(store: store, defaults: defaults)
+    let provider = RemindersProvider(store: store, settings: SettingsStore(defaults: defaults))
     let tasks = try await provider.completedTasks()
     #expect(tasks.isEmpty)
   }

@@ -44,12 +44,13 @@ struct MainNavigationTests {
   /// Builds a navigation model and its selection store over shared `defaults`, wiring
   /// `onProviderStateChanged` exactly as the composition root does (validate, then reconcile).
   private func makeNav(defaults: UserDefaults) -> NavContext {
-    let registry = ProviderRegistry(defaults: defaults)
-    let store = SelectionStore(registry: registry, defaults: defaults)
+    let settings = SettingsStore(defaults: defaults)
+    let registry = ProviderRegistry(store: settings)
+    let store = SelectionStore(registry: registry, store: settings)
     let statsViewModel = StatsViewModel.preview
     let nav = MainNavigation(
-      settings: AppSettings(defaults: defaults), selectionStore: store,
-      statsViewModel: statsViewModel, defaults: defaults)
+      settings: AppSettings(store: settings), selectionStore: store,
+      statsViewModel: statsViewModel, store: settings)
     registry.onProviderStateChanged = { [weak store, weak nav] in
       store?.validateSelection()
       nav?.reconcileTaskScope()

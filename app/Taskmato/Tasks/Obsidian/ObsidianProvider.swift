@@ -43,30 +43,27 @@ final class ObsidianProvider: ClosableTaskProvider {
   /// Whether the user has selected a vault directory.
   var isConfigured: Bool { vaultURL != nil }
 
-  private let defaults: UserDefaults
+  private let store: SettingsStore
   private let parser = ObsidianTaskParser()
   private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
   private var fsEventStream: FSEventStreamRef?
   private let debouncer = Debouncer()
 
-  private static let bookmarkKey = "obsidian.vaultBookmark"
-  private static let patternsKey = "obsidian.filePatterns"
   private static let defaultPatterns = ["**/*.md"]
 
-  init(defaults: UserDefaults = .standard) {
-    self.defaults = defaults
-    self.filePatterns =
-      defaults.array(forKey: Self.patternsKey) as? [String] ?? Self.defaultPatterns
+  init(store: SettingsStore = SettingsStore()) {
+    self.store = store
+    self.filePatterns = store[SettingsStore.Keys.obsidianFilePatterns]
     restoreVaultBookmark()
   }
 
-  /// Creates a pre-configured provider for unit tests, bypassing the UserDefaults bookmark lookup.
+  /// Creates a pre-configured provider for unit tests, bypassing the settings-store bookmark lookup.
   init(
-    defaults: UserDefaults,
+    store: SettingsStore,
     vaultURL: URL?,
     filePatterns: [String] = ObsidianProvider.defaultPatterns
   ) {
-    self.defaults = defaults
+    self.store = store
     self.filePatterns = filePatterns
     self.vaultURL = vaultURL
   }
@@ -206,27 +203,33 @@ final class ObsidianProvider: ClosableTaskProvider {
       includingResourceValuesForKeys: nil,
       relativeTo: nil
     )
-    defaults.set(bookmark, forKey: Self.bookmarkKey)
+    store.setData(bookmark, forKey: SettingsStore.Keys.obsidianVaultBookmark)
     vaultURL = url
   }
 
   /// Clears the stored vault bookmark and stops any active file-system watcher.
   func clearVault() {
-    defaults.removeObject(forKey: Self.bookmarkKey)
+    store.setData(nil, forKey: SettingsStore.Keys.obsidianVaultBookmark)
     vaultURL = nil
     stopWatching()
   }
 
-  /// Replaces the current file pattern list and persists it to `UserDefaults`.
+  /// Replaces the current file pattern list and persists it through the settings store.
   func setFilePatterns(_ patterns: [String]) {
     filePatterns = patterns.isEmpty ? Self.defaultPatterns : patterns
-    defaults.set(filePatterns, forKey: Self.patternsKey)
+    store[SettingsStore.Keys.obsidianFilePatterns] = filePatterns
   }
 
   // MARK: - Private helpers
 
-  private nonisolated func restoreVaultBookmark() {
-    guard let data = defaults.data(forKey: Self.bookmarkKey) else { return }
+  /// Resolves the persisted security-scoped bookmark into ``vaultURL``, refreshing the stored
+  /// bookmark when the system reports it stale.
+  ///
+  /// Runs synchronously from `init` so ``vaultURL`` is set before the sidebar's first `lists()`
+  /// load. A deferred assignment races that load and leaves the vault appearing unconfigured after
+  /// a cold launch, even though the bookmark persisted correctly.
+  private func restoreVaultBookmark() {
+    guard let data = store.data(forKey: SettingsStore.Keys.obsidianVaultBookmark) else { return }
     var isStale = false
     guard
       let url = try? URL(
@@ -236,12 +239,8 @@ final class ObsidianProvider: ClosableTaskProvider {
         bookmarkDataIsStale: &isStale
       )
     else { return }
-    // vaultURL assignment and stale-refresh must happen on MainActor
-    Task { @MainActor [weak self] in
-      guard let self else { return }
-      if isStale { try? self.saveVaultBookmark(for: url) }
-      self.vaultURL = url
-    }
+    vaultURL = url
+    if isStale { try? saveVaultBookmark(for: url) }
   }
 
   /// Wraps `perform` with security-scoped resource access for `url`.
