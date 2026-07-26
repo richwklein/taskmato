@@ -14,6 +14,7 @@ struct TimerTabView: View {
   var selectionStore: TaskSelectionStore
   var registry: ProviderRegistry
   var nav: MainNavigation
+  var errorPresenter: ErrorPresenter
 
   var body: some View {
     VStack(spacing: 0) {
@@ -42,6 +43,7 @@ struct TimerTabView: View {
       if selectionStore.activeTask != nil {
         ActiveTaskView(
           engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
+          errorPresenter: errorPresenter,
           showNotes: true
         )
         .padding(.horizontal, .contentGap)
@@ -83,6 +85,7 @@ struct TimerTabView: View {
     registry: registry,
     nav: MainNavigation(
       settings: settings, selectionStore: SelectionStore(registry: registry),
-      statsViewModel: .preview)
+      statsViewModel: .preview),
+    errorPresenter: ErrorPresenter()
   )
 }

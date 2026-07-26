@@ -47,7 +47,8 @@ struct TaskmatoApp: App {
         registry: composition.registry,
         queryService: composition.queryService,
         sidebarSelection: composition.sidebarSelection,
-        nav: composition.nav
+        nav: composition.nav,
+        errorPresenter: composition.errorPresenter
       )
       // Task-disambiguation for `taskmato://` deep links presents on the main window, the
       // app's primary surface (design doc 0008, D5). `URLSchemeHandler` opens the window
@@ -71,10 +72,14 @@ struct TaskmatoApp: App {
         if let params = composition.urlHandler.pendingAdHocParams {
           Button("Create new \"\(params.title)\"") {
             Task {
-              let task = await composition.urlHandler.makeAdHocTask(from: params)
-              composition.selectionStore.select(task)
               composition.urlHandler.pendingDisambiguation = nil
-              composition.nav.showTimerInMainWindow()
+              composition.urlHandler.pendingAdHocParams = nil
+              // On failure the handler surfaces the error on the banner and returns nil,
+              // so no session is started on an unsaved task.
+              if let task = await composition.urlHandler.makeAdHocTask(from: params) {
+                composition.selectionStore.select(task)
+                composition.nav.showTimerInMainWindow()
+              }
             }
           }
         }

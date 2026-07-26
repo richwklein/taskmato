@@ -17,6 +17,7 @@ struct AddTaskView: View {
 
   var provider: any WritableTaskProvider
   @Binding var isPresented: Bool
+  var errorPresenter: ErrorPresenter
   var taskToEdit: TaskItem?
   /// List to pre-select in add mode. Ignored when `taskToEdit` is non-nil.
   var initialListID: String?
@@ -144,9 +145,17 @@ struct AddTaskView: View {
     draft.listID = selectedListID.isEmpty ? nil : selectedListID
     isPresented = false
     if let task = taskToEdit {
-      Task { try? await provider.updateTask(task.id, draft: draft) }
+      Task {
+        await errorPresenter.attempt(AppLabels.Error.updateFailed) {
+          try await provider.updateTask(task.id, draft: draft)
+        }
+      }
     } else {
-      Task { try? await provider.addTask(draft) }
+      Task {
+        await errorPresenter.attempt(AppLabels.Error.addFailed) {
+          try await provider.addTask(draft)
+        }
+      }
     }
   }
 }

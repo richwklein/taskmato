@@ -17,6 +17,7 @@ struct ActiveTaskView: View {
   var selectionStore: TaskSelectionStore
   var registry: ProviderRegistry
   var nav: MainNavigation
+  var errorPresenter: ErrorPresenter
   /// When `true`, renders task notes and source link below the title.
   var showNotes: Bool = false
 
@@ -142,7 +143,9 @@ struct ActiveTaskView: View {
           let ref = task.id
           Task {
             if let provider = registry.closableProvider(for: ref) {
-              try? await provider.complete(ref)
+              await errorPresenter.attempt(AppLabels.Error.completeFailed) {
+                try await provider.complete(ref)
+              }
             }
             selectionStore.clearActiveTask()
           }
@@ -173,7 +176,9 @@ struct ActiveTaskView: View {
       let ref = task.id
       engine.stop()
       Task {
-        try? await provider.complete(ref)
+        await errorPresenter.attempt(AppLabels.Error.completeFailed) {
+          try await provider.complete(ref)
+        }
         selectionStore.clearActiveTask()
         nav.showTasks()
       }

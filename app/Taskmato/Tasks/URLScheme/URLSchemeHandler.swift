@@ -51,6 +51,7 @@ final class URLSchemeHandler {
   private let engine: SessionEngine
   private let settings: AppSettings
   private let nav: MainNavigation
+  private let errorPresenter: ErrorPresenter
 
   init(
     registry: ProviderRegistry,
@@ -58,7 +59,8 @@ final class URLSchemeHandler {
     selectionStore: TaskSelectionStore,
     engine: SessionEngine,
     settings: AppSettings,
-    nav: MainNavigation
+    nav: MainNavigation,
+    errorPresenter: ErrorPresenter
   ) {
     self.registry = registry
     self.queryService = queryService
@@ -66,6 +68,7 @@ final class URLSchemeHandler {
     self.engine = engine
     self.settings = settings
     self.nav = nav
+    self.errorPresenter = errorPresenter
   }
 
   /// Handles the given URL, selecting the resolved task and starting a focus session if
@@ -96,9 +99,9 @@ final class URLSchemeHandler {
   /// 3. ``ProviderRegistry/firstEnabledWritableProvider`` — the first enabled writable provider
   ///    in registration order.
   ///
-  /// Falls back to a transient ``TaskItem`` (providerID `"adhoc"`) when no enabled writable
-  /// provider is available.
-  func makeAdHocTask(from adHocParams: AdHocTaskParams) async -> TaskItem {
+  /// Returns `nil` after surfacing an error on the window-root banner when no enabled writable
+  /// provider is available or the write fails; the caller then starts no session.
+  func makeAdHocTask(from adHocParams: AdHocTaskParams) async -> TaskItem? {
     // Level 1: URL param targets a specific provider (strict — no implicit fallback within level).
     let urlTargeted = adHocParams.providerID.flatMap(registry.enabledWritableProvider(id:))
     // Level 2 & 3: settings default, then first enabled writable provider.
@@ -106,49 +109,35 @@ final class URLSchemeHandler {
       urlTargeted
       ?? registry.resolveDefaultWritableProvider(preferredID: settings.defaultWritableProviderID)
 
-    if let writable {
-      var draft = TaskDraft()
-      draft.title = adHocParams.title
-      draft.priority = adHocParams.priority
-      draft.dueDate = adHocParams.dueDate
-      if let name = adHocParams.listName {
-        let lists: [TaskList]
-        if let cached = registry.providerLists[writable.id] {
-          lists = cached
-        } else {
-          lists = (try? await writable.lists()) ?? []
-        }
-        draft.listID =
-          lists.first { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }?.id
-          ?? writable.defaultListID
-      }
-      if let item = try? await writable.addTask(draft) {
-        return item
-      }
+    guard let writable else {
+      errorPresenter.present(
+        TransientError(
+          title: AppLabels.Error.adhocCreateFailed,
+          detail: "No writable task list is available."))
+      return nil
     }
 
-    let list = adHocParams.listName.map { name in
-      TaskList(
-        id: name.lowercased().replacingOccurrences(of: " ", with: "-"),
-        providerID: "adhoc",
-        name: name
-      )
+    var draft = TaskDraft()
+    draft.title = adHocParams.title
+    draft.priority = adHocParams.priority
+    draft.dueDate = adHocParams.dueDate
+    if let name = adHocParams.listName {
+      let lists: [TaskList]
+      if let cached = registry.providerLists[writable.id] {
+        lists = cached
+      } else {
+        lists = (try? await writable.lists()) ?? []
+      }
+      draft.listID =
+        lists.first { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }?.id
+        ?? writable.defaultListID
     }
-    return TaskItem(
-      id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
-      title: adHocParams.title,
-      notes: nil,
-      format: .plainText,
-      priority: adHocParams.priority,
-      dueDate: adHocParams.dueDate,
-      scheduledDate: nil,
-      startDate: nil,
-      list: list,
-      section: nil,
-      sourceURL: nil,
-      completedAt: nil,
-      createdAt: Date()
-    )
+    do {
+      return try await writable.addTask(draft)
+    } catch {
+      errorPresenter.present(title: AppLabels.Error.adhocCreateFailed, error: error)
+      return nil
+    }
   }
 
   // MARK: - Resolution
