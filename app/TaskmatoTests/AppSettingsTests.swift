@@ -72,6 +72,10 @@ struct AppSettingsTests {
     #expect(makeSettings().autoStartNextPhase == false)
   }
 
+  @Test func defaultSidebarVisibleIsTrue() {
+    #expect(makeSettings().sidebarVisible == true)
+  }
+
   // MARK: - Sort defaults
 
   @Test func defaultTaskSortFieldIsDueDate() {

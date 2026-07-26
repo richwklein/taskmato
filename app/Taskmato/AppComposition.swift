@@ -59,11 +59,12 @@ struct AppComposition {
       fallback: localProvider)
     let queryService = TaskQueryService(registry: registry, sorter: TaskSorter())
     let sidebarSelection = SelectionStore(registry: registry)
-    registry.onProviderStateChanged = { [weak sidebarSelection] in
-      sidebarSelection?.validateSelection()
-    }
     let nav = MainNavigation(
       settings: settings, selectionStore: sidebarSelection, statsViewModel: statsViewModel)
+    registry.onProviderStateChanged = { [weak sidebarSelection, weak nav] in
+      sidebarSelection?.validateSelection()
+      nav?.reconcileTaskScope()
+    }
     // A notification tap opens the main window at Timer (design doc 0008, D5).
     notifications.onNotificationTapped = { nav.showTimerInMainWindow() }
     let urlHandler = URLSchemeHandler(

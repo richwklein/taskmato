@@ -47,10 +47,15 @@ use one sidebar as the navigation root.
 
 The main window is the primary surface for every user, always. The menu bar extra keeps
 the countdown label and a slim popover: countdown, phase, start/pause/skip/stop, active
-task line, session summary, and "Open Taskmato". A "Hide Dock icon" setting survives but
-changes only the OS representation (`.accessory` policy, no ⌘Tab entry) — never what
-clicking the menu bar does and never what the popover contains. There is no mode enum
-and no primacy dispatch. #293 closes as superseded.
+task line, session summary, and "Open Taskmato". There is no mode enum and no primacy
+dispatch. #293 closes as superseded.
+
+> **Amendment (#445 implementation).** The planned "Hide Dock icon" setting was dropped.
+> The app is always `.regular` (Dock icon always shown). In the window-first shell an
+> `.accessory` app does not reliably present its menu bar, so hiding the Dock icon left no
+> usable way back to the window or Settings; runtime `.regular`⇄`.accessory` switching is
+> also the same class of window-server fragility #293 failed on. The Dock icon is the
+> guaranteed anchor back to the primary surface.
 
 `LSUIElement` is removed from `Info.plist`; the activation policy defaults to
 `.regular`. Deleted outright: `mainWindowWasVisible`, the `orderOut` restoration
@@ -175,16 +180,19 @@ joins the File menu (D2).
 
 ### D9 — Persistence: clean slate
 
-New keys with new defaults; obsolete keys (`showDockIcon`, tab-era state) are deleted
-on first launch of the shell; no value migration (pre-1.0 alpha install base). A
-changelog line covers the behavior flip.
+New keys with new defaults; no value migration (pre-1.0 alpha install base). A changelog
+line covers the behavior flip.
 
 | Key | Default | Note |
 | --- | --- | --- |
-| `hideDockIcon` | `false` | representation only (D1) |
 | `sidebarVisible` | `true` | reverses 0003 decision 4 — its rationale (tab layout shift) no longer exists |
 | `destination` | `today` | last-destination restore; falls back to Today if a persisted list vanished |
 | section expansion | all expanded | one entry per provider id + `stats` |
+
+> **Amendment (#445 implementation).** The `hideDockIcon` key was dropped along with the
+> Hide-Dock-icon setting (see D1). Obsolete keys are left in place rather than deleted on
+> launch: with a single pre-1.0 install, orphaned keys are harmless and the cleanup code is
+> not worth carrying.
 
 ### D10 — Sequencing: 0.9.0, five slices
 

@@ -57,14 +57,6 @@ final class AppSettings {
     didSet { defaults.set(autoStartNextPhase, forKey: Keys.autoStartNextPhase) }
   }
 
-  /// Whether the app icon appears in the Dock and CMD+Tab switcher.
-  ///
-  /// Defaults to `false` — the app starts as a menu bar–only accessory. The user can
-  /// enable the Dock icon in Settings to make the main window behave like a regular app.
-  var showDockIcon: Bool {
-    didSet { defaults.set(showDockIcon, forKey: Keys.showDockIcon) }
-  }
-
   /// The display mode for the task picker (list rows or card grid).
   ///
   /// Defaults to `.grid`.
@@ -72,9 +64,10 @@ final class AppSettings {
     didSet { defaults.set(taskPickerLayout.rawValue, forKey: Keys.taskPickerLayout) }
   }
 
-  /// Whether the provider/list sidebar column is visible in the Tasks tab.
+  /// Whether the provider/list sidebar column is visible in the window-first shell.
   ///
-  /// Defaults to `false`; pick-flow entries (Browse Tasks…, swap-task) implicitly expand it.
+  /// Defaults to `true` — the sidebar is the app's primary navigation (design doc 0008, D9;
+  /// reverses design doc 0003 decision 4, whose tab-layout rationale no longer applies).
   var sidebarVisible: Bool {
     didSet { defaults.set(sidebarVisible, forKey: Keys.sidebarVisible) }
   }
@@ -132,10 +125,9 @@ final class AppSettings {
     soundName = defaults.string(forKey: Keys.soundName) ?? "Hero"
     notificationsEnabled = defaults.object(forKey: Keys.notificationsEnabled) as? Bool ?? true
     autoStartNextPhase = defaults.object(forKey: Keys.autoStartNextPhase) as? Bool ?? false
-    showDockIcon = defaults.object(forKey: Keys.showDockIcon) as? Bool ?? false
     let rawLayout = defaults.string(forKey: Keys.taskPickerLayout)
     taskPickerLayout = rawLayout.flatMap(TaskPickerLayout.init) ?? .grid
-    sidebarVisible = defaults.object(forKey: Keys.sidebarVisible) as? Bool ?? false
+    sidebarVisible = defaults.object(forKey: Keys.sidebarVisible) as? Bool ?? true
     taskSortField =
       defaults.string(forKey: Keys.taskSortField).flatMap(TaskSortField.init) ?? .dueDate
     taskSortDirection =
@@ -154,7 +146,6 @@ final class AppSettings {
     static let soundName = "soundName"
     static let notificationsEnabled = "notificationsEnabled"
     static let autoStartNextPhase = "autoStartNextPhase"
-    static let showDockIcon = "showDockIcon"
     static let taskPickerLayout = "taskPickerLayout"
     static let sidebarVisible = "taskRegistry.sidebarVisible"
     static let taskSortField = "taskSort.field"

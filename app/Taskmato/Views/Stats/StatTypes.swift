@@ -6,7 +6,10 @@
 import Foundation
 
 /// The time window a stats view is scoped to.
-enum StatScope: CaseIterable {
+///
+/// `String`-backed so the persisted shell destination (design doc 0008, D9) has a stable
+/// on-disk representation independent of case ordering.
+enum StatScope: String, CaseIterable, Codable {
 
   /// The current calendar day.
   case today

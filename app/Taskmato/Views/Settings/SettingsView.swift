@@ -90,10 +90,6 @@ struct SettingsView: View {
 
       Section("Behavior") {
         Toggle("Auto-start next phase", isOn: $settings.autoStartNextPhase)
-        Toggle("Show Dock icon", isOn: $settings.showDockIcon)
-        Text("Takes effect the next time \(Bundle.main.appName) is launched.")
-          .font(.caption)
-          .foregroundStyle(.secondary)
       }
 
       Section("Tasks") {
