@@ -32,8 +32,9 @@ are used directly — they are not re-exported as tokens.
 | Token | Value | Where it's appropriate |
 | --- | --- | --- |
 | `dueUrgent` | `.red` | Due date at or past its urgency threshold |
-| `priorityHigh` | `.orange` | Accent for elevated-priority tasks (medium and above) |
-| `priorityNeutral` | `.primary` | Default tint for tasks without elevated priority |
+| `priorityHighest` | `.red` | Accent for the single highest-priority level, distinct from the elevated band |
+| `priorityHigh` | `.orange` | Accent for elevated-priority tasks (medium and high) |
+| `priorityNeutral` | `.primary` | Default tint for tasks without elevated priority (low) |
 | `timerRingTrack` | `.secondary.opacity(.muted)` | Unfilled portion of the circular timer ring |
 | `cardSurface` | `.secondary.opacity(.subtle)` | Fill behind a card to lift it off the background |
 | `favoriteStar` | `.yellow` | Marker on a provider's default (favorite) list |
@@ -41,7 +42,8 @@ are used directly — they are not re-exported as tokens.
 | `statusSuccess` | `.green` | Success or authorized-state indicator |
 | `chartPalette` | `[.blue, .green, .orange, .purple, .red, .teal, .indigo, .pink]` | Ordered colors for chart slices/series |
 
-`statusError` shares the `.red` value with `dueUrgent` — same color, distinct semantics.
+`statusError`, `dueUrgent`, and `priorityHighest` share the `.red` value — same color, distinct
+semantics. They never collide spatially (error banner vs. due-date text vs. priority glyph).
 
 ## Spacing
 
