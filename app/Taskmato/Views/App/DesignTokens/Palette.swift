@@ -10,7 +10,10 @@ extension Color {
   /// Due date that has reached or passed its urgency threshold.
   static let dueUrgent: Color = .red
 
-  /// Accent tint for elevated-priority tasks (medium and above).
+  /// Accent tint for the single highest-priority level, distinct from the elevated band.
+  static let priorityHighest: Color = .red
+
+  /// Accent tint for elevated-priority tasks (medium and high).
   static let priorityHigh: Color = .orange
 
   /// Default tint for tasks without elevated priority.

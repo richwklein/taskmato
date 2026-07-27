@@ -8,7 +8,8 @@ import SwiftUI
 /// A card-style representation of a task for the grid layout in the task picker.
 ///
 /// Use ``TaskItemKind`` to distinguish active and completed tasks. Pass `lineage` when the
-/// picker is in cross-provider flat mode (Today or search) to show the task's origin.
+/// picker is in cross-provider flat mode (Today or search) to show the task's origin. All
+/// non-layout logic lives in ``TaskItemPresenter``; this view only arranges the slots.
 struct TaskCardView: View {
 
   let task: TaskItem
@@ -18,22 +19,30 @@ struct TaskCardView: View {
   @State private var isHovered = false
   @State private var showDeleteConfirmation = false
 
+  private var presenter: TaskItemPresenter {
+    TaskItemPresenter(task: task, kind: kind, lineage: lineage)
+  }
+
   var body: some View {
     HStack(alignment: .top, spacing: .iconLabel) {
-      leadingButton
-      VStack(alignment: .leading, spacing: .rowVertical) {
-        titleRow
-        if let notes = task.notes {
-          TaskNoteView(notes: notes, format: task.format)
-            .lineLimit(2)
+      TaskStateButtonView(presenter: presenter, isHovered: $isHovered)
+      HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
+        PriorityGlyph(priority: task.priority)
+        VStack(alignment: .leading, spacing: .rowVertical) {
+          TaskMarkdownTitle(task: task, isCompleted: presenter.isCompleted, lineLimit: 3)
+          if let notes = task.notes {
+            TaskNoteView(notes: notes, format: task.format)
+              .lineLimit(2)
+          }
+          metadata
+          if let lineage = presenter.displayLineage {
+            TaskLineageRow(lineage: lineage)
+          }
+          Spacer(minLength: 0)
         }
-        primaryMetadata
-        if let lin = lineage, !lin.isEmpty {
-          lineageRow(lin)
-        }
-        Spacer(minLength: 0)
       }
-      trailingButton
+      TaskDeleteButtonView(
+        presenter: presenter, isHovered: isHovered, showConfirmation: $showDeleteConfirmation)
     }
     .padding(.cardPadding)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -43,107 +52,29 @@ struct TaskCardView: View {
     )
     .contentShape(RoundedRectangle.card)
     .onHover { hover in
-      if case .completed = kind { isHovered = hover }
+      if presenter.isCompleted { isHovered = hover }
     }
     .confirmationDialog(
       "Delete this task permanently?", isPresented: $showDeleteConfirmation
     ) {
-      Button("Delete", role: .destructive) {
-        if case .completed(_, let onDelete) = kind { onDelete?() }
-      }
+      Button("Delete", role: .destructive) { presenter.onDelete?() }
       Button("Cancel", role: .cancel) {}
     }
   }
 
+  /// The due date (active tasks) or completed-relative subtitle (completed tasks). The card's
+  /// date format includes the year, distinguishing it from the row's compact form.
   @ViewBuilder
-  private var leadingButton: some View {
-    switch kind {
-    case .active(let onComplete):
-      if let complete = onComplete {
-        Button(action: complete) {
-          Image(systemName: isHovered ? "checkmark.circle" : "circle")
-            .foregroundStyle(Color.accentColor)
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-        .help(AppLabels.Tooltip.markAsCompleted)
-      }
-    case .completed(let onRestore, _):
-      Button(action: onRestore) {
-        Image(systemName: "checkmark.circle.fill")
-          .foregroundStyle(Color.accentColor)
-      }
-      .buttonStyle(.plain)
-      .help(AppLabels.Tooltip.restore)
-    }
-  }
-
-  private var titleRow: some View {
-    HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
-      if let icon = task.priority.icon {
-        Image(systemName: icon)
-          .foregroundStyle(task.priority.accentColor)
-          .font(.taskTitle)
-      }
-      TaskMarkdownTitle(task: task, isCompleted: isCompleted, lineLimit: 3)
-    }
-  }
-
-  @ViewBuilder
-  private var primaryMetadata: some View {
-    switch kind {
-    case .active:
-      if let due = task.dueDate {
-        Text(due, format: .dateTime.month(.abbreviated).day().year())
-          .font(.taskMetadata)
-          .foregroundStyle(due.isUrgentDueDate ? Color.dueUrgent : Color.secondary)
-      }
-    case .completed:
-      Text(completedSubtitle)
+  private var metadata: some View {
+    if let due = presenter.dueDate {
+      Text(due, format: .dateTime.month(.abbreviated).day().year())
+        .font(.taskMetadata)
+        .foregroundStyle(presenter.dueIsUrgent ? Color.dueUrgent : Color.secondary)
+    } else if presenter.isCompleted {
+      Text(presenter.completedSubtitle)
         .font(.taskMetadata)
         .foregroundStyle(.tertiary)
     }
-  }
-
-  private func lineageRow(_ lin: TaskLineage) -> some View {
-    HStack(spacing: .iconLabel) {
-      if let icon = lin.providerIcon {
-        Image(systemName: icon)
-      }
-      if let ctx = lin.contextLabel {
-        if lin.providerIcon != nil {
-          Image(systemName: "chevron.right")
-        }
-        Text(ctx)
-      }
-    }
-    .font(.taskLineage)
-    .foregroundStyle(.tertiary)
-  }
-
-  @ViewBuilder
-  private var trailingButton: some View {
-    if case .completed(_, _?) = kind, isHovered {
-      Button {
-        showDeleteConfirmation = true
-      } label: {
-        Image(systemName: "trash")
-          .foregroundStyle(.secondary)
-      }
-      .buttonStyle(.plain)
-      .help(AppLabels.Tooltip.deletePermanently)
-    }
-  }
-
-  private var isCompleted: Bool {
-    if case .completed = kind { return true }
-    return false
-  }
-
-  private var completedSubtitle: String {
-    task.completedAt.map {
-      RelativeDateTimeFormatter().localizedString(for: $0, relativeTo: Date())
-    } ?? "Unknown date"
   }
 }
 

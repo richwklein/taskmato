@@ -26,12 +26,18 @@ enum TaskPriority: Int, Codable, Comparable, CaseIterable, Sendable {
   }
 
   /// SF Symbol name for this priority level, or `nil` for `.none`.
+  ///
+  /// The five levels are glyph-distinct so priority reads without relying on color alone:
+  /// `highest` uses a filled triangle (mirroring the obsidian-tasks 🔺), the elevated band
+  /// steps `exclamationmark.3`/`.2`, and the low band shares `exclamationmark` (differentiated
+  /// by tint — see `accentColor`).
   var icon: String? {
     switch self {
     case .none: return nil
     case .lowest, .low: return "exclamationmark"
     case .medium: return "exclamationmark.2"
-    case .high, .highest: return "exclamationmark.3"
+    case .high: return "exclamationmark.3"
+    case .highest: return "exclamationmark.triangle.fill"
     }
   }
 }
