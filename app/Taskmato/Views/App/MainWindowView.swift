@@ -75,14 +75,12 @@ struct MainWindowView: View {
     .focusedSceneValue(\.timerStop, presenter.canStop ? { presenter.stop() } : nil)
     .onAppear {
       // The main window is the primary surface, so it owns the `openWindow` plumbing: it
-      // binds the reopen action (used by external activations to restore a closed window)
-      // and reports the scene ready to drain any buffered cold-launch URLs (design doc
-      // 0008, D1/D5).
+      // binds the reopen action used by external activations (notification tap,
+      // `taskmato://`) to restore a closed window (design doc 0008, D1/D5).
       nav.bindOpenMainWindow {
         NSApp.activate(ignoringOtherApps: true)
         openWindow(id: "main")
       }
-      (NSApp.delegate as? AppDelegate)?.reportScenesReady()
     }
   }
 

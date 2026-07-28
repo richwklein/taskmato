@@ -5,6 +5,7 @@
 
 import Foundation
 import Observation
+import os
 
 /// Parameters extracted from a `taskmato://start` URL that describe an ad-hoc task.
 struct AdHocTaskParams {
@@ -45,6 +46,10 @@ final class URLSchemeHandler {
   /// Saved params for the "Create new" button shown alongside disambiguation choices.
   var pendingAdHocParams: AdHocTaskParams?
 
+  /// Traces deep-link handling so a `taskmato://` invocation that reaches the handler but
+  /// resolves to nothing can be told apart from one that never arrives (issue #460).
+  private let logger = Logger(subsystem: "com.taskmato", category: "URLScheme")
+
   private let registry: ProviderRegistry
   private let queryService: TaskQueryService
   private let selectionStore: TaskSelectionStore
@@ -77,16 +82,34 @@ final class URLSchemeHandler {
     guard url.scheme?.lowercased() == "taskmato",
       url.host?.lowercased() == "start",
       let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-    else { return }
+    else {
+      let scheme = url.scheme ?? "nil"
+      let host = url.host ?? "nil"
+      logger.error(
+        "handle() rejected by guard: scheme=\(scheme, privacy: .public) host=\(host, privacy: .public)"
+      )
+      return
+    }
 
     let params = queryParams(from: components)
-    guard let task = await resolve(params: params) else { return }
+    guard let task = await resolve(params: params) else {
+      logger.log("handle() resolved no task (disambiguation pending or ad-hoc failed); no session")
+      return
+    }
 
+    logger.log("handle() resolved task; selecting and routing to Timer")
     selectionStore.select(task)
     nav.showTimerInMainWindow()
-    if case .idle = engine.state, settings.autoStartNextPhase {
+    let engineIdle = engine.state == .idle
+    let autoStart = settings.autoStartNextPhase
+    if engineIdle, autoStart {
       engine.applyDurations(from: settings)
       engine.start(phase: .focus)
+      logger.log("handle() started focus session")
+    } else {
+      logger.log(
+        "handle() no session: engineIdle=\(engineIdle, privacy: .public) autoStart=\(autoStart, privacy: .public)"
+      )
     }
   }
 
