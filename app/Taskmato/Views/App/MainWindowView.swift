@@ -68,7 +68,6 @@ struct MainWindowView: View {
       .animation(.default, value: errorPresenter.current)
     }
     .frame(minWidth: 640, minHeight: 400)
-    .focusedSceneValue(\.destination, nav.destination)
     .focusedSceneValue(\.timerToggle, timerToggleAction)
     .focusedSceneValue(\.timerToggleTitle, timerToggleTitleValue)
     .focusedSceneValue(\.timerSkip, { presenter.skip() })

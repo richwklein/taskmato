@@ -43,8 +43,8 @@ private struct TimerStopKey: FocusedValueKey {
   typealias Value = () -> Void
 }
 
-private struct DestinationKey: FocusedValueKey {
-  typealias Value = AppDestination
+private struct TaskViewActiveKey: FocusedValueKey {
+  typealias Value = Bool
 }
 
 // MARK: - FocusedValues extensions
@@ -105,9 +105,13 @@ extension FocusedValues {
     set { self[TimerStopKey.self] = newValue }
   }
 
-  /// The currently selected destination in the main window. Published by ``MainWindowView``.
-  var destination: AppDestination? {
-    get { self[DestinationKey.self] }
-    set { self[DestinationKey.self] = newValue }
+  /// Marks that the task surface is the focused scene. Published by ``TaskDetailView``.
+  ///
+  /// Present (`true`) only while the Tasks destination is shown, so task-scope View menu
+  /// commands (Layout, Sort By) gate on its presence the same way Show/Hide Completed gates
+  /// on ``toggleCompleted`` — the value disappears when the task surface leaves the scene.
+  var taskViewActive: Bool? {
+    get { self[TaskViewActiveKey.self] }
+    set { self[TaskViewActiveKey.self] = newValue }
   }
 }
