@@ -5,11 +5,21 @@
 
 import SwiftUI
 
+/// The surface variant an ``ActiveTaskView`` renders for.
+enum ActiveTaskStyle {
+  /// Companion popover and in-window strip: radio + single-line title only.
+  case compact
+  /// Timer destination: radio + title + notes/source link + swap + clear.
+  case detail
+}
+
 /// A label row displaying the currently selected task with provider-conditional action buttons.
 ///
 /// Hidden when no task is selected. Clearing or completing mid-session shows an inline
 /// confirmation row that stops the timer and routes to the task picker. A swap button
 /// (active-session only) pauses the timer and opens the task picker without stopping the session.
+/// The same view backs the popover, the in-window strip, and the Timer destination; ``style``
+/// drives which affordances render and whether completing/clearing navigates the window.
 @MainActor
 struct ActiveTaskView: View {
 
@@ -18,41 +28,100 @@ struct ActiveTaskView: View {
   var registry: ProviderRegistry
   var nav: MainNavigation
   var errorPresenter: ErrorPresenter
-  /// When `true`, renders task notes and source link below the title.
-  var showNotes: Bool = false
+  /// The surface this instance renders for; drives title styling, secondary affordances, and
+  /// post-commit navigation.
+  var style: ActiveTaskStyle = .detail
+  /// Invoked when the user clicks the title; `nil` renders the title as plain, non-interactive text.
+  var onSelect: (() -> Void)?
 
   @State private var isCompletionHovered: Bool = false
-  @State private var pendingAction: ConfirmAction?
+  @State private var pendingAction: ActiveTaskConfirmAction?
 
   private var sessionIsActive: Bool { engine.state != .idle }
 
   var body: some View {
     if let task = selectionStore.activeTask {
-      Group {
-        if let action = pendingAction {
-          confirmationRow(for: action, task: task)
-        } else {
-          taskRow(for: task)
-        }
+      if let action = pendingAction {
+        ActiveTaskConfirmRow(
+          action: action,
+          onConfirm: {
+            pendingAction = nil
+            commit(action, task: task)
+          },
+          onCancel: { pendingAction = nil }
+        )
+      } else {
+        taskRow(for: task)
       }
-      .padding(.horizontal, .sectionGap)
-      .padding(.vertical, .contentGap)
     }
   }
 
   // MARK: - Row variants
 
   private func taskRow(for task: TaskItem) -> some View {
-    HStack(alignment: .top, spacing: .contentGap) {
+    // Baseline (not top) alignment so the small `.caption2` radio and trailing controls sit
+    // optically centered on the title line, rather than riding above it.
+    HStack(alignment: .firstTextBaseline, spacing: .contentGap) {
       leadingIndicator(for: task)
 
-      VStack(alignment: .leading, spacing: .stackTight) {
-        Text(displayTitle(for: task))
-          .font(.taskTitle)
-          .lineLimit(1)
-          .frame(maxWidth: .infinity, alignment: .leading)
+      titleBlock(for: task)
 
-        if showNotes {
+      if style == .detail {
+        if sessionIsActive {
+          Button {
+            if engine.isRunning { engine.pause() }
+            nav.openMainWindow()
+            nav.showTasks()
+          } label: {
+            Image(systemName: "arrow.triangle.swap")
+              .foregroundStyle(.secondary)
+          }
+          .buttonStyle(.plain)
+          .help(AppLabels.Tooltip.swapTask)
+        }
+
+        Button {
+          if sessionIsActive {
+            pendingAction = .clear
+          } else {
+            selectionStore.clearActiveTask()
+          }
+        } label: {
+          Image(systemName: "xmark")
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .help(AppLabels.Tooltip.clearTask)
+      }
+    }
+  }
+
+  /// The title portion of the row: a hanging priority glyph beside a single-line, content-width
+  /// title for ``ActiveTaskStyle/compact`` (so the strip's inline countdown can sit snug beside
+  /// it), or the same glyph plus a filling title with notes and source link for
+  /// ``ActiveTaskStyle/detail``, matching ``TaskRowView``.
+  @ViewBuilder
+  private func titleBlock(for task: TaskItem) -> some View {
+    switch style {
+    case .compact:
+      HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
+        PriorityGlyph(priority: task.priority)
+        if let onSelect {
+          Button(action: onSelect) {
+            TaskMarkdownTitle(task: task, lineLimit: 1, fill: false)
+              .contentShape(.rect)
+          }
+          .buttonStyle(.plain)
+        } else {
+          TaskMarkdownTitle(task: task, lineLimit: 1, fill: false)
+        }
+      }
+    case .detail:
+      HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
+        PriorityGlyph(priority: task.priority)
+        VStack(alignment: .leading, spacing: .stackTight) {
+          TaskMarkdownTitle(task: task, lineLimit: 1)
+
           if let notes = task.notes {
             TaskNoteView(notes: notes, format: task.format)
           }
@@ -64,112 +133,45 @@ struct ActiveTaskView: View {
           }
         }
       }
-
-      if sessionIsActive {
-        Button {
-          if engine.isRunning { engine.pause() }
-          nav.openMainWindow()
-          nav.showTasks()
-        } label: {
-          Image(systemName: "arrow.triangle.swap")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
-        .help(AppLabels.Tooltip.swapTask)
-      }
-
-      Button {
-        if sessionIsActive {
-          pendingAction = .clear
-        } else {
-          selectionStore.clearActiveTask()
-        }
-      } label: {
-        Image(systemName: "xmark")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-      }
-      .buttonStyle(.plain)
-      .help(AppLabels.Tooltip.clearTask)
-    }
-  }
-
-  /// An inline prompt that replaces the normal row while a destructive action awaits confirmation.
-  private func confirmationRow(for action: ConfirmAction, task: TaskItem) -> some View {
-    HStack(spacing: .contentGap) {
-      Image(systemName: "exclamationmark.triangle")
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-
-      Text(action.prompt)
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-
-      Button {
-        pendingAction = nil
-        commit(action, task: task)
-      } label: {
-        Image(systemName: "checkmark")
-          .font(.caption2)
-          .foregroundStyle(Color.accentColor)
-      }
-      .buttonStyle(.plain)
-      .help(action.helpConfirm)
-
-      Button {
-        pendingAction = nil
-      } label: {
-        Image(systemName: "xmark")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-      }
-      .buttonStyle(.plain)
-      .help("Cancel")
     }
   }
 
   // MARK: - Leading indicator
 
-  /// Returns a complete button when the provider supports mutation, or a static dot indicator otherwise.
+  /// Returns a completion button when the provider supports mutation, or nothing otherwise.
   @ViewBuilder
   private func leadingIndicator(for task: TaskItem) -> some View {
     if registry.closableProvider(for: task.id) != nil {
-      Button {
-        if sessionIsActive {
-          pendingAction = .complete
-        } else {
-          let ref = task.id
-          Task {
-            if let provider = registry.closableProvider(for: ref) {
-              await errorPresenter.attempt(AppLabels.Error.completeFailed) {
-                try await provider.complete(ref)
-              }
-            }
-            selectionStore.clearActiveTask()
+      TaskCompletionButton(
+        action: { completeTapped(task) },
+        label: sessionIsActive
+          ? AppLabels.Tooltip.markAsCompletedActive : AppLabels.Tooltip.markAsCompleted,
+        isHovered: $isCompletionHovered
+      )
+    }
+  }
+
+  /// Handles a tap on the completion circle: confirms first during a live session, otherwise
+  /// completes the task through its provider and clears the active selection.
+  private func completeTapped(_ task: TaskItem) {
+    if sessionIsActive {
+      pendingAction = .complete
+    } else {
+      let ref = task.id
+      Task {
+        if let provider = registry.closableProvider(for: ref) {
+          await errorPresenter.attempt(AppLabels.Error.completeFailed) {
+            try await provider.complete(ref)
           }
         }
-      } label: {
-        Image(systemName: isCompletionHovered ? "checkmark.circle" : "circle")
-          .font(.caption2)
-          .foregroundStyle(Color.accentColor)
+        selectionStore.clearActiveTask()
       }
-      .buttonStyle(.plain)
-      .onHover { isCompletionHovered = $0 }
-      .help(
-        sessionIsActive
-          ? AppLabels.Tooltip.markAsCompletedActive : AppLabels.Tooltip.markAsCompleted)
-    } else {
-      Image(systemName: "circle.fill")
-        .font(.caption2)
-        .foregroundStyle(Color.accentColor)
     }
   }
 
   // MARK: - Action dispatch
 
-  private func commit(_ action: ConfirmAction, task: TaskItem) {
+  private func commit(_ action: ActiveTaskConfirmAction, task: TaskItem) {
     switch action {
     case .complete:
       guard let provider = registry.closableProvider(for: task.id) else { return }
@@ -180,48 +182,63 @@ struct ActiveTaskView: View {
           try await provider.complete(ref)
         }
         selectionStore.clearActiveTask()
-        nav.showTasks()
+        if style == .detail { nav.showTasks() }
       }
     case .clear:
       engine.stop()
       selectionStore.clearActiveTask()
-      nav.showTasks()
+      if style == .detail { nav.showTasks() }
     }
-  }
-
-  // MARK: - Text helpers
-
-  private func displayTitle(for task: TaskItem) -> AttributedString {
-    let mark = task.priority.mark
-    guard !mark.isEmpty else { return task.markdownTitle }
-    var prefix = AttributedString(mark + " ")
-    prefix.swiftUI.foregroundColor = task.priority.accentColor
-    return prefix + task.markdownTitle
   }
 }
 
-// MARK: - ConfirmAction
+#Preview {
+  let engine = SessionEngine()
+  let registry = ProviderRegistry()
+  let errorPresenter = ErrorPresenter()
+  let settings = AppSettings()
+  let nav = MainNavigation(
+    settings: settings, selectionStore: SelectionStore(registry: registry),
+    statsViewModel: .preview)
 
-/// The destructive action awaiting inline confirmation.
-private enum ConfirmAction {
-  /// Mark the active task done and stop the session.
-  case complete
-  /// Clear the active task and stop the session.
-  case clear
-
-  /// Short label shown in the confirmation row.
-  var prompt: String {
-    switch self {
-    case .complete: return "Stop & complete?"
-    case .clear: return "Stop & clear?"
-    }
+  @MainActor
+  func store(priority: TaskPriority) -> TaskSelectionStore {
+    let store = TaskSelectionStore()
+    store.select(
+      TaskItem(
+        id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
+        title: "Priority \(priority)",
+        notes: "Some notes about the task.",
+        format: .plainText,
+        priority: priority,
+        dueDate: nil,
+        scheduledDate: nil,
+        startDate: nil,
+        list: nil,
+        section: nil,
+        sourceURL: nil,
+        completedAt: nil,
+        createdAt: Date()
+      )
+    )
+    return store
   }
 
-  /// Accessibility hint for the confirm button.
-  var helpConfirm: String {
-    switch self {
-    case .complete: return "Stop timer and mark task done"
-    case .clear: return "Stop timer and clear task"
+  let priorities: [TaskPriority] = [.highest, .high, .medium, .low, .lowest]
+
+  return VStack(alignment: .leading, spacing: .sectionGap) {
+    ForEach(priorities, id: \.self) { priority in
+      ActiveTaskView(
+        engine: engine, selectionStore: store(priority: priority), registry: registry,
+        nav: nav, errorPresenter: errorPresenter, style: .compact, onSelect: {})
+    }
+
+    ForEach(priorities, id: \.self) { priority in
+      ActiveTaskView(
+        engine: engine, selectionStore: store(priority: priority), registry: registry,
+        nav: nav, errorPresenter: errorPresenter, style: .detail, onSelect: nil)
     }
   }
+  .padding()
+  .frame(width: 360)
 }

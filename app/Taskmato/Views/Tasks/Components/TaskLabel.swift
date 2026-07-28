@@ -38,6 +38,8 @@ enum AppLabels {
     static let swapTask = "Swap task — pauses the session and opens the task list"
     /// Shown on the clear button in the active task row.
     static let clearTask = "Clear task"
+    /// Shown on the cancel button in an inline confirmation row.
+    static let cancel = "Cancel"
     // Timer controls
     /// Shown on the Start button when no task is selected.
     static let selectTaskFirst = "Select a task before starting"

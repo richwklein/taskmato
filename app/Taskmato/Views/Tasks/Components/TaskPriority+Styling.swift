@@ -20,14 +20,4 @@ extension TaskPriority {
     case .lowest: return .secondary
     }
   }
-
-  /// A short text mark prepended to the task title in the active-task label.
-  var mark: String {
-    switch self {
-    case .highest: return "!!!"
-    case .high: return "!!"
-    case .medium: return "!"
-    case .low, .lowest, .none: return ""
-    }
-  }
 }

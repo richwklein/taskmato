@@ -24,13 +24,8 @@ struct TaskStateButtonView: View {
       .buttonStyle(.plain)
       .help(AppLabels.Tooltip.restore)
     } else if let onComplete = presenter.onComplete {
-      Button(action: onComplete) {
-        Image(systemName: isHovered ? "checkmark.circle" : "circle")
-          .foregroundStyle(Color.accentColor)
-      }
-      .buttonStyle(.plain)
-      .onHover { isHovered = $0 }
-      .help(AppLabels.Tooltip.markAsCompleted)
+      TaskCompletionButton(
+        action: onComplete, label: AppLabels.Tooltip.markAsCompleted, isHovered: $isHovered)
     }
   }
 }
