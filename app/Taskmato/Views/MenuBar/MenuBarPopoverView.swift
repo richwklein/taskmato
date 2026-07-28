@@ -19,6 +19,9 @@ struct MenuBarPopoverView: View {
   var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
   var nav: MainNavigation
+  var engine: SessionEngine
+  var registry: ProviderRegistry
+  var errorPresenter: ErrorPresenter
 
   var body: some View {
     VStack(spacing: 0) {
@@ -38,9 +41,14 @@ struct MenuBarPopoverView: View {
         .padding(.horizontal, .sectionGap)
 
       if selectionStore.activeTask != nil {
-        PopoverActiveTaskLine(selectionStore: selectionStore)
-          .padding(.horizontal, .sectionGap)
-          .padding(.vertical, .contentGap)
+        ActiveTaskView(
+          engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
+          errorPresenter: errorPresenter, style: .compact,
+          onSelect: { dismissPopover { nav.showTimerInMainWindow() } }
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, .sectionGap)
+        .padding(.vertical, .contentGap)
       } else {
         Text(AppLabels.Tooltip.selectTaskFirst)
           .font(.caption)
@@ -54,24 +62,16 @@ struct MenuBarPopoverView: View {
         .padding(.horizontal, .sectionGap)
 
       HStack {
-        Button {
-          let popover = NSApp.keyWindow
-          nav.showStatsInMainWindow()
-          DispatchQueue.main.async { popover?.close() }
-        } label: {
-          Text(summaryText)
-            .font(.statLabel)
-            .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
-        .help(AppLabels.Tab.stats.title)
+        SessionStatsView(
+          count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes,
+          streak: statsViewModel.currentStreak, layout: .inline,
+          onSelect: { dismissPopover { nav.showStatsInMainWindow() } }
+        )
 
         Spacer()
 
         Button {
-          let popover = NSApp.keyWindow
-          nav.openMainWindow()
-          DispatchQueue.main.async { popover?.close() }
+          dismissPopover { nav.openMainWindow() }
         } label: {
           Text("Open \(Bundle.main.appName)")
         }
@@ -83,16 +83,12 @@ struct MenuBarPopoverView: View {
     .frame(width: 280)
   }
 
-  /// A compact one-line focus summary for the bottom bar: sessions · minutes · streak.
-  private var summaryText: String {
-    let sessions =
-      statsViewModel.todayFocusCount == 1
-      ? "1 session" : "\(statsViewModel.todayFocusCount) sessions"
-    var text = "\(sessions) · \(statsViewModel.todayFocusMinutes) min"
-    if statsViewModel.currentStreak > 0 {
-      text += " · 🔥\(statsViewModel.currentStreak)"
-    }
-    return text
+  /// Routes through `MainNavigation`, then closes the popover on the next runloop turn so the
+  /// window activation is not cancelled by the popover tearing down first.
+  private func dismissPopover(then route: @escaping () -> Void) {
+    let popover = NSApp.keyWindow
+    route()
+    DispatchQueue.main.async { popover?.close() }
   }
 }
 
@@ -106,6 +102,9 @@ struct MenuBarPopoverView: View {
     selectionStore: TaskSelectionStore(),
     nav: MainNavigation(
       settings: settings, selectionStore: SelectionStore(registry: registry),
-      statsViewModel: .preview)
+      statsViewModel: .preview),
+    engine: engine,
+    registry: registry,
+    errorPresenter: ErrorPresenter()
   )
 }

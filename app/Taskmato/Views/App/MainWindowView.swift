@@ -57,7 +57,10 @@ struct MainWindowView: View {
         detail
         if indicators.showStrip {
           Divider()
-          TimerStripView(presenter: presenter, selectionStore: selectionStore) {
+          TimerStripView(
+            presenter: presenter, engine: engine, selectionStore: selectionStore,
+            registry: registry, nav: nav, errorPresenter: errorPresenter
+          ) {
             nav.destination = .timer
           }
         }

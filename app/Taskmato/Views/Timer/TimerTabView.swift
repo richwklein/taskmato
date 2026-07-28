@@ -43,10 +43,10 @@ struct TimerTabView: View {
       if selectionStore.activeTask != nil {
         ActiveTaskView(
           engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
-          errorPresenter: errorPresenter,
-          showNotes: true
+          errorPresenter: errorPresenter, style: .detail, onSelect: nil
         )
-        .padding(.horizontal, .contentGap)
+        .padding(.horizontal, .sectionGap)
+        .padding(.vertical, .contentGap)
       } else {
         Button {
           nav.showTasks()
@@ -65,7 +65,8 @@ struct TimerTabView: View {
 
       SessionStatsView(
         count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes,
-        streak: statsViewModel.currentStreak
+        streak: statsViewModel.currentStreak, layout: .spread,
+        onSelect: { nav.showStats() }
       )
       .padding(.horizontal, .screenPadding)
       .padding(.vertical, .groupGap)

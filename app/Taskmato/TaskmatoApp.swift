@@ -27,7 +27,10 @@ struct TaskmatoApp: App {
         presenter: composition.timerPresenter,
         statsViewModel: composition.statsViewModel,
         selectionStore: composition.selectionStore,
-        nav: composition.nav
+        nav: composition.nav,
+        engine: composition.engine,
+        registry: composition.registry,
+        errorPresenter: composition.errorPresenter
       )
     } label: {
       HStack(spacing: 4) {
