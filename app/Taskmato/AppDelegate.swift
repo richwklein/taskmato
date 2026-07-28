@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import os
 
 /// Forwards URL scheme events directly to ``URLSchemeHandler`` and keeps the app alive when
 /// the main window closes.
@@ -14,9 +15,15 @@ import AppKit
 /// `MenuBarExtra` content is not in the main window responder chain and misses URL events
 /// when the popover is collapsed.
 ///
-/// URLs that arrive before the main window scene has mounted are held in `urlBuffer` and
-/// drained by ``reportScenesReady()`` once the window reports it is ready.
+/// URLs are handled immediately on arrival. `bootstrap` wires the handler from
+/// `applicationWillFinishLaunching`, which the system runs before it delivers any queued
+/// `taskmato://` Apple event, so the handler is always ready by the time the first URL
+/// arrives — no buffering or scene-ready gating is required (design doc 0008, D5).
 final class AppDelegate: NSObject, NSApplicationDelegate {
+
+  /// Traces the `taskmato://` entry path so a dropped invocation can be localised via
+  /// `log show --predicate 'subsystem == "com.taskmato"'` (issue #460).
+  private let logger = Logger(subsystem: "com.taskmato", category: "URLScheme")
 
   /// Injected by `TaskmatoApp.init()`. Called from `applicationWillFinishLaunching`,
   /// which fires before the system delivers any queued `taskmato://` Apple events —
@@ -25,10 +32,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   /// The URL handler wired by ``wire(urlHandler:)`` after composition completes.
   private(set) var urlHandler: URLSchemeHandler?
-
-  /// URLs received before ``reportScenesReady()`` is called.
-  private var urlBuffer: [URL] = []
-  private var scenesReady = false
 
   func applicationWillFinishLaunching(_ notification: Notification) {
     bootstrap?()
@@ -43,27 +46,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func application(_ application: NSApplication, open urls: [URL]) {
-    if scenesReady, let urlHandler {
-      for url in urls {
-        Task { @MainActor in await urlHandler.handle(url) }
-      }
-    } else {
-      urlBuffer.append(contentsOf: urls)
+    guard let urlHandler else {
+      logger.error(
+        "open: urlHandler not wired; \(urls.count, privacy: .public) url(s) dropped")
+      return
     }
-  }
-
-  /// Called once when the main window scene first appears; drains any buffered URLs.
-  ///
-  /// Must be called from the main window's `onAppear`, after `bindOpenMainWindow` has been
-  /// called on `MainNavigation`, so that URL handling can open the main window. Subsequent
-  /// calls are no-ops.
-  func reportScenesReady() {
-    guard !scenesReady else { return }
-    scenesReady = true
-    let buffered = urlBuffer
-    urlBuffer = []
-    guard let urlHandler else { return }
-    for url in buffered {
+    for url in urls {
+      logger.log("open: handling \(url.absoluteString, privacy: .public)")
       Task { @MainActor in await urlHandler.handle(url) }
     }
   }
