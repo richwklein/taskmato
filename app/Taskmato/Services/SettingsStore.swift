@@ -91,7 +91,7 @@ final class SettingsStore {
   /// Reads or writes a `String`-backed `RawRepresentable` (e.g. an enum), stored as its raw value.
   subscript<Value: RawRepresentable>(key: SettingsKey<Value>) -> Value
   where Value.RawValue == String {
-    get { defaults.string(forKey: key.name).flatMap(Value.init(rawValue:)) ?? key.defaultValue }
+    get { defaults.string(forKey: key.name).flatMap { Value(rawValue: $0) } ?? key.defaultValue }
     set { defaults.set(newValue.rawValue, forKey: key.name) }
   }
 

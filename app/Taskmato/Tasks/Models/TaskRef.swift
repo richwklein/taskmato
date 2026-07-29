@@ -9,7 +9,7 @@ import Foundation
 ///
 /// Combining `providerID` and `nativeID` allows tasks from multiple
 /// concurrent providers to coexist without collisions.
-struct TaskRef: Hashable, Codable, Sendable {
+nonisolated struct TaskRef: Hashable, Codable, Sendable {
 
   /// The identifier of the provider that owns this task (e.g. `"reminders"`, `"obsidian"`, `"cli"`).
   let providerID: String

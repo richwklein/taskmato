@@ -60,18 +60,21 @@ final class FakeRemindersEventStore: RemindersEventStore {
     stubbedCalendars
   }
 
-  func fetchIncompleteReminders(in calendars: [EKCalendar]?) async throws -> [EKReminder] {
+  func fetchIncompleteReminders(in calendars: [EKCalendar]?) async throws -> [ReminderSnapshot] {
     let incomplete = stubbedReminders.filter { !$0.isCompleted }
-    guard let calendars else { return incomplete }
+    guard let calendars else { return incomplete.map(ReminderSnapshot.init) }
     let ids = Set(calendars.map(\.calendarIdentifier))
-    return incomplete.filter { ids.contains($0.calendar.calendarIdentifier) }
+    return
+      incomplete
+      .filter { ids.contains($0.calendar.calendarIdentifier) }
+      .map(ReminderSnapshot.init)
   }
 
   func fetchCompletedReminders(
     in calendars: [EKCalendar]?,
     within interval: DateInterval
-  ) async throws -> [EKReminder] {
-    stubbedReminders.filter { $0.isCompleted }
+  ) async throws -> [ReminderSnapshot] {
+    stubbedReminders.filter { $0.isCompleted }.map(ReminderSnapshot.init)
   }
 
   func save(_ reminder: EKReminder, commit: Bool) throws {

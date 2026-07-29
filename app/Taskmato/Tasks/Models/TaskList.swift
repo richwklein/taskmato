@@ -6,7 +6,7 @@
 import Foundation
 
 /// A named grouping of tasks within a single provider (e.g. a Reminders list, an Obsidian folder, a Todoist project).
-struct TaskList: Identifiable, Hashable, Codable, Sendable {
+nonisolated struct TaskList: Identifiable, Hashable, Codable, Sendable {
 
   /// Provider-local identifier for this list.
   let id: String

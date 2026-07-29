@@ -10,7 +10,7 @@ import Foundation
 /// `TaskItem` is the shared currency between all task providers, the picker UI,
 /// and the session log. Providers map their native task types to this struct;
 /// display layers read from it without knowing which provider it came from.
-struct TaskItem: Identifiable, Hashable, Codable, Sendable {
+nonisolated struct TaskItem: Identifiable, Hashable, Codable, Sendable {
 
   /// Stable, provider-namespaced identifier.
   let id: TaskRef

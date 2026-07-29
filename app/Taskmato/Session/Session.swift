@@ -6,7 +6,7 @@
 import Foundation
 
 /// An immutable record of a single completed Pomodoro phase.
-struct Session: Codable, Identifiable {
+nonisolated struct Session: Codable, Identifiable, Sendable {
 
   /// Stable unique identifier for this session record.
   let id: UUID

@@ -22,7 +22,7 @@ import Observation
 final class ObsidianProvider: ClosableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
-  static let providerID = "obsidian"
+  nonisolated static let providerID = "obsidian"
 
   let id: String = ObsidianProvider.providerID
   let displayName: String = "Obsidian"

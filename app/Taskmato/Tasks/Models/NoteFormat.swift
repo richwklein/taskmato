@@ -6,7 +6,7 @@
 import Foundation
 
 /// Declares how a task's `notes` string should be interpreted for display.
-enum NoteFormat: Codable, Sendable {
+nonisolated enum NoteFormat: Codable, Sendable {
 
   /// Plain text — rendered verbatim, no markdown interpretation.
   case plainText
