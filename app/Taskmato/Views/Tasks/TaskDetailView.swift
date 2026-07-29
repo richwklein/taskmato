@@ -137,6 +137,7 @@ struct TaskDetailView: View {
           sortMenu
         }
       }
+      .focusedSceneValue(\.taskViewActive, true)
       .focusedSceneValue(\.focusSearch, { isSearchFocused = true })
       .focusedSceneValue(\.addTask, writableProvider != nil ? { isAddingTask = true } : nil)
       .focusedSceneValue(

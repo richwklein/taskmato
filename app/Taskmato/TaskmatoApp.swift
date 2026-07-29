@@ -120,7 +120,7 @@ struct TaskmatoApp: App {
 /// Menu commands and keyboard shortcuts for the main application window.
 struct TaskmatoCommands: Commands {
 
-  @FocusedValue(\.destination) private var destination
+  @FocusedValue(\.taskViewActive) private var taskViewActive
   @FocusedValue(\.focusSearch) private var focusSearch
   @FocusedValue(\.addTask) private var addTask
   @FocusedValue(\.toggleCompleted) private var toggleCompleted
@@ -138,14 +138,19 @@ struct TaskmatoCommands: Commands {
   /// The provider registry used to populate the File → Add Provider submenu.
   var registry: ProviderRegistry
 
-  /// Whether the focused window is showing a task-scope destination (Today or a list).
+  /// Whether the task surface currently owns the focused scene.
   ///
-  /// Read from the focused value so task-scope commands gate on what the window shows,
-  /// which absorbs the #426 pattern where Layout/Sort stayed enabled off the task surface.
+  /// Gates task-scope View menu commands (Layout, Sort By) on the presence of the
+  /// ``FocusedValues/taskViewActive`` marker published by ``TaskDetailView``. Presence-based
+  /// gating — the same mechanism Show/Hide Completed uses — grays these out reliably when the
+  /// task surface leaves the scene, resolving #426 where value-comparison gating went stale.
   private var isTaskScope: Bool {
-    if case .today = destination { return true }
-    if case .list = destination { return true }
-    return false
+    taskViewActive == true
+  }
+
+  /// The sidebar toggle's title, reflecting the current column visibility.
+  private var sidebarToggleTitle: String {
+    nav.sidebarVisible ? AppLabels.View.hideSidebar.title : AppLabels.View.showSidebar.title
   }
 
   /// Whether the current navigation destination is any Stats scope.
@@ -188,9 +193,11 @@ struct TaskmatoCommands: Commands {
         .keyboardShortcut("f")
         .disabled(focusSearch == nil)
     }
-    // View → destination navigation (⌘1/2/3), layout, completed toggle (⌘⇧C), Sort By.
-    // The system Show/Hide Sidebar command (⌃⌘S) is restored automatically now that a
-    // single NavigationSplitView sits at the window root, so no custom toggle is needed.
+    // View → destination navigation (⌘1/2/3), layout, completed toggle (⌘⇧C), Sort By, and
+    // the sidebar toggle (⌃⌘S) last so it sits just above the system Enter Full Screen item.
+    // The main window drives column visibility with its own `nav.sidebarVisible` binding
+    // (persisted to `UserDefaults`), which suppresses SwiftUI's automatic sidebar command, so
+    // the toggle is provided explicitly here against that state.
     CommandGroup(after: .sidebar) {
       Divider()
       Button {
@@ -212,13 +219,27 @@ struct TaskmatoCommands: Commands {
       }
       .keyboardShortcut("3")
       Divider()
-      Picker("Layout", selection: $settings.taskPickerLayout) {
+      // Layout uses Toggles, not a Picker: a Toggle is an action item, so AppKit re-validates
+      // it on every menu open and `.disabled` greys it live off the task surface (a `Picker`
+      // container froze its state at build time — the root cause of #426). The Toggle also
+      // renders the on-state checkmark alongside the label glyph, matching the Reminders app.
+      Toggle(
+        isOn: Binding(
+          get: { settings.taskPickerLayout == .list },
+          set: { if $0 { settings.taskPickerLayout = .list } }
+        )
+      ) {
         Label(AppLabels.View.listLayout.title, systemImage: AppLabels.View.listLayout.systemImage)
-          .tag(TaskPickerLayout.list)
-        Label(AppLabels.View.gridLayout.title, systemImage: AppLabels.View.gridLayout.systemImage)
-          .tag(TaskPickerLayout.grid)
       }
-      .pickerStyle(.inline)
+      .disabled(!isTaskScope)
+      Toggle(
+        isOn: Binding(
+          get: { settings.taskPickerLayout == .grid },
+          set: { if $0 { settings.taskPickerLayout = .grid } }
+        )
+      ) {
+        Label(AppLabels.View.gridLayout.title, systemImage: AppLabels.View.gridLayout.systemImage)
+      }
       .disabled(!isTaskScope)
       Divider()
       Button {
@@ -232,6 +253,9 @@ struct TaskmatoCommands: Commands {
       .keyboardShortcut("c", modifiers: [.command, .shift])
       .disabled(toggleCompleted == nil)
       Divider()
+      // Each sort option is disabled individually: as action items they re-validate on menu
+      // open and grey live off the task surface, whereas `.disabled` on the parent `Menu`
+      // container alone did not update (see the Layout note above, #426).
       Menu {
         ForEach(TaskSortField.allCases, id: \.self) { field in
           Button {
@@ -242,6 +266,7 @@ struct TaskmatoCommands: Commands {
               field.displayName,
               systemImage: settings.taskSortField == field ? "checkmark" : "")
           }
+          .disabled(!isTaskScope)
         }
         Divider()
         Button {
@@ -251,6 +276,7 @@ struct TaskmatoCommands: Commands {
             settings.taskSortField.ascendingLabel,
             systemImage: settings.taskSortDirection == .ascending ? "checkmark" : "")
         }
+        .disabled(!isTaskScope)
         Button {
           settings.taskSortDirection = .descending
         } label: {
@@ -258,10 +284,18 @@ struct TaskmatoCommands: Commands {
             settings.taskSortField.descendingLabel,
             systemImage: settings.taskSortDirection == .descending ? "checkmark" : "")
         }
+        .disabled(!isTaskScope)
       } label: {
         Label(AppLabels.View.sort.title, systemImage: AppLabels.View.sort.systemImage)
       }
       .disabled(!isTaskScope)
+      Divider()
+      Button {
+        nav.sidebarVisible.toggle()
+      } label: {
+        Label(sidebarToggleTitle, systemImage: AppLabels.View.showSidebar.systemImage)
+      }
+      .keyboardShortcut("s", modifiers: [.control, .command])
     }
     // Timer menu — Start/Pause/Resume (⌘⏎), Skip Phase (⌘K), Stop (⌘.).
     CommandMenu("Timer") {
