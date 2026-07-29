@@ -44,7 +44,7 @@ jobs:
         #   - name: Build (Swift)
         #     if: matrix.language == 'swift'
         #     run: |
-        #       sudo xcode-select -s /Applications/Xcode_16.3.app
+        #       sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
         #       xcodebuild build -project Your.xcodeproj -scheme Your \
         #         -configuration Debug -destination 'platform=macOS' \
         #         CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
@@ -58,7 +58,7 @@ jobs:
           - language: actions
             runner: ubuntu-latest
           - language: swift
-            runner: macos-15
+            runner: macos-26
     steps:
       # Steps are conditionally skipped rather than the job, so the
       # matrix-expanded status check (e.g. "analyze (actions, ubuntu-latest)")
@@ -78,7 +78,7 @@ jobs:
 
       - name: Select Xcode
         if: matrix.language == 'swift' && steps.changes.outputs.relevant == 'true'
-        run: sudo xcode-select -s /Applications/Xcode_16.3.app
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
 
       - name: Initialize CodeQL
         if: steps.changes.outputs.relevant == 'true'
