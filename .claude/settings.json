@@ -18,7 +18,9 @@
       "mcp__github__search_issues",
       "mcp__github__list_issues",
       "mcp__xcode__XcodeListWindows",
-      "mcp__xcode__DocumentationSearch"
+      "mcp__xcode__DocumentationSearch",
+      "Skill(macos-development)",
+      "Skill(swift-development)"
     ]
   }
 }
