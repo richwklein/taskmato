@@ -196,14 +196,14 @@ final class RemindersProvider: ClosableTaskProvider {
 
   // MARK: - Mapping
 
-  /// Maps an ``EKReminder`` to a provider-agnostic ``TaskItem``.
-  private func mapToTaskItem(_ reminder: EKReminder) -> TaskItem {
+  /// Maps a ``ReminderSnapshot`` to a provider-agnostic ``TaskItem``.
+  private func mapToTaskItem(_ reminder: ReminderSnapshot) -> TaskItem {
     TaskItem(
       id: TaskRef(
         providerID: Self.providerID,
         nativeID: reminder.calendarItemIdentifier
       ),
-      title: reminder.title ?? "",
+      title: reminder.title,
       notes: reminder.notes,
       format: .plainText,
       priority: mapPriority(reminder.priority),
@@ -215,9 +215,9 @@ final class RemindersProvider: ClosableTaskProvider {
         Calendar.current.date(from: $0)
       },
       list: TaskList(
-        id: reminder.calendar.calendarIdentifier,
+        id: reminder.calendarIdentifier,
         providerID: Self.providerID,
-        name: reminder.calendar.title
+        name: reminder.calendarTitle
       ),
       sourceURL: URL(
         string:

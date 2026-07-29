@@ -23,15 +23,18 @@ final class LiveRemindersEventStore: RemindersEventStore {
     store.calendars(for: entityType)
   }
 
-  func fetchIncompleteReminders(in calendars: [EKCalendar]?) async throws -> [EKReminder] {
+  func fetchIncompleteReminders(in calendars: [EKCalendar]?) async throws -> [ReminderSnapshot] {
     let predicate = store.predicateForIncompleteReminders(
       withDueDateStarting: nil,
       ending: nil,
       calendars: calendars
     )
     return try await withCheckedThrowingContinuation { continuation in
-      store.fetchReminders(matching: predicate) { reminders in
-        continuation.resume(returning: reminders ?? [])
+      // The completion fires on an arbitrary EventKit queue, so it must be @Sendable (nonisolated) —
+      // otherwise the module's default main-actor isolation traps when it runs off the main thread.
+      // Snapshot here so only Sendable values escape the continuation.
+      store.fetchReminders(matching: predicate) { @Sendable reminders in
+        continuation.resume(returning: (reminders ?? []).map(ReminderSnapshot.init))
       }
     }
   }
@@ -39,15 +42,16 @@ final class LiveRemindersEventStore: RemindersEventStore {
   func fetchCompletedReminders(
     in calendars: [EKCalendar]?,
     within interval: DateInterval
-  ) async throws -> [EKReminder] {
+  ) async throws -> [ReminderSnapshot] {
     let predicate = store.predicateForCompletedReminders(
       withCompletionDateStarting: interval.start,
       ending: interval.end,
       calendars: calendars
     )
     return try await withCheckedThrowingContinuation { continuation in
-      store.fetchReminders(matching: predicate) { reminders in
-        continuation.resume(returning: reminders ?? [])
+      // See fetchIncompleteReminders — the completion runs off the main thread and must be @Sendable.
+      store.fetchReminders(matching: predicate) { @Sendable reminders in
+        continuation.resume(returning: (reminders ?? []).map(ReminderSnapshot.init))
       }
     }
   }

@@ -69,7 +69,7 @@ extension SessionEntity {
 extension Session {
 
   /// Reconstructs a domain ``Session`` from its persistence record.
-  init(entity: SessionEntity) {
+  nonisolated init(entity: SessionEntity) {
     let taskRef: TaskRef?
     if let providerID = entity.taskProviderID, let nativeID = entity.taskNativeID {
       taskRef = TaskRef(providerID: providerID, nativeID: nativeID)

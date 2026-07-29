@@ -89,7 +89,7 @@ struct ProviderSlice: Identifiable {
 }
 
 /// A row in the All Time sortable task table.
-struct AllTimeTaskRow: Identifiable {
+nonisolated struct AllTimeTaskRow: Identifiable, Sendable {
 
   /// The task this row aggregates, or `nil` for untracked focus time.
   let taskRef: TaskRef?

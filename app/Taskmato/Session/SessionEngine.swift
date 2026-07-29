@@ -11,7 +11,7 @@ import Observation
 /// Uses `String` raw values so phases can be round-tripped through notification `userInfo`
 /// dictionaries. Raw values match the case names ("focus", "shortBreak", "longBreak") which
 /// keeps existing persisted `Session` JSON backward-compatible.
-enum SessionPhase: String, Equatable, Codable {
+enum SessionPhase: String, Equatable, Codable, Sendable {
   /// A focus interval — the core work period.
   case focus
   /// A short recovery break, typically taken after each focus interval.
@@ -283,7 +283,10 @@ final class SessionEngine {
   private func startTicking() {
     stopTicking()
     let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-      self?.refreshTimeRemaining()
+      // The timer is added to RunLoop.main below, so its block always fires on the main actor.
+      MainActor.assumeIsolated {
+        self?.refreshTimeRemaining()
+      }
     }
     // .common mode keeps the timer firing while menus and popovers are open.
     RunLoop.main.add(timer, forMode: .common)

@@ -8,10 +8,10 @@ import SwiftUI
 extension CGFloat {
 
   /// Corner radius for card surfaces (task cards, stat cards).
-  static let cardCornerRadius: CGFloat = 8
+  nonisolated static let cardCornerRadius: CGFloat = 8
 
   /// Corner radius for chart bars and legend swatches.
-  static let barCornerRadius: CGFloat = 2
+  nonisolated static let barCornerRadius: CGFloat = 2
 }
 
 extension RoundedRectangle {

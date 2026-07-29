@@ -24,13 +24,19 @@ protocol RemindersEventStore: AnyObject, Sendable {
   func calendars(for entityType: EKEntityType) -> [EKCalendar]
 
   /// Fetches incomplete reminders, optionally scoped to specific calendars.
-  func fetchIncompleteReminders(in calendars: [EKCalendar]?) async throws -> [EKReminder]
+  ///
+  /// Returns ``ReminderSnapshot`` values rather than `EKReminder` so results can cross back from
+  /// EventKit's fetch queue to the main actor without sending a non-`Sendable` object.
+  func fetchIncompleteReminders(in calendars: [EKCalendar]?) async throws -> [ReminderSnapshot]
 
   /// Fetches completed reminders within a date range, optionally scoped to specific calendars.
+  ///
+  /// Returns ``ReminderSnapshot`` values for the same isolation-safety reason as
+  /// ``fetchIncompleteReminders(in:)``.
   func fetchCompletedReminders(
     in calendars: [EKCalendar]?,
     within interval: DateInterval
-  ) async throws -> [EKReminder]
+  ) async throws -> [ReminderSnapshot]
 
   /// Saves a modified reminder to the store.
   func save(_ reminder: EKReminder, commit: Bool) throws

@@ -9,12 +9,12 @@ import Foundation
 ///
 /// All file I/O is the caller's responsibility — this type accepts a plain `String` and
 /// returns parsed tasks, making it straightforward to unit-test without a filesystem.
-struct ObsidianTaskParser {
+nonisolated struct ObsidianTaskParser: Sendable {
 
   // MARK: - Public interface
 
   /// The result of parsing a single markdown file for incomplete tasks.
-  struct ParseResult {
+  nonisolated struct ParseResult {
     /// Incomplete tasks found in the file, in source order.
     let items: [TaskItem]
     /// Text of the first H1 heading in the file, if any — used to name the ``TaskList``.
@@ -22,7 +22,7 @@ struct ObsidianTaskParser {
   }
 
   /// The result of parsing a single markdown file for completed tasks.
-  struct CompletedParseResult {
+  nonisolated struct CompletedParseResult {
     /// Completed tasks, each with `completedAt` set from the `✅ YYYY-MM-DD` emoji when present.
     let entries: [TaskItem]
     /// Text of the first H1 heading in the file, if any — used to name the ``TaskList``.
@@ -100,7 +100,7 @@ struct ObsidianTaskParser {
   // MARK: - State machine
 
   /// Raw task line collected by the state machine before field extraction.
-  private struct RawEntry {
+  nonisolated private struct RawEntry {
     let lineNumber: Int
     let rawLine: String
     let section: String?
@@ -235,7 +235,7 @@ struct ObsidianTaskParser {
   // MARK: - Task construction
 
   /// File-level context shared across all tasks parsed from a single file.
-  private struct FileContext {
+  nonisolated private struct FileContext {
     let providerID: String
     let fileRelativePath: String
     let vaultName: String
@@ -315,7 +315,7 @@ struct ObsidianTaskParser {
 
   // MARK: - Field extraction
 
-  private static let priorityEmojis: [(String, TaskPriority)] = [
+  nonisolated private static let priorityEmojis: [(String, TaskPriority)] = [
     ("🔺", .highest),
     ("⏫", .high),
     ("🔼", .medium),
