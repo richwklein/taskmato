@@ -98,7 +98,7 @@ struct ActiveTaskView: View {
 
   /// The title portion of the row: a hanging priority glyph beside a single-line, content-width
   /// title for ``ActiveTaskStyle/compact`` (so the strip's inline countdown can sit snug beside
-  /// it), or the same glyph plus a filling title with notes and source link for
+  /// it), or the same glyph plus a filling title with notes and a ``TaskSourceBadge`` for
   /// ``ActiveTaskStyle/detail``, matching ``TaskRowView``.
   @ViewBuilder
   private func titleBlock(for task: TaskItem) -> some View {
@@ -126,10 +126,8 @@ struct ActiveTaskView: View {
             TaskNoteView(notes: notes, format: task.format)
           }
 
-          if let url = task.sourceURL, let name = registry.provider(for: task.id)?.displayName {
-            Link("Open in \(name)", destination: url)
-              .font(.caption2)
-              .foregroundStyle(.secondary)
+          if let url = task.sourceURL, let provider = registry.provider(for: task.id) {
+            TaskSourceBadge(url: url, name: provider.displayName, icon: provider.icon)
           }
         }
       }
