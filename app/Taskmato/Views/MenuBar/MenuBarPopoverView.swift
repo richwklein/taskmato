@@ -50,9 +50,7 @@ struct MenuBarPopoverView: View {
         .padding(.horizontal, .sectionGap)
         .padding(.vertical, .contentGap)
       } else {
-        Text(AppLabels.Tooltip.selectTaskFirst)
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        BrowseTasksButton { dismissPopover { nav.showTasksInMainWindow() } }
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(.horizontal, .sectionGap)
           .padding(.vertical, .contentGap)

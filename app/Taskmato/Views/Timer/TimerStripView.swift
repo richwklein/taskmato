@@ -7,14 +7,17 @@ import SwiftUI
 
 /// A compact session bar pinned below the detail column while a session is non-idle.
 ///
-/// Keeps the countdown and core controls visible from any non-Timer destination: a mini
-/// progress ring, the active task, the phase and countdown, and the shared pause/resume ·
-/// skip · stop controls. When a task is active, the phase + countdown sits inline just after
-/// the task title on a single line (`.secondary`); with no active task it stands alone as a
-/// `.primary` line. Clicking the ring, the countdown, or the task title jumps to the Timer
-/// destination; the active task's radio stays a sibling control so completing or clearing
-/// mid-session never navigates. The window gates visibility via ``SessionIndicators``; this
-/// view assumes it is only shown when non-idle, so its controls never surface Start.
+/// Keeps the countdown and core controls visible from any non-Timer destination: the active
+/// task, a mini progress ring, the phase and countdown, and the shared pause/resume · skip ·
+/// stop controls. When a task is active its title leads the strip on the left; a flexible
+/// spacer pushes the timer machinery — a hairline divider walling it off, the ring, and the
+/// phase + countdown session-state cluster (`.secondary`) — into a right rail flush against
+/// the controls. With no active task the ring and countdown stand alone (`.primary`),
+/// right-aligned beside the controls with the divider omitted. Clicking the ring, the
+/// countdown, or the task title jumps to the Timer destination; the active task's radio stays
+/// a sibling control so completing or clearing mid-session never navigates. The window gates
+/// visibility via ``SessionIndicators``; this view assumes it is only shown when non-idle, so
+/// its controls never surface Start.
 struct TimerStripView: View {
 
   /// The presenter supplying timer display values and receiving control intents.
@@ -34,6 +37,21 @@ struct TimerStripView: View {
 
   var body: some View {
     HStack(spacing: .contentGap) {
+      if selectionStore.activeTask != nil {
+        ActiveTaskView(
+          engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
+          errorPresenter: errorPresenter, style: .compact, onSelect: onSelectTimer
+        )
+      }
+
+      Spacer()
+
+      if selectionStore.activeTask != nil {
+        Divider()
+          .frame(height: 22)
+          .padding(.horizontal, .contentGap)
+      }
+
       Button(action: onSelectTimer) {
         TimerRing(progress: presenter.progress, diameter: 22, strokeWidth: 3)
       }
@@ -41,17 +59,7 @@ struct TimerStripView: View {
       .help(AppLabels.Tab.timer.title)
       .accessibilityLabel(AppLabels.Tab.timer.title)
 
-      if selectionStore.activeTask == nil {
-        countdown(secondary: false)
-      } else {
-        ActiveTaskView(
-          engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
-          errorPresenter: errorPresenter, style: .compact, onSelect: onSelectTimer
-        )
-        countdown(secondary: true)
-      }
-
-      Spacer()
+      countdown(secondary: selectionStore.activeTask != nil)
 
       TimerControlsView(presenter: presenter, size: .compact)
     }

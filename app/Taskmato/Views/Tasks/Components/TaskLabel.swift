@@ -83,7 +83,7 @@ enum AppLabels {
     /// The sort toolbar menu.
     static let sort = AppLabel("Sort", systemImage: "arrow.up.arrow.down")
     /// Opens the task browser from the timer views.
-    static let browseTask = AppLabel("Browse Tasks…", systemImage: "checklist")
+    static let browseTask = AppLabel("Browse Tasks…", systemImage: "list.bullet")
     /// Shows the provider sidebar column.
     static let showSidebar = AppLabel("Show Sidebar", systemImage: "sidebar.left")
     /// Hides the provider sidebar column.
