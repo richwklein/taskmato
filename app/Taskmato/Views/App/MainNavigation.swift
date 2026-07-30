@@ -158,6 +158,12 @@ final class MainNavigation {
     destination = .timer
   }
 
+  /// Opens the main window and switches to the last task-scope destination, falling back to Today.
+  func showTasksInMainWindow() {
+    openMainWindowAction?()
+    showTasks()
+  }
+
   /// Opens the main window and switches to the Stats destination at the current scope.
   func showStatsInMainWindow() {
     openMainWindowAction?()

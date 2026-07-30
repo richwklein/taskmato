@@ -48,16 +48,10 @@ struct TimerTabView: View {
         .padding(.horizontal, .sectionGap)
         .padding(.vertical, .contentGap)
       } else {
-        Button {
-          nav.showTasks()
-        } label: {
-          Label(AppLabels.View.browseTask.title, systemImage: AppLabels.View.browseTask.systemImage)
-            .font(.caption)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, .screenPadding)
-        .padding(.vertical, .iconLabel)
+        BrowseTasksButton { nav.showTasks() }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.horizontal, .sectionGap)
+          .padding(.vertical, .contentGap)
       }
 
       Divider()
