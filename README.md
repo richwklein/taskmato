@@ -32,6 +32,8 @@ Stats are computed from the persisted session log — never manually incremented
 - [`docs/`](docs/) — the project's documentation, organised by reader intent ([Divio four-quadrant](https://documentation.divio.com/) layout).
 - [`docs/explanation/architecture.md`](docs/explanation/architecture.md) — high-level architecture overview.
 - [`docs/architecture/decisions/`](docs/architecture/decisions/) — Architecture Decision Records.
+- [`docs/release.md`](docs/release.md) — Release guide: local setup, build targets, CI workflow, and release flow.
+- [`docs/ci-signing.md`](docs/ci-signing.md) — GitHub Actions secrets and CI signing configuration.
 - [`AGENTS.md`](AGENTS.md) — operating rules for agents (Claude Code, Copilot, etc.) collaborating on the project.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — commit and branching conventions.
 

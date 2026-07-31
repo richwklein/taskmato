@@ -21,5 +21,13 @@
     "editor.defaultFormatter": "sweetpad.sweetpad"
   },
   "cSpell.words": ["codeql", "pomodoro", "richwklein", "swiftlint", "taskmato"],
-  "sweetpad.build.xcodeWorkspacePath": "app/Taskmato.xcodeproj/project.xcworkspace"
+  "sweetpad.build.xcodeWorkspacePath": "app/Taskmato.xcodeproj/project.xcworkspace",
+  "sweetpad.build.args": [
+    "CODE_SIGN_IDENTITY=Apple Development",
+    "CODE_SIGN_STYLE=Automatic",
+    "CODE_SIGNING_REQUIRED=YES",
+    "CODE_SIGNING_ALLOWED=YES",
+    "DEVELOPMENT_TEAM=43757RE978"
+  ],
+  "sweetpad.build.allowProvisioningUpdates": true
 }
