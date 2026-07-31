@@ -18,9 +18,9 @@ import os
 final class LocalProvider: WritableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
-  static let providerID = "local"
+  static let providerID: ProviderID = "local"
 
-  let id: String = LocalProvider.providerID
+  let id: ProviderID = LocalProvider.providerID
   let displayName: String = "Local"
   let displayOrder: Int = 0
   let icon: String = "tray"

@@ -52,20 +52,21 @@ final class TaskSelectionStore {
 
   /// Returns recent tasks for the given provider, newest first.
   /// - Parameter providerID: The provider whose recents to return.
-  func recents(for providerID: String) -> [TaskItem] {
-    recentsByProvider[providerID] ?? []
+  func recents(for providerID: ProviderID) -> [TaskItem] {
+    recentsByProvider[providerID.rawValue] ?? []
   }
 
   // MARK: - Private
 
   private func addToRecents(_ task: TaskItem) {
-    var list = recentsByProvider[task.id.providerID] ?? []
+    let key = task.id.providerID.rawValue
+    var list = recentsByProvider[key] ?? []
     list.removeAll { $0.id == task.id }
     list.insert(task, at: 0)
     if list.count > Self.recentsLimit {
       list = Array(list.prefix(Self.recentsLimit))
     }
-    recentsByProvider[task.id.providerID] = list
+    recentsByProvider[key] = list
   }
 
   private func persist() {

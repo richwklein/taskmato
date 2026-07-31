@@ -9,7 +9,7 @@ import Foundation
 struct SelectedList: Hashable, Codable, Sendable {
 
   /// The provider that owns this list.
-  let providerID: String
+  let providerID: ProviderID
 
   /// The list's stable identifier within its provider.
   let listID: String

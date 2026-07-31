@@ -11,14 +11,14 @@ import Testing
 // MARK: - Fakes
 
 private final class NavStubProvider: TaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
 
-  init(id: String) {
+  init(id: ProviderID) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
   }
 
   func authorize() async throws {}

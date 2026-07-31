@@ -6,7 +6,7 @@
 import Foundation
 
 /// A per-provider error returned alongside tasks when a provider fetch fails.
-typealias ProviderFetchError = (providerID: String, error: any Error)
+typealias ProviderFetchError = (providerID: ProviderID, error: any Error)
 
 /// Fans out task queries across the enabled providers in a ``ProviderRegistry`` and orders the result.
 ///

@@ -126,7 +126,9 @@ final class URLSchemeHandler {
   /// provider is available or the write fails; the caller then starts no session.
   func makeAdHocTask(from adHocParams: AdHocTaskParams) async -> TaskItem? {
     // Level 1: URL param targets a specific provider (strict — no implicit fallback within level).
-    let urlTargeted = adHocParams.providerID.flatMap(registry.enabledWritableProvider(id:))
+    let urlTargeted = adHocParams.providerID
+      .map(ProviderID.init(_:))
+      .flatMap(registry.enabledWritableProvider(id:))
     // Level 2 & 3: settings default, then first enabled writable provider.
     let writable =
       urlTargeted
@@ -172,7 +174,7 @@ final class URLSchemeHandler {
 
     // 1. Exact lookup by stable ID within a named provider
     if let providerID, let nativeID {
-      if let task = await lookupByID(nativeID: nativeID, providerID: providerID) {
+      if let task = await lookupByID(nativeID: nativeID, providerID: ProviderID(providerID)) {
         return task
       }
     }
@@ -186,7 +188,7 @@ final class URLSchemeHandler {
 
     // 3. Title match within a named provider
     if let providerID, let title {
-      if let task = await lookupByTitle(title, providerID: providerID) {
+      if let task = await lookupByTitle(title, providerID: ProviderID(providerID)) {
         return task
       }
     }
@@ -210,7 +212,7 @@ final class URLSchemeHandler {
     return nil
   }
 
-  private func lookupByID(nativeID: String, providerID: String) async -> TaskItem? {
+  private func lookupByID(nativeID: String, providerID: ProviderID) async -> TaskItem? {
     guard let provider = registry.providers.first(where: { $0.id == providerID }),
       registry.isEnabled(provider.id)
     else { return nil }
@@ -228,7 +230,7 @@ final class URLSchemeHandler {
     return nil
   }
 
-  private func lookupByTitle(_ title: String, providerID: String) async -> TaskItem? {
+  private func lookupByTitle(_ title: String, providerID: ProviderID) async -> TaskItem? {
     guard let provider = registry.providers.first(where: { $0.id == providerID }),
       registry.isEnabled(provider.id)
     else { return nil }

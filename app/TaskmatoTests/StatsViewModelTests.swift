@@ -28,7 +28,7 @@ struct StatsViewModelTests {
 
   private func focus(
     start: Date, minutes: Int = 25, completed: Bool = true,
-    provider: String? = nil, nativeID: String = "t1", title: String? = nil
+    provider: ProviderID? = nil, nativeID: String = "t1", title: String? = nil
   ) -> Session {
     let ref = provider.map { TaskRef(providerID: $0, nativeID: nativeID) }
     return Session(

@@ -22,15 +22,15 @@ private struct HandlerContext {
 // MARK: - Fakes
 
 private final class StubTaskProvider: TaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   private let stubbedTasks: [TaskItem]
 
-  init(id: String, tasks: [TaskItem] = []) {
+  init(id: ProviderID, tasks: [TaskItem] = []) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
     self.stubbedTasks = tasks
   }
 
@@ -41,15 +41,15 @@ private final class StubTaskProvider: TaskProvider {
 }
 
 private final class StubWritableProvider: WritableTaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let defaultListID: String? = nil
 
-  init(id: String) {
+  init(id: ProviderID) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
   }
 
   nonisolated func authorize() async throws {}
@@ -103,7 +103,7 @@ struct URLSchemeHandlerTests {
   private func makeHandler(
     stubProviderTasks: [TaskItem] = [],
     enableLocalProvider: Bool = true,
-    defaultWritableProviderID: String? = nil
+    defaultWritableProviderID: ProviderID? = nil
   ) -> HandlerContext {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let settingsStore = SettingsStore(defaults: defaults)
@@ -148,7 +148,7 @@ struct URLSchemeHandlerTests {
     )
   }
 
-  private func makeTask(title: String, providerID: String = "stub") -> TaskItem {
+  private func makeTask(title: String, providerID: ProviderID = "stub") -> TaskItem {
     TaskItem(
       id: TaskRef(providerID: providerID, nativeID: UUID().uuidString),
       title: title,

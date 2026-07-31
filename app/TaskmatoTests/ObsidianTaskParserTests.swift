@@ -12,7 +12,7 @@ import Testing
 struct ObsidianTaskParserTests {
 
   private let parser = ObsidianTaskParser()
-  private let providerID = "obsidian"
+  private let providerID: ProviderID = "obsidian"
   private let dummyList = TaskList(id: "tasks.md", providerID: "obsidian", name: "tasks")
 
   private func parse(_ content: String, relativePath: String = "tasks.md") -> [TaskItem] {
@@ -356,7 +356,7 @@ struct ObsidianTaskParserTests {
 struct ObsidianTaskParserCompletedTests {
 
   private let parser = ObsidianTaskParser()
-  private let providerID = "obsidian"
+  private let providerID: ProviderID = "obsidian"
   private let dummyList = TaskList(id: "tasks.md", providerID: "obsidian", name: "tasks")
 
   private func parseCompleted(

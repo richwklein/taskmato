@@ -13,16 +13,16 @@ import Testing
 private struct StubError: Error, Equatable {}
 
 private final class StubProvider: TaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let stubbedTasks: [TaskItem]
   let shouldThrow: Bool
 
-  init(id: String, tasks: [TaskItem] = [], shouldThrow: Bool = false) {
+  init(id: ProviderID, tasks: [TaskItem] = [], shouldThrow: Bool = false) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
     self.stubbedTasks = tasks
     self.shouldThrow = shouldThrow
   }
@@ -37,15 +37,15 @@ private final class StubProvider: TaskProvider {
 }
 
 private final class StubWritableProvider: WritableTaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   private(set) var defaultListID: String?
 
-  init(id: String) {
+  init(id: ProviderID) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
   }
 
   func authorize() async throws {}
@@ -76,15 +76,15 @@ private final class StubWritableProvider: WritableTaskProvider {
 }
 
 private final class StubUnauthorizedProvider: TaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let isAuthorized = false
 
-  init(id: String) {
+  init(id: ProviderID) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
   }
 
   func authorize() async throws {}
@@ -94,16 +94,16 @@ private final class StubUnauthorizedProvider: TaskProvider {
 }
 
 private final class StubClosableProvider: ClosableTaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let stubbedTasks: [TaskItem]
   private(set) var completedRefs: [TaskRef] = []
 
-  init(id: String, tasks: [TaskItem] = []) {
+  init(id: ProviderID, tasks: [TaskItem] = []) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
     self.stubbedTasks = tasks
   }
 

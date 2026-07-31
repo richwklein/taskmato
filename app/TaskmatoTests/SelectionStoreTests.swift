@@ -11,16 +11,16 @@ import Testing
 // MARK: - Fakes
 
 private final class SelectionStubProvider: TaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   private let stubbedTasks: [TaskItem]
   private let stubbedLists: [TaskList]
 
-  init(id: String, tasks: [TaskItem] = [], lists: [TaskList] = []) {
+  init(id: ProviderID, tasks: [TaskItem] = [], lists: [TaskList] = []) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
     self.stubbedTasks = tasks
     self.stubbedLists = lists
   }
@@ -32,15 +32,15 @@ private final class SelectionStubProvider: TaskProvider {
 }
 
 private final class SelectionWritableProvider: WritableTaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let defaultListID: String?
 
-  init(id: String, defaultListID: String? = nil) {
+  init(id: ProviderID, defaultListID: String? = nil) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
     self.defaultListID = defaultListID
   }
 

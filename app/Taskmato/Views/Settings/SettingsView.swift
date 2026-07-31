@@ -93,16 +93,10 @@ struct SettingsView: View {
       }
 
       Section("Tasks") {
-        Picker(
-          "Default writable provider",
-          selection: Binding(
-            get: { settings.defaultWritableProviderID ?? "" },
-            set: { settings.defaultWritableProviderID = $0.isEmpty ? nil : $0 }
-          )
-        ) {
-          Text("Automatic").tag("")
+        Picker("Default writable provider", selection: $settings.defaultWritableProviderID) {
+          Text("Automatic").tag(ProviderID?.none)
           ForEach(writableProviderEntries) { entry in
-            Label(entry.displayName, systemImage: entry.icon).tag(entry.id)
+            Label(entry.displayName, systemImage: entry.icon).tag(ProviderID?.some(entry.id))
           }
         }
         Text(
@@ -158,7 +152,7 @@ private struct SystemSound: Identifiable {
 
 /// A lightweight display model for a writable provider in the settings picker.
 private struct ProviderEntry: Identifiable {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String
 }

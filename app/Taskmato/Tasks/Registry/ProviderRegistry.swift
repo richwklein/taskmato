@@ -21,14 +21,14 @@ final class ProviderRegistry {
   private(set) var providers: [any TaskProvider] = []
 
   /// IDs of providers currently enabled by the user.
-  private(set) var enabledIDs: Set<String>
+  private(set) var enabledIDs: Set<ProviderID>
 
   /// Lists loaded for each provider, keyed by provider ID.
   ///
   /// Populated by ``setLists(_:forProviderID:)``, which the sidebar calls after every
   /// `provider.lists()` load. Cleared for a provider when it is disabled. Views can
   /// observe this property to react when list data becomes available.
-  private(set) var providerLists: [String: [TaskList]] = [:]
+  private(set) var providerLists: [ProviderID: [TaskList]] = [:]
 
   /// Invoked after the enabled set or list cache changes, so the selection can be re-validated.
   ///
@@ -77,7 +77,7 @@ final class ProviderRegistry {
   ///
   /// Also clears the provider's list cache so downstream observers react immediately.
   /// - Parameter providerID: The `id` of the provider to disable.
-  func disable(providerID: String) {
+  func disable(providerID: ProviderID) {
     enabledIDs.remove(providerID)
     providerLists.removeValue(forKey: providerID)
     persist()
@@ -86,7 +86,7 @@ final class ProviderRegistry {
 
   /// Returns `true` if the provider with the given ID is currently enabled.
   /// - Parameter providerID: The provider ID to check.
-  func isEnabled(_ providerID: String) -> Bool {
+  func isEnabled(_ providerID: ProviderID) -> Bool {
     enabledIDs.contains(providerID)
   }
 
@@ -95,7 +95,7 @@ final class ProviderRegistry {
   /// Updates the list cache for `providerID` and re-validates the current selection.
   ///
   /// Call this after every `provider.lists()` load — on appear, after add, delete, or rename.
-  func setLists(_ lists: [TaskList], forProviderID providerID: String) {
+  func setLists(_ lists: [TaskList], forProviderID providerID: ProviderID) {
     providerLists[providerID] = lists
     onProviderStateChanged?()
   }
@@ -128,7 +128,7 @@ final class ProviderRegistry {
 
   /// Returns the enabled writable provider with the given ID, or `nil`.
   /// - Parameter id: The provider ID to resolve exactly.
-  func enabledWritableProvider(id: String) -> (any WritableTaskProvider)? {
+  func enabledWritableProvider(id: ProviderID) -> (any WritableTaskProvider)? {
     providers.first { $0.id == id && isEnabled($0.id) }
       as? (any WritableTaskProvider)
   }
@@ -144,7 +144,7 @@ final class ProviderRegistry {
   /// Returns `nil` when no enabled writable provider is registered.
   /// - Parameter preferredID: A provider ID to try first, typically from ``AppSettings``
   ///   user preference. Pass `nil` to skip directly to the fallback.
-  func resolveDefaultWritableProvider(preferredID: String?) -> (any WritableTaskProvider)? {
+  func resolveDefaultWritableProvider(preferredID: ProviderID?) -> (any WritableTaskProvider)? {
     if let preferredID, let writable = enabledWritableProvider(id: preferredID) {
       return writable
     }

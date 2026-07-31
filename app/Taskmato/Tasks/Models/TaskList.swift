@@ -12,7 +12,7 @@ nonisolated struct TaskList: Identifiable, Hashable, Codable, Sendable {
   let id: String
 
   /// The identifier of the provider that owns this list.
-  let providerID: String
+  let providerID: ProviderID
 
   /// Human-readable name shown in the picker.
   let name: String

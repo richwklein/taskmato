@@ -51,10 +51,10 @@ struct AppComposition {
     let statsViewModel = StatsViewModel(
       store: store,
       providerLabel: { [registry] providerID in
-        registry.providers.first { $0.id == providerID }?.displayName ?? providerID
+        registry.providers.first { $0.id.rawValue == providerID }?.displayName ?? providerID
       },
       providerTint: { [registry] providerID in
-        registry.providers.first { $0.id == providerID }?.tint ?? .gray
+        registry.providers.first { $0.id.rawValue == providerID }?.tint ?? .gray
       })
     Self.configureNotifications(notifications)
     Self.registerProviders(

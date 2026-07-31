@@ -12,7 +12,7 @@ import Testing
 // MARK: - Fakes
 
 private final class FakeWritableProvider: WritableTaskProvider {
-  let id = "fake-writable"
+  let id: ProviderID = "fake-writable"
   let displayName = "Fake Writable"
   let icon = "square"
   let entitlement: ProviderEntitlement = .free
@@ -71,7 +71,7 @@ private final class FakeWritableProvider: WritableTaskProvider {
 }
 
 private final class FakeReadOnlyProvider: TaskProvider {
-  let id = "fake-readonly"
+  let id: ProviderID = "fake-readonly"
   let displayName = "Fake Read-Only"
   let icon = "square"
   let entitlement: ProviderEntitlement = .free
@@ -83,7 +83,7 @@ private final class FakeReadOnlyProvider: TaskProvider {
 }
 
 private final class FakeUnauthorizedProvider: TaskProvider {
-  let id = "fake-unauthorized"
+  let id: ProviderID = "fake-unauthorized"
   let displayName = "Fake Unauthorized"
   let icon = "square"
   let entitlement: ProviderEntitlement = .free
@@ -96,7 +96,7 @@ private final class FakeUnauthorizedProvider: TaskProvider {
 }
 
 private final class FakeConfigurableProvider: TaskProvider, ConfigurableTaskProvider {
-  let id = "fake-configurable"
+  let id: ProviderID = "fake-configurable"
   let displayName = "Fake Configurable"
   let icon = "square"
   let entitlement: ProviderEntitlement = .free
@@ -111,7 +111,7 @@ private final class FakeConfigurableProvider: TaskProvider, ConfigurableTaskProv
 }
 
 private final class FakeClosableProvider: ClosableTaskProvider {
-  let id = "fake-closable"
+  let id: ProviderID = "fake-closable"
   let displayName = "Fake Closable"
   let icon = "square"
   let entitlement: ProviderEntitlement = .paid(productID: "com.taskmato.provider.fake")

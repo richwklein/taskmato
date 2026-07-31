@@ -84,7 +84,7 @@ final class StatsViewModel {
 
     for session in completedFocus(in: scopedInterval) {
       let day = calendar.startOfDay(for: session.startedAt)
-      let providerID = session.taskRef?.providerID ?? Self.untrackedKey
+      let providerID = session.taskRef?.providerID.rawValue ?? Self.untrackedKey
       let key = "\(day.timeIntervalSinceReferenceDate):\(providerID)"
       if accumulated[key] == nil {
         order.append(key)
@@ -110,7 +110,7 @@ final class StatsViewModel {
     var accumulated: [String: TimeInterval] = [:]
 
     for session in completedFocus(in: scopedInterval) {
-      let providerID = session.taskRef?.providerID ?? Self.untrackedKey
+      let providerID = session.taskRef?.providerID.rawValue ?? Self.untrackedKey
       if accumulated[providerID] == nil { order.append(providerID) }
       accumulated[providerID, default: 0] += session.duration
     }
@@ -135,7 +135,7 @@ final class StatsViewModel {
     for session in sessions where session.phase == .focus && session.wasCompleted {
       let key: String
       if let ref = session.taskRef {
-        key = "\(ref.providerID):\(ref.nativeID)"
+        key = "\(ref.providerID.rawValue):\(ref.nativeID)"
       } else {
         key = Self.untrackedKey
       }
@@ -153,7 +153,7 @@ final class StatsViewModel {
       order
       .compactMap { key -> AllTimeTaskRow? in
         guard let entry = accumulated[key] else { return nil }
-        let resolvedLabel = entry.taskRef.map { providerLabel($0.providerID) } ?? "—"
+        let resolvedLabel = entry.taskRef.map { providerLabel($0.providerID.rawValue) } ?? "—"
         return AllTimeTaskRow(
           taskRef: entry.taskRef, title: entry.title, providerLabel: resolvedLabel,
           totalMinutes: Int(entry.seconds / 60), lastSessionDate: entry.last)
@@ -299,7 +299,7 @@ final class StatsViewModel {
         for slot in 0...(dayOffset % 3) {
           let provider = providers[(dayOffset + slot) % providers.count]
           let start = day.addingTimeInterval(TimeInterval((9 + slot) * 3_600))
-          let ref = provider.map { TaskRef(providerID: $0, nativeID: "task-\(slot)") }
+          let ref = provider.map { TaskRef(providerID: ProviderID($0), nativeID: "task-\(slot)") }
           sessions.append(
             Session(
               id: UUID(), phase: .focus, startedAt: start,

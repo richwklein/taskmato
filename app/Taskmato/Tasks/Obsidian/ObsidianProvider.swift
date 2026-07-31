@@ -22,9 +22,9 @@ import Observation
 final class ObsidianProvider: ClosableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
-  nonisolated static let providerID = "obsidian"
+  nonisolated static let providerID: ProviderID = "obsidian"
 
-  let id: String = ObsidianProvider.providerID
+  let id: ProviderID = ObsidianProvider.providerID
   let displayName: String = "Obsidian"
   let icon: String = "book.closed"
   let tint: ProviderTint = .purple
