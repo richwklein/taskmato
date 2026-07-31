@@ -5,10 +5,13 @@
 #   bash scripts/generate-app-icons.sh
 #
 # Requirements:
-#   - macOS (uses sips, which is built in — no installs needed)
-#   - design/icon-master.png   — 1024×1024 source for the app icon
-#   - design/menu-master.png   — 1024×1024 source for the menu bar icon
-#     (see issue #374 to replace this with a scale-optimised small source)
+#   - macOS with the Xcode toolchain. The app icon uses the built-in `sips`;
+#     the menu bar icon is rasterized from SVG via
+#     `swift scripts/rasterize-svg.swift`, which renders through AppKit —
+#     no Homebrew, librsvg, ImageMagick, or Inkscape needed.
+#   - design/icon-master.png  — 1024×1024 source for the app icon
+#   - design/menu-icon-18.svg — scale-tuned 1x source for the menu bar icon
+#   - design/menu-icon-36.svg — scale-tuned 2x source for the menu bar icon
 #
 # Output:
 #   app/Taskmato/Assets.xcassets/AppIcon.appiconset/  — 10 PNGs
@@ -21,7 +24,8 @@ set -euo pipefail
 APP_MASTER="design/icon-master.png"
 APP_OUT="app/Taskmato/Assets.xcassets/AppIcon.appiconset"
 
-MENU_MASTER="design/menu-master.png"
+MENU_SRC_1X="design/menu-icon-18.svg"
+MENU_SRC_2X="design/menu-icon-36.svg"
 MENU_OUT="app/Taskmato/Assets.xcassets/MenuIcon.imageset"
 
 # --- App icon (AppIcon.appiconset) ---
@@ -47,13 +51,18 @@ echo "Generated 10 app icon sizes in $APP_OUT"
 
 # --- Menu bar icon (MenuIcon.imageset) ---
 
-if [[ ! -f "$MENU_MASTER" ]]; then
-  echo "Error: menu icon master not found at $MENU_MASTER" >&2
-  echo "Place a 1024×1024 PNG at $MENU_MASTER and re-run." >&2
-  exit 1
-fi
+for src in "$MENU_SRC_1X" "$MENU_SRC_2X"; do
+  if [[ ! -f "$src" ]]; then
+    echo "Error: menu icon source not found at $src" >&2
+    echo "Place the menu bar SVG at $src and re-run." >&2
+    exit 1
+  fi
+done
 
-sips -z 18 18 "$MENU_MASTER" --out "$MENU_OUT/menu-icon.png"    > /dev/null
-sips -z 36 36 "$MENU_MASTER" --out "$MENU_OUT/menu-icon@2x.png" > /dev/null
+# Rasterize each size from its own scale-tuned SVG (leaf detail differs by size),
+# at exact 1x/2x pixels — crisper than downscaling one large source. @3x is
+# omitted: the macOS status item never requests it.
+swift scripts/rasterize-svg.swift "$MENU_SRC_1X" "$MENU_OUT/menu-icon.png"    18
+swift scripts/rasterize-svg.swift "$MENU_SRC_2X" "$MENU_OUT/menu-icon@2x.png" 36
 
 echo "Generated 2 menu icon sizes in $MENU_OUT"
