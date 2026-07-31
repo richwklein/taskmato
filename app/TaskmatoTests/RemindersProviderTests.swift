@@ -284,7 +284,7 @@ struct RemindersProviderTaskTests {
     #expect(tasks.first?.notes == "Some notes")
   }
 
-  @Test func tasksNoteFormatIsPlainText() async throws {
+  @Test func tasksContentFormatIsPlainText() async throws {
     let (provider, store) = try await makeAuthorizedProvider()
     let cal = store.makeCalendar(title: "Work")
     store.stubbedCalendars = [cal]

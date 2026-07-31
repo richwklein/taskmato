@@ -1,12 +1,12 @@
 //
-//  NoteFormat.swift
+//  ContentFormat.swift
 //  Taskmato
 //
 
 import Foundation
 
-/// Declares how a task's `notes` string should be interpreted for display.
-nonisolated enum NoteFormat: Codable, Sendable {
+/// Declares how a task's `title` and `notes` strings should be interpreted for display.
+nonisolated enum ContentFormat: Codable, Sendable {
 
   /// Plain text — rendered verbatim, no markdown interpretation.
   case plainText
