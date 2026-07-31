@@ -21,6 +21,7 @@ Screenshots and other images used in the docs (and elsewhere) live at [`assets/`
 - **Working out *how* to do something?** Start in [`how-to/`](how-to/):
   - [`Release Guide`](how-to/release.md) — How to set up and run the release pipeline locally or in CI.
   - [`DMG Smoke-Test Checklist`](how-to/smoke-test-dmg.md) — Manual QA checklist to run before publishing a release.
+  - [`Marketing Site`](how-to/marketing-site.md) — Develop and build the Astro site at `site/`.
   - [`Update Icons`](how-to/update-icons.md)
   - [`Reset Stale Dev Builds`](how-to/reset-stale-dev-builds.md)
 - **Trying to understand *why* something works the way it does?** Start in [`explanation/`](explanation/).

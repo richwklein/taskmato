@@ -16,3 +16,49 @@ updates:
       third-party-actions:
         exclude-patterns:
           - 'actions/*'
+  - package-ecosystem: npm
+    directory: '/site'
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 5
+    open-pull-requests-limit: 20
+    labels:
+      - 'dependencies'
+    groups:
+      astro:
+        patterns:
+          - 'astro'
+          - '@astrojs/*'
+      eslint:
+        patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - '*eslint-plugin*'
+      prettier:
+        patterns:
+          - 'prettier*'
+      tailwindcss:
+        patterns:
+          - 'tailwindcss'
+          - '@tailwindcss/*'
+      typescript:
+        patterns:
+          - 'typescript*'
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+      other-dependencies:
+        exclude-patterns:
+          - 'astro'
+          - '@astrojs/*'
+          - 'eslint*'
+          - '@eslint/*'
+          - '*eslint-plugin*'
+          - 'prettier*'
+          - 'tailwindcss'
+          - '@tailwindcss/*'
+          - 'typescript*'
+          - 'vitest'
+          - '@vitest/*'

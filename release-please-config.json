@@ -10,7 +10,14 @@
       "bump-minor-pre-major": false,
       "draft": false,
       "prerelease": false,
-      "extra-files": ["version.txt"],
+      "extra-files": [
+        "version.txt",
+        {
+          "type": "json",
+          "path": "site/package.json",
+          "jsonpath": "$.version"
+        }
+      ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
