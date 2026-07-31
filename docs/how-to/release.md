@@ -94,3 +94,5 @@ Releases are triggered automatically when a version tag is pushed:
 3. The `code-release.yaml` workflow fires, builds and notarizes the DMG, attaches it to the GitHub release
 
 With [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases) enabled, the workflow creates a draft release first, attaches the DMG, then publishes — ensuring the artifact is in place before the release is frozen.
+
+Before publishing the draft release, run the [DMG Smoke-Test Checklist](smoke-test-dmg.md) to catch distribution-level regressions that automated tests miss.
