@@ -33,7 +33,7 @@ struct TaskmatoApp: App {
         errorPresenter: composition.errorPresenter
       )
     } label: {
-      HStack(spacing: 4) {
+      HStack(spacing: 6) {
         Image("MenuIcon")
         Text(composition.timerPresenter.label)
       }
