@@ -39,7 +39,7 @@ Stats are computed from the persisted session log — never manually incremented
 
 ## Marketing site
 
-The `taskmato.com` URL hosts a static landing page that advertises the macOS app. Migration to a GitHub Pages-deployed Astro site is tracked on the [GitHub milestones page](https://github.com/richwklein/taskmato/milestones).
+The `taskmato.com` URL hosts a static landing page that advertises the macOS app. The site lives at `site/` as an Astro project, deployed to GitHub Pages at `https://richwklein.github.io/taskmato/`. To develop locally, run `cd site && pnpm install && pnpm run dev`. CI deployment automation is tracked in [#289](https://github.com/richwklein/taskmato/issues/289); landing page content is tracked in [#365](https://github.com/richwklein/taskmato/issues/365).
 
 ## License
 

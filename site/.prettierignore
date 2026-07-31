@@ -1,0 +1,8 @@
+# Generated / build / cache directories
+.astro/
+dist/
+coverage/
+node_modules/
+
+# Lockfiles are managed by their tool; do not reformat.
+pnpm-lock.yaml
