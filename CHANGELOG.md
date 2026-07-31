@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.9.0](https://github.com/richwklein/taskmato/compare/v0.8.0...v0.9.0) (2026-07-31)
+
+
+### Features
+
+* **a11y:** timer announcements, control labels, and Dynamic Type ([#485](https://github.com/richwklein/taskmato/issues/485)) ([a9b070c](https://github.com/richwklein/taskmato/commit/a9b070c8a70c9098151d3657dbfba33e7654398d))
+* **errors:** surface provider errors via ErrorPresenter ([#410](https://github.com/richwklein/taskmato/issues/410)) ([#471](https://github.com/richwklein/taskmato/issues/471)) ([2c657a7](https://github.com/richwklein/taskmato/commit/2c657a7272059ab577112ddcd4e2b27611211b32))
+* **menubar:** slim companion popover; move disambiguation to the window ([#464](https://github.com/richwklein/taskmato/issues/464)) ([bd237d2](https://github.com/richwklein/taskmato/commit/bd237d2e6b8baa1e1c0774399930343a1f3e3484))
+* **shell:** persistence clean slate for navigation state ([#470](https://github.com/richwklein/taskmato/issues/470)) ([0d6c02f](https://github.com/richwklein/taskmato/commit/0d6c02f2746e3d62cd5e60b9acdadd2c41de88e1))
+* **shell:** window-first NavigationSplitView shell ([#442](https://github.com/richwklein/taskmato/issues/442)) ([#462](https://github.com/richwklein/taskmato/issues/462)) ([2309f69](https://github.com/richwklein/taskmato/commit/2309f69adf09024a4f673eba240f33a1b817102a))
+* **timer:** persistent timer strip and sidebar countdown ([#467](https://github.com/richwklein/taskmato/issues/467)) ([c4789c0](https://github.com/richwklein/taskmato/commit/c4789c0687c71125521a168eb91865d3caeb877e))
+* **timer:** unify active task across popover, strip, and Timer ([#468](https://github.com/richwklein/taskmato/issues/468)) ([#474](https://github.com/richwklein/taskmato/issues/474)) ([01f5adb](https://github.com/richwklein/taskmato/commit/01f5adb56bd3a21dad14c0eae676b9b2224f3f08))
+* **ui:** timer strip, task source, and Browse Tasks refinements ([#478](https://github.com/richwklein/taskmato/issues/478)) ([6c5f7b7](https://github.com/richwklein/taskmato/commit/6c5f7b74639267991e6aaec6a279ddd2faf33a3e))
+
+
+### Bug Fixes
+
+* **commands:** gate task View menu items off-tab and restore sidebar toggle ([#476](https://github.com/richwklein/taskmato/issues/476)) ([c6b8921](https://github.com/richwklein/taskmato/commit/c6b89218aee926690ff8423bc37d40c8c1c1441a))
+* **timer:** disable Skip when idle with no break queued ([#483](https://github.com/richwklein/taskmato/issues/483)) ([8f94f5d](https://github.com/richwklein/taskmato/commit/8f94f5d8b0ffed859a7320b389d638fa74d2c32c))
+* **urlscheme:** handle taskmato:// URLs immediately instead of gating on scene-ready ([#475](https://github.com/richwklein/taskmato/issues/475)) ([8f51aa4](https://github.com/richwklein/taskmato/commit/8f51aa48dfef8ed511eb92cf1ac5fac4541fd1c3))
+
+
+### Code Refactoring
+
+* **concurrency:** enable Swift 6 strict concurrency ([#477](https://github.com/richwklein/taskmato/issues/477)) ([23f0575](https://github.com/richwklein/taskmato/commit/23f05752bd65483a66428a7a80d2cd6331218b25))
+* **design:** adopt design tokens across existing views ([#456](https://github.com/richwklein/taskmato/issues/456)) ([962c16e](https://github.com/richwklein/taskmato/commit/962c16ea6b8c30990bb3ea6ab33087f41407bbb0))
+* **design:** establish design token vocabulary and styling reference ([#455](https://github.com/richwklein/taskmato/issues/455)) ([4702e97](https://github.com/richwklein/taskmato/commit/4702e97f0e107444e146cc06698205b047967f54))
+* **session:** move phase-end cascade to PhaseOrchestrator over AsyncStream ([#480](https://github.com/richwklein/taskmato/issues/480)) ([34510c6](https://github.com/richwklein/taskmato/commit/34510c6f804b71779630c5364864575b18e6a180))
+* **settings:** consolidate UserDefaults clients behind SettingsStore ([#472](https://github.com/richwklein/taskmato/issues/472)) ([6b0d017](https://github.com/richwklein/taskmato/commit/6b0d017a4560c688c134c81867ed8ed031fdfa8d))
+* **tasks:** deduplicate row/card via TaskItemPresenter ([#473](https://github.com/richwklein/taskmato/issues/473)) ([a0548da](https://github.com/richwklein/taskmato/commit/a0548dadcc04a1bca5191c0a11f3847138a619b0))
+* **tasks:** introduce ProviderID newtype ([#482](https://github.com/richwklein/taskmato/issues/482)) ([2f266a5](https://github.com/richwklein/taskmato/commit/2f266a562ccc7eb0c1230bedc1b50755c2fd29ec))
+* **tasks:** rename NoteFormat to ContentFormat ([#481](https://github.com/richwklein/taskmato/issues/481)) ([98ccee9](https://github.com/richwklein/taskmato/commit/98ccee96d67322a481f69b8f4514726e2279cd51))
+* **tasks:** split TaskRegistry into ProviderRegistry, SelectionStore, TaskQueryService, TaskSorter ([#461](https://github.com/richwklein/taskmato/issues/461)) ([b5da54e](https://github.com/richwklein/taskmato/commit/b5da54ebe4befd92dac0879322a938cf4c46a009))
+* **timer:** centralize timer display and intent in TimerPresenter ([#459](https://github.com/richwklein/taskmato/issues/459)) ([f1aa9de](https://github.com/richwklein/taskmato/commit/f1aa9de0ca2960111b7d4f87c515da196c3f93fc))
+
+
+### Miscellaneous Chores
+
+* **audit:** adopt changelog-sections from template ([#457](https://github.com/richwklein/taskmato/issues/457)) ([a8c9a32](https://github.com/richwklein/taskmato/commit/a8c9a32801a23e9a2c9ea39882f1358b8d306b73))
+* **deps:** bump actions/labeler from 6 to 7 in the first-party-actions group ([#465](https://github.com/richwklein/taskmato/issues/465)) ([718dd0b](https://github.com/richwklein/taskmato/commit/718dd0b4bb56ff617ff11dcabe6c4a4e00a56a1b))
+* **deps:** bump github/codeql-action from 4.37.0 to 4.37.1 in the third-party-actions group ([#466](https://github.com/richwklein/taskmato/issues/466)) ([822c461](https://github.com/richwklein/taskmato/commit/822c461be978c0736f02d15f650e318f4b05a9f5))
+* **shell:** flip to regular activation policy ([#469](https://github.com/richwklein/taskmato/issues/469)) ([9bff4d4](https://github.com/richwklein/taskmato/commit/9bff4d4af484c388127a944acb6ea0833cc0eaa3))
+* **skills:** store skills in .agents and symlink into .claude ([#479](https://github.com/richwklein/taskmato/issues/479)) ([7dad863](https://github.com/richwklein/taskmato/commit/7dad8633b13159af0537419f311ee55a8a88d7ae))
+
 ## [0.8.0](https://github.com/richwklein/taskmato/compare/v0.7.0...v0.8.0) (2026-07-21)
 
 
