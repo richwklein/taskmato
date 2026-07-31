@@ -23,7 +23,8 @@ struct TimerTabView: View {
       CircularTimerView(
         progress: presenter.progress,
         label: presenter.label,
-        phase: presenter.phaseName
+        phase: presenter.phaseName,
+        accessibilityValue: presenter.accessibilityValue
       )
 
       TimerControlsView(

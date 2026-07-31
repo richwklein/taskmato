@@ -29,6 +29,7 @@ struct TaskDeleteButtonView: View {
       }
       .buttonStyle(.plain)
       .help(AppLabels.Tooltip.deletePermanently)
+      .accessibilityLabel(AppLabels.Tooltip.deletePermanently)
       .opacity(isHovered ? 1 : 0)
       .allowsHitTesting(isHovered)
       .accessibilityHidden(!isHovered)

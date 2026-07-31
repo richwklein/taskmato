@@ -17,10 +17,13 @@ struct TimerReadout: View {
   /// The phase name shown below the time, e.g. `"Focus"`.
   let phase: String
 
+  /// The countdown's base point size, scaled by Dynamic Type relative to `.largeTitle`.
+  @ScaledMetric(relativeTo: .largeTitle) private var countdownSize: CGFloat = 36
+
   var body: some View {
     VStack(spacing: .rowVertical) {
       Text(label)
-        .font(.timerCountdown)
+        .font(.system(size: countdownSize, weight: .light, design: .monospaced))
         .foregroundStyle(.primary)
       Text(phase)
         .font(.timerPhaseLabel)

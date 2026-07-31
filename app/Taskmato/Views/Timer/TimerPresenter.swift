@@ -68,6 +68,20 @@ final class TimerPresenter {
     }
   }
 
+  /// Phase (plus paused) and coarse remaining time announced to VoiceOver, e.g. "Focus, 24 minutes remaining".
+  ///
+  /// Whole-minute granularity avoids per-second VoiceOver re-announcement while focus is parked on the ring;
+  /// the final 10 seconds count down by seconds as an intentional finish cue. The visible `label` stays precise.
+  var accessibilityValue: String {
+    if case .idle = engine.state {
+      let seconds = Int(settingsDuration(for: nextStartPhase))
+      return "\(phaseName), \(Self.spokenRemaining(seconds, includeRemaining: false))"
+    }
+    let seconds = Int(engine.timeRemaining)
+    let phase = isPaused ? "\(phaseName), paused" : phaseName
+    return "\(phase), \(Self.spokenRemaining(seconds, includeRemaining: true))"
+  }
+
   // MARK: - State
 
   /// `true` while a phase is actively counting down.
@@ -136,5 +150,21 @@ final class TimerPresenter {
     case .shortBreak: return settings.shortBreakDuration
     case .longBreak: return settings.longBreakDuration
     }
+  }
+
+  /// Formats a remaining-seconds count for VoiceOver: whole minutes (floored) above a minute,
+  /// a vague phrase in the sub-minute band, and per-second detail in the final 10 seconds.
+  private static func spokenRemaining(_ seconds: Int, includeRemaining: Bool) -> String {
+    let suffix = includeRemaining ? " remaining" : ""
+    if seconds >= 60 {
+      let minutes = seconds / 60
+      let unit = minutes == 1 ? "minute" : "minutes"
+      return "\(minutes) \(unit)\(suffix)"
+    }
+    if seconds > 10 {
+      return "less than a minute\(suffix)"
+    }
+    let unit = seconds == 1 ? "second" : "seconds"
+    return "\(seconds) \(unit)\(suffix)"
   }
 }
