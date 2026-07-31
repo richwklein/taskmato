@@ -85,6 +85,14 @@ final class TimerPresenter {
   /// `true` when there is a session to stop (running or paused).
   var canStop: Bool { engine.state != .idle }
 
+  /// `true` when Skip has an effect: an active phase to advance, or a queued break to
+  /// cycle back to focus while idle.
+  var canSkip: Bool {
+    if engine.state != .idle { return true }
+    guard let queued = engine.queuedPhase else { return false }
+    return queued != .focus  // a break is queued; idle-skip cycles it to focus
+  }
+
   // MARK: - Intents
 
   /// Syncs the latest durations into the engine, then starts the queued (or focus) phase.

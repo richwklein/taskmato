@@ -20,7 +20,18 @@ enum TimerControlsSize {
   var spacing: CGFloat { self == .compact ? .groupGap : .sectionGap }
 }
 
-/// The start/pause · skip · stop control row shared by every timer surface.
+/// The transport control row — primary (Start/Pause/Resume) · Skip · Stop — whose
+/// enablement derives from the session state in ``TimerPresenter``.
+///
+/// | Session state          | Primary | Skip | Stop |
+/// |------------------------|---------|------|------|
+/// | idle (nothing/focus queued) | Start   |  ✗   |  ✗   |
+/// | idle (break queued)    | Start   |  ✓*  |  ✗   |
+/// | running                | Pause   |  ✓   |  ✓   |
+/// | paused                 | Resume  |  ✓   |  ✓   |
+///
+/// *Skip while idle cycles a queued break back to focus. Start additionally requires a
+/// selected task, gated externally via `startDisabled`.
 ///
 /// All intents route through the injected ``TimerPresenter``; callers vary only the
 /// ``TimerControlsSize`` and whether Start is disabled (typically when no task is
@@ -45,6 +56,7 @@ struct TimerControlsView: View {
         icon: AppLabels.Timer.skip.systemImage,
         diameter: size.secondaryDiameter
       ) { presenter.skip() }
+      .disabled(!presenter.canSkip)
 
       ControlButton(
         label: AppLabels.Timer.stop.title,

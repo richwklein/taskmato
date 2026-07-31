@@ -100,4 +100,63 @@ struct TimerPresenterTests {
     #expect(presenter.isIdle)
     #expect(!presenter.canStop)
   }
+
+  // MARK: - Enablement
+
+  @Test func canSkipDisabledWhenIdleWithNothingQueued() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    #expect(presenter.isIdle)
+    #expect(!presenter.isRunning)
+    #expect(!presenter.isPaused)
+    #expect(!presenter.canStop)
+    #expect(!presenter.canSkip)
+  }
+
+  @Test func canSkipEnabledWhenIdleWithBreakQueued() {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    engine.enqueuePhase(.shortBreak)
+    #expect(presenter.isIdle)
+    #expect(!presenter.canStop)
+    #expect(presenter.canSkip)
+  }
+
+  @Test func canSkipDisabledWhenIdleWithFocusQueued() {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    engine.enqueuePhase(.focus)
+    #expect(presenter.isIdle)
+    #expect(!presenter.canStop)
+    #expect(!presenter.canSkip)
+  }
+
+  @Test func canSkipAndCanStopEnabledWhenRunning() {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    presenter.start()
+    #expect(presenter.isRunning)
+    #expect(!presenter.isPaused)
+    #expect(presenter.canStop)
+    #expect(presenter.canSkip)
+  }
+
+  @Test func canSkipAndCanStopEnabledWhenPaused() {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    presenter.start()
+    presenter.pause()
+    #expect(presenter.isPaused)
+    #expect(!presenter.isRunning)
+    #expect(presenter.canStop)
+    #expect(presenter.canSkip)
+  }
+
+  @Test func canSkipAndCanStopDisabledAfterStoppingBackToIdle() {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    presenter.start()
+    presenter.stop()
+    #expect(!presenter.canStop)
+    #expect(!presenter.canSkip)
+  }
 }
