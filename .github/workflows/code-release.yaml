@@ -1,4 +1,4 @@
-name: Build and Release DMG
+name: Release DMG
 
 on:
   push:
