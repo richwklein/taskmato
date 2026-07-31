@@ -83,6 +83,7 @@ enum SessionState: Equatable {
 /// timer while a session is running. Time is always derived from wall-clock timestamps,
 /// so it stays accurate across sleep/wake cycles.
 @Observable
+@MainActor
 final class SessionEngine {
 
   /// The current state of the session.
@@ -111,14 +112,11 @@ final class SessionEngine {
   /// naturally. Manual stops and skips do not affect this counter.
   private(set) var completedFocusCount: Int = 0
 
-  /// Called whenever a phase ends — either naturally (time reaches zero) or via manual stop.
-  /// - Parameters:
-  ///   - phase: The phase that ended.
-  ///   - startedAt: Virtual start time, reflecting actual accumulated focus time.
-  ///   - endedAt: The wall-clock time the phase ended.
-  ///   - wasCompleted: `true` if time ran out naturally; `false` if the user stopped manually.
-  var onPhaseEnded: ((SessionPhase, Date, Date, Bool) -> Void)?
+  /// Emits an event whenever a phase ends — either naturally (time reaches zero) or via
+  /// manual stop. ``PhaseOrchestrator`` consumes this to drive the phase-end cascade.
+  let phaseEvents: AsyncStream<PhaseEvent>
 
+  private let phaseContinuation: AsyncStream<PhaseEvent>.Continuation
   private let now: () -> Date
   private var tickTimer: Timer?
 
@@ -138,6 +136,7 @@ final class SessionEngine {
     self.longBreakDuration = longBreakDuration
     self.now = now
     self.timeRemaining = focusDuration
+    (phaseEvents, phaseContinuation) = AsyncStream.makeStream(of: PhaseEvent.self)
   }
 
   /// `true` while a phase is actively counting down (not paused or idle).
@@ -185,11 +184,14 @@ final class SessionEngine {
     case .running(let phase, let startedAt, _):
       stopTicking()
       refreshTimeRemaining()
-      onPhaseEnded?(phase, startedAt, endedAt, false)
+      guard case .running = state else { break }  // completion may have fired during refresh
+      phaseContinuation.yield(
+        .ended(phase: phase, startedAt: startedAt, endedAt: endedAt, wasCompleted: false))
     case .paused(let phase, let remaining):
       let elapsed = duration(for: phase) - remaining
       let startedAt = endedAt.addingTimeInterval(-elapsed)
-      onPhaseEnded?(phase, startedAt, endedAt, false)
+      phaseContinuation.yield(
+        .ended(phase: phase, startedAt: startedAt, endedAt: endedAt, wasCompleted: false))
     case .idle:
       return
     }
@@ -276,7 +278,10 @@ final class SessionEngine {
       case .longBreak: completedFocusCount = 0
       case .shortBreak: break
       }
-      onPhaseEnded?(phase, startedAt, startedAt.addingTimeInterval(duration), true)
+      phaseContinuation.yield(
+        .ended(
+          phase: phase, startedAt: startedAt,
+          endedAt: startedAt.addingTimeInterval(duration), wasCompleted: true))
     }
   }
 

@@ -39,12 +39,29 @@ final class SessionStore {
     SessionSummary(sessions: sessions, over: interval)
   }
 
-  // MARK: - Private
-
   /// Refreshes the observable mirror from the repository's full log.
-  private func reload() async {
+  func reload() async {
     let all = try? await repository.sessions(
       over: DateInterval(start: .distantPast, end: .distantFuture))
     sessions = all ?? []
   }
 }
+
+#if DEBUG
+  extension SessionStore {
+
+    /// A store backed by a fresh in-memory repository, synchronously seeded with `sessions`.
+    ///
+    /// For SwiftUI previews, where waiting on the async `reload()` would leave the preview
+    /// briefly empty.
+    /// - Parameter sessions: The sessions to seed the observable mirror with.
+    static func seeded(_ sessions: [Session]) -> SessionStore {
+      guard let repository = try? SwiftDataSessionRepository.makeInMemory() else {
+        fatalError("Failed to build in-memory preview repository")
+      }
+      let store = SessionStore(repository: repository)
+      store.sessions = sessions
+      return store
+    }
+  }
+#endif

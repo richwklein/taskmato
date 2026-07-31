@@ -41,11 +41,9 @@ struct StatsViewModelTests {
     _ sessions: [Session], providerLabel: @escaping (String) -> String = { $0 },
     providerTint: @escaping (String) -> ProviderTint = { _ in .gray }
   ) async -> StatsViewModel {
-    let viewModel = StatsViewModel(
-      repository: FakeSessionRepository(sessions: sessions), providerLabel: providerLabel,
-      providerTint: providerTint)
-    await viewModel.refresh()
-    return viewModel
+    let store = SessionStore(repository: FakeSessionRepository(sessions: sessions))
+    await store.reload()
+    return StatsViewModel(store: store, providerLabel: providerLabel, providerTint: providerTint)
   }
 
   // MARK: - Empty store
@@ -302,14 +300,16 @@ struct StatsViewModelTests {
     #expect(totals.first { $0.providerID == "__untracked__" }?.tint == .gray)
   }
 
-  // MARK: - Optimistic append
+  // MARK: - Live updates via the store
 
-  @Test func recordAppendedUpdatesTodayCounts() async {
-    let viewModel = await makeViewModel([])
+  @Test func storeAppendUpdatesTodayCounts() async {
+    let store = SessionStore(repository: FakeSessionRepository())
+    await store.reload()
+    let viewModel = StatsViewModel(store: store)
     #expect(viewModel.todayFocusCount == 0)
 
     let start = Self.dayStart(daysAgo: 0).addingTimeInterval(9 * 3_600)
-    viewModel.recordAppended(focus(start: start, minutes: 25, provider: "local"))
+    store.append(focus(start: start, minutes: 25, provider: "local"))
 
     #expect(viewModel.todayFocusCount == 1)
     #expect(viewModel.todayFocusMinutes == 25)

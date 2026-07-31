@@ -8,9 +8,9 @@ import Observation
 
 /// The single owner of stats scope state, period navigation, and all session aggregation.
 ///
-/// Loads the full session log from an injected ``SessionRepository`` into an in-memory cache
-/// and derives every value the stats UI and popover footer consume. All grouping, counting,
-/// and streak logic lives here — never in the repository (design doc 0006, decisions D1/D2).
+/// Projects every value the stats UI and popover footer consume over an injected
+/// ``SessionStore``'s observable session log. All grouping, counting, and streak logic lives
+/// here — never in the store (design doc 0006, decisions D1/D2).
 @Observable
 @MainActor
 final class StatsViewModel {
@@ -18,12 +18,12 @@ final class StatsViewModel {
   /// Grouping key used for focus time recorded without a selected task.
   private static let untrackedKey = "__untracked__"
 
-  private let repository: SessionRepository
+  private let store: SessionStore
   private let providerLabel: (String) -> String
   private let providerTint: (String) -> ProviderTint
 
   /// The full session log, oldest-first; the source for every derived value.
-  private var sessions: [Session] = []
+  private var sessions: [Session] { store.sessions }
 
   /// The time window the scope-dependent outputs are computed over.
   var scope: StatScope = .today {
@@ -33,38 +33,19 @@ final class StatsViewModel {
   /// Period offset: `0` is the current period, `-1` the previous, and so on.
   private(set) var offset = 0
 
-  /// Creates a view model backed by a repository.
+  /// Creates a view model that projects over a session store.
   /// - Parameters:
-  ///   - repository: The session log to aggregate.
+  ///   - store: The session log to aggregate.
   ///   - providerLabel: Resolves a `providerID` to a display name; defaults to the raw ID.
   ///   - providerTint: Resolves a `providerID` to a display color; defaults to ``ProviderTint/gray``.
   init(
-    repository: SessionRepository,
+    store: SessionStore,
     providerLabel: @escaping (String) -> String = { $0 },
     providerTint: @escaping (String) -> ProviderTint = { _ in .gray }
   ) {
-    self.repository = repository
+    self.store = store
     self.providerLabel = providerLabel
     self.providerTint = providerTint
-    Task { await refresh() }
-  }
-
-  // MARK: - Data lifecycle
-
-  /// Reloads the full session log from the repository.
-  func refresh() async {
-    let all = try? await repository.sessions(
-      over: DateInterval(start: .distantPast, end: .distantFuture))
-    sessions = all ?? []
-  }
-
-  /// Optimistically adds a just-recorded session to the cache for immediate UI updates.
-  ///
-  /// Persistence remains the repository's responsibility (via `SessionStore`); this only
-  /// keeps the in-memory cache current between reloads.
-  /// - Parameter session: The session that was appended.
-  func recordAppended(_ session: Session) {
-    sessions.append(session)
   }
 
   // MARK: - Navigation
@@ -331,16 +312,10 @@ final class StatsViewModel {
 
     /// Builds a preview view model seeded with `sessions`.
     private static func seeded(_ sessions: [Session]) -> StatsViewModel {
-      guard let repository = try? SwiftDataSessionRepository.makeInMemory() else {
-        fatalError("Failed to build in-memory preview repository")
-      }
-      let viewModel = StatsViewModel(
-        repository: repository,
+      StatsViewModel(
+        store: .seeded(sessions),
         providerLabel: { previewProviders[$0]?.label ?? $0 },
         providerTint: { previewProviders[$0]?.tint ?? .gray })
-      // Seed the cache synchronously so previews render without waiting on the async refresh.
-      viewModel.sessions = sessions
-      return viewModel
     }
   }
 #endif

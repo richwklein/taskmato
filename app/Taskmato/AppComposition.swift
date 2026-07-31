@@ -12,8 +12,7 @@ import Foundation
 /// them as immutable properties for injection into the scene hierarchy.
 ///
 /// `TaskmatoApp` holds one `@State` instance and passes slices to each scene.
-/// The `engine.onPhaseEnded` side-effect cascade is wired here; it will move
-/// to `PhaseOrchestrator` at 0.9.0.
+/// The `engine.phaseEvents` side-effect cascade is wired here, consumed by `PhaseOrchestrator`.
 @MainActor
 struct AppComposition {
 
@@ -33,8 +32,9 @@ struct AppComposition {
   let urlHandler: URLSchemeHandler
   let nav: MainNavigation
   let errorPresenter: ErrorPresenter
+  let phaseOrchestrator: PhaseOrchestrator
 
-  /// Constructs every service, registers providers, and wires the phase-ended callback.
+  /// Constructs every service, registers providers, and launches the phase-end orchestrator.
   init() {
     let engine = SessionEngine()
     let settingsStore = SettingsStore()
@@ -49,7 +49,7 @@ struct AppComposition {
     let remindersProvider = RemindersProvider(
       store: LiveRemindersEventStore(), settings: settingsStore)
     let statsViewModel = StatsViewModel(
-      repository: sessionRepository,
+      store: store,
       providerLabel: { [registry] providerID in
         registry.providers.first { $0.id == providerID }?.displayName ?? providerID
       },
@@ -77,6 +77,9 @@ struct AppComposition {
       engine: engine, settings: settings,
       nav: nav, errorPresenter: errorPresenter
     )
+    let phaseOrchestrator = Self.makePhaseOrchestrator(
+      engine: engine, store: store, settings: settings, selectionStore: selectionStore,
+      notifications: notifications)
     self.engine = engine
     self.settings = settings
     self.timerPresenter = TimerPresenter(engine: engine, settings: settings)
@@ -93,7 +96,7 @@ struct AppComposition {
     self.urlHandler = urlHandler
     self.nav = nav
     self.errorPresenter = errorPresenter
-    engine.onPhaseEnded = makePhaseEndedHandler()
+    self.phaseOrchestrator = phaseOrchestrator
   }
 
   /// Opens the SwiftData session store, trapping if it cannot be created.
@@ -118,41 +121,23 @@ struct AppComposition {
     ) { _ in Task { await notifications.refreshAuthStatus() } }
   }
 
+  /// Builds the phase-end orchestrator and launches it, fire-and-forget, for the app's lifetime.
+  private static func makePhaseOrchestrator(
+    engine: SessionEngine, store: SessionStore, settings: AppSettings,
+    selectionStore: TaskSelectionStore, notifications: NotificationService
+  ) -> PhaseOrchestrator {
+    let orchestrator = PhaseOrchestrator(
+      events: engine.phaseEvents, engine: engine, store: store, settings: settings,
+      selectionStore: selectionStore, notifications: notifications)
+    Task { await orchestrator.run() }
+    return orchestrator
+  }
+
   /// Registers each provider, enabling `fallback` on first launch when nothing is persisted.
   private static func registerProviders(
     _ providers: [any TaskProvider], into registry: ProviderRegistry, fallback: any TaskProvider
   ) {
     for provider in providers { registry.register(provider) }
     if registry.enabledIDs.isEmpty { registry.enable(fallback) }
-  }
-
-  /// Records the completed session, fires the phase notification, and advances the timer.
-  ///
-  /// The engine holds this callback; it moves to `PhaseOrchestrator` at 0.9.0.
-  private func makePhaseEndedHandler() -> (SessionPhase, Date, Date, Bool) -> Void {
-    { phase, startedAt, endedAt, wasCompleted in
-      let session = Session(
-        id: UUID(), phase: phase, startedAt: startedAt,
-        endedAt: endedAt, wasCompleted: wasCompleted,
-        taskRef: self.selectionStore.activeTask?.id,
-        taskTitle: self.selectionStore.activeTask?.title
-      )
-      self.store.append(session)
-      self.statsViewModel.recordAppended(session)
-      guard wasCompleted else { return }
-      self.notifications.send(phase: phase)
-      self.engine.applyDurations(from: self.settings)
-      let next: SessionPhase
-      switch phase {
-      case .focus:
-        next = self.engine.nextBreakPhase(longBreakAfter: self.settings.longBreakAfterSessions)
-      case .shortBreak, .longBreak: next = .focus
-      }
-      if self.settings.autoStartNextPhase {
-        self.engine.start(phase: next)
-      } else {
-        self.engine.enqueuePhase(next)
-      }
-    }
   }
 }

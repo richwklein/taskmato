@@ -8,6 +8,7 @@ import Testing
 
 @testable import Taskmato
 
+@MainActor
 struct SessionEngineCycleTests {
 
   // MARK: - completedFocusCount initial state
