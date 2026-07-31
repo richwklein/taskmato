@@ -11,7 +11,7 @@ import Testing
 // MARK: - Factory
 
 private func makeSortItem(
-  providerID: String = "p",
+  providerID: ProviderID = "p",
   nativeID: String,
   title: String,
   priority: TaskPriority = .none,

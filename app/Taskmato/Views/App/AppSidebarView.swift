@@ -24,7 +24,7 @@ struct AppSidebarView: View {
   var onTaskAdded: (() -> Void)?
 
   /// Inline new-list name buffer keyed by provider ID.
-  @State private var newListName: [String: String] = [:]
+  @State private var newListName: [ProviderID: String] = [:]
 
   /// The list ID currently being renamed inline, or `nil` when no rename is in progress.
   @State private var renamingListID: String?
@@ -131,7 +131,7 @@ struct AppSidebarView: View {
 
   @ViewBuilder
   private func providerSection(_ provider: any TaskProvider) -> some View {
-    Section(isExpanded: expansionBinding(for: provider.id)) {
+    Section(isExpanded: expansionBinding(for: provider.id.rawValue)) {
       ForEach(lists(for: provider)) { list in
         listRow(list, provider: provider)
           .tag(AppDestination.list(SelectedList(providerID: provider.id, listID: list.id)))
@@ -330,7 +330,7 @@ struct AppSidebarView: View {
   // MARK: - New list row
 
   @ViewBuilder
-  private func newListRow(providerID: String) -> some View {
+  private func newListRow(providerID: ProviderID) -> some View {
     let nameBinding = Binding(
       get: { newListName[providerID] ?? "" },
       set: { newListName[providerID] = $0 }
@@ -393,11 +393,11 @@ struct AppSidebarView: View {
   /// Reacts to providers becoming enabled from any source: re-expands each section, opens the
   /// configuration sheet for a configurable provider that is not yet authorized (so lists can
   /// load), and refreshes its list cache.
-  private func handleNewlyEnabled(_ addedIDs: Set<String>) {
+  private func handleNewlyEnabled(_ addedIDs: Set<ProviderID>) {
     guard !addedIDs.isEmpty else { return }
     let added = registry.providers.filter { addedIDs.contains($0.id) }
     for provider in added {
-      settings.collapsedSidebarSections.remove(provider.id)
+      settings.collapsedSidebarSections.remove(provider.id.rawValue)
       if let configurable = provider as? (any ConfigurableTaskProvider), !provider.isAuthorized {
         configuringProvider = configurable
       }

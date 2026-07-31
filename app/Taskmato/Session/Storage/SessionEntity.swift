@@ -60,7 +60,7 @@ extension SessionEntity {
     self.init(
       id: session.id, phase: session.phase, startedAt: session.startedAt,
       endedAt: session.endedAt, wasCompleted: session.wasCompleted,
-      taskProviderID: session.taskRef?.providerID,
+      taskProviderID: session.taskRef?.providerID.rawValue,
       taskNativeID: session.taskRef?.nativeID,
       taskTitle: session.taskTitle)
   }
@@ -72,7 +72,7 @@ extension Session {
   nonisolated init(entity: SessionEntity) {
     let taskRef: TaskRef?
     if let providerID = entity.taskProviderID, let nativeID = entity.taskNativeID {
-      taskRef = TaskRef(providerID: providerID, nativeID: nativeID)
+      taskRef = TaskRef(providerID: ProviderID(providerID), nativeID: nativeID)
     } else {
       taskRef = nil
     }

@@ -84,7 +84,7 @@ final class AppSettings {
 
   /// The provider ID of the preferred writable provider for new ad-hoc tasks and the
   /// Add Task sheet, or `nil` to automatically select the first enabled writable provider.
-  var defaultWritableProviderID: String? {
+  var defaultWritableProviderID: ProviderID? {
     didSet { store[SettingsStore.Keys.defaultWritableProviderID] = defaultWritableProviderID }
   }
 

@@ -41,7 +41,7 @@ nonisolated struct ObsidianTaskParser: Sendable {
   /// - Returns: Parsed tasks and the optional H1-derived list name.
   func parse(
     content: String,
-    providerID: String,
+    providerID: ProviderID,
     fileRelativePath: String,
     vaultName: String,
     list: TaskList
@@ -72,7 +72,7 @@ nonisolated struct ObsidianTaskParser: Sendable {
   /// when present, or `nil` when the date is absent.
   func parseCompleted(
     content: String,
-    providerID: String,
+    providerID: ProviderID,
     fileRelativePath: String,
     vaultName: String,
     list: TaskList
@@ -236,7 +236,7 @@ nonisolated struct ObsidianTaskParser: Sendable {
 
   /// File-level context shared across all tasks parsed from a single file.
   nonisolated private struct FileContext {
-    let providerID: String
+    let providerID: ProviderID
     let fileRelativePath: String
     let vaultName: String
     let list: TaskList

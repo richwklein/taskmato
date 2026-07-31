@@ -14,7 +14,7 @@ private struct QueryStubError: Error, Equatable {}
 
 /// Returns a fixed task set from `tasks(in:)` regardless of the requested list.
 private final class QueryStubProvider: TaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
@@ -22,9 +22,9 @@ private final class QueryStubProvider: TaskProvider {
   private let stubbedLists: [TaskList]
   private let shouldThrow: Bool
 
-  init(id: String, tasks: [TaskItem] = [], lists: [TaskList] = [], shouldThrow: Bool = false) {
+  init(id: ProviderID, tasks: [TaskItem] = [], lists: [TaskList] = [], shouldThrow: Bool = false) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
     self.stubbedTasks = tasks
     self.stubbedLists = lists
     self.shouldThrow = shouldThrow
@@ -41,16 +41,16 @@ private final class QueryStubProvider: TaskProvider {
 
 /// Scopes returned tasks to the requested list, so single-list queries can be exercised.
 private final class QueryScopedProvider: TaskProvider {
-  let id: String
+  let id: ProviderID
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   private let stubbedLists: [TaskList]
   private let tasksByListID: [String: [TaskItem]]
 
-  init(id: String, listTasks: [(TaskList, [TaskItem])]) {
+  init(id: ProviderID, listTasks: [(TaskList, [TaskItem])]) {
     self.id = id
-    self.displayName = id
+    self.displayName = id.rawValue
     self.stubbedLists = listTasks.map(\.0)
     self.tasksByListID = Dictionary(uniqueKeysWithValues: listTasks.map { ($0.0.id, $0.1) })
   }
@@ -65,7 +65,7 @@ private final class QueryScopedProvider: TaskProvider {
 }
 
 private func queryItem(
-  providerID: String = "p",
+  providerID: ProviderID = "p",
   nativeID: String = UUID().uuidString,
   title: String,
   priority: TaskPriority = .none,

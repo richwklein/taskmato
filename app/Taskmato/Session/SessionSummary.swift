@@ -77,7 +77,7 @@ struct SessionSummary {
       let key: String
       let label: String
       if let ref = session.taskRef {
-        key = "\(ref.providerID):\(ref.nativeID)"
+        key = "\(ref.providerID.rawValue):\(ref.nativeID)"
         label = session.taskTitle ?? "Unknown Task"
       } else {
         key = "__untracked__"

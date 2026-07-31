@@ -12,7 +12,7 @@ import Foundation
 protocol TaskProvider: AnyObject, Sendable {
 
   /// Stable identifier used as `TaskRef.providerID` and for persisting enabled state.
-  var id: String { get }
+  var id: ProviderID { get }
 
   /// Human-readable name shown in the Providers settings panel.
   var displayName: String { get }

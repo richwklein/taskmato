@@ -8,7 +8,7 @@ import Testing
 
 @testable import Taskmato
 
-private func makeItem(providerID: String, nativeID: String, title: String) -> TaskItem {
+private func makeItem(providerID: ProviderID, nativeID: String, title: String) -> TaskItem {
   TaskItem(
     id: TaskRef(providerID: providerID, nativeID: nativeID),
     title: title,

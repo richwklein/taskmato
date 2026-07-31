@@ -95,6 +95,29 @@ final class SettingsStore {
     set { defaults.set(newValue.rawValue, forKey: key.name) }
   }
 
+  /// Reads or writes an optional `String`-backed `RawRepresentable`, removing the key when `nil`.
+  subscript<Value: RawRepresentable>(key: SettingsKey<Value?>) -> Value?
+  where Value.RawValue == String {
+    get { defaults.string(forKey: key.name).flatMap { Value(rawValue: $0) } ?? key.defaultValue }
+    set {
+      if let newValue {
+        defaults.set(newValue.rawValue, forKey: key.name)
+      } else {
+        defaults.removeObject(forKey: key.name)
+      }
+    }
+  }
+
+  /// Reads or writes a set of `String`-backed `RawRepresentable` values, stored as a string array.
+  subscript<Value: RawRepresentable>(key: SettingsKey<Set<Value>>) -> Set<Value>
+  where Value.RawValue == String {
+    get {
+      guard let stored = defaults.stringArray(forKey: key.name) else { return key.defaultValue }
+      return Set(stored.compactMap(Value.init(rawValue:)))
+    }
+    set { defaults.set(newValue.map(\.rawValue), forKey: key.name) }
+  }
+
   // MARK: - Codable & Data values
 
   /// Decodes a JSON-encoded `Codable` value for `key`, or `nil` when absent or undecodable.
@@ -160,7 +183,7 @@ extension SettingsStore {
     static let taskSortField = SettingsKey("taskSort.field", default: TaskSortField.dueDate)
     static let taskSortDirection = SettingsKey(
       "taskSort.direction", default: TaskSortDirection.ascending)
-    static let defaultWritableProviderID = SettingsKey<String?>(
+    static let defaultWritableProviderID = SettingsKey<ProviderID?>(
       "tasks.defaultWritableProviderID", default: nil)
     static let collapsedSidebarSections = SettingsKey(
       "sidebar.collapsedSections", default: Set<String>())
@@ -168,7 +191,7 @@ extension SettingsStore {
     // MARK: Provider registry
 
     static let enabledProviderIDs = SettingsKey(
-      "taskRegistry.enabledProviderIDs", default: Set<String>())
+      "taskRegistry.enabledProviderIDs", default: Set<ProviderID>())
 
     // MARK: Obsidian provider
 

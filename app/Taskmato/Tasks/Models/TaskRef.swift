@@ -11,8 +11,8 @@ import Foundation
 /// concurrent providers to coexist without collisions.
 nonisolated struct TaskRef: Hashable, Codable, Sendable {
 
-  /// The identifier of the provider that owns this task (e.g. `"reminders"`, `"obsidian"`, `"cli"`).
-  let providerID: String
+  /// The identifier of the provider that owns this task (e.g. `"reminders"`, `"obsidian"`, `"local"`).
+  let providerID: ProviderID
 
   /// The provider-local identifier for the task (e.g. an EventKit calendar item ID or a file-path hash).
   let nativeID: String

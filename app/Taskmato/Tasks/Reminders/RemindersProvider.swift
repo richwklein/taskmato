@@ -16,9 +16,9 @@ import Foundation
 final class RemindersProvider: ClosableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
-  static let providerID = "reminders"
+  static let providerID: ProviderID = "reminders"
 
-  let id: String = RemindersProvider.providerID
+  let id: ProviderID = RemindersProvider.providerID
   let displayName: String = "Apple Reminders"
   let icon: String = "checklist"
   let tint: ProviderTint = .orange

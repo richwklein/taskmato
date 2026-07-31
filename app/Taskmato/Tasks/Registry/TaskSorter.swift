@@ -101,6 +101,6 @@ struct TaskSorter: Sendable {
 
   /// Deterministic tiebreaker using the lexicographic order of `providerID/nativeID`.
   private func compareRefs(_ lhs: TaskRef, _ rhs: TaskRef) -> Bool {
-    "\(lhs.providerID)/\(lhs.nativeID)" < "\(rhs.providerID)/\(rhs.nativeID)"
+    "\(lhs.providerID.rawValue)/\(lhs.nativeID)" < "\(rhs.providerID.rawValue)/\(rhs.nativeID)"
   }
 }
