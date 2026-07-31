@@ -18,7 +18,10 @@ Screenshots and other images used in the docs (and elsewhere) live at [`assets/`
 
 ## Where to look
 
-- **Working out *how* to do something?** Start in [`how-to/`](how-to/).
+- **Working out *how* to do something?** Start in [`how-to/`](how-to/):
+  - [`Release Guide`](how-to/release.md) — How to set up and run the release pipeline locally or in CI.
+  - [`Update Icons`](how-to/update-icons.md)
+  - [`Reset Stale Dev Builds`](how-to/reset-stale-dev-builds.md)
 - **Trying to understand *why* something works the way it does?** Start in [`explanation/`](explanation/).
 - **Wondering why a load-bearing decision was made?** Read the relevant ADR in [`architecture/decisions/`](architecture/decisions/).
 - **Reviewing a design proposal in flight?** Look in [`architecture/design/`](architecture/design/).
