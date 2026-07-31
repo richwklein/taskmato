@@ -48,7 +48,7 @@ xcrun notarytool store-credentials "taskmato-notarize" \
 
 ## CI setup (GitHub Actions)
 
-The workflow `.github/workflows/code-release.yaml` triggers on any `v*` tag push and runs the full pipeline. It requires the following repository secrets:
+The workflow `.github/workflows/build-and-release-dmg.yaml` triggers on any `v*` tag push and runs the full pipeline. It requires the following repository secrets:
 
 ### Signing certificate
 
@@ -91,6 +91,8 @@ Releases are triggered automatically when a version tag is pushed:
 
 1. Merge PRs to `main` — release-please opens a release PR and bumps `version.txt`
 2. Merge the release PR — release-please pushes a `v*` tag
-3. The `code-release.yaml` workflow fires, builds and notarizes the DMG, attaches it to the GitHub release
+3. The `build-and-release-dmg.yaml` workflow fires, builds and notarizes the DMG, attaches it to the GitHub release
 
 With [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases) enabled, the workflow creates a draft release first, attaches the DMG, then publishes — ensuring the artifact is in place before the release is frozen.
+
+Before publishing the draft release, run the [DMG Smoke-Test Checklist](smoke-test-dmg.md) to catch distribution-level regressions that automated tests miss.
