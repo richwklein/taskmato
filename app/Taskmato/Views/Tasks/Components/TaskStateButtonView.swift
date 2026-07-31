@@ -23,6 +23,7 @@ struct TaskStateButtonView: View {
       }
       .buttonStyle(.plain)
       .help(AppLabels.Tooltip.restore)
+      .accessibilityLabel(AppLabels.Tooltip.restore)
     } else if let onComplete = presenter.onComplete {
       TaskCompletionButton(
         action: onComplete, label: AppLabels.Tooltip.markAsCompleted, isHovered: $isHovered)

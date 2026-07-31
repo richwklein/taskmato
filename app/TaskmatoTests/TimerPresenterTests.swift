@@ -60,6 +60,76 @@ struct TimerPresenterTests {
     #expect(presenter.phaseName == SessionPhase.focus.idleLabel)
   }
 
+  // MARK: - Accessibility
+
+  @Test func accessibilityValueWhenIdleShowsConfiguredFocusDuration() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    #expect(presenter.accessibilityValue == "Ready to focus, 25 minutes")
+  }
+
+  // `pause()` is the only way to obtain a deterministic `timeRemaining` read in these tests
+  // (mirroring `labelWhileActiveReflectsTimeRemaining` above), so every case below observes
+  // the presenter mid-pause — hence the ", paused" segment in each expected value.
+
+  @Test func accessibilityValueAtOneMinuteRemainingUsesSingularUnit() {
+    var now = Date(timeIntervalSinceReferenceDate: 0)
+    let engine = SessionEngine(now: { now })
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    presenter.start()
+    presenter.pause()
+    #expect(presenter.accessibilityValue == "Focus, paused, 1 minute remaining")
+  }
+
+  @Test func accessibilityValueUnderAMinuteIsVague() {
+    var now = Date(timeIntervalSinceReferenceDate: 0)
+    let engine = SessionEngine(now: { now })
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    presenter.start()
+    now = now.addingTimeInterval(20)
+    presenter.pause()
+    #expect(presenter.accessibilityValue == "Focus, paused, less than a minute remaining")
+  }
+
+  @Test func accessibilityValueInFinalTenSecondsCountsDown() {
+    var now = Date(timeIntervalSinceReferenceDate: 0)
+    let engine = SessionEngine(now: { now })
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    presenter.start()
+    now = now.addingTimeInterval(50)
+    presenter.pause()
+    #expect(presenter.accessibilityValue == "Focus, paused, 10 seconds remaining")
+  }
+
+  @Test func accessibilityValueAtOneSecondRemainingUsesSingularUnit() {
+    var now = Date(timeIntervalSinceReferenceDate: 0)
+    let engine = SessionEngine(now: { now })
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    presenter.start()
+    now = now.addingTimeInterval(59)
+    presenter.pause()
+    #expect(presenter.accessibilityValue == "Focus, paused, 1 second remaining")
+  }
+
+  @Test func accessibilityValueWhenPausedIncludesPausedState() {
+    var now = Date(timeIntervalSinceReferenceDate: 0)
+    let engine = SessionEngine(now: { now })
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 25))
+    presenter.start()
+    now = now.addingTimeInterval(60)
+    presenter.pause()
+    #expect(presenter.accessibilityValue == "Focus, paused, 24 minutes remaining")
+  }
+
+  @Test func accessibilityValueWhileRunningOmitsPausedState() {
+    // A freshly started session is running (not paused) with `timeRemaining` at the full
+    // duration, so no advance/pause is needed to read it deterministically.
+    let engine = SessionEngine(now: { Date(timeIntervalSinceReferenceDate: 0) })
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    presenter.start()
+    #expect(presenter.isRunning)
+    #expect(presenter.accessibilityValue == "Focus, 1 minute remaining")
+  }
+
   // MARK: - Intents
 
   @Test func startFromIdleBeginsFocus() {

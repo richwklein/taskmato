@@ -17,7 +17,6 @@ are used directly — they are not re-exported as tokens.
 | `taskTitle` | `.callout` | Primary task title in rows, cards, and the active-task label |
 | `taskMetadata` | `.caption2` | Supporting metadata under a title (due date, priority marks) |
 | `taskLineage` | `.caption2` | Ancestor/lineage breadcrumb under a task |
-| `timerCountdown` | `.system(size: 36, weight: .light, design: .monospaced)` | Countdown at the center of the timer ring |
 | `timerPhaseLabel` | `.subheadline` | Phase label under the countdown |
 | `statValue` | `.title.monospacedDigit()` | Prominent numeric value in a stat card |
 | `statLabel` | `.caption` | Caption describing a stat value |

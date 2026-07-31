@@ -216,6 +216,7 @@ struct AppSidebarView: View {
         .buttonStyle(.borderless)
         .foregroundStyle(isDefaultList ? Color.favoriteStar : Color.secondary)
         .help(isDefaultList ? "Default list" : "Set as default list")
+        .accessibilityLabel(isDefaultList ? "Default list" : "Set as default list")
       }
     }
   }

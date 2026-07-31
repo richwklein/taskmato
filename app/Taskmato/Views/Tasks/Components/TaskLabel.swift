@@ -52,6 +52,12 @@ enum AppLabels {
     static let hideCompleted = "Hide completed tasks"
   }
 
+  /// VoiceOver labels for controls whose visible content is not text.
+  enum Accessibility {
+    /// Announced for the circular countdown ring on the Timer surface.
+    static let timer = "Pomodoro timer"
+  }
+
   /// Labels for task CRUD and lifecycle actions.
   enum Task {
     /// Sets the task as active and switches to the Timer tab.

@@ -78,6 +78,7 @@ struct ActiveTaskView: View {
           }
           .buttonStyle(.plain)
           .help(AppLabels.Tooltip.swapTask)
+          .accessibilityLabel(AppLabels.Tooltip.swapTask)
         }
 
         Button {
@@ -92,6 +93,7 @@ struct ActiveTaskView: View {
         }
         .buttonStyle(.plain)
         .help(AppLabels.Tooltip.clearTask)
+        .accessibilityLabel(AppLabels.Tooltip.clearTask)
       }
     }
   }

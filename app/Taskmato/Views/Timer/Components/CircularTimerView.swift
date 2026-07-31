@@ -14,6 +14,8 @@ struct CircularTimerView: View {
   let label: String
   /// The phase name displayed below the time, e.g. `"Focus"`.
   let phase: String
+  /// The VoiceOver value announced for the ring, e.g. `"Focus, 24 minutes remaining"`.
+  let accessibilityValue: String
 
   private let ringDiameter: CGFloat = 180
   private let strokeWidth: CGFloat = 10
@@ -23,5 +25,9 @@ struct CircularTimerView: View {
       TimerRing(progress: progress, diameter: ringDiameter, strokeWidth: strokeWidth)
       TimerReadout(label: label, phase: phase)
     }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(AppLabels.Accessibility.timer)
+    .accessibilityValue(accessibilityValue)
+    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
   }
 }

@@ -16,9 +16,6 @@ extension Font {
   /// Ancestor/lineage breadcrumb shown under a task; sits below metadata in emphasis.
   static let taskLineage: Font = .caption2
 
-  /// Large monospaced countdown at the center of the timer ring.
-  static let timerCountdown: Font = .system(size: 36, weight: .light, design: .monospaced)
-
   /// Phase label ("Focus", "Break") under the timer countdown.
   static let timerPhaseLabel: Font = .subheadline
 
