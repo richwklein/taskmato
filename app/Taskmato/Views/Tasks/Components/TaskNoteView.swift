@@ -13,7 +13,7 @@ import SwiftUI
 struct TaskNoteView: View {
 
   let notes: String
-  let format: NoteFormat
+  let format: ContentFormat
 
   var body: some View {
     Group {

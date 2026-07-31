@@ -117,10 +117,10 @@ struct TaskItemTests {
     #expect(decoded.title == "Legacy task")
   }
 
-  @Test func taskItemNoteFormatCodableRoundTrip() throws {
-    for format in [NoteFormat.plainText, NoteFormat.markdown] {
+  @Test func taskItemContentFormatCodableRoundTrip() throws {
+    for format in [ContentFormat.plainText, ContentFormat.markdown] {
       let data = try JSONEncoder().encode(format)
-      let decoded = try JSONDecoder().decode(NoteFormat.self, from: data)
+      let decoded = try JSONDecoder().decode(ContentFormat.self, from: data)
       #expect(decoded == format)
     }
   }

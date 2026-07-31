@@ -24,7 +24,7 @@ struct LocalTask: Codable, Identifiable {
   ///
   /// Defaults to `.markdown` for all new tasks. Existing JSON records without this
   /// field also decode as `.markdown` via ``init(from:)``.
-  var format: NoteFormat
+  var format: ContentFormat
 
   /// Priority level, used for sorting and badging in the picker.
   var priority: TaskPriority
@@ -100,7 +100,7 @@ extension LocalTask {
     id = try container.decode(UUID.self, forKey: .id)
     title = try container.decode(String.self, forKey: .title)
     notes = try container.decodeIfPresent(String.self, forKey: .notes)
-    format = try container.decodeIfPresent(NoteFormat.self, forKey: .format) ?? .markdown
+    format = try container.decodeIfPresent(ContentFormat.self, forKey: .format) ?? .markdown
     priority = try container.decode(TaskPriority.self, forKey: .priority)
     dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
     scheduledDate = try container.decodeIfPresent(Date.self, forKey: .scheduledDate)
