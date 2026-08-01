@@ -1,0 +1,76 @@
+name: Site Build
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Commit to check out; defaults to the triggering event''s SHA.'
+        required: false
+        type: string
+  pull_request:
+
+concurrency:
+  group: site-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Steps are conditionally skipped rather than the job, so the
+      # required status check is always registered. A job-level skip
+      # leaves that check unreported, which blocks PRs that require it.
+      - name: Checkout source code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Detect relevant changes
+        id: changes
+        uses: ./.github/actions/detect-relevant-changes
+        with:
+          patterns: |
+            ^site/
+            ^\.github/(workflows|actions)/
+
+      - name: Setup Node
+        if: steps.changes.outputs.relevant == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+
+      - name: Enable pnpm
+        if: steps.changes.outputs.relevant == 'true'
+        run: corepack enable && corepack prepare pnpm@10.24.0 --activate
+
+      - name: Install dependencies
+        if: steps.changes.outputs.relevant == 'true'
+        run: cd site && pnpm install --frozen-lockfile
+
+      - name: Lint
+        if: steps.changes.outputs.relevant == 'true'
+        run: cd site && pnpm run lint
+
+      - name: Format check
+        if: steps.changes.outputs.relevant == 'true'
+        run: cd site && pnpm run format
+
+      - name: Test
+        if: steps.changes.outputs.relevant == 'true'
+        run: cd site && pnpm run test
+
+      - name: Build
+        if: steps.changes.outputs.relevant == 'true'
+        run: cd site && pnpm run build
+
+      - name: Upload site artifact
+        if: steps.changes.outputs.relevant == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-dist
+          path: site/dist
+          retention-days: 1
