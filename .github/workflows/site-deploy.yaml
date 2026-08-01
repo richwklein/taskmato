@@ -6,6 +6,9 @@ on:
     types: [completed]
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -14,8 +17,6 @@ jobs:
   build:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/site-build.yaml
-    with:
-      ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
   deploy:
     needs: build

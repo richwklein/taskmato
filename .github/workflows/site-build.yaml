@@ -2,11 +2,6 @@ name: Site Build
 
 on:
   workflow_call:
-    inputs:
-      ref:
-        description: 'Commit to check out; defaults to the triggering event''s SHA.'
-        required: false
-        type: string
   pull_request:
 
 concurrency:
@@ -26,8 +21,6 @@ jobs:
       # leaves that check unreported, which blocks PRs that require it.
       - name: Checkout source code
         uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.ref || github.sha }}
 
       - name: Detect relevant changes
         id: changes
