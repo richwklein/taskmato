@@ -59,7 +59,7 @@ jobs:
 
       - name: Report coverage on PR
         if: steps.changes.outputs.relevant == 'true'
-        uses: zgosalvez/github-actions-report-lcov@v4
+        uses: zgosalvez/github-actions-report-lcov@v7
         with:
           coverage-files: coverage.lcov
           github-token: ${{ secrets.GITHUB_TOKEN }}
