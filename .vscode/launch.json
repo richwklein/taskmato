@@ -6,6 +6,13 @@
       "request": "attach",
       "name": "Launch Taskmato",
       "preLaunchTask": "Build and Launch"
+    },
+    {
+      "type": "node-terminal",
+      "request": "launch",
+      "name": "Site: Dev Server",
+      "command": "pnpm run dev",
+      "cwd": "${workspaceFolder}/site"
     }
   ]
 }
