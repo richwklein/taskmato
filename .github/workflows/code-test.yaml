@@ -53,6 +53,10 @@ jobs:
           xcrun xccov view --report --json TestResults.xcresult > coverage.json
           python3 scripts/xcresult-to-lcov.py coverage.json > coverage.lcov
 
+      - name: Install lcov
+        if: steps.changes.outputs.relevant == 'true'
+        run: brew install lcov
+
       - name: Report coverage on PR
         if: steps.changes.outputs.relevant == 'true'
         uses: zgosalvez/github-actions-report-lcov@v4
