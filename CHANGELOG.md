@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.1](https://github.com/richwklein/taskmato/compare/v0.10.0...v0.10.1) (2026-08-02)
+
+
+### Bug Fixes
+
+* exclude SwiftUI previews from release builds (unblocks the DMG archive) ([#503](https://github.com/richwklein/taskmato/issues/503)) ([9c16cb7](https://github.com/richwklein/taskmato/commit/9c16cb78a4247c828549bbbc919e20b83f2764ef))
+* pass --repo to the release publish step ([#504](https://github.com/richwklein/taskmato/issues/504)) ([e700f28](https://github.com/richwklein/taskmato/commit/e700f28ba09c00a85e2a266af1e9897da62c6869))
+* release check job needs write access to detect draft releases ([#502](https://github.com/richwklein/taskmato/issues/502)) ([bcc92e5](https://github.com/richwklein/taskmato/commit/bcc92e5ae7ff1fe739d25da51631ed518acdb993))
+
 ## [0.10.0](https://github.com/richwklein/taskmato/compare/v0.9.0...v0.10.0) (2026-08-02)
 
 
