@@ -2,10 +2,18 @@
 
 ## [1.0.0](https://github.com/richwklein/taskmato/compare/v0.10.2...v1.0.0) (2026-08-02)
 
+Taskmato's first stable release — a native macOS menu bar Pomodoro timer that runs focus sessions against your real tasks.
 
-### Miscellaneous Chores
+### Highlights
 
-* cut the 1.0.0 production release ([#511](https://github.com/richwklein/taskmato/issues/511)) ([ced2240](https://github.com/richwklein/taskmato/commit/ced22409790fa9992c2485af0c93d05f91f7a107))
+* **Focus timer** — a menu bar Pomodoro with a persistent timer strip and sidebar countdown, keeping one active task in sync across the popover, strip, and Timer tab.
+* **Task providers** — pull tasks from a built-in local provider, Apple Reminders (EventKit), and Obsidian vaults (live file watching), each with per-provider list scoping.
+* **Window-first shell** — a `NavigationSplitView` workspace with Timer, Tasks, and Stats tabs, plus a slim menu bar companion.
+* **Stats** — Day / Week / Month / All Time charts and session streaks.
+* **Notifications** — phase-end alerts with a sound picker and Focus-aware delivery.
+* **Automation** — a `taskmato://` URL scheme for provider-targeted task capture.
+* **Accessibility** — timer announcements, control labels, and Dynamic Type support.
+* **Signed & notarized** — distributed as a signed, notarized DMG.
 
 ## [0.10.2](https://github.com/richwklein/taskmato/compare/v0.10.1...v0.10.2) (2026-08-02)
 
