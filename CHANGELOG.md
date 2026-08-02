@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/richwklein/taskmato/compare/v0.10.1...v0.10.2) (2026-08-02)
+
+
+### Bug Fixes
+
+* name the release DMG asset Taskmato.dmg so the download link resolves ([#506](https://github.com/richwklein/taskmato/issues/506)) ([c3a338f](https://github.com/richwklein/taskmato/commit/c3a338ffdd593a6fc24af2a917da17eff53c97c5))
+
 ## [0.10.1](https://github.com/richwklein/taskmato/compare/v0.10.0...v0.10.1) (2026-08-02)
 
 
