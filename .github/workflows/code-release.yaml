@@ -1,19 +1,74 @@
 name: Release DMG
 
+# Signs, notarizes, and attaches the DMG to the release-please-created DRAFT release,
+# then publishes (un-drafts) it and deploys the marketing site — in that order.
+#
+# Why workflow_run instead of a tag/release trigger: with immutable releases enabled
+# the DMG must be attached while the release is still a draft (a published release is
+# frozen), but a draft release neither creates a git tag nor fires `release` events.
+# So there is nothing to key a `push: tags` or `release:` trigger on. Instead this runs
+# after the "Release" (release-please) workflow completes and looks the draft up by
+# version — which keeps release-please.yaml untouched and template-tracked.
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
-    runs-on: macos-latest
-
+  # Determines whether release-please cut a draft release and, if so, the tag and the
+  # exact release commit to build. Guarded to a successful push to main (the "Release"
+  # workflow is push-to-main only), and it never checks out the workflow_run head SHA —
+  # so no untrusted, event-derived code runs in this privileged context.
+  check:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      released: ${{ steps.detect.outputs.released }}
+      tag: ${{ steps.detect.outputs.tag }}
     steps:
-      - uses: actions/checkout@v7
+      # Checks out github.sha (the trusted default-branch commit), not the workflow_run
+      # head SHA, only to read version.txt.
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Detect draft release
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(cat version.txt | tr -d '[:space:]')
+          TAG="v${VERSION}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null)" = "true" ]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "No draft release for $TAG; nothing to package."
+          fi
+
+  # Builds, signs, notarizes, and attaches the DMG to the draft release. Checks out the
+  # default-branch commit (github.sha, trusted) — never an event- or output-derived ref,
+  # which CodeQL flags as untrusted checkout in this privileged workflow_run context. It
+  # carries the just-released version.txt. --clobber is safe because the release is still
+  # a draft (mutable) — this is the only place an upload may be retried.
+  package:
+    needs: check
+    if: needs.check.outputs.released == 'true'
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
 
       - name: Import signing certificate
         env:
@@ -55,25 +110,47 @@ jobs:
             --wait
           xcrun stapler staple "build/Taskmato-${VERSION}.dmg"
 
-      - name: Create draft release, attach DMG, and publish
+      - name: Attach DMG to draft release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.check.outputs.tag }}
         run: |
           VERSION=$(cat version.txt | tr -d '[:space:]')
-          DMG="build/Taskmato-${VERSION}.dmg"
-          TAG="v${VERSION}"
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" "$DMG#Taskmato.dmg" --clobber
-          else
-            gh release create "$TAG" \
-              --draft \
-              --title "Taskmato ${TAG}" \
-              --generate-notes \
-              "$DMG#Taskmato.dmg"
-            gh release edit "$TAG" --draft=false
-          fi
+          gh release upload "$TAG" "build/Taskmato-${VERSION}.dmg#Taskmato.dmg" --clobber
 
       - name: Clean up keychain
         if: always()
         run: |
           security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+
+  # Publishes (un-drafts) the release. This is the single, final write to the release:
+  # once published, immutable releases freeze it, so nothing may touch it afterward.
+  # release-please already wrote the notes from the changelog, so we only flip the flag.
+  # Publishing is automated; the DMG is smoke-tested after the fact, and a regression is
+  # handled by cutting a patch release rather than gating this step on manual approval.
+  publish:
+    needs: [check, package]
+    if: needs.check.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: gh release edit "$TAG" --draft=false
+
+  # Deploys the marketing site from the published tag. Read-only with respect to the
+  # release; runs last so the download button (/releases/latest/download/Taskmato.dmg)
+  # resolves to a published release with the DMG already attached.
+  deploy-site:
+    needs: [check, publish]
+    if: needs.check.outputs.released == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/site-deploy.yaml
+    with:
+      ref: ${{ needs.check.outputs.tag }}

@@ -48,7 +48,7 @@ xcrun notarytool store-credentials "taskmato-notarize" \
 
 ## CI setup (GitHub Actions)
 
-The workflow `.github/workflows/code-release.yaml` triggers on any `v*` tag push and runs the full pipeline. It requires the following repository secrets:
+The pipeline `.github/workflows/code-release.yaml` runs after the `Release` (release-please) workflow completes; its `package` job signs and notarizes the DMG whenever release-please cuts a release. It requires the following repository secrets:
 
 ### Signing certificate
 
@@ -87,12 +87,15 @@ This is used only for the ephemeral keychain the CI runner creates and destroys 
 
 ## Release flow
 
-Releases are triggered automatically when a version tag is pushed:
+Releases are driven by two workflows. `.github/workflows/release-please.yaml` (the template-owned `Release` workflow) creates the draft; `.github/workflows/code-release.yaml` builds and publishes it. When a release PR merges:
 
-1. Merge PRs to `main` — release-please opens a release PR and bumps `version.txt`
-2. Merge the release PR — release-please pushes a `v*` tag
-3. The `code-release.yaml` workflow fires, builds and notarizes the DMG, attaches it to the GitHub release
+1. **release-please** (`Release`) — opens/updates the release PR (bumping `version.txt` and `CHANGELOG.md`); on merge, creates a **draft** GitHub Release
+2. **code-release** runs on `workflow_run` after `Release` completes, in `needs`-ordered jobs:
+   - **check** — detects the draft release for the new `version.txt` (skips the rest on non-release pushes)
+   - **package** — builds, signs, and notarizes the DMG and attaches it to the draft release
+   - **publish** — un-drafts the release, the single final write to it, only after the DMG is attached
+   - **deploy-site** — deploys the marketing site from the published tag
 
-With [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases) enabled, the workflow creates a draft release first, attaches the DMG, then publishes — ensuring the artifact is in place before the release is frozen.
+A draft release does not create a git tag or fire `release`/tag events, so `code-release` keys off `workflow_run` and looks the draft up by version rather than a tag trigger. With [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases) enabled, a published release is frozen — no assets can be added afterward — so the DMG is attached while the release is still a draft and `publish` runs last. This also keeps `https://github.com/richwklein/taskmato/releases/latest/download/Taskmato.dmg` from ever resolving to a release without its DMG.
 
-Before publishing the draft release, run the [DMG Smoke-Test Checklist](smoke-test-dmg.md) to catch distribution-level regressions that automated tests miss.
+Publishing is automated. After a release publishes, run the [DMG Smoke-Test Checklist](smoke-test-dmg.md) against the attached DMG to catch distribution-level regressions that automated tests miss; if it fails, cut a patch release rather than trying to alter the published (frozen) release.
