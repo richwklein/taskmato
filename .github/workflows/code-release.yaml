@@ -137,11 +137,13 @@ jobs:
     permissions:
       contents: write
     steps:
+      # This job has no checkout, so pass --repo explicitly; without it `gh release
+      # edit` tries to infer the repo from local git and fails ("not a git repository").
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.check.outputs.tag }}
-        run: gh release edit "$TAG" --draft=false
+        run: gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
 
   # Deploys the marketing site from the published tag. Read-only with respect to the
   # release; runs last so the download button (/releases/latest/download/Taskmato.dmg)
