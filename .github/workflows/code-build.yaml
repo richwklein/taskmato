@@ -34,13 +34,28 @@ jobs:
         if: steps.changes.outputs.relevant == 'true'
         run: bash scripts/sync-version.sh
 
-      - name: Build
+      - name: Build (Debug)
         if: steps.changes.outputs.relevant == 'true'
         run: |
           xcodebuild build \
             -project app/Taskmato.xcodeproj \
             -scheme Taskmato \
             -configuration Debug \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      # Also compile Release: it uses whole-module optimization and excludes
+      # DEBUG-only code (e.g. #if DEBUG previews), so it catches errors the Debug
+      # build misses — the class of failure that broke `make archive`. No signing.
+      - name: Build (Release)
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          xcodebuild build \
+            -project app/Taskmato.xcodeproj \
+            -scheme Taskmato \
+            -configuration Release \
             -destination 'platform=macOS' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
