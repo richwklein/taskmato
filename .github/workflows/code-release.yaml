@@ -19,12 +19,12 @@ permissions:
   contents: read
 
 jobs:
-  # Determines whether release-please cut a draft release on this push and, if so, the
-  # tag and commit to act on. Runs on every "Release" completion; on non-release pushes
-  # version.txt still points at the last published (non-draft) release, so `released`
-  # is false and the heavy jobs skip.
+  # Determines whether release-please cut a draft release and, if so, the tag and the
+  # exact release commit to build. Guarded to a successful push to main (the "Release"
+  # workflow is push-to-main only), and it never checks out the workflow_run head SHA —
+  # so no untrusted, event-derived code runs in this privileged context.
   check:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,19 +33,10 @@ jobs:
       tag: ${{ steps.detect.outputs.tag }}
       sha: ${{ steps.detect.outputs.sha }}
     steps:
-      - name: Resolve release commit
-        id: ref
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-          fi
-
+      # Checks out github.sha (the trusted default-branch commit), not the workflow_run
+      # head SHA, only to read version.txt.
       - name: Checkout source code
         uses: actions/checkout@v7
-        with:
-          ref: ${{ steps.ref.outputs.sha }}
 
       - name: Detect draft release
         id: detect
@@ -54,10 +45,12 @@ jobs:
         run: |
           VERSION=$(cat version.txt | tr -d '[:space:]')
           TAG="v${VERSION}"
-          echo "sha=${{ steps.ref.outputs.sha }}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null)" = "true" ]; then
+            # targetCommitish comes from the release object (created by the release bot
+            # via release-please), a trusted source — not the workflow_run event payload.
             echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "sha=$(gh release view "$TAG" --json targetCommitish --jq .targetCommitish)" >> "$GITHUB_OUTPUT"
           else
             echo "released=false" >> "$GITHUB_OUTPUT"
             echo "No draft release for $TAG; nothing to package."
@@ -65,7 +58,8 @@ jobs:
 
   # Builds, signs, notarizes, and attaches the DMG to the draft release. The tag does
   # not exist yet (draft releases do not create the git ref), so this checks out the
-  # release commit by SHA. --clobber is safe because the release is still a draft
+  # release commit resolved from the draft's targetCommitish (a trusted source, not the
+  # workflow_run event). --clobber is safe because the release is still a draft
   # (mutable) — this is the only place an upload may be retried.
   package:
     needs: check
