@@ -10,7 +10,7 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   test:
@@ -41,6 +41,27 @@ jobs:
             -project app/Taskmato.xcodeproj \
             -scheme Taskmato \
             -destination 'platform=macOS' \
+            -resultBundlePath TestResults.xcresult \
+            -enableCodeCoverage YES \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Convert coverage to LCOV
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          xcrun xccov view --report --json TestResults.xcresult > coverage.json
+          python3 scripts/xcresult-to-lcov.py coverage.json > coverage.lcov
+
+      - name: Install lcov
+        if: steps.changes.outputs.relevant == 'true'
+        run: brew install lcov
+
+      - name: Report coverage on PR
+        if: steps.changes.outputs.relevant == 'true'
+        uses: zgosalvez/github-actions-report-lcov@v7
+        with:
+          coverage-files: coverage.lcov
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          update-comment: true
+          genhtml-ignore-errors: empty
