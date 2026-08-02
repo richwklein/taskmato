@@ -34,11 +34,40 @@ def xcresult_to_lcov(xcresult_path: str, target_name: str = "Taskmato.app") -> s
         file_path = file_info["path"]
         lcov_lines.append(f"SF:{file_path}")
 
+        functions = file_info.get("functions", [])
+
+        # lcov identifies a function by name alone and errors if the same
+        # name starts on more than one line within a file (happens with
+        # Swift closures that share a description, e.g. two distinct
+        # subscript getters). Merge same-named entries under their first
+        # line and sum execution counts rather than emitting duplicates.
+        function_data = {}
+        for func in functions:
+            name = func["name"]
+            if name not in function_data:
+                function_data[name] = {"line": func["lineNumber"], "count": 0}
+            function_data[name]["line"] = min(
+                function_data[name]["line"], func["lineNumber"]
+            )
+            function_data[name]["count"] += func["executionCount"]
+
+        for name, entry in function_data.items():
+            lcov_lines.append(f"FN:{entry['line']},{name}")
+        for name, entry in function_data.items():
+            lcov_lines.append(f"FNDA:{entry['count']},{name}")
+
+        if function_data:
+            functions_hit = sum(
+                1 for entry in function_data.values() if entry["count"] > 0
+            )
+            lcov_lines.append(f"FNF:{len(function_data)}")
+            lcov_lines.append(f"FNH:{functions_hit}")
+
         # Map line numbers to execution counts using the per-function
         # coverage entries (xccov's --report --json has no flat `lines` array).
         line_data = {}
 
-        for func in file_info.get("functions", []):
+        for func in functions:
             line_num = func["lineNumber"]
             exec_count = func["executionCount"]
 
