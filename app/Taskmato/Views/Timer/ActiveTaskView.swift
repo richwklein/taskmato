@@ -192,53 +192,55 @@ struct ActiveTaskView: View {
   }
 }
 
-#Preview {
-  let engine = SessionEngine()
-  let registry = ProviderRegistry()
-  let errorPresenter = ErrorPresenter()
-  let settings = AppSettings()
-  let nav = MainNavigation(
-    settings: settings, selectionStore: SelectionStore(registry: registry),
-    statsViewModel: .preview)
+#if DEBUG
+  #Preview {
+    let engine = SessionEngine()
+    let registry = ProviderRegistry()
+    let errorPresenter = ErrorPresenter()
+    let settings = AppSettings()
+    let nav = MainNavigation(
+      settings: settings, selectionStore: SelectionStore(registry: registry),
+      statsViewModel: .preview)
 
-  @MainActor
-  func store(priority: TaskPriority) -> TaskSelectionStore {
-    let store = TaskSelectionStore()
-    store.select(
-      TaskItem(
-        id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
-        title: "Priority \(priority)",
-        notes: "Some notes about the task.",
-        format: .plainText,
-        priority: priority,
-        dueDate: nil,
-        scheduledDate: nil,
-        startDate: nil,
-        list: nil,
-        section: nil,
-        sourceURL: nil,
-        completedAt: nil,
-        createdAt: Date()
+    @MainActor
+    func store(priority: TaskPriority) -> TaskSelectionStore {
+      let store = TaskSelectionStore()
+      store.select(
+        TaskItem(
+          id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
+          title: "Priority \(priority)",
+          notes: "Some notes about the task.",
+          format: .plainText,
+          priority: priority,
+          dueDate: nil,
+          scheduledDate: nil,
+          startDate: nil,
+          list: nil,
+          section: nil,
+          sourceURL: nil,
+          completedAt: nil,
+          createdAt: Date()
+        )
       )
-    )
-    return store
-  }
-
-  let priorities: [TaskPriority] = [.highest, .high, .medium, .low, .lowest]
-
-  return VStack(alignment: .leading, spacing: .sectionGap) {
-    ForEach(priorities, id: \.self) { priority in
-      ActiveTaskView(
-        engine: engine, selectionStore: store(priority: priority), registry: registry,
-        nav: nav, errorPresenter: errorPresenter, style: .compact, onSelect: {})
+      return store
     }
 
-    ForEach(priorities, id: \.self) { priority in
-      ActiveTaskView(
-        engine: engine, selectionStore: store(priority: priority), registry: registry,
-        nav: nav, errorPresenter: errorPresenter, style: .detail, onSelect: nil)
+    let priorities: [TaskPriority] = [.highest, .high, .medium, .low, .lowest]
+
+    return VStack(alignment: .leading, spacing: .sectionGap) {
+      ForEach(priorities, id: \.self) { priority in
+        ActiveTaskView(
+          engine: engine, selectionStore: store(priority: priority), registry: registry,
+          nav: nav, errorPresenter: errorPresenter, style: .compact, onSelect: {})
+      }
+
+      ForEach(priorities, id: \.self) { priority in
+        ActiveTaskView(
+          engine: engine, selectionStore: store(priority: priority), registry: registry,
+          nav: nav, errorPresenter: errorPresenter, style: .detail, onSelect: nil)
+      }
     }
+    .padding()
+    .frame(width: 360)
   }
-  .padding()
-  .frame(width: 360)
-}
+#endif

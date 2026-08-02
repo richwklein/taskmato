@@ -166,26 +166,28 @@ struct StatsTabView: View {
   }
 }
 
-#Preview("Today") {
-  StatsTabView(statsViewModel: .previewSeeded)
-    .frame(width: 420, height: 560)
-}
+#if DEBUG
+  #Preview("Today") {
+    StatsTabView(statsViewModel: .previewSeeded)
+      .frame(width: 420, height: 560)
+  }
 
-#Preview("7 Days") {
-  let viewModel = StatsViewModel.previewSeeded
-  viewModel.scope = .thisWeek
-  return StatsTabView(statsViewModel: viewModel)
-    .frame(width: 420, height: 560)
-}
+  #Preview("7 Days") {
+    let viewModel = StatsViewModel.previewSeeded
+    viewModel.scope = .thisWeek
+    return StatsTabView(statsViewModel: viewModel)
+      .frame(width: 420, height: 560)
+  }
 
-#Preview("All Time") {
-  let viewModel = StatsViewModel.previewSeeded
-  viewModel.scope = .allTime
-  return StatsTabView(statsViewModel: viewModel)
-    .frame(width: 420, height: 560)
-}
+  #Preview("All Time") {
+    let viewModel = StatsViewModel.previewSeeded
+    viewModel.scope = .allTime
+    return StatsTabView(statsViewModel: viewModel)
+      .frame(width: 420, height: 560)
+  }
 
-#Preview("Empty") {
-  StatsTabView(statsViewModel: .preview)
-    .frame(width: 420, height: 560)
-}
+  #Preview("Empty") {
+    StatsTabView(statsViewModel: .preview)
+      .frame(width: 420, height: 560)
+  }
+#endif

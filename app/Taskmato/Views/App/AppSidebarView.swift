@@ -501,17 +501,19 @@ private struct SidebarTimerRow: View {
   }
 }
 
-#Preview {
-  let registry = ProviderRegistry()
-  let settings = AppSettings()
-  let selectionStore = SelectionStore(registry: registry)
-  return AppSidebarView(
-    nav: MainNavigation(
-      settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
-    presenter: TimerPresenter(engine: SessionEngine(), settings: settings),
-    registry: registry,
-    settings: settings,
-    errorPresenter: ErrorPresenter()
-  )
-  .frame(width: 220, height: 500)
-}
+#if DEBUG
+  #Preview {
+    let registry = ProviderRegistry()
+    let settings = AppSettings()
+    let selectionStore = SelectionStore(registry: registry)
+    return AppSidebarView(
+      nav: MainNavigation(
+        settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+      presenter: TimerPresenter(engine: SessionEngine(), settings: settings),
+      registry: registry,
+      settings: settings,
+      errorPresenter: ErrorPresenter()
+    )
+    .frame(width: 220, height: 500)
+  }
+#endif

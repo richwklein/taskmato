@@ -82,37 +82,39 @@ struct TimerStripView: View {
   }
 }
 
-#Preview {
-  let engine = SessionEngine()
-  let settings = AppSettings()
-  let registry = ProviderRegistry()
-  let selectionStore = TaskSelectionStore()
-  selectionStore.select(
-    TaskItem(
-      id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
-      title: "Draft window-first design doc",
-      notes: nil,
-      format: .plainText,
-      priority: .high,
-      dueDate: nil,
-      scheduledDate: nil,
-      startDate: nil,
-      list: nil,
-      section: nil,
-      sourceURL: nil,
-      completedAt: nil,
-      createdAt: Date()
+#if DEBUG
+  #Preview {
+    let engine = SessionEngine()
+    let settings = AppSettings()
+    let registry = ProviderRegistry()
+    let selectionStore = TaskSelectionStore()
+    selectionStore.select(
+      TaskItem(
+        id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
+        title: "Draft window-first design doc",
+        notes: nil,
+        format: .plainText,
+        priority: .high,
+        dueDate: nil,
+        scheduledDate: nil,
+        startDate: nil,
+        list: nil,
+        section: nil,
+        sourceURL: nil,
+        completedAt: nil,
+        createdAt: Date()
+      )
     )
-  )
-  return TimerStripView(
-    presenter: TimerPresenter(engine: engine, settings: settings),
-    engine: engine,
-    selectionStore: selectionStore,
-    registry: registry,
-    nav: MainNavigation(
-      settings: settings, selectionStore: SelectionStore(registry: registry),
-      statsViewModel: .preview),
-    errorPresenter: ErrorPresenter()
-  ) {}
-  .frame(width: 560)
-}
+    return TimerStripView(
+      presenter: TimerPresenter(engine: engine, settings: settings),
+      engine: engine,
+      selectionStore: selectionStore,
+      registry: registry,
+      nav: MainNavigation(
+        settings: settings, selectionStore: SelectionStore(registry: registry),
+        statsViewModel: .preview),
+      errorPresenter: ErrorPresenter()
+    ) {}
+    .frame(width: 560)
+  }
+#endif

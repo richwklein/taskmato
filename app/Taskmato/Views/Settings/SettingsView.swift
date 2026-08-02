@@ -224,11 +224,13 @@ private struct DurationField: View {
   }
 }
 
-#Preview {
-  SettingsView(
-    settings: AppSettings(),
-    selectionStore: TaskSelectionStore(),
-    registry: ProviderRegistry(),
-    notifications: NotificationService(settings: AppSettings())
-  )
-}
+#if DEBUG
+  #Preview {
+    SettingsView(
+      settings: AppSettings(),
+      selectionStore: TaskSelectionStore(),
+      registry: ProviderRegistry(),
+      notifications: NotificationService(settings: AppSettings())
+    )
+  }
+#endif

@@ -533,18 +533,20 @@ extension TaskDetailView {
 
 }
 
-#Preview {
-  let registry = ProviderRegistry()
-  let settings = AppSettings()
-  let selectionStore = SelectionStore(registry: registry)
-  return TaskDetailView(
-    selectionStore: TaskSelectionStore(),
-    registry: registry,
-    queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
-    sidebarSelection: selectionStore,
-    nav: MainNavigation(
-      settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
-    settings: settings,
-    errorPresenter: ErrorPresenter()
-  )
-}
+#if DEBUG
+  #Preview {
+    let registry = ProviderRegistry()
+    let settings = AppSettings()
+    let selectionStore = SelectionStore(registry: registry)
+    return TaskDetailView(
+      selectionStore: TaskSelectionStore(),
+      registry: registry,
+      queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
+      sidebarSelection: selectionStore,
+      nav: MainNavigation(
+        settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+      settings: settings,
+      errorPresenter: ErrorPresenter()
+    )
+  }
+#endif

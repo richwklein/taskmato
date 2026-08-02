@@ -28,7 +28,9 @@ struct BrowseTasksButton: View {
   }
 }
 
-#Preview {
-  BrowseTasksButton {}
-    .padding()
-}
+#if DEBUG
+  #Preview {
+    BrowseTasksButton {}
+      .padding()
+  }
+#endif

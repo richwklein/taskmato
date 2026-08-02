@@ -74,8 +74,10 @@ struct ActiveTaskConfirmRow: View {
   }
 }
 
-#Preview {
-  ActiveTaskConfirmRow(action: .complete, onConfirm: {}, onCancel: {})
-    .padding()
-    .frame(width: 280)
-}
+#if DEBUG
+  #Preview {
+    ActiveTaskConfirmRow(action: .complete, onConfirm: {}, onCancel: {})
+      .padding()
+      .frame(width: 280)
+  }
+#endif
