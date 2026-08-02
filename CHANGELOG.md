@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0](https://github.com/richwklein/taskmato/compare/v0.10.2...v1.0.0) (2026-08-02)
+
+
+### Miscellaneous Chores
+
+* cut the 1.0.0 production release ([#511](https://github.com/richwklein/taskmato/issues/511)) ([ced2240](https://github.com/richwklein/taskmato/commit/ced22409790fa9992c2485af0c93d05f91f7a107))
+
 ## [0.10.2](https://github.com/richwklein/taskmato/compare/v0.10.1...v0.10.2) (2026-08-02)
 
 
