@@ -191,7 +191,7 @@ Breaking changes: append `!` (e.g., `feat!: rename public API`) or include a `BR
 - `main` is the default branch and is protected by a ruleset.
 - All work happens in feature branches merged via pull request.
 - Squash merges only — no merge commits, no rebase merges.
-- Branches must be up to date with `main` before merging (strict status checks).
+- Branches need not be up to date with `main` before merging (strict status checks are intentionally off).
 - Commits must be signed.
 
 ### Branch prefixes

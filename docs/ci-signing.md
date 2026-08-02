@@ -1,6 +1,6 @@
 # CI Signing Setup
 
-This document covers the one-time GitHub Actions configuration required to sign, notarize, and release Taskmato builds via CI. The release workflow (`.github/workflows/code-release.yaml`) consumes these secrets to automatically produce a notarized DMG on every `v*` tag push.
+This document covers the one-time GitHub Actions configuration required to sign, notarize, and release Taskmato builds via CI. The `package` job in `.github/workflows/code-release.yaml` consumes these secrets to automatically produce a notarized DMG whenever release-please cuts a release.
 
 ## Required secrets
 
@@ -63,15 +63,16 @@ This password is used only within the CI job and is not needed locally.
 
 ## How the workflow uses these secrets
 
-When you push a `v*` tag to GitHub:
+When release-please creates a draft release (its release PR is merged to `main`), `.github/workflows/code-release.yaml` runs after the `Release` workflow completes (via `workflow_run`) and its `package` job runs on `macos-26`:
 
-1. The `.github/workflows/code-release.yaml` workflow starts on `macos-latest`
-2. **Import certificate** — decodes `BUILD_CERTIFICATE_BASE64` into a temporary `.p12`, creates an ephemeral keychain, imports the certificate, and makes it available to `xcodebuild`
-3. **Archive** — `make archive` runs `xcodebuild archive` with Developer ID signing, exports the app, and packages a `.dmg`
-4. **Notarize** — decodes `NOTARYTOOL_AUTH_KEY_P8` and submits the DMG to Apple for notarization using the API key and credentials
-5. **Staple** — `xcrun stapler` attaches the notarization ticket to the DMG
-6. **Release** — creates a GitHub release (draft first, then published), attaches the notarized DMG, and generates release notes from commit history
-7. **Cleanup** — deletes the ephemeral keychain
+1. **Import certificate** — decodes `BUILD_CERTIFICATE_BASE64` into a temporary `.p12`, creates an ephemeral keychain, imports the certificate, and makes it available to `xcodebuild`
+2. **Archive** — `make archive` runs `xcodebuild archive` with Developer ID signing, exports the app, and packages a `.dmg`
+3. **Notarize** — decodes `NOTARYTOOL_AUTH_KEY_P8` and submits the DMG to Apple for notarization using the API key and credentials
+4. **Staple** — `xcrun stapler` attaches the notarization ticket to the DMG
+5. **Attach** — uploads the notarized DMG to the release-please-created **draft** release (the release notes come from the changelog)
+6. **Cleanup** — deletes the ephemeral keychain
+
+A separate `publish` job then un-drafts the release once the DMG is attached, and `deploy-site` deploys the marketing site. See [the release guide](how-to/release.md#release-flow) for the full job graph.
 
 ## Troubleshooting
 
@@ -83,6 +84,6 @@ When you push a `v*` tag to GitHub:
 
 ## See also
 
-- [`docs/release.md`](release.md) — Full release guide for local and CI workflows
+- [`docs/how-to/release.md`](how-to/release.md) — Full release guide for local and CI workflows
 - `.github/workflows/code-release.yaml` — The workflow that consumes these secrets
 - [Apple notarytool documentation](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
