@@ -112,13 +112,19 @@ jobs:
             --wait
           xcrun stapler staple "build/Taskmato-${VERSION}.dmg"
 
+      # `gh release upload file#text` sets the display LABEL, not the asset name — the
+      # asset name (and thus its download URL) is always the file's basename. The marketing
+      # site links to the stable /releases/latest/download/Taskmato.dmg, so the asset must
+      # be named exactly Taskmato.dmg. Rename the stapled DMG on disk before uploading (cp
+      # preserves the notarization ticket); the version stays visible via the label.
       - name: Attach DMG to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.check.outputs.tag }}
         run: |
           VERSION=$(cat version.txt | tr -d '[:space:]')
-          gh release upload "$TAG" "build/Taskmato-${VERSION}.dmg#Taskmato.dmg" --clobber
+          cp "build/Taskmato-${VERSION}.dmg" "build/Taskmato.dmg"
+          gh release upload "$TAG" "build/Taskmato.dmg#Taskmato ${VERSION}" --clobber
 
       - name: Clean up keychain
         if: always()
