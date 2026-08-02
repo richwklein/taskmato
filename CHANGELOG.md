@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.10.0](https://github.com/richwklein/taskmato/compare/v0.9.0...v0.10.0) (2026-08-02)
+
+
+### Features
+
+* marketing site landing page and GitHub Pages deploy ([#497](https://github.com/richwklein/taskmato/issues/497)) ([fcf2199](https://github.com/richwklein/taskmato/commit/fcf21992781a618f39b066bca51bd5e1ed8bb023))
+* scaffold Astro site skeleton for GitHub Pages ([#489](https://github.com/richwklein/taskmato/issues/489)) ([5ab354e](https://github.com/richwklein/taskmato/commit/5ab354e4ee188c262462c881b202afcda7b60a0a))
+
+
+### Bug Fixes
+
+* generate and post test coverage reports on PRs ([#496](https://github.com/richwklein/taskmato/issues/496)) ([99d2c0b](https://github.com/richwklein/taskmato/commit/99d2c0b07948254eca1214f7e5a523a4adba0ffa))
+* **menubar:** replace icon with a stopwatch-and-leaf template ([#495](https://github.com/richwklein/taskmato/issues/495)) ([337c2b3](https://github.com/richwklein/taskmato/commit/337c2b33bb671524007e4760138da67b86c0704a))
+
+
+### Documentation
+
+* add smoke-test checklist and clarify build workflow ([#488](https://github.com/richwklein/taskmato/issues/488)) ([222994b](https://github.com/richwklein/taskmato/commit/222994b6925df329c96ba60d90e22f416b4360d5))
+* move release guide to how-to directory ([#486](https://github.com/richwklein/taskmato/issues/486)) ([8e46e24](https://github.com/richwklein/taskmato/commit/8e46e243d7c784f5abc181140ba1c68f777e6b71))
+
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump the eslint group across 1 directory with 2 updates ([#491](https://github.com/richwklein/taskmato/issues/491)) ([3c9def6](https://github.com/richwklein/taskmato/commit/3c9def6429504547f13e996de00e7f8e09f8e5aa))
+* **deps:** bump github/codeql-action from 4.37.1 to 4.37.3 in the third-party-actions group across 1 directory ([#493](https://github.com/richwklein/taskmato/issues/493)) ([44f669a](https://github.com/richwklein/taskmato/commit/44f669ad002537a690bf1d46ced74581d6f51112))
+* **deps:** bump the first-party-actions group across 1 directory with 7 updates ([#500](https://github.com/richwklein/taskmato/issues/500)) ([de4a5f5](https://github.com/richwklein/taskmato/commit/de4a5f5c6c30ac42a8a1b50c7b7ae32448b1f590))
+
 ## [0.9.0](https://github.com/richwklein/taskmato/compare/v0.8.0...v0.9.0) (2026-07-31)
 
 
