@@ -64,3 +64,4 @@ jobs:
           coverage-files: coverage.lcov
           github-token: ${{ secrets.GITHUB_TOKEN }}
           update-comment: true
+          genhtml-ignore-errors: empty
