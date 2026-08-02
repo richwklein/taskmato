@@ -129,22 +129,24 @@ struct MainWindowView: View {
   }
 }
 
-#Preview {
-  let engine = SessionEngine()
-  let settings = AppSettings()
-  let registry = ProviderRegistry()
-  let selectionStore = SelectionStore(registry: registry)
-  return MainWindowView(
-    presenter: TimerPresenter(engine: engine, settings: settings),
-    engine: engine,
-    settings: settings,
-    statsViewModel: .preview,
-    selectionStore: TaskSelectionStore(),
-    registry: registry,
-    queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
-    sidebarSelection: selectionStore,
-    nav: MainNavigation(
-      settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
-    errorPresenter: ErrorPresenter()
-  )
-}
+#if DEBUG
+  #Preview {
+    let engine = SessionEngine()
+    let settings = AppSettings()
+    let registry = ProviderRegistry()
+    let selectionStore = SelectionStore(registry: registry)
+    return MainWindowView(
+      presenter: TimerPresenter(engine: engine, settings: settings),
+      engine: engine,
+      settings: settings,
+      statsViewModel: .preview,
+      selectionStore: TaskSelectionStore(),
+      registry: registry,
+      queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
+      sidebarSelection: selectionStore,
+      nav: MainNavigation(
+        settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+      errorPresenter: ErrorPresenter()
+    )
+  }
+#endif

@@ -45,13 +45,15 @@ struct TaskSourceBadge: View {
   }
 }
 
-#Preview {
-  VStack(alignment: .leading, spacing: .sectionGap) {
-    TaskSourceBadge(
-      url: URL(string: "obsidian://open")!, name: "Obsidian", icon: "book.closed")
-    TaskSourceBadge(
-      url: URL(string: "x-apple-reminderkit://")!, name: "Apple Reminders", icon: "checklist")
+#if DEBUG
+  #Preview {
+    VStack(alignment: .leading, spacing: .sectionGap) {
+      TaskSourceBadge(
+        url: URL(string: "obsidian://open")!, name: "Obsidian", icon: "book.closed")
+      TaskSourceBadge(
+        url: URL(string: "x-apple-reminderkit://")!, name: "Apple Reminders", icon: "checklist")
+    }
+    .padding()
+    .frame(width: 360, alignment: .leading)
   }
-  .padding()
-  .frame(width: 360, alignment: .leading)
-}
+#endif

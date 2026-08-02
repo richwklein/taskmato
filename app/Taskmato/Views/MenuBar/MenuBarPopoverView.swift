@@ -90,19 +90,21 @@ struct MenuBarPopoverView: View {
   }
 }
 
-#Preview {
-  let engine = SessionEngine()
-  let settings = AppSettings()
-  let registry = ProviderRegistry()
-  return MenuBarPopoverView(
-    presenter: TimerPresenter(engine: engine, settings: settings),
-    statsViewModel: .preview,
-    selectionStore: TaskSelectionStore(),
-    nav: MainNavigation(
-      settings: settings, selectionStore: SelectionStore(registry: registry),
-      statsViewModel: .preview),
-    engine: engine,
-    registry: registry,
-    errorPresenter: ErrorPresenter()
-  )
-}
+#if DEBUG
+  #Preview {
+    let engine = SessionEngine()
+    let settings = AppSettings()
+    let registry = ProviderRegistry()
+    return MenuBarPopoverView(
+      presenter: TimerPresenter(engine: engine, settings: settings),
+      statsViewModel: .preview,
+      selectionStore: TaskSelectionStore(),
+      nav: MainNavigation(
+        settings: settings, selectionStore: SelectionStore(registry: registry),
+        statsViewModel: .preview),
+      engine: engine,
+      registry: registry,
+      errorPresenter: ErrorPresenter()
+    )
+  }
+#endif

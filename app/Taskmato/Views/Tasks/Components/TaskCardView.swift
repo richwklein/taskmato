@@ -78,16 +78,18 @@ struct TaskCardView: View {
   }
 }
 
-#Preview {
-  let task = TaskItem(
-    id: TaskRef(providerID: "local", nativeID: "1"),
-    title: "Create a support metrics dashboard and wiki",
-    notes: "Build out a dashboard of our support metrics once we have some statistics.",
-    format: .plainText,
-    priority: .high,
-    dueDate: Calendar.current.date(byAdding: .day, value: -3, to: .now)
-  )
-  TaskCardView(task: task, kind: .active(onComplete: {}))
-    .padding()
-    .frame(width: 200)
-}
+#if DEBUG
+  #Preview {
+    let task = TaskItem(
+      id: TaskRef(providerID: "local", nativeID: "1"),
+      title: "Create a support metrics dashboard and wiki",
+      notes: "Build out a dashboard of our support metrics once we have some statistics.",
+      format: .plainText,
+      priority: .high,
+      dueDate: Calendar.current.date(byAdding: .day, value: -3, to: .now)
+    )
+    TaskCardView(task: task, kind: .active(onComplete: {}))
+      .padding()
+      .frame(width: 200)
+  }
+#endif
