@@ -19,7 +19,7 @@ struct SettingsView: View {
   var body: some View {
     Form {
       Section("Durations") {
-        DurationField("Focus", value: $settings.focusMinutes, range: 1...60)
+        FocusPresetsEditor(settings: settings)
         DurationField("Short Break", value: $settings.shortBreakMinutes, range: 1...30)
         DurationField("Long Break", value: $settings.longBreakMinutes, range: 1...60)
       }
@@ -221,6 +221,115 @@ private struct DurationField: View {
       value = parsed
     }
     text = "\(value)"
+  }
+}
+
+/// The **Focus presets** editor (design doc 0009, D5): a static label row per preset, each
+/// removable, plus an "Add Duration" affordance that reveals an inline ``DurationField``.
+///
+/// Every add/remove routes through ``AppSettings/setFocusPresets(_:)`` — this view never
+/// assigns `settings.focusPresets` directly, so it can't produce an invalid list.
+private struct FocusPresetsEditor: View {
+
+  /// The valid range for a single preset, matching the range the old Focus stepper enforced.
+  private static let range = 1...60
+  /// The maximum number of presets, mirroring `AppSettings`'s cap.
+  private static let maxPresets = 5
+  /// The default seed offered when "Add Duration" is first tapped.
+  private static let defaultSeed = 30
+
+  let settings: AppSettings
+
+  @State private var isAdding = false
+  @State private var newValue = FocusPresetsEditor.defaultSeed
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: .contentGap) {
+      Text(AppLabels.FocusPreset.sectionTitle)
+        .foregroundStyle(.secondary)
+
+      ForEach(settings.focusPresets, id: \.self) { minutes in
+        presetRow(minutes)
+      }
+
+      if isAdding {
+        addField
+      } else {
+        addButton
+      }
+    }
+  }
+
+  private func presetRow(_ minutes: Int) -> some View {
+    HStack {
+      Text(label(for: minutes))
+      Spacer()
+      Button {
+        settings.setFocusPresets(settings.focusPresets.filter { $0 != minutes })
+      } label: {
+        Image(systemName: AppLabels.FocusPreset.remove.systemImage)
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(.secondary)
+      .disabled(settings.focusPresets.count <= 1)
+      .help(AppLabels.FocusPreset.remove.title)
+      .accessibilityLabel("\(AppLabels.FocusPreset.remove.title) \(label(for: minutes))")
+    }
+  }
+
+  private var addButton: some View {
+    let atMax = settings.focusPresets.count >= Self.maxPresets
+    return Button {
+      newValue = seedValue()
+      isAdding = true
+    } label: {
+      Label(AppLabels.FocusPreset.add.title, systemImage: AppLabels.FocusPreset.add.systemImage)
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(atMax ? Color.secondary : Color.accentColor)
+    .disabled(atMax)
+    .help(atMax ? AppLabels.Tooltip.maxFocusPresetsReached : "")
+  }
+
+  private var addField: some View {
+    HStack {
+      DurationField(AppLabels.FocusPreset.add.title, value: $newValue, range: Self.range)
+      Button {
+        settings.setFocusPresets(settings.focusPresets + [newValue])
+        isAdding = false
+      } label: {
+        Image(systemName: "checkmark.circle.fill")
+      }
+      .buttonStyle(.plain)
+      Button {
+        isAdding = false
+      } label: {
+        Image(systemName: "xmark.circle")
+      }
+      .buttonStyle(.plain)
+      .help(AppLabels.Tooltip.cancel)
+    }
+  }
+
+  /// The row label for `minutes`, marking the one matching `focusMinutes` as current.
+  private func label(for minutes: Int) -> String {
+    minutes == settings.focusMinutes
+      ? "\(minutes) min · \(AppLabels.FocusPreset.current)"
+      : "\(minutes) min"
+  }
+
+  /// 30 minutes if unused, otherwise the nearest value in `1...60` not already a preset
+  /// (design doc plan, "Add-stepper seed").
+  private func seedValue() -> Int {
+    let used = Set(settings.focusPresets)
+    guard used.contains(Self.defaultSeed) else { return Self.defaultSeed }
+    for offset in 1...(Self.range.upperBound - Self.range.lowerBound) {
+      let lower = Self.defaultSeed - offset
+      if lower >= Self.range.lowerBound, !used.contains(lower) { return lower }
+      let upper = Self.defaultSeed + offset
+      if upper <= Self.range.upperBound, !used.contains(upper) { return upper }
+    }
+    return Self.defaultSeed
   }
 }
 

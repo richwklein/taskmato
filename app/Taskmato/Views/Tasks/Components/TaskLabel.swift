@@ -50,12 +50,17 @@ enum AppLabels {
     static let showCompleted = "Show completed tasks"
     /// Shown on the Show Completed toolbar button when the section is visible.
     static let hideCompleted = "Hide completed tasks"
+    // Focus presets
+    /// Shown on "Add Duration" once the Focus presets list already holds 5 entries.
+    static let maxFocusPresetsReached = "Up to 5 focus presets"
   }
 
   /// VoiceOver labels for controls whose visible content is not text.
   enum Accessibility {
     /// Announced for the circular countdown ring on the Timer surface.
     static let timer = "Pomodoro timer"
+    /// Announced for the Timer tab's focus-length quick-select chip row.
+    static let focusPresets = "Focus duration"
   }
 
   /// Labels for task CRUD and lifecycle actions.
@@ -72,6 +77,21 @@ enum AppLabels {
     static let restore = AppLabel("Restore Task", systemImage: "arrow.counterclockwise")
     /// Permanently deletes a task via its writable provider.
     static let delete = AppLabel("Delete Permanently", systemImage: "trash")
+  }
+
+  /// Labels for the focus-duration presets feature (design doc 0009): the Settings editor,
+  /// the timer quick-select surfaces, and the task "Start Focus" submenu.
+  enum FocusPreset {
+    /// Section label for the presets editor in Settings → Durations.
+    static let sectionTitle = "Focus Presets"
+    /// Suffix appended to the preset row matching the current `focusMinutes`.
+    static let current = "Current"
+    /// Removes a preset from the list in Settings.
+    static let remove = AppLabel("Remove", systemImage: "minus.circle")
+    /// Reveals the inline control to add a new preset in Settings.
+    static let add = AppLabel("Add Duration", systemImage: "plus.circle")
+    /// The task context-menu submenu offering a one-click "select + start" at a preset length.
+    static let startFocus = AppLabel("Start Focus", systemImage: "bolt.fill")
   }
 
   /// Labels for view-state commands: layout, completed section, sort, and search.

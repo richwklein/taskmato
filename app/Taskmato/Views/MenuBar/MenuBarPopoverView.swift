@@ -25,7 +25,7 @@ struct MenuBarPopoverView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      TimerReadout(label: presenter.label, phase: presenter.phaseName)
+      FocusPresetReadout(presenter: presenter)
         .padding(.top, .groupGap)
 
       TimerControlsView(

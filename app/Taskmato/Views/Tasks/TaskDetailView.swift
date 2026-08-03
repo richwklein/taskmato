@@ -22,6 +22,9 @@ struct TaskDetailView: View {
   var nav: MainNavigation
   @Bindable var settings: AppSettings
   var errorPresenter: ErrorPresenter
+  /// Drives the "Start Focus ▸" context-menu submenu (design doc 0009, D7): its preset list,
+  /// idle state, and the start intent.
+  var presenter: TimerPresenter
   /// Bumped by the sidebar after adding a task, so the detail reloads the affected list.
   var refreshToken: Int = 0
 
@@ -293,51 +296,6 @@ struct TaskDetailView: View {
     }
   }
 
-  /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.
-  @ViewBuilder
-  private func taskContextMenu(for task: TaskItem) -> some View {
-    Button {
-      select(task)
-    } label: {
-      Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
-    }
-    if registry.writableProvider(for: task.id) != nil {
-      Button {
-        taskToEdit = task
-        isEditingTask = true
-      } label: {
-        Label(AppLabels.Task.edit.title, systemImage: AppLabels.Task.edit.systemImage)
-      }
-    }
-    Divider()
-    if registry.closableProvider(for: task.id) != nil {
-      Button {
-        handleComplete(task)
-      } label: {
-        Label(AppLabels.Task.complete.title, systemImage: AppLabels.Task.complete.systemImage)
-      }
-    }
-  }
-
-  /// Context menu items shown on secondary-click of a completed task row or card.
-  @ViewBuilder
-  private func completedTaskContextMenu(for task: TaskItem) -> some View {
-    if registry.closableProvider(for: task.id) != nil {
-      Button {
-        handleRestore(task)
-      } label: {
-        Label(AppLabels.Task.restore.title, systemImage: AppLabels.Task.restore.systemImage)
-      }
-    }
-    if registry.provider(for: task.id) is (any WritableTaskProvider) {
-      Button(role: .destructive) {
-        handleDelete(task)
-      } label: {
-        Label(AppLabels.Task.delete.title, systemImage: AppLabels.Task.delete.systemImage)
-      }
-    }
-  }
-
   // MARK: - Grid layout
 
   private var taskGrid: some View {
@@ -396,6 +354,68 @@ struct TaskDetailView: View {
     }
   }
 
+}
+
+// MARK: - Context menus
+
+extension TaskDetailView {
+
+  /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.
+  @ViewBuilder
+  private func taskContextMenu(for task: TaskItem) -> some View {
+    Button {
+      select(task)
+    } label: {
+      Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
+    }
+    Menu {
+      ForEach(presenter.focusPresets, id: \.self) { minutes in
+        Button("\(minutes) min") {
+          startFocus(task, minutes: minutes)
+        }
+      }
+    } label: {
+      Label(
+        AppLabels.FocusPreset.startFocus.title,
+        systemImage: AppLabels.FocusPreset.startFocus.systemImage)
+    }
+    .disabled(!presenter.isIdle)
+    if registry.writableProvider(for: task.id) != nil {
+      Button {
+        taskToEdit = task
+        isEditingTask = true
+      } label: {
+        Label(AppLabels.Task.edit.title, systemImage: AppLabels.Task.edit.systemImage)
+      }
+    }
+    Divider()
+    if registry.closableProvider(for: task.id) != nil {
+      Button {
+        handleComplete(task)
+      } label: {
+        Label(AppLabels.Task.complete.title, systemImage: AppLabels.Task.complete.systemImage)
+      }
+    }
+  }
+
+  /// Context menu items shown on secondary-click of a completed task row or card.
+  @ViewBuilder
+  private func completedTaskContextMenu(for task: TaskItem) -> some View {
+    if registry.closableProvider(for: task.id) != nil {
+      Button {
+        handleRestore(task)
+      } label: {
+        Label(AppLabels.Task.restore.title, systemImage: AppLabels.Task.restore.systemImage)
+      }
+    }
+    if registry.provider(for: task.id) is (any WritableTaskProvider) {
+      Button(role: .destructive) {
+        handleDelete(task)
+      } label: {
+        Label(AppLabels.Task.delete.title, systemImage: AppLabels.Task.delete.systemImage)
+      }
+    }
+  }
 }
 
 // MARK: - Data loading
@@ -494,6 +514,17 @@ extension TaskDetailView {
     nav.showTimer()
   }
 
+  /// Selects `task`, sets the focus length to `minutes`, and starts a session on it — the
+  /// "Start Focus ▸" submenu's one-gesture action (design doc 0009, D7). Only reachable while
+  /// `presenter.isIdle` (the submenu is disabled otherwise), so this never interrupts a
+  /// running or paused session.
+  private func startFocus(_ task: TaskItem, minutes: Int) {
+    selectionStore.select(task)
+    settings.focusMinutes = minutes
+    presenter.start()
+    nav.showTimer()
+  }
+
   private func onCompleteHandler(for task: TaskItem) -> (() -> Void)? {
     registry.closableProvider(for: task.id) != nil ? { self.handleComplete(task) } : nil
   }
@@ -546,7 +577,8 @@ extension TaskDetailView {
       nav: MainNavigation(
         settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
       settings: settings,
-      errorPresenter: ErrorPresenter()
+      errorPresenter: ErrorPresenter(),
+      presenter: TimerPresenter(engine: SessionEngine(), settings: settings)
     )
   }
 #endif

@@ -106,6 +106,7 @@ struct MainWindowView: View {
         nav: nav,
         settings: settings,
         errorPresenter: errorPresenter,
+        presenter: presenter,
         refreshToken: taskAddedToken
       )
     case .stats:

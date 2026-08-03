@@ -79,6 +79,15 @@ final class SettingsStore {
     set { defaults.set(newValue, forKey: key.name) }
   }
 
+  /// Reads or writes an integer-array setting, returning the key's default when absent.
+  ///
+  /// `UserDefaults` has no `intArray(forKey:)` accessor, so the stored array is cast through
+  /// its untyped `array(forKey:)`.
+  subscript(key: SettingsKey<[Int]>) -> [Int] {
+    get { (defaults.array(forKey: key.name) as? [Int]) ?? key.defaultValue }
+    set { defaults.set(newValue, forKey: key.name) }
+  }
+
   /// Reads or writes a string set stored as an array, returning the key's default when absent.
   subscript(key: SettingsKey<Set<String>>) -> Set<String> {
     get {
@@ -165,6 +174,7 @@ extension SettingsStore {
     // MARK: Timer durations & session cadence
 
     static let focusMinutes = SettingsKey("focusMinutes", default: 25)
+    static let focusPresets = SettingsKey("focusPresets", default: [25])
     static let shortBreakMinutes = SettingsKey("shortBreakMinutes", default: 5)
     static let longBreakMinutes = SettingsKey("longBreakMinutes", default: 15)
     static let longBreakAfterSessions = SettingsKey("longBreakAfterSessions", default: 4)
