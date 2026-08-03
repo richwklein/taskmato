@@ -5,29 +5,28 @@
 
 import SwiftUI
 
-/// A circular progress ring with a countdown label and phase name centered inside.
+/// A circular progress ring with the countdown readout centered inside.
+///
+/// The readout is a ``FocusPresetReadout``, so while idle with more than one preset it doubles as
+/// the compact focus-duration menu. The ring carries the informational VoiceOver announcement as
+/// its own element, leaving the menu independently reachable.
 struct CircularTimerView: View {
 
-  /// Fraction of time remaining, from 1.0 (full) down to 0.0 (elapsed).
-  let progress: Double
-  /// The formatted time string displayed in the center, e.g. `"24:59"`.
-  let label: String
-  /// The phase name displayed below the time, e.g. `"Focus"`.
-  let phase: String
-  /// The VoiceOver value announced for the ring, e.g. `"Focus, 24 minutes remaining"`.
-  let accessibilityValue: String
+  /// The presenter supplying progress, the readout, and the ring's accessibility value.
+  var presenter: TimerPresenter
 
   private let ringDiameter: CGFloat = 180
   private let strokeWidth: CGFloat = 10
 
   var body: some View {
     ZStack {
-      TimerRing(progress: progress, diameter: ringDiameter, strokeWidth: strokeWidth)
-      TimerReadout(label: label, phase: phase)
+      TimerRing(progress: presenter.progress, diameter: ringDiameter, strokeWidth: strokeWidth)
+        .accessibilityElement()
+        .accessibilityLabel(AppLabels.Accessibility.timer)
+        .accessibilityValue(presenter.accessibilityValue)
+      FocusPresetReadout(presenter: presenter, hidesPlainReadoutFromAccessibility: true)
     }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(AppLabels.Accessibility.timer)
-    .accessibilityValue(accessibilityValue)
+    .accessibilityElement(children: .contain)
     .dynamicTypeSize(...DynamicTypeSize.accessibility1)
   }
 }

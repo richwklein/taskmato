@@ -112,6 +112,69 @@ struct AppSettingsTests {
     #expect(AppSettings(store: SettingsStore(defaults: defaults)).soundName == "Glass")
   }
 
+  // MARK: - Focus presets: normalization
+
+  @Test func normalizedPresetsClampsOutOfRangeValues() {
+    #expect(AppSettings.normalizedPresets([0, -5, 61, 500]) == [1, 60])
+  }
+
+  @Test func normalizedPresetsDropsDuplicates() {
+    #expect(AppSettings.normalizedPresets([25, 25, 15, 15]) == [15, 25])
+  }
+
+  @Test func normalizedPresetsSortsAscending() {
+    #expect(AppSettings.normalizedPresets([45, 15, 60, 25]) == [15, 25, 45, 60])
+  }
+
+  @Test func normalizedPresetsTrimsBeyondFive() {
+    #expect(AppSettings.normalizedPresets([1, 2, 3, 4, 5, 6]).count == 5)
+  }
+
+  @Test func normalizedPresetsFallsBackToDefaultWhenEmpty() {
+    #expect(AppSettings.normalizedPresets([]) == [25])
+  }
+
+  // MARK: - Focus presets: defaults & persistence
+
+  @Test func defaultFocusPresetsMatchTheShippedSet() {
+    #expect(makeSettings().focusPresets == [25])
+  }
+
+  @Test func focusPresetsPersistAcrossInstances() {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    AppSettings(store: SettingsStore(defaults: defaults)).focusPresets = [10, 20, 30]
+    #expect(AppSettings(store: SettingsStore(defaults: defaults)).focusPresets == [10, 20, 30])
+  }
+
+  // MARK: - Focus presets: setFocusPresets re-snap
+
+  @Test func setFocusPresetsKeepsFocusMinutesWhenStillPresent() {
+    let settings = makeSettings()
+    settings.focusMinutes = 25
+    settings.setFocusPresets([15, 25, 45, 60])
+    #expect(settings.focusMinutes == 25)
+  }
+
+  @Test func setFocusPresetsResnapsToNearestRemainingPreset() {
+    let settings = makeSettings()
+    settings.focusMinutes = 25
+    settings.setFocusPresets([15, 45, 60])
+    #expect(settings.focusMinutes == 15)
+  }
+
+  @Test func setFocusPresetsResnapsExactTieToLowerValue() {
+    let settings = makeSettings()
+    settings.focusMinutes = 30
+    settings.setFocusPresets([20, 40])
+    #expect(settings.focusMinutes == 20)
+  }
+
+  @Test func setFocusPresetsNormalizesBeforeAssigning() {
+    let settings = makeSettings()
+    settings.setFocusPresets([100, 100, -5])
+    #expect(settings.focusPresets == [1, 60])
+  }
+
   // MARK: - Persistence
 
   @Test func settingPersistsAcrossInstances() {

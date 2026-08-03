@@ -171,6 +171,67 @@ struct TimerPresenterTests {
     #expect(!presenter.canStop)
   }
 
+  // MARK: - Focus presets
+
+  @Test func focusPresetsMirrorsSettingsWhenCurrentValueIsAPreset() {
+    let settings = makeSettings(focus: 25)
+    settings.focusPresets = [15, 25, 45, 60]
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    #expect(presenter.focusPresets == [15, 25, 45, 60])
+    #expect(presenter.selectedFocusMinutes == 25)
+  }
+
+  @Test func focusPresetsPrependsCustomFocusMinutesNotInTheList() {
+    let settings = makeSettings(focus: 30)
+    settings.focusPresets = [15, 25, 45, 60]
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    #expect(presenter.focusPresets == [15, 25, 30, 45, 60])
+    #expect(presenter.selectedFocusMinutes == 30)
+  }
+
+  @Test func showsFocusPresetPickerIsFalseWithASinglePreset() {
+    let settings = makeSettings(focus: 25)
+    settings.focusPresets = [25]
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    #expect(!presenter.showsFocusPresetPicker)
+  }
+
+  @Test func showsFocusPresetPickerIsTrueWithMoreThanOnePreset() {
+    let settings = makeSettings(focus: 25)
+    settings.focusPresets = [25, 45]
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    #expect(presenter.showsFocusPresetPicker)
+  }
+
+  @Test func showsFocusPresetPickerIsTrueWhenCustomFocusMinutesAddsASecondValue() {
+    let settings = makeSettings(focus: 30)
+    settings.focusPresets = [25]
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    #expect(presenter.showsFocusPresetPicker)
+  }
+
+  @Test func selectFocusPresetUpdatesSelectionAndLabelWhileIdle() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    presenter.selectFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 45)
+    #expect(presenter.label == "45:00")
+  }
+
+  @Test func selectFocusPresetIsNoOpWhileRunning() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    presenter.start()
+    presenter.selectFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 25)
+  }
+
+  @Test func selectFocusPresetIsNoOpWhilePaused() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    presenter.start()
+    presenter.pause()
+    presenter.selectFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 25)
+  }
+
   // MARK: - Enablement
 
   @Test func canSkipDisabledWhenIdleWithNothingQueued() {

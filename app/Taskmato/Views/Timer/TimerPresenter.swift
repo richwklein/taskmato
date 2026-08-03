@@ -107,6 +107,35 @@ final class TimerPresenter {
     return queued != .focus  // a break is queued; idle-skip cycles it to focus
   }
 
+  // MARK: - Focus presets
+
+  /// Focus-length presets to offer, ascending, in minutes.
+  ///
+  /// Mirrors `settings.focusPresets`, but prepends the current `focusMinutes` when it holds a
+  /// custom value outside that list (design doc 0009, D6) so a quick-select surface always has
+  /// something to highlight as selected.
+  var focusPresets: [Int] {
+    let presets = settings.focusPresets
+    guard presets.contains(settings.focusMinutes) else {
+      return ([settings.focusMinutes] + presets).sorted()
+    }
+    return presets
+  }
+
+  /// Whether to surface the quick-select picker — only when more than one preset exists, since a
+  /// single focus length offers nothing to choose between (design doc 0009).
+  var showsFocusPresetPicker: Bool { focusPresets.count > 1 }
+
+  /// The currently-selected focus length, in minutes — always `settings.focusMinutes`.
+  var selectedFocusMinutes: Int { settings.focusMinutes }
+
+  /// Selects a focus preset for the next session. Idle-only; a no-op while running or paused,
+  /// since a mid-session duration change only takes effect at the next phase boundary anyway.
+  func selectFocusPreset(_ minutes: Int) {
+    guard isIdle else { return }
+    settings.focusMinutes = minutes
+  }
+
   // MARK: - Intents
 
   /// Syncs the latest durations into the engine, then starts the queued (or focus) phase.

@@ -20,12 +20,7 @@ struct TimerTabView: View {
     VStack(spacing: 0) {
       Spacer()
 
-      CircularTimerView(
-        progress: presenter.progress,
-        label: presenter.label,
-        phase: presenter.phaseName,
-        accessibilityValue: presenter.accessibilityValue
-      )
+      CircularTimerView(presenter: presenter)
 
       TimerControlsView(
         presenter: presenter,
