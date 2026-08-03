@@ -392,14 +392,15 @@ struct AppSidebarView: View {
   }
 
   /// Reacts to providers becoming enabled from any source: re-expands each section, opens the
-  /// configuration sheet for a configurable provider that is not yet authorized (so lists can
+  /// configuration sheet for a configurable provider that still needs setup (so lists can
   /// load), and refreshes its list cache.
   private func handleNewlyEnabled(_ addedIDs: Set<ProviderID>) {
     guard !addedIDs.isEmpty else { return }
     let added = registry.providers.filter { addedIDs.contains($0.id) }
     for provider in added {
       settings.collapsedSidebarSections.remove(provider.id.rawValue)
-      if let configurable = provider as? (any ConfigurableTaskProvider), !provider.isAuthorized {
+      let configurable = provider as? (any ConfigurableTaskProvider)
+      if configurable?.needsConfiguration == true {
         configuringProvider = configurable
       }
     }
