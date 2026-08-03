@@ -399,9 +399,8 @@ struct AppSidebarView: View {
     let added = registry.providers.filter { addedIDs.contains($0.id) }
     for provider in added {
       settings.collapsedSidebarSections.remove(provider.id.rawValue)
-      if let configurable = provider as? (any ConfigurableTaskProvider),
-        configurable.needsConfiguration
-      {
+      let configurable = provider as? (any ConfigurableTaskProvider)
+      if configurable?.needsConfiguration == true {
         configuringProvider = configurable
       }
     }
