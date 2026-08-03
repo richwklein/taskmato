@@ -96,6 +96,16 @@ struct RemindersProviderAuthorizationTests {
     #expect(!makeProvider(status: .notDetermined).0.isAuthorized)
   }
 
+  /// An unauthorized provider still needs setup, so enabling it should present the sheet.
+  @Test func needsConfigurationWhenNotAuthorized() {
+    #expect(makeProvider(status: .notDetermined).0.needsConfiguration)
+  }
+
+  /// An already-authorized provider does not need to reopen the setup sheet.
+  @Test func doesNotNeedConfigurationWhenAuthorized() {
+    #expect(!makeProvider(status: .fullAccess).0.needsConfiguration)
+  }
+
   @Test func authorizeWhenDenied_throwsAccessDenied() async {
     let (provider, _) = makeProvider(status: .denied)
     await #expect(throws: RemindersProviderError.accessDenied) {

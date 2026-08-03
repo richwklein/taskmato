@@ -100,6 +100,7 @@ private final class FakeConfigurableProvider: TaskProvider, ConfigurableTaskProv
   let displayName = "Fake Configurable"
   let icon = "square"
   let entitlement: ProviderEntitlement = .free
+  let needsConfiguration = false
 
   func authorize() async throws {}
   func lists() async throws -> [TaskList] { [] }

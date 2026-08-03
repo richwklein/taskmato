@@ -239,3 +239,24 @@ struct ObsidianProviderBookmarkRestoreTests {
     #expect(provider.vaultURL == nil)
   }
 }
+
+// MARK: - ConfigurableTaskProvider
+
+@Suite("ObsidianProvider — ConfigurableTaskProvider")
+@MainActor
+struct ObsidianProviderConfigurableTests {
+
+  /// A provider with no vault still needs setup, so enabling it should present the sheet.
+  @Test func needsConfigurationWhenNoVaultSelected() {
+    let provider = makeProvider(vaultURL: nil)
+    #expect(provider.needsConfiguration)
+  }
+
+  /// A provider with a vault already selected does not need to reopen the setup sheet.
+  @Test func doesNotNeedConfigurationWhenVaultSelected() throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    let provider = makeProvider(vaultURL: vault)
+    #expect(!provider.needsConfiguration)
+  }
+}
