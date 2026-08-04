@@ -98,6 +98,9 @@ protocol WritableTaskProvider: ClosableTaskProvider {
   /// The ID of the list new tasks target by default, or `nil` if none is set.
   var defaultListID: String? { get }
 
+  /// The `ContentFormat` this provider creates new tasks with.
+  var contentFormat: ContentFormat { get }
+
   /// Creates a new task from `draft` and returns the resulting item.
   ///
   /// If `draft.listID` is `nil` the provider uses its default list.

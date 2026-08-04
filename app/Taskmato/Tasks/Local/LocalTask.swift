@@ -116,7 +116,7 @@ extension LocalTask {
     id = UUID()
     title = draft.title
     notes = draft.notes.isEmpty ? nil : draft.notes
-    format = .markdown
+    format = draft.format
     priority = draft.priority
     dueDate = draft.dueDate
     scheduledDate = nil

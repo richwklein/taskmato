@@ -27,6 +27,9 @@ final class LocalProvider: WritableTaskProvider {
   let tint: ProviderTint = .green
   let entitlement: ProviderEntitlement = .free
 
+  /// Local tasks always support inline Markdown for titles and notes.
+  let contentFormat: ContentFormat = .markdown
+
   /// Lists managed by this provider, in creation order.
   private(set) var taskLists: [LocalList] = []
 

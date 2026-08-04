@@ -41,6 +41,8 @@ struct AddTaskView: View {
     !title.trimmingCharacters(in: .whitespaces).isEmpty
   }
 
+  private var isMarkdownCapable: Bool { provider.contentFormat == .markdown }
+
   var body: some View {
     VStack(alignment: .leading, spacing: .sectionGap) {
       Text(sheetTitle)
@@ -50,6 +52,12 @@ struct AddTaskView: View {
         .textFieldStyle(.roundedBorder)
         .focused($isTitleFocused)
         .onSubmit { if canSubmit { submit() } }
+
+      if isMarkdownCapable {
+        Text("Supports Markdown — **bold**, *italic*, `code`, [links]")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
 
       Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
         GridRow {
@@ -143,6 +151,7 @@ struct AddTaskView: View {
     draft.priority = priority
     draft.dueDate = hasDueDate ? dueDate : nil
     draft.listID = selectedListID.isEmpty ? nil : selectedListID
+    draft.format = provider.contentFormat
     isPresented = false
     if let task = taskToEdit {
       Task {
