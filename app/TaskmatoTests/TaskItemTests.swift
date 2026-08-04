@@ -124,4 +124,15 @@ struct TaskItemTests {
       #expect(decoded == format)
     }
   }
+
+  @Test func plainTextFormatRendersVerbatim() {
+    let result = ContentFormat.plainText.attributedString(for: "**not bold**")
+    #expect(String(result.characters) == "**not bold**")
+  }
+
+  @Test func markdownFormatParsesStrongEmphasis() {
+    let result = ContentFormat.markdown.attributedString(for: "**bold**")
+    let hasBold = result.runs.contains { $0.inlinePresentationIntent == .stronglyEmphasized }
+    #expect(hasBold)
+  }
 }

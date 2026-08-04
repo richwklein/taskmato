@@ -16,24 +16,10 @@ struct TaskNoteView: View {
   let format: ContentFormat
 
   var body: some View {
-    Group {
-      switch format {
-      case .plainText:
-        Text(notes)
-      case .markdown:
-        Text(attributedNotes)
-      }
-    }
-    .font(.caption)
-    .foregroundStyle(.secondary)
-    .multilineTextAlignment(.leading)
-    .frame(maxWidth: .infinity, alignment: .leading)
-  }
-
-  private var attributedNotes: AttributedString {
-    let options = AttributedString.MarkdownParsingOptions(
-      interpretedSyntax: .inlineOnlyPreservingWhitespace
-    )
-    return (try? AttributedString(markdown: notes, options: options)) ?? AttributedString(notes)
+    Text(format.attributedString(for: notes))
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .multilineTextAlignment(.leading)
+      .frame(maxWidth: .infinity, alignment: .leading)
   }
 }

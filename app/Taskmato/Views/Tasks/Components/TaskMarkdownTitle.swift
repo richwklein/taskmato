@@ -28,5 +28,6 @@ struct TaskMarkdownTitle: View {
       .foregroundStyle(isCompleted ? .secondary : .primary)
       .lineLimit(lineLimit)
       .frame(maxWidth: fill ? .infinity : nil, alignment: .leading)
+      .help(task.title)
   }
 }
