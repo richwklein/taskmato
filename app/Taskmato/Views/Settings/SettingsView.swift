@@ -18,15 +18,16 @@ struct SettingsView: View {
 
   var body: some View {
     Form {
-      Section("Durations") {
+      Section("Focus") {
         FocusPresetsEditor(settings: settings)
-        DurationField("Short Break", value: $settings.shortBreakMinutes, range: 1...30)
-        DurationField("Long Break", value: $settings.longBreakMinutes, range: 1...60)
       }
 
-      Section("Long Break") {
-        DurationField(
-          "After every", value: $settings.longBreakAfterSessions, range: 1...8, unit: "sessions")
+      Section("Breaks") {
+        DurationStepperRow(label: "Short Break", value: $settings.shortBreakMinutes)
+        LongBreakStepperRow(
+          duration: $settings.longBreakMinutes,
+          afterSessions: $settings.longBreakAfterSessions
+        )
       }
 
       Section("Phase-end Alerts") {
@@ -81,7 +82,7 @@ struct SettingsView: View {
               .buttonStyle(.link)
             }
           } label: {
-            Text("ⓘ Customizing how alerts are delivered")
+            Label("Customizing how alerts are delivered", systemImage: "info.circle")
               .foregroundStyle(.secondary)
           }
           .padding(.leading)
@@ -157,70 +158,128 @@ private struct ProviderEntry: Identifiable {
   let icon: String
 }
 
-/// A simple bullet-point text row for use inside the notification settings disclosure.
-private struct BulletText: View {
-  let text: String
+/// A labelled row that uses a native stepper for bounded numeric settings.
+private struct DurationStepperRow: View {
 
-  init(_ text: String) {
-    self.text = text
-  }
+  let label: String
+  @Binding var value: Int
+  var range: ClosedRange<Int> = 1...180
+  var unit: String = "min"
 
   var body: some View {
-    HStack(alignment: .top, spacing: .rowVertical) {
-      Text("•").foregroundStyle(.secondary)
-      Text(text).foregroundStyle(.secondary)
+    HStack {
+      Text(label)
+      Spacer()
+      DurationStepperControl(label: label, value: $value, range: range, unit: unit)
     }
-    .font(.callout)
   }
 }
 
-/// A labelled row combining a text field for direct input and a stepper for nudging.
-private struct DurationField: View {
+/// A compact trailing value plus native stepper control.
+private struct DurationStepperControl: View {
 
   let label: String
   @Binding var value: Int
   let range: ClosedRange<Int>
   let unit: String
 
-  @State private var text: String = ""
-  @FocusState private var isFocused: Bool
+  var body: some View {
+    HStack(spacing: .contentGap) {
+      Text("\(clamp(value)) \(unit)")
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+        .frame(minWidth: valueWidth, alignment: .trailing)
+        .accessibilityHidden(true)
 
-  init(_ label: String, value: Binding<Int>, range: ClosedRange<Int>, unit: String = "min") {
-    self.label = label
-    self._value = value
-    self.range = range
-    self.unit = unit
-    self._text = State(initialValue: "\(value.wrappedValue)")
+      Stepper(label, value: clampedValue, in: range)
+        .labelsHidden()
+        .accessibilityValue("\(clamp(value)) \(unit)")
+    }
   }
+
+  private var valueWidth: CGFloat {
+    unit == "min" ? 54 : 72
+  }
+
+  private var clampedValue: Binding<Int> {
+    Binding(
+      get: { clamp(value) },
+      set: { value = clamp($0) }
+    )
+  }
+
+  private func clamp(_ candidate: Int) -> Int {
+    min(max(candidate, range.lowerBound), range.upperBound)
+  }
+}
+
+/// A two-line long-break control that keeps duration and cadence visually tied.
+private struct LongBreakStepperRow: View {
+
+  @Binding var duration: Int
+  @Binding var afterSessions: Int
 
   var body: some View {
-    HStack {
+    VStack(spacing: .contentGap) {
+      HStack {
+        Text("Long Break")
+        Spacer()
+        DurationStepperControl(label: "Long Break", value: $duration, range: 1...180, unit: "min")
+      }
+
+      HStack(spacing: 6) {
+        Spacer()
+        Text("After")
+          .foregroundStyle(.secondary)
+        DurationStepperControl(
+          label: "Long break after", value: $afterSessions, range: 1...8, unit: "sessions")
+      }
+      .font(.callout)
+    }
+  }
+}
+
+/// A compact focus-preset row with a remove action and optional current-value badge.
+private struct FocusPresetRow: View {
+
+  let minutes: Int
+  let isCurrent: Bool
+  let canRemove: Bool
+  let remove: () -> Void
+
+  var body: some View {
+    HStack(spacing: .contentGap) {
       Text(label)
+
+      if isCurrent {
+        Text(AppLabels.FocusPreset.current)
+          .font(.caption2)
+          .padding(.horizontal, .iconLabel)
+          .padding(.vertical, 2)
+          .foregroundStyle(Color.statusSuccess)
+          .background(
+            Capsule()
+              .stroke(Color.statusSuccess.opacity(0.55), lineWidth: 1)
+          )
+      }
+
       Spacer()
-      TextField("", text: $text)
-        .multilineTextAlignment(.trailing)
-        .frame(width: 36)
-        .focused($isFocused)
-        .onSubmit { commit() }
-        .onChange(of: isFocused) { _, focused in
-          if !focused { commit() }
-        }
-        .onChange(of: value) { _, new in
-          if !isFocused { text = "\(new)" }
-        }
-      Text(unit)
-        .foregroundStyle(.secondary)
-      Stepper("", value: $value, in: range)
-        .labelsHidden()
+
+      Button {
+        remove()
+      } label: {
+        Image(systemName: AppLabels.FocusPreset.remove.systemImage)
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(.secondary)
+      .disabled(!canRemove)
+      .help(AppLabels.FocusPreset.remove.title)
+      .accessibilityLabel("\(AppLabels.FocusPreset.remove.title) \(label)")
     }
   }
 
-  /// Parses the text field input and updates `value` if valid, otherwise reverts the text.
-  private func commit() {
-    if let parsed = Int(text), range.contains(parsed) {
-      value = parsed
-    }
-    text = "\(value)"
+  private var label: String {
+    "\(minutes) min"
   }
 }
 
@@ -232,7 +291,7 @@ private struct DurationField: View {
 private struct FocusPresetsEditor: View {
 
   /// The valid range for a single preset, matching the range the old Focus stepper enforced.
-  private static let range = 1...60
+  private static let range = 1...180
   /// The maximum number of presets, mirroring `AppSettings`'s cap.
   private static let maxPresets = 5
   /// The default seed offered when "Add Duration" is first tapped.
@@ -245,11 +304,14 @@ private struct FocusPresetsEditor: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: .contentGap) {
-      Text(AppLabels.FocusPreset.sectionTitle)
-        .foregroundStyle(.secondary)
-
       ForEach(settings.focusPresets, id: \.self) { minutes in
-        presetRow(minutes)
+        FocusPresetRow(
+          minutes: minutes,
+          isCurrent: minutes == settings.focusMinutes,
+          canRemove: settings.focusPresets.count > 1
+        ) {
+          settings.setFocusPresets(settings.focusPresets.filter { $0 != minutes })
+        }
       }
 
       if isAdding {
@@ -257,23 +319,6 @@ private struct FocusPresetsEditor: View {
       } else {
         addButton
       }
-    }
-  }
-
-  private func presetRow(_ minutes: Int) -> some View {
-    HStack {
-      Text(label(for: minutes))
-      Spacer()
-      Button {
-        settings.setFocusPresets(settings.focusPresets.filter { $0 != minutes })
-      } label: {
-        Image(systemName: AppLabels.FocusPreset.remove.systemImage)
-      }
-      .buttonStyle(.plain)
-      .foregroundStyle(.secondary)
-      .disabled(settings.focusPresets.count <= 1)
-      .help(AppLabels.FocusPreset.remove.title)
-      .accessibilityLabel("\(AppLabels.FocusPreset.remove.title) \(label(for: minutes))")
     }
   }
 
@@ -285,40 +330,43 @@ private struct FocusPresetsEditor: View {
     } label: {
       Label(AppLabels.FocusPreset.add.title, systemImage: AppLabels.FocusPreset.add.systemImage)
     }
-    .buttonStyle(.plain)
-    .foregroundStyle(atMax ? Color.secondary : Color.accentColor)
+    .buttonStyle(.bordered)
     .disabled(atMax)
     .help(atMax ? AppLabels.Tooltip.maxFocusPresetsReached : "")
   }
 
   private var addField: some View {
-    HStack {
-      DurationField(AppLabels.FocusPreset.add.title, value: $newValue, range: Self.range)
-      Button {
-        settings.setFocusPresets(settings.focusPresets + [newValue])
-        isAdding = false
-      } label: {
-        Image(systemName: "checkmark.circle.fill")
+    let isDuplicate = settings.focusPresets.contains(newValue)
+    return HStack(spacing: .sectionGap) {
+      DurationStepperRow(
+        label: AppLabels.FocusPreset.add.title, value: $newValue, range: Self.range)
+      HStack(spacing: .iconLabel) {
+        Button {
+          settings.setFocusPresets(settings.focusPresets + [newValue])
+          isAdding = false
+        } label: {
+          Image(systemName: "checkmark.circle.fill")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.statusSuccess)
+        .disabled(isDuplicate)
+        .help(isDuplicate ? "Focus preset already exists" : "Add focus preset")
+        .accessibilityLabel("Add focus preset")
+
+        Button {
+          isAdding = false
+        } label: {
+          Image(systemName: "xmark.circle")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help(AppLabels.Tooltip.cancel)
+        .accessibilityLabel(AppLabels.Tooltip.cancel)
       }
-      .buttonStyle(.plain)
-      Button {
-        isAdding = false
-      } label: {
-        Image(systemName: "xmark.circle")
-      }
-      .buttonStyle(.plain)
-      .help(AppLabels.Tooltip.cancel)
     }
   }
 
-  /// The row label for `minutes`, marking the one matching `focusMinutes` as current.
-  private func label(for minutes: Int) -> String {
-    minutes == settings.focusMinutes
-      ? "\(minutes) min · \(AppLabels.FocusPreset.current)"
-      : "\(minutes) min"
-  }
-
-  /// 30 minutes if unused, otherwise the nearest value in `1...60` not already a preset
+  /// 30 minutes if unused, otherwise the nearest value in `1...180` not already a preset
   /// (design doc plan, "Add-stepper seed").
   private func seedValue() -> Int {
     let used = Set(settings.focusPresets)
