@@ -253,38 +253,13 @@ struct TaskmatoCommands: Commands {
       .keyboardShortcut("c", modifiers: [.command, .shift])
       .disabled(toggleCompleted == nil)
       Divider()
-      // Each sort option is disabled individually: as action items they re-validate on menu
-      // open and grey live off the task surface, whereas `.disabled` on the parent `Menu`
-      // container alone did not update (see the Layout note above, #426).
+      // Content shared with the toolbar's sort menu (``TaskSortMenuContent``) so field order,
+      // defaults, and checkmarked state cannot drift between the two surfaces. Items are
+      // disabled individually: as action items they re-validate on menu open and grey out live
+      // off the task surface, whereas `.disabled` on the parent `Menu` container alone did not
+      // update (see the Layout note above, #426).
       Menu {
-        ForEach(TaskSortField.allCases, id: \.self) { field in
-          Button {
-            settings.taskSortField = field
-            settings.taskSortDirection = field.defaultSortDirection
-          } label: {
-            Label(
-              field.displayName,
-              systemImage: settings.taskSortField == field ? "checkmark" : "")
-          }
-          .disabled(!isTaskScope)
-        }
-        Divider()
-        Button {
-          settings.taskSortDirection = .ascending
-        } label: {
-          Label(
-            settings.taskSortField.ascendingLabel,
-            systemImage: settings.taskSortDirection == .ascending ? "checkmark" : "")
-        }
-        .disabled(!isTaskScope)
-        Button {
-          settings.taskSortDirection = .descending
-        } label: {
-          Label(
-            settings.taskSortField.descendingLabel,
-            systemImage: settings.taskSortDirection == .descending ? "checkmark" : "")
-        }
-        .disabled(!isTaskScope)
+        TaskSortMenuContent(settings: settings, disabled: !isTaskScope)
       } label: {
         Label(AppLabels.View.sort.title, systemImage: AppLabels.View.sort.systemImage)
       }

@@ -97,6 +97,8 @@ struct TaskDetailView: View {
         }
       }
       .toolbar {
+        // New Task is the primary creation action, so it stays its own leading item — visually
+        // distinct from the view-state controls that follow.
         if writableProvider != nil {
           ToolbarItem(placement: .automatic) {
             Button {
@@ -108,6 +110,9 @@ struct TaskDetailView: View {
           }
         }
 
+        // Show/Hide Completed stays adjacent to Layout and Sort — all three are task-view
+        // controls — while Layout and Sort are grouped together as one toolbar unit since both
+        // alter task-list presentation.
         if hasClosableProvider {
           ToolbarItem(placement: .automatic) {
             Button {
@@ -121,7 +126,7 @@ struct TaskDetailView: View {
           }
         }
 
-        ToolbarItem(placement: .automatic) {
+        ToolbarItemGroup(placement: .automatic) {
           Picker("Layout", selection: $settings.taskPickerLayout) {
             Label(
               AppLabels.View.listLayout.title, systemImage: AppLabels.View.listLayout.systemImage
@@ -134,9 +139,7 @@ struct TaskDetailView: View {
           }
           .pickerStyle(.segmented)
           .help("Toggle between list and grid view")
-        }
 
-        ToolbarItem(placement: .automatic) {
           sortMenu
         }
       }
