@@ -61,6 +61,7 @@ struct AddTaskView: View {
             }
           }
           .labelsHidden()
+          .accessibilityLabel("List")
           .frame(maxWidth: .infinity, alignment: .leading)
         }
 
@@ -77,6 +78,7 @@ struct AddTaskView: View {
             }
           }
           .labelsHidden()
+          .accessibilityLabel("Priority")
           .pickerStyle(.menu)
           .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -85,11 +87,14 @@ struct AddTaskView: View {
           Text("Due date")
             .foregroundStyle(.secondary)
           HStack {
-            Toggle("", isOn: $hasDueDate)
+            Toggle("Has due date", isOn: $hasDueDate)
               .labelsHidden()
+              .accessibilityLabel("Has due date")
+              .accessibilityHint("Enables the due date picker")
             if hasDueDate {
-              DatePicker("", selection: $dueDate, displayedComponents: .date)
+              DatePicker("Due date", selection: $dueDate, displayedComponents: .date)
                 .labelsHidden()
+                .accessibilityLabel("Due date")
             }
           }
         }
@@ -99,6 +104,7 @@ struct AddTaskView: View {
         TextEditor(text: $notes)
           .frame(height: 72)
           .font(.body)
+          .accessibilityLabel("Notes")
       }
 
       HStack {

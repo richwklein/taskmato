@@ -61,6 +61,10 @@ enum AppLabels {
     static let timer = "Pomodoro timer"
     /// Announced for the Timer tab's focus-length quick-select chip row.
     static let focusPresets = "Focus duration"
+    /// Announced for the Stats daily focus stacked bar chart.
+    static let dailyFocusChart = "Daily focus chart"
+    /// Announced for the Stats task breakdown donut chart.
+    static let taskBreakdownChart = "Task breakdown chart"
   }
 
   /// Labels for task CRUD and lifecycle actions.

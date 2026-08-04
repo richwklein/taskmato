@@ -22,6 +22,20 @@ struct TaskDonutChart: View {
     Color.chartPalette[index % Color.chartPalette.count]
   }
 
+  /// Slice with the most focus seconds, when at least one slice is present.
+  private var topSlice: SessionSummary.TaskSlice? {
+    slices.max { $0.seconds < $1.seconds }
+  }
+
+  /// Nonvisual summary of the chart's totals for VoiceOver users.
+  private var accessibilitySummary: String {
+    guard totalSeconds > 0, let top = topSlice else { return "No focus time recorded" }
+    let total = FocusDuration.label(seconds: totalSeconds)
+    let taskCount = slices.count == 1 ? "1 task" : "\(slices.count) tasks"
+    let topPercent = Int(top.seconds / totalSeconds * 100)
+    return "\(total) total across \(taskCount). Most on \(top.label): \(topPercent)%"
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: .groupGap) {
       Text("Task Breakdown")
@@ -42,6 +56,9 @@ struct TaskDonutChart: View {
       )
       .chartLegend(.hidden)
       .frame(height: 160)
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(AppLabels.Accessibility.taskBreakdownChart)
+      .accessibilityValue(accessibilitySummary)
 
       VStack(spacing: .iconLabel) {
         ForEach(Array(slices.enumerated()), id: \.element.id) { index, slice in
