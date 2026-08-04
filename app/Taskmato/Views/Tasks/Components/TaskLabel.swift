@@ -94,6 +94,24 @@ enum AppLabels {
     static let startFocus = AppLabel("Start Focus", systemImage: "bolt.fill")
   }
 
+  /// Copy for the Obsidian file-pattern date-token help disclosure (issue #510).
+  enum ObsidianTokens {
+    /// Label for the collapsed disclosure row above the File patterns field.
+    static let disclosureLabel = "Using date tokens in file patterns"
+    /// Intro sentence shown when the disclosure is expanded.
+    static let intro = "File patterns support date tokens that expand to today's date:"
+    /// Describes the {year} / {YYYY} token pair.
+    static let yearToken = "{year} or {YYYY}: 4-digit year, e.g. 2026"
+    /// Describes the {month} / {MM} token pair.
+    static let monthToken = "{month} or {MM}: zero-padded month, e.g. 08"
+    /// Describes the {week} / {ww} token pair.
+    static let weekToken = "{week} or {ww}: ISO week number, e.g. 32"
+    /// Describes the {day} / {DD} token pair.
+    static let dayToken = "{day} or {DD}: zero-padded day of month, e.g. 03"
+    /// Example pattern shown at the end of the disclosure.
+    static let example = "Example: journal/{year}/{month}-{day}.md"
+  }
+
   /// Labels for view-state commands: layout, completed section, sort, and search.
   enum View {
     /// Focuses the search field.
