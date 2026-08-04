@@ -23,6 +23,24 @@ struct DailyBarChart: View {
     Dictionary(uniqueKeysWithValues: providers.map { ($0.providerID, $0.label) })
   }
 
+  /// Total focus minutes across every day/provider segment.
+  private var totalMinutes: Int {
+    totals.reduce(0) { $0 + $1.minutes }
+  }
+
+  /// Provider with the most focus minutes, when more than one provider is present.
+  private var topProvider: ProviderSlice? {
+    providers.max { $0.minutes < $1.minutes }
+  }
+
+  /// Nonvisual summary of the chart's totals for VoiceOver users.
+  private var accessibilitySummary: String {
+    guard totalMinutes > 0 else { return "No focus time recorded" }
+    let total = FocusDuration.label(minutes: totalMinutes)
+    guard let top = topProvider, providers.count > 1 else { return "\(total) total" }
+    return "\(total) total. Most on \(top.label): \(FocusDuration.label(minutes: top.minutes))"
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: .groupGap) {
       Text("Daily Focus")
@@ -42,6 +60,9 @@ struct DailyBarChart: View {
       )
       .chartLegend(position: .bottom, alignment: .leading)
       .frame(height: 200)
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(AppLabels.Accessibility.dailyFocusChart)
+      .accessibilityValue(accessibilitySummary)
     }
   }
 }
