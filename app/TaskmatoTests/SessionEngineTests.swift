@@ -241,4 +241,77 @@ struct SessionEngineTests {
     #expect(engine.queuedPhase == .focus)
   }
 
+  // MARK: - consumedFocusSeconds (D4 of design doc 0010)
+
+  @Test func consumedFocusSecondsIsZeroWhenIdle() {
+    let engine = SessionEngine()
+    #expect(engine.consumedFocusSeconds == 0)
+  }
+
+  @Test func consumedFocusSecondsTracksElapsedTimeWhileRunning() {
+    var currentTime = Date(timeIntervalSinceReferenceDate: 0)
+    let engine = SessionEngine(focusDuration: 60, now: { currentTime })
+    engine.start()
+    currentTime = currentTime.addingTimeInterval(20)
+    #expect(engine.consumedFocusSeconds == 20)
+  }
+
+  @Test func consumedFocusSecondsIsZeroDuringABreak() {
+    var currentTime = Date(timeIntervalSinceReferenceDate: 0)
+    let engine = SessionEngine(shortBreakDuration: 60, now: { currentTime })
+    engine.start(phase: .shortBreak)
+    currentTime = currentTime.addingTimeInterval(20)
+    #expect(engine.consumedFocusSeconds == 0)
+  }
+
+  @Test func consumedFocusSecondsIsMonotonicAcrossPauseAndResume() {
+    var currentTime = Date(timeIntervalSinceReferenceDate: 0)
+    let engine = SessionEngine(focusDuration: 60, now: { currentTime })
+    engine.start()
+    currentTime = currentTime.addingTimeInterval(20)
+    engine.pause()
+    #expect(engine.consumedFocusSeconds == 20)
+
+    // Time passes while paused — consumed time must not advance during the gap.
+    currentTime = currentTime.addingTimeInterval(500)
+    #expect(engine.consumedFocusSeconds == 20)
+
+    engine.resume()
+    #expect(engine.consumedFocusSeconds == 20)
+    currentTime = currentTime.addingTimeInterval(10)
+    #expect(engine.consumedFocusSeconds == 30)
+  }
+
+  // MARK: - began (D4 of design doc 0010)
+
+  @Test func startEmitsBeganEvent() async {
+    let engine = SessionEngine()
+    engine.start()
+    var iterator = engine.phaseEvents.makeAsyncIterator()
+    guard case .began(let phase) = await iterator.next() else {
+      Issue.record("Expected a began event")
+      return
+    }
+    #expect(phase == .focus)
+  }
+
+  @Test func resumeDoesNotEmitBeganEvent() async {
+    let engine = SessionEngine()
+    engine.start()
+    engine.pause()
+    engine.resume()
+    var iterator = engine.phaseEvents.makeAsyncIterator()
+    guard case .began = await iterator.next() else {
+      Issue.record("Expected the initial began event from start()")
+      return
+    }
+    // No further event should be buffered — resume() does not emit began.
+    engine.pause()  // sentinel: distinguishable no-op, buffers nothing either
+    engine.stop()
+    guard case .ended = await iterator.next() else {
+      Issue.record("Expected stop()'s ended event next, not a spurious began from resume()")
+      return
+    }
+  }
+
 }

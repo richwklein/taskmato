@@ -8,6 +8,19 @@ import Testing
 
 @testable import Taskmato
 
+/// Advances through `stream`, skipping any `.began` events, to the next `.ended` event —
+/// `start()` and `skip()` now also buffer `.began` (D4 of design doc 0010), which most of
+/// these completion-focused tests are not asserting against. Safe to call more than once on
+/// the same stream: each call draws a fresh iterator over the stream's shared buffer, so
+/// sequential calls continue from where the previous one left off.
+@MainActor
+private func nextEnded(in stream: AsyncStream<PhaseEvent>) async -> PhaseEvent? {
+  for await event in stream {
+    if case .ended = event { return event }
+  }
+  return nil
+}
+
 @MainActor
 struct SessionEngineCompletionTests {
 
@@ -37,8 +50,7 @@ struct SessionEngineCompletionTests {
     engine.start()
     currentTime = currentTime.addingTimeInterval(60)
     engine.pause()
-    var iterator = engine.phaseEvents.makeAsyncIterator()
-    guard case .ended(let phase, _, _, _) = await iterator.next() else {
+    guard case .ended(let phase, _, _, _) = await nextEnded(in: engine.phaseEvents) else {
       Issue.record("Expected a phase-end event")
       return
     }
@@ -52,8 +64,7 @@ struct SessionEngineCompletionTests {
     engine.start()
     currentTime = currentTime.addingTimeInterval(60)
     engine.pause()
-    var iterator = engine.phaseEvents.makeAsyncIterator()
-    guard case .ended(_, let start, let end, _) = await iterator.next() else {
+    guard case .ended(_, let start, let end, _) = await nextEnded(in: engine.phaseEvents) else {
       Issue.record("Expected a phase-end event")
       return
     }
@@ -67,8 +78,7 @@ struct SessionEngineCompletionTests {
     engine.start()
     currentTime = currentTime.addingTimeInterval(60)
     engine.pause()
-    var iterator = engine.phaseEvents.makeAsyncIterator()
-    guard case .ended(_, _, _, let wasCompleted) = await iterator.next() else {
+    guard case .ended(_, _, _, let wasCompleted) = await nextEnded(in: engine.phaseEvents) else {
       Issue.record("Expected a phase-end event")
       return
     }
@@ -79,8 +89,7 @@ struct SessionEngineCompletionTests {
     let engine = SessionEngine()
     engine.start()
     engine.stop()
-    var iterator = engine.phaseEvents.makeAsyncIterator()
-    guard case .ended(_, _, _, let wasCompleted) = await iterator.next() else {
+    guard case .ended(_, _, _, let wasCompleted) = await nextEnded(in: engine.phaseEvents) else {
       Issue.record("Expected a phase-end event")
       return
     }
@@ -92,8 +101,7 @@ struct SessionEngineCompletionTests {
     engine.start()
     engine.pause()
     engine.stop()
-    var iterator = engine.phaseEvents.makeAsyncIterator()
-    let event = await iterator.next()
+    let event = await nextEnded(in: engine.phaseEvents)
     #expect(event != nil)
   }
 
@@ -108,8 +116,8 @@ struct SessionEngineCompletionTests {
     currentTime = currentTime.addingTimeInterval(60)
     engine.pause()
 
-    var iterator = engine.phaseEvents.makeAsyncIterator()
-    guard case .ended(let phase, _, _, let wasCompleted) = await iterator.next() else {
+    guard case .ended(let phase, _, _, let wasCompleted) = await nextEnded(in: engine.phaseEvents)
+    else {
       Issue.record("Expected exactly one phase-end event")
       return
     }
@@ -117,25 +125,68 @@ struct SessionEngineCompletionTests {
     #expect(wasCompleted == true)
   }
 
-  @Test func skipDoesNotFireEvent() async {
+  @Test func skipFocusFiresPartialEndedEventBeforeTheNextPhaseBegins() async {
+    // D7 of design doc 0010: skipping a focus phase now emits a partial `.ended(.focus,
+    // wasCompleted: false)` so its invested time is credited, ahead of the next phase's began.
     var currentTime = Date(timeIntervalSinceReferenceDate: 0)
-    let engine = SessionEngine(
-      focusDuration: 60, shortBreakDuration: 60, now: { currentTime })
+    let engine = SessionEngine(focusDuration: 60, now: { currentTime })
     engine.start()
-    engine.skip()  // must not buffer an event
-
-    // Drive the (now short-break) phase to natural completion as a sentinel: if skip()
-    // had wrongly buffered a `.focus` event, this would not be the first event received.
-    currentTime = currentTime.addingTimeInterval(60)
-    engine.pause()
+    currentTime = currentTime.addingTimeInterval(20)
+    engine.skip()
 
     var iterator = engine.phaseEvents.makeAsyncIterator()
-    guard case .ended(let phase, _, _, let wasCompleted) = await iterator.next() else {
-      Issue.record("Expected exactly one phase-end event")
+    guard case .began(let firstBegan) = await iterator.next() else {
+      Issue.record("Expected the initial began(.focus) event")
       return
     }
-    #expect(phase == .shortBreak)
-    #expect(wasCompleted == true)
+    #expect(firstBegan == .focus)
+
+    guard case .ended(let phase, _, _, let wasCompleted) = await iterator.next() else {
+      Issue.record("Expected a partial focus ended event from skip")
+      return
+    }
+    #expect(phase == .focus)
+    #expect(wasCompleted == false)
+
+    guard case .began(let nextBegan) = await iterator.next() else {
+      Issue.record("Expected the short-break began event")
+      return
+    }
+    #expect(nextBegan == .shortBreak)
+  }
+
+  @Test func skipBreakDoesNotFirePartialEndedEvent() async {
+    // Skipping a break is unchanged — no synthesized partial `.ended` for the break itself.
+    let engine = SessionEngine(focusDuration: 60, shortBreakDuration: 60)
+    engine.start()
+    engine.skip()  // focus -> shortBreak: partial ended(.focus) + began(.shortBreak)
+    engine.skip()  // shortBreak -> focus: only began(.focus), no ended for the break
+
+    var iterator = engine.phaseEvents.makeAsyncIterator()
+    guard case .began(let firstBegan) = await iterator.next() else {
+      Issue.record("Expected began(.focus)")
+      return
+    }
+    #expect(firstBegan == .focus)
+
+    guard case .ended(let endedPhase, _, _, let wasCompleted) = await iterator.next() else {
+      Issue.record("Expected the partial focus ended event")
+      return
+    }
+    #expect(endedPhase == .focus)
+    #expect(wasCompleted == false)
+
+    guard case .began(let secondBegan) = await iterator.next() else {
+      Issue.record("Expected began(.shortBreak)")
+      return
+    }
+    #expect(secondBegan == .shortBreak)
+
+    guard case .began(let thirdBegan) = await iterator.next() else {
+      Issue.record("Expected began(.focus) again, with no ended event for the break")
+      return
+    }
+    #expect(thirdBegan == .focus)
   }
 
   @Test func skipUsesProvidedBreakPhase() {
@@ -167,15 +218,20 @@ struct SessionEngineCompletionTests {
     currentTime = currentTime.addingTimeInterval(60)
     engine.pause()
 
-    var iterator = engine.phaseEvents.makeAsyncIterator()
-    guard case .ended(let firstPhase, _, _, let firstCompleted) = await iterator.next() else {
+    guard
+      case .ended(let firstPhase, _, _, let firstCompleted) = await nextEnded(
+        in: engine.phaseEvents)
+    else {
       Issue.record("Expected the natural-completion event")
       return
     }
     #expect(firstPhase == .focus)
     #expect(firstCompleted == true)
 
-    guard case .ended(let secondPhase, _, _, let secondCompleted) = await iterator.next() else {
+    guard
+      case .ended(let secondPhase, _, _, let secondCompleted) = await nextEnded(
+        in: engine.phaseEvents)
+    else {
       Issue.record("Expected the sentinel phase-end event")
       return
     }

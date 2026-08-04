@@ -28,7 +28,7 @@ enum AppLabels {
     /// Shown on the completion circle when no session is running.
     static let markAsCompleted = "Mark as completed"
     /// Shown on the completion circle when a timer session is active.
-    static let markAsCompletedActive = "Mark as completed (will stop timer)"
+    static let markAsCompletedActive = "Mark as completed (will pause timer)"
     /// Shown on the restore circle of a completed task row or card.
     static let restore = "Restore task"
     /// Shown on the trash button of a completed task row or card.

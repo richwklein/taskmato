@@ -18,4 +18,11 @@ protocol SessionRepository: Sendable {
   /// Persists a session record to the log.
   /// - Parameter session: The completed session to append.
   func append(_ session: Session) async throws
+
+  /// Persists a session record, replacing any existing record with the same `id`.
+  ///
+  /// Backs the durable phase draft (D7 of design doc 0010): a mid-phase slice close upserts the
+  /// in-progress record, and the final write at phase end upserts over it.
+  /// - Parameter session: The session to insert or update.
+  func upsert(_ session: Session) async throws
 }

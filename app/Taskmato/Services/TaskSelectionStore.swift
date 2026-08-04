@@ -21,6 +21,20 @@ final class TaskSelectionStore {
   /// Recent tasks keyed by provider ID, each capped at `recentsLimit` entries.
   private(set) var recentsByProvider: [String: [TaskItem]] = [:]
 
+  /// `true` after a complete/swap/clear pause routes to the task picker (D9 of design doc
+  /// 0010) — a one-shot signal that the next ``select(_:)`` is a genuine handoff continuation,
+  /// not an idle pick. Cleared as soon as the next selection consumes it.
+  private(set) var isPendingContinuation = false
+
+  /// Fired on every active-task change — select or clear — with the new value. Mirrors the
+  /// `registry.onProviderStateChanged` idiom. `AppComposition` wires this to
+  /// ``FocusAttribution/taskChanged(to:consumedSeconds:)``.
+  var onActiveTaskChanged: ((TaskItem?) -> Void)?
+
+  /// Fired when ``select(_:)`` consumes a pending continuation (D9); the caller decides whether
+  /// to resume the paused phase, gated on `autoStartNextPhase`.
+  var onContinuationSelect: (() -> Void)?
+
   private let store: SettingsStore
   static let recentsLimit = 10
 
@@ -34,18 +48,37 @@ final class TaskSelectionStore {
 
   /// Selects a task as the active task and prepends it to that provider's recents.
   ///
-  /// Safe to call mid-session — does not interact with the timer state.
+  /// Safe to call mid-session — does not interact with the timer state directly, though a
+  /// pending continuation (D9) may trigger ``onContinuationSelect``.
   /// - Parameter task: The task to make active.
   func select(_ task: TaskItem) {
     activeTask = task
     addToRecents(task)
     persist()
+    onActiveTaskChanged?(task)
+    if isPendingContinuation {
+      isPendingContinuation = false
+      onContinuationSelect?()
+    }
   }
 
   /// Clears the active task without affecting recents.
   func clearActiveTask() {
     activeTask = nil
     persist()
+    onActiveTaskChanged?(nil)
+  }
+
+  /// Marks the next ``select(_:)`` as a genuine handoff continuation (D9) — call after a
+  /// complete/swap/clear pauses the phase and routes to the picker.
+  func markPendingContinuation() {
+    isPendingContinuation = true
+  }
+
+  /// Clears a pending continuation without selecting, so a stale flag never triggers a later,
+  /// unrelated selection.
+  func clearPendingContinuation() {
+    isPendingContinuation = false
   }
 
   // MARK: - Recents

@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftData
 import Testing
 
 @testable import Taskmato
@@ -18,10 +19,13 @@ struct SwiftDataSessionRepositoryTests {
     startedAt: Date = Date(timeIntervalSinceReferenceDate: 0),
     taskRef: TaskRef? = nil, taskTitle: String? = nil
   ) -> Session {
-    Session(
+    let segments: [FocusSegment] =
+      phase == .focus
+      ? [FocusSegment(id: UUID(), taskRef: taskRef, taskTitle: taskTitle, seconds: 1500)] : []
+    return Session(
       id: UUID(), phase: phase, startedAt: startedAt,
       endedAt: startedAt.addingTimeInterval(1500), wasCompleted: true,
-      taskRef: taskRef, taskTitle: taskTitle)
+      segments: segments)
   }
 
   @Test func appendedSessionIsReturned() async throws {
@@ -64,15 +68,121 @@ struct SwiftDataSessionRepositoryTests {
     let ref = TaskRef(providerID: "reminders", nativeID: "abc")
     try await repository.append(makeSession(taskRef: ref, taskTitle: "Write plan"))
     let session = try await repository.sessions(over: Self.allTime).first
-    #expect(session?.taskRef == ref)
-    #expect(session?.taskTitle == "Write plan")
+    #expect(session?.segments.first?.taskRef == ref)
+    #expect(session?.segments.first?.taskTitle == "Write plan")
   }
 
   @Test func untrackedSessionHasNoTaskRef() async throws {
     let repository = try SwiftDataSessionRepository.makeInMemory()
     try await repository.append(makeSession(taskRef: nil, taskTitle: nil))
     let session = try await repository.sessions(over: Self.allTime).first
-    #expect(session?.taskRef == nil)
-    #expect(session?.taskTitle == nil)
+    #expect(session?.segments.count == 1)
+    #expect(session?.segments.first?.taskRef == nil)
+    #expect(session?.segments.first?.taskTitle == nil)
+  }
+
+  // MARK: - upsert (D7 of design doc 0010)
+
+  @Test func upsertInsertsWhenIDIsNew() async throws {
+    let repository = try SwiftDataSessionRepository.makeInMemory()
+    let session = makeSession()
+    try await repository.upsert(session)
+    let sessions = try await repository.sessions(over: Self.allTime)
+    #expect(sessions.count == 1)
+    #expect(sessions.first?.id == session.id)
+  }
+
+  @Test func upsertReplacesAnExistingRowWithTheSameID() async throws {
+    let repository = try SwiftDataSessionRepository.makeInMemory()
+    let id = UUID()
+    let start = Date(timeIntervalSinceReferenceDate: 0)
+    let taskA = TaskRef(providerID: "local", nativeID: "a")
+    let draft = Session(
+      id: id, phase: .focus, startedAt: start, endedAt: start.addingTimeInterval(40),
+      wasCompleted: false,
+      segments: [FocusSegment(id: UUID(), taskRef: taskA, taskTitle: "Task A", seconds: 40)])
+    try await repository.upsert(draft)
+
+    let taskB = TaskRef(providerID: "local", nativeID: "b")
+    let finalized = Session(
+      id: id, phase: .focus, startedAt: start, endedAt: start.addingTimeInterval(60),
+      wasCompleted: true,
+      segments: [
+        FocusSegment(id: UUID(), taskRef: taskA, taskTitle: "Task A", seconds: 40),
+        FocusSegment(id: UUID(), taskRef: taskB, taskTitle: "Task B", seconds: 20),
+      ])
+    try await repository.upsert(finalized)
+
+    let sessions = try await repository.sessions(over: Self.allTime)
+    #expect(sessions.count == 1)
+    #expect(sessions.first?.wasCompleted == true)
+    #expect(sessions.first?.segments.count == 2)
+  }
+
+  @Test func upsertDoesNotDuplicateOtherRows() async throws {
+    let repository = try SwiftDataSessionRepository.makeInMemory()
+    let other = makeSession(startedAt: Date(timeIntervalSinceReferenceDate: 10_000))
+    try await repository.append(other)
+
+    let session = makeSession()
+    try await repository.upsert(session)
+
+    let sessions = try await repository.sessions(over: Self.allTime)
+    #expect(sessions.count == 2)
+  }
+
+  // MARK: - Legacy backward-compatible read (D6 of design doc 0010)
+
+  @Test func legacyEntityWithFlatFieldsDecodesToOneSlice() async throws {
+    let container = try SwiftDataSessionRepository.makeInMemoryContainer()
+    let repository = SwiftDataSessionRepository(modelContainer: container)
+    let ref = TaskRef(providerID: "reminders", nativeID: "abc")
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let endedAt = startedAt.addingTimeInterval(1_500)
+    let legacyEntity = SessionEntity(
+      id: UUID(), phase: .focus, startedAt: startedAt, endedAt: endedAt, wasCompleted: true,
+      segments: [], taskProviderID: ref.providerID.rawValue, taskNativeID: ref.nativeID,
+      taskTitle: "Legacy task")
+    let context = ModelContext(container)
+    context.insert(legacyEntity)
+    try context.save()
+
+    let session = try await repository.sessions(over: Self.allTime).first
+    #expect(session?.segments.count == 1)
+    #expect(session?.segments.first?.taskRef == ref)
+    #expect(session?.segments.first?.taskTitle == "Legacy task")
+    #expect(session?.segments.first?.seconds == 1_500)
+  }
+
+  @Test func legacyEntityWithNoTaskDecodesToEmptySegments() async throws {
+    let container = try SwiftDataSessionRepository.makeInMemoryContainer()
+    let repository = SwiftDataSessionRepository(modelContainer: container)
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let legacyEntity = SessionEntity(
+      id: UUID(), phase: .focus, startedAt: startedAt,
+      endedAt: startedAt.addingTimeInterval(1_500), wasCompleted: true,
+      segments: [], taskProviderID: nil, taskNativeID: nil, taskTitle: nil)
+    let context = ModelContext(container)
+    context.insert(legacyEntity)
+    try context.save()
+
+    let session = try await repository.sessions(over: Self.allTime).first
+    #expect(session?.segments.isEmpty == true)
+  }
+
+  @Test func legacyBreakEntityWithStrayFlatFieldsDecodesToEmptySegments() async throws {
+    let container = try SwiftDataSessionRepository.makeInMemoryContainer()
+    let repository = SwiftDataSessionRepository(modelContainer: container)
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let legacyEntity = SessionEntity(
+      id: UUID(), phase: .shortBreak, startedAt: startedAt,
+      endedAt: startedAt.addingTimeInterval(300), wasCompleted: true,
+      segments: [], taskProviderID: "local", taskNativeID: "abc", taskTitle: "Stray")
+    let context = ModelContext(container)
+    context.insert(legacyEntity)
+    try context.save()
+
+    let session = try await repository.sessions(over: Self.allTime).first
+    #expect(session?.segments.isEmpty == true)
   }
 }

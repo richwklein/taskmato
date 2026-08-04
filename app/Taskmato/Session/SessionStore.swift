@@ -33,6 +33,17 @@ final class SessionStore {
     Task { try? await repository.append(session) }
   }
 
+  /// Records a session, replacing any existing record with the same `id` in both the mirror
+  /// and the repository (D7 of design doc 0010) — the durable phase draft's write path.
+  func upsert(_ session: Session) {
+    if let index = sessions.firstIndex(where: { $0.id == session.id }) {
+      sessions[index] = session
+    } else {
+      sessions.append(session)
+    }
+    Task { try? await repository.upsert(session) }
+  }
+
   /// Returns a ``SessionSummary`` for sessions whose `startedAt` falls within `interval`.
   /// - Parameter interval: The date range to scope results to.
   func summary(for interval: DateInterval) -> SessionSummary {

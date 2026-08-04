@@ -77,20 +77,25 @@ final class StatsViewModel {
   var taskBreakdown: [SessionSummary.TaskSlice] { statCards.taskBreakdown }
 
   /// Focus minutes per day, split by provider, within the current scope.
+  ///
+  /// A time metric (D5 of design doc 0010): sums every focus segment regardless of the owning
+  /// phase's completion, so a stopped or skipped phase's invested time still appears.
   var dailyFocusTotals: [DayTotal] {
     let calendar = Calendar.current
     var order: [String] = []
     var accumulated: [String: DayBucket] = [:]
 
-    for session in completedFocus(in: scopedInterval) {
+    for session in focusSessions(in: scopedInterval) {
       let day = calendar.startOfDay(for: session.startedAt)
-      let providerID = session.taskRef?.providerID.rawValue ?? Self.untrackedKey
-      let key = "\(day.timeIntervalSinceReferenceDate):\(providerID)"
-      if accumulated[key] == nil {
-        order.append(key)
-        accumulated[key] = DayBucket(day: day, providerID: providerID, seconds: 0)
+      for segment in session.segments {
+        let providerID = segment.taskRef?.providerID.rawValue ?? Self.untrackedKey
+        let key = "\(day.timeIntervalSinceReferenceDate):\(providerID)"
+        if accumulated[key] == nil {
+          order.append(key)
+          accumulated[key] = DayBucket(day: day, providerID: providerID, seconds: 0)
+        }
+        accumulated[key]!.seconds += segment.seconds
       }
-      accumulated[key]!.seconds += session.duration
     }
 
     return
@@ -105,14 +110,18 @@ final class StatsViewModel {
   }
 
   /// Focus time by provider within the current scope, sorted by duration descending.
+  ///
+  /// A time metric (D5): sums every focus segment regardless of the owning phase's completion.
   var providerBreakdown: [ProviderSlice] {
     var order: [String] = []
     var accumulated: [String: TimeInterval] = [:]
 
-    for session in completedFocus(in: scopedInterval) {
-      let providerID = session.taskRef?.providerID.rawValue ?? Self.untrackedKey
-      if accumulated[providerID] == nil { order.append(providerID) }
-      accumulated[providerID, default: 0] += session.duration
+    for session in focusSessions(in: scopedInterval) {
+      for segment in session.segments {
+        let providerID = segment.taskRef?.providerID.rawValue ?? Self.untrackedKey
+        if accumulated[providerID] == nil { order.append(providerID) }
+        accumulated[providerID, default: 0] += segment.seconds
+      }
     }
 
     return
@@ -128,25 +137,29 @@ final class StatsViewModel {
   }
 
   /// Every task's all-time focus totals, ranked by total minutes descending.
+  ///
+  /// A time metric (D5): sums every focus segment regardless of the owning phase's completion.
   var allTaskRows: [AllTimeTaskRow] {
     var order: [String] = []
     var accumulated: [String: TaskBucket] = [:]
 
-    for session in sessions where session.phase == .focus && session.wasCompleted {
-      let key: String
-      if let ref = session.taskRef {
-        key = "\(ref.providerID.rawValue):\(ref.nativeID)"
-      } else {
-        key = Self.untrackedKey
+    for session in sessions where session.phase == .focus {
+      for segment in session.segments {
+        let key: String
+        if let ref = segment.taskRef {
+          key = "\(ref.providerID.rawValue):\(ref.nativeID)"
+        } else {
+          key = Self.untrackedKey
+        }
+        if accumulated[key] == nil {
+          order.append(key)
+          accumulated[key] = TaskBucket(
+            taskRef: segment.taskRef, title: segment.taskTitle ?? "Untracked", seconds: 0,
+            last: session.endedAt)
+        }
+        accumulated[key]!.seconds += segment.seconds
+        if session.endedAt > accumulated[key]!.last { accumulated[key]!.last = session.endedAt }
       }
-      if accumulated[key] == nil {
-        order.append(key)
-        accumulated[key] = TaskBucket(
-          taskRef: session.taskRef, title: session.taskTitle ?? "Untracked", seconds: 0,
-          last: session.endedAt)
-      }
-      accumulated[key]!.seconds += session.duration
-      if session.endedAt > accumulated[key]!.last { accumulated[key]!.last = session.endedAt }
     }
 
     return
@@ -188,12 +201,14 @@ final class StatsViewModel {
     return streak
   }
 
-  /// Number of completed focus sessions that started today.
-  var todayFocusCount: Int { todaysFocus.count }
+  /// Number of completed focus sessions that started today. A count metric (D5): gated on
+  /// `wasCompleted` — the pomodoro is indivisible.
+  var todayFocusCount: Int { todaysCompletedFocus.count }
 
-  /// Total whole minutes across completed focus sessions that started today.
+  /// Total whole minutes across focus segments recorded today, regardless of the owning
+  /// phase's completion. A time metric (D5): a stopped or skipped phase still contributes.
   var todayFocusMinutes: Int {
-    Int(todaysFocus.reduce(0) { $0 + $1.duration } / 60)
+    Int(todaysFocus.flatMap(\.segments).reduce(0) { $0 + $1.seconds } / 60)
   }
 
   // MARK: - Private
@@ -213,21 +228,26 @@ final class StatsViewModel {
     var last: Date
   }
 
-  /// Completed focus sessions that started today (calendar day, local time zone).
+  /// Focus sessions that started today (calendar day, local time zone), regardless of
+  /// completion — the population time metrics sum over.
   private var todaysFocus: [Session] {
     let calendar = Calendar.current
     let today = calendar.startOfDay(for: Date())
     return sessions.filter {
-      $0.phase == .focus && $0.wasCompleted
-        && calendar.startOfDay(for: $0.startedAt) == today
+      $0.phase == .focus && calendar.startOfDay(for: $0.startedAt) == today
     }
   }
 
-  /// Completed focus sessions whose start falls within `interval` (half-open).
-  private func completedFocus(in interval: DateInterval) -> [Session] {
+  /// Completed focus sessions that started today — the population count metrics gate on.
+  private var todaysCompletedFocus: [Session] {
+    todaysFocus.filter(\.wasCompleted)
+  }
+
+  /// Focus sessions whose start falls within `interval` (half-open), regardless of
+  /// completion — the population time metrics sum over (D5 of design doc 0010).
+  private func focusSessions(in interval: DateInterval) -> [Session] {
     sessions.filter {
-      $0.phase == .focus && $0.wasCompleted
-        && $0.startedAt >= interval.start && $0.startedAt < interval.end
+      $0.phase == .focus && $0.startedAt >= interval.start && $0.startedAt < interval.end
     }
   }
 
@@ -300,11 +320,14 @@ final class StatsViewModel {
           let provider = providers[(dayOffset + slot) % providers.count]
           let start = day.addingTimeInterval(TimeInterval((9 + slot) * 3_600))
           let ref = provider.map { TaskRef(providerID: ProviderID($0), nativeID: "task-\(slot)") }
+          let end = start.addingTimeInterval(25 * 60)
+          let segment = FocusSegment(
+            id: UUID(), taskRef: ref, taskTitle: provider.map { "\($0.capitalized) task \(slot)" },
+            seconds: end.timeIntervalSince(start))
           sessions.append(
             Session(
               id: UUID(), phase: .focus, startedAt: start,
-              endedAt: start.addingTimeInterval(25 * 60), wasCompleted: true,
-              taskRef: ref, taskTitle: provider.map { "\($0.capitalized) task \(slot)" }))
+              endedAt: end, wasCompleted: true, segments: [segment]))
         }
       }
       return seeded(sessions)
