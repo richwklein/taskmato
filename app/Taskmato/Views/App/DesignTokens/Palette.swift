@@ -28,8 +28,11 @@ extension Color {
   /// Marker on the provider's default (favorite) list.
   static let favoriteStar: Color = .yellow
 
-  /// Error or warning indicator (permission failure, validation).
+  /// Error indicator for permission failures and blocking validation.
   static let statusError: Color = .red
+
+  /// Warning indicator for non-blocking conditions that may need attention.
+  static let statusWarning: Color = .orange
 
   /// Success or authorized-state indicator.
   static let statusSuccess: Color = .green

@@ -18,20 +18,36 @@ struct RemindersSetupSheet: View {
   @State private var patternText: String = ""
   @FocusState private var isPatternFocused: Bool
 
+  private var draftPatterns: [String] {
+    PatternList.parse(patternText)
+  }
+
+  private var matchingCalendarCount: Int {
+    guard !draftPatterns.isEmpty else { return allCalendarTitles.count }
+    return allCalendarTitles.filter {
+      provider.matchesAnyPattern(title: $0, patterns: draftPatterns)
+    }.count
+  }
+
   private var listSummaryText: String {
     let total = allCalendarTitles.count
-    if provider.listPatterns.isEmpty {
+    if draftPatterns.isEmpty {
       return "\(total) reminder list\(total == 1 ? "" : "s") available"
     }
-    let matched = allCalendarTitles.filter {
-      provider.matchesAnyPattern(title: $0, patterns: provider.listPatterns)
-    }.count
-    return "\(matched) of \(total) lists match"
+    return "\(matchingCalendarCount) of \(total) lists match"
+  }
+
+  private var showsListPatternWarning: Bool {
+    !draftPatterns.isEmpty && !allCalendarTitles.isEmpty && matchingCalendarCount == 0
+  }
+
+  private var doneKeyboardShortcut: KeyboardShortcut? {
+    provider.isAuthorized || error == .accessRestricted ? .defaultAction : nil
   }
 
   var body: some View {
     VStack(alignment: .leading, spacing: .sectionGap) {
-      Text("Apple Reminders")
+      Text("Configure \(provider.displayName)")
         .font(.sheetTitle)
 
       content
@@ -42,7 +58,7 @@ struct RemindersSetupSheet: View {
           commitPatterns()
           dismiss()
         }
-        .keyboardShortcut(.defaultAction)
+        .keyboardShortcut(doneKeyboardShortcut)
       }
     }
     .padding(.screenPadding)
@@ -72,21 +88,29 @@ struct RemindersSetupSheet: View {
 
   @ViewBuilder
   private var authorizedView: some View {
-    HStack(spacing: .contentGap) {
-      Image(systemName: "checkmark.circle.fill")
-        .foregroundStyle(Color.statusSuccess)
-        .imageScale(.large)
-      Text(listSummaryText)
-    }
+    RemindersSettingsFieldRow("List patterns") {
+      VStack(alignment: .leading, spacing: .iconLabel) {
+        TextField("e.g. Work*, *Personal*", text: $patternText)
+          .autocorrectionDisabled()
+          .focused($isPatternFocused)
+          .onSubmit { commitPatterns() }
+          .onChange(of: isPatternFocused) { _, focused in
+            if !focused { commitPatterns() }
+          }
 
-    LabeledContent("List patterns") {
-      TextField("e.g. Work*, *Personal*", text: $patternText)
-        .autocorrectionDisabled()
-        .focused($isPatternFocused)
-        .onSubmit { commitPatterns() }
-        .onChange(of: isPatternFocused) { _, focused in
-          if !focused { commitPatterns() }
+        if showsListPatternWarning {
+          Label(
+            "No reminder lists match this pattern.",
+            systemImage: "exclamationmark.triangle.fill"
+          )
+          .font(.caption)
+          .foregroundStyle(Color.statusWarning)
+        } else {
+          Text(listSummaryText)
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
+      }
     }
   }
 
@@ -101,6 +125,7 @@ struct RemindersSetupSheet: View {
       Button("Grant Access") {
         Task { await requestAccess() }
       }
+      .keyboardShortcut(.defaultAction)
     }
   }
 
@@ -163,12 +188,30 @@ struct RemindersSetupSheet: View {
   }
 
   private func commitPatterns() {
-    let patterns =
-      patternText
-      .components(separatedBy: ",")
-      .map { $0.trimmingCharacters(in: .whitespaces) }
-      .filter { !$0.isEmpty }
-    provider.setListPatterns(patterns)
+    provider.setListPatterns(PatternList.parse(patternText))
     patternText = provider.listPatterns.joined(separator: ", ")
+  }
+}
+
+private enum RemindersSettingsFieldRowMetrics {
+  static let labelWidth: CGFloat = 92
+}
+
+private struct RemindersSettingsFieldRow<Content: View>: View {
+  let title: String
+  let content: Content
+
+  init(_ title: String, @ViewBuilder content: () -> Content) {
+    self.title = title
+    self.content = content()
+  }
+
+  var body: some View {
+    HStack(alignment: .firstTextBaseline, spacing: .contentGap) {
+      Text(title)
+        .frame(width: RemindersSettingsFieldRowMetrics.labelWidth, alignment: .trailing)
+
+      content
+    }
   }
 }
