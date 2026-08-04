@@ -31,10 +31,12 @@ struct StatsViewModelTests {
     provider: ProviderID? = nil, nativeID: String = "t1", title: String? = nil
   ) -> Session {
     let ref = provider.map { TaskRef(providerID: $0, nativeID: nativeID) }
+    let seconds = TimeInterval(minutes * 60)
+    let segment = FocusSegment(id: UUID(), taskRef: ref, taskTitle: title, seconds: seconds)
     return Session(
       id: UUID(), phase: .focus, startedAt: start,
-      endedAt: start.addingTimeInterval(TimeInterval(minutes * 60)),
-      wasCompleted: completed, taskRef: ref, taskTitle: title)
+      endedAt: start.addingTimeInterval(seconds),
+      wasCompleted: completed, segments: [segment])
   }
 
   private func makeViewModel(
@@ -82,11 +84,39 @@ struct StatsViewModelTests {
       focus(start: start, completed: false),
       Session(
         id: UUID(), phase: .shortBreak, startedAt: start, endedAt: start.addingTimeInterval(300),
-        wasCompleted: true, taskRef: nil, taskTitle: nil),
+        wasCompleted: true),
     ])
     #expect(viewModel.todayFocusCount == 0)
     #expect(viewModel.currentStreak == 0)
     #expect(viewModel.statCards.focusCount == 0)
+  }
+
+  // MARK: - Count vs. time split (D5 of design doc 0010)
+
+  @Test func incompleteFocusSessionStillCreditsTodayFocusMinutes() async {
+    let start = Self.dayStart(daysAgo: 0).addingTimeInterval(9 * 3_600)
+    let viewModel = await makeViewModel([
+      focus(start: start, minutes: 10, completed: false, provider: "local")
+    ])
+    #expect(viewModel.todayFocusCount == 0)
+    #expect(viewModel.todayFocusMinutes == 10)
+  }
+
+  @Test func incompleteFocusSessionStillAppearsInBreakdowns() async {
+    let day = Self.fixedNoon(day: 400)
+    let viewModel = await makeViewModel([
+      focus(
+        start: day, minutes: 12, completed: false, provider: "local", nativeID: "abc",
+        title: "Draft")
+    ])
+    viewModel.scope = .allTime
+
+    #expect(viewModel.statCards.focusCount == 0)
+    #expect(viewModel.statCards.focusSeconds == 720)
+    #expect(viewModel.taskBreakdown.first?.seconds == 720.0)
+    #expect(viewModel.providerBreakdown.first?.minutes == 12)
+    #expect(viewModel.dailyFocusTotals.first?.minutes == 12)
+    #expect(viewModel.allTaskRows.first?.totalMinutes == 12)
   }
 
   // MARK: - Multi-day window scoping

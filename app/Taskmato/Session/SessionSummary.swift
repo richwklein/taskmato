@@ -51,15 +51,19 @@ struct SessionSummary {
 
   /// Computes a summary from sessions whose `startedAt` falls within `interval`.
   ///
+  /// Per design doc 0010 (D5), counts and time measure different populations: session, cycle,
+  /// and break **counts** stay gated on `wasCompleted` — the pomodoro is indivisible — while
+  /// focus **time** and the task breakdown sum every focus segment regardless of completion, so
+  /// invested time from a stopped or skipped phase is still credited.
   /// - Parameters:
   ///   - sessions: The full session log, as returned by ``SessionStore``.
   ///   - interval: The date range to scope results to.
   init(sessions: [Session], over interval: DateInterval) {
     let scoped = sessions.filter { interval.contains($0.startedAt) }
     let completedFocus = scoped.filter { $0.phase == .focus && $0.wasCompleted }
+    let allFocus = scoped.filter { $0.phase == .focus }
 
     focusCount = completedFocus.count
-    focusSeconds = completedFocus.reduce(0) { $0 + $1.duration }
 
     breakCount =
       scoped.filter {
@@ -68,28 +72,34 @@ struct SessionSummary {
 
     cycleCount = scoped.filter { $0.phase == .longBreak && $0.wasCompleted }.count
 
-    // Group completed focus sessions by task, preserving first-seen insertion order
-    // so the breakdown order is deterministic before the final sort.
+    // Group every focus segment by task, regardless of the owning phase's completion,
+    // preserving first-seen insertion order so the breakdown order is deterministic before
+    // the final sort.
     var ordered: [String] = []
     var accumulated: [String: (label: String, seconds: TimeInterval)] = [:]
+    var totalFocusSeconds: TimeInterval = 0
 
-    for session in completedFocus {
-      let key: String
-      let label: String
-      if let ref = session.taskRef {
-        key = "\(ref.providerID.rawValue):\(ref.nativeID)"
-        label = session.taskTitle ?? "Unknown Task"
-      } else {
-        key = "__untracked__"
-        label = "Untracked"
+    for session in allFocus {
+      for segment in session.segments {
+        totalFocusSeconds += segment.seconds
+        let key: String
+        let label: String
+        if let ref = segment.taskRef {
+          key = "\(ref.providerID.rawValue):\(ref.nativeID)"
+          label = segment.taskTitle ?? "Unknown Task"
+        } else {
+          key = "__untracked__"
+          label = "Untracked"
+        }
+        if accumulated[key] == nil {
+          ordered.append(key)
+          accumulated[key] = (label: label, seconds: 0)
+        }
+        accumulated[key]!.seconds += segment.seconds
       }
-      if accumulated[key] == nil {
-        ordered.append(key)
-        accumulated[key] = (label: label, seconds: 0)
-      }
-      accumulated[key]!.seconds += session.duration
     }
 
+    focusSeconds = totalFocusSeconds
     taskBreakdown =
       ordered
       .compactMap { key -> TaskSlice? in

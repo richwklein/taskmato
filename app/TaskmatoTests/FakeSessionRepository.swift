@@ -20,4 +20,12 @@ final class FakeSessionRepository: SessionRepository {
   }
 
   func append(_ session: Session) async throws { stored.append(session) }
+
+  func upsert(_ session: Session) async throws {
+    if let index = stored.firstIndex(where: { $0.id == session.id }) {
+      stored[index] = session
+    } else {
+      stored.append(session)
+    }
+  }
 }

@@ -160,4 +160,82 @@ struct TaskSelectionStoreTests {
     let reloaded = TaskSelectionStore(store: SettingsStore(defaults: defaults))
     #expect(reloaded.activeTask == nil)
   }
+
+  // MARK: - onActiveTaskChanged (D4 of design doc 0010)
+
+  @Test func selectFiresOnActiveTaskChangedWithTheNewTask() {
+    let store = makeStore()
+    let task = makeItem(providerID: "alpha", nativeID: "1", title: "Write tests")
+    var observed: TaskItem?
+    store.onActiveTaskChanged = { observed = $0 }
+    store.select(task)
+    #expect(observed == task)
+  }
+
+  @Test func clearActiveTaskFiresOnActiveTaskChangedWithNil() {
+    let store = makeStore()
+    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Write tests"))
+    var fired = false
+    var observed: TaskItem?
+    store.onActiveTaskChanged = {
+      fired = true
+      observed = $0
+    }
+    store.clearActiveTask()
+    #expect(fired)
+    #expect(observed == nil)
+  }
+
+  // MARK: - Pending continuation (D9 of design doc 0010)
+
+  @Test func markPendingContinuationSetsFlag() {
+    let store = makeStore()
+    store.markPendingContinuation()
+    #expect(store.isPendingContinuation)
+  }
+
+  @Test func selectAfterPendingContinuationFiresOnContinuationSelect() {
+    let store = makeStore()
+    var fired = false
+    store.onContinuationSelect = { fired = true }
+    store.markPendingContinuation()
+    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Next task"))
+    #expect(fired)
+  }
+
+  @Test func selectAfterPendingContinuationClearsTheFlag() {
+    let store = makeStore()
+    store.markPendingContinuation()
+    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Next task"))
+    #expect(store.isPendingContinuation == false)
+  }
+
+  @Test func idleSelectNeverFiresOnContinuationSelect() {
+    // No handoff (complete/swap/clear) preceded this pick — an ordinary idle selection.
+    let store = makeStore()
+    var fired = false
+    store.onContinuationSelect = { fired = true }
+    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Any task"))
+    #expect(fired == false)
+  }
+
+  @Test func onlyTheNextSelectConsumesThePendingContinuation() {
+    let store = makeStore()
+    var fireCount = 0
+    store.onContinuationSelect = { fireCount += 1 }
+    store.markPendingContinuation()
+    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "First"))
+    store.select(makeItem(providerID: "alpha", nativeID: "2", title: "Second"))
+    #expect(fireCount == 1)
+  }
+
+  @Test func clearPendingContinuationPreventsTheNextSelectFromFiring() {
+    let store = makeStore()
+    var fired = false
+    store.onContinuationSelect = { fired = true }
+    store.markPendingContinuation()
+    store.clearPendingContinuation()
+    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Task"))
+    #expect(fired == false)
+  }
 }

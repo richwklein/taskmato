@@ -26,6 +26,17 @@ actor SwiftDataSessionRepository: SessionRepository {
     modelContext.insert(SessionEntity(session: session))
     try modelContext.save()
   }
+
+  func upsert(_ session: Session) throws {
+    let id = session.id
+    let descriptor = FetchDescriptor<SessionEntity>(predicate: #Predicate { $0.id == id })
+    if let existing = try modelContext.fetch(descriptor).first {
+      existing.update(from: session)
+    } else {
+      modelContext.insert(SessionEntity(session: session))
+    }
+    try modelContext.save()
+  }
 }
 
 extension SwiftDataSessionRepository {

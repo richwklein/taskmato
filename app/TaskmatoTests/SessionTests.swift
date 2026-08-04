@@ -14,13 +14,15 @@ struct SessionTests {
   private let start = Date(timeIntervalSinceReferenceDate: 0)
 
   private func makeSession(taskRef: TaskRef? = nil) -> Session {
-    Session(
+    let segments: [FocusSegment] =
+      taskRef.map { [FocusSegment(id: UUID(), taskRef: $0, taskTitle: nil, seconds: 1500)] } ?? []
+    return Session(
       id: UUID(),
       phase: .focus,
       startedAt: start,
       endedAt: start.addingTimeInterval(1500),
       wasCompleted: true,
-      taskRef: taskRef
+      segments: segments
     )
   }
 
@@ -28,7 +30,7 @@ struct SessionTests {
     let session = makeSession()
     let data = try JSONEncoder().encode(session)
     let decoded = try JSONDecoder().decode(Session.self, from: data)
-    #expect(decoded.taskRef == nil)
+    #expect(decoded.segments.isEmpty)
     #expect(decoded.id == session.id)
   }
 
@@ -37,7 +39,7 @@ struct SessionTests {
     let session = makeSession(taskRef: ref)
     let data = try JSONEncoder().encode(session)
     let decoded = try JSONDecoder().decode(Session.self, from: data)
-    #expect(decoded.taskRef == ref)
+    #expect(decoded.segments.first?.taskRef == ref)
   }
 
   @Test func durationIsComputedFromTimestamps() {

@@ -31,14 +31,16 @@ struct SessionSummaryTests {
     taskRef: TaskRef? = nil,
     taskTitle: String? = nil
   ) -> Session {
-    Session(
+    let segments: [FocusSegment] =
+      phase == .focus
+      ? [FocusSegment(id: UUID(), taskRef: taskRef, taskTitle: taskTitle, seconds: duration)] : []
+    return Session(
       id: UUID(),
       phase: phase,
       startedAt: startedAt,
       endedAt: startedAt.addingTimeInterval(duration),
       wasCompleted: wasCompleted,
-      taskRef: taskRef,
-      taskTitle: taskTitle
+      segments: segments
     )
   }
 
@@ -73,7 +75,6 @@ struct SessionSummaryTests {
     let partial = makeSession(wasCompleted: false)
     let summary = SessionSummary(sessions: [partial], over: Self.todayInterval)
     #expect(summary.focusCount == 0)
-    #expect(summary.focusSeconds == 0)
   }
 
   @Test func focusSecondsAccumulatesCompletedDurations() {
@@ -82,6 +83,34 @@ struct SessionSummaryTests {
     let summary = SessionSummary(sessions: [first, second], over: Self.todayInterval)
     #expect(summary.focusSeconds == 2_400)
     #expect(summary.focusMinutes == 40)
+  }
+
+  // MARK: - Count vs. time split (D5 of design doc 0010)
+
+  @Test func incompleteFocusSessionStillCreditsFocusSeconds() {
+    let partial = makeSession(duration: 900, wasCompleted: false)
+    let summary = SessionSummary(sessions: [partial], over: Self.todayInterval)
+    #expect(summary.focusCount == 0)
+    #expect(summary.focusSeconds == 900)
+  }
+
+  @Test func incompleteFocusSessionStillAppearsInTaskBreakdown() {
+    let ref = TaskRef(providerID: "local", nativeID: "abc")
+    let partial = makeSession(
+      duration: 900, wasCompleted: false, taskRef: ref, taskTitle: "Design Review")
+    let summary = SessionSummary(sessions: [partial], over: Self.todayInterval)
+    #expect(summary.taskBreakdown.count == 1)
+    #expect(summary.taskBreakdown.first?.seconds == 900)
+  }
+
+  @Test func completedAndIncompleteSessionsForSameTaskPoolTheirTime() {
+    let ref = TaskRef(providerID: "local", nativeID: "abc")
+    let completed = makeSession(duration: 1_500, taskRef: ref, taskTitle: "Design Review")
+    let incomplete = makeSession(
+      duration: 300, wasCompleted: false, taskRef: ref, taskTitle: "Design Review")
+    let summary = SessionSummary(sessions: [completed, incomplete], over: Self.todayInterval)
+    #expect(summary.focusCount == 1)
+    #expect(summary.taskBreakdown.first?.seconds == 1_800)
   }
 
   // MARK: - Break counting

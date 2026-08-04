@@ -5,7 +5,26 @@
 
 import Foundation
 
-/// An immutable record of a single completed Pomodoro phase.
+/// A contiguous run of focus time within one phase, attributed to a single task (or none).
+///
+/// A phase's timeline is partitioned into segments at each task change, so multiple segments
+/// can share one ``Session`` when the active task changed mid-phase (complete, swap, or clear).
+nonisolated struct FocusSegment: Codable, Sendable, Identifiable, Equatable {
+
+  /// Stable identifier for this slice.
+  let id: UUID
+
+  /// The task this slice of focus time is attributed to; `nil` for untracked focus.
+  let taskRef: TaskRef?
+
+  /// Task title captured at slice close, so stats survive renames/deletes.
+  let taskTitle: String?
+
+  /// Focus seconds attributed to this slice.
+  let seconds: TimeInterval
+}
+
+/// An immutable record of a single Pomodoro phase.
 nonisolated struct Session: Codable, Identifiable, Sendable {
 
   /// Stable unique identifier for this session record.
@@ -23,15 +42,27 @@ nonisolated struct Session: Codable, Identifiable, Sendable {
   /// `true` if the phase ran to completion naturally; `false` if the user stopped it early.
   let wasCompleted: Bool
 
-  /// The task associated with this session, if one was selected when the phase ran.
-  var taskRef: TaskRef?
-
-  /// The display title of the associated task, captured at session end.
+  /// The per-task attribution of this phase's focus time, in the order the tasks held focus.
   ///
-  /// Stored alongside `taskRef` so stats can show task names even after a task is
-  /// renamed or deleted from its provider.
-  var taskTitle: String?
+  /// Empty for break phases and for focus phases run with no task selected. The sum of
+  /// `segments.map(\.seconds)` equals the phase's consumed focus time — `duration` for a
+  /// completed phase, less for one stopped or skipped early.
+  var segments: [FocusSegment]
 
   /// Actual elapsed duration of this phase in seconds.
   var duration: TimeInterval { endedAt.timeIntervalSince(startedAt) }
+
+  /// Creates a session record from explicit field values.
+  /// - Parameter segments: The per-task focus attribution for this phase; defaults to none.
+  init(
+    id: UUID, phase: SessionPhase, startedAt: Date, endedAt: Date, wasCompleted: Bool,
+    segments: [FocusSegment] = []
+  ) {
+    self.id = id
+    self.phase = phase
+    self.startedAt = startedAt
+    self.endedAt = endedAt
+    self.wasCompleted = wasCompleted
+    self.segments = segments
+  }
 }

@@ -145,6 +145,24 @@ final class SessionEngine {
     return false
   }
 
+  /// Focus seconds consumed so far in the current focus phase (`duration - timeRemaining`), or
+  /// `0` when the current phase is not a running/paused focus phase. Monotonic across pauses —
+  /// `resume()` backdates its start so consumed time never rewinds (D4 of design doc 0010).
+  var consumedFocusSeconds: TimeInterval {
+    switch state {
+    case .running(let phase, let startedAt, let dur):
+      // Computed fresh from wall time rather than `timeRemaining`, which is only refreshed by
+      // the per-second tick or a pause/stop/skip call, so it can lag between ticks.
+      guard phase == .focus else { return 0 }
+      return min(dur, max(0, now().timeIntervalSince(startedAt)))
+    case .paused(let phase, _):
+      guard phase == .focus else { return 0 }
+      return duration(for: phase) - timeRemaining
+    case .idle:
+      return 0
+    }
+  }
+
   /// Begins a new session in the specified phase. Defaults to `.focus`. Has no effect if a session is already active or paused.
   func start(phase: SessionPhase = .focus) {
     guard case .idle = state else { return }
@@ -153,6 +171,7 @@ final class SessionEngine {
     timeRemaining = dur
     state = .running(phase: phase, startedAt: now(), duration: dur)
     startTicking()
+    phaseContinuation.yield(.began(phase: phase))
   }
 
   /// Suspends the current phase, capturing the remaining time. Has no effect when idle or already paused.
@@ -205,22 +224,34 @@ final class SessionEngine {
   /// - Running: the next phase starts immediately.
   /// - Paused: the next phase begins paused at its full duration.
   /// - Idle: queues focus as the next phase (cycling a pending break back to focus).
+  ///
+  /// Skipping a focus phase also yields a partial `.ended(.focus, wasCompleted: false)` before
+  /// the next phase's `.began`, so its invested time is still credited (D7 of design doc 0010).
   /// - Parameter nextBreak: The break phase to use when skipping from a focus phase. Defaults to `.shortBreak`.
   func skip(nextBreak: SessionPhase = .shortBreak) {
     let currentPhase: SessionPhase
     let wasRunning: Bool
+    let currentStartedAt: Date
     switch state {
-    case .running(let phase, _, _):
+    case .running(let phase, let startedAt, _):
       currentPhase = phase
       wasRunning = true
-    case .paused(let phase, _):
+      currentStartedAt = startedAt
+    case .paused(let phase, let remaining):
       currentPhase = phase
       wasRunning = false
+      currentStartedAt = now().addingTimeInterval(-(duration(for: phase) - remaining))
     case .idle:
       queuedPhase = .focus
       return
     }
     stopTicking()
+    let skipEndedAt = now()
+    if currentPhase == .focus {
+      phaseContinuation.yield(
+        .ended(
+          phase: .focus, startedAt: currentStartedAt, endedAt: skipEndedAt, wasCompleted: false))
+    }
     let next: SessionPhase = (currentPhase == .focus) ? nextBreak : .focus
     let dur = duration(for: next)
     timeRemaining = dur
@@ -231,6 +262,7 @@ final class SessionEngine {
     } else {
       state = .paused(phase: next, remaining: dur)
     }
+    phaseContinuation.yield(.began(phase: next))
   }
 
   /// Returns the break phase that should follow the next completed focus session.

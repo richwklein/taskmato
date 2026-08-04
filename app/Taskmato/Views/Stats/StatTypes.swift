@@ -94,7 +94,7 @@ nonisolated struct AllTimeTaskRow: Identifiable, Sendable {
   /// The task this row aggregates, or `nil` for untracked focus time.
   let taskRef: TaskRef?
 
-  /// `Session.taskTitle` snapshot; `"Untracked"` when no task was selected.
+  /// `FocusSegment.taskTitle` snapshot; `"Untracked"` when no task was selected.
   let title: String
 
   /// Human-readable provider name, or `"—"` for untracked focus time.

@@ -15,11 +15,13 @@ enum ActiveTaskStyle {
 
 /// A label row displaying the currently selected task with provider-conditional action buttons.
 ///
-/// Hidden when no task is selected. Clearing or completing mid-session shows an inline
-/// confirmation row that stops the timer and routes to the task picker. A swap button
-/// (active-session only) pauses the timer and opens the task picker without stopping the session.
-/// The same view backs the popover, the in-window strip, and the Timer destination; ``style``
-/// drives which affordances render and whether completing/clearing navigates the window.
+/// Hidden when no task is selected. Completing, swapping, or clearing mid-session pauses the
+/// live focus phase, closes and credits the outgoing slice, and — on ``ActiveTaskStyle/detail``
+/// — routes to the task picker (D2/D3 of design doc 0010); no confirmation is shown, since the
+/// action is no longer destructive. During a break the same three actions only mutate the
+/// selection, with no pause, slice, or routing (D10). The same view backs the popover, the
+/// in-window strip, and the Timer destination; ``style`` drives which affordances render and
+/// whether completing/swapping/clearing navigates the window.
 @MainActor
 struct ActiveTaskView: View {
 
@@ -35,24 +37,27 @@ struct ActiveTaskView: View {
   var onSelect: (() -> Void)?
 
   @State private var isCompletionHovered: Bool = false
-  @State private var pendingAction: ActiveTaskConfirmAction?
 
   private var sessionIsActive: Bool { engine.state != .idle }
 
+  /// The phase currently running or paused, or `nil` while idle.
+  private var currentPhase: SessionPhase? {
+    switch engine.state {
+    case .running(let phase, _, _): return phase
+    case .paused(let phase, _): return phase
+    case .idle: return nil
+    }
+  }
+
+  /// `true` while a session is active and the current phase is a break — complete/swap/clear
+  /// only mutate the selection during a break, never pausing, slicing, or routing (D10).
+  private var isBreakPhase: Bool {
+    currentPhase == .shortBreak || currentPhase == .longBreak
+  }
+
   var body: some View {
     if let task = selectionStore.activeTask {
-      if let action = pendingAction {
-        ActiveTaskConfirmRow(
-          action: action,
-          onConfirm: {
-            pendingAction = nil
-            commit(action, task: task)
-          },
-          onCancel: { pendingAction = nil }
-        )
-      } else {
-        taskRow(for: task)
-      }
+      taskRow(for: task)
     }
   }
 
@@ -69,9 +74,7 @@ struct ActiveTaskView: View {
       if style == .detail {
         if sessionIsActive {
           Button {
-            if engine.isRunning { engine.pause() }
-            nav.openMainWindow()
-            nav.showTasks()
+            swapTapped()
           } label: {
             Image(systemName: "arrow.triangle.swap")
               .foregroundStyle(.secondary)
@@ -82,11 +85,7 @@ struct ActiveTaskView: View {
         }
 
         Button {
-          if sessionIsActive {
-            pendingAction = .clear
-          } else {
-            selectionStore.clearActiveTask()
-          }
+          clearTapped()
         } label: {
           Image(systemName: "xmark")
             .foregroundStyle(.secondary)
@@ -144,51 +143,71 @@ struct ActiveTaskView: View {
     if registry.closableProvider(for: task.id) != nil {
       TaskCompletionButton(
         action: { completeTapped(task) },
-        label: sessionIsActive
+        label: (sessionIsActive && !isBreakPhase)
           ? AppLabels.Tooltip.markAsCompletedActive : AppLabels.Tooltip.markAsCompleted,
         isHovered: $isCompletionHovered
       )
     }
   }
 
-  /// Handles a tap on the completion circle: confirms first during a live session, otherwise
-  /// completes the task through its provider and clears the active selection.
-  private func completeTapped(_ task: TaskItem) {
-    if sessionIsActive {
-      pendingAction = .complete
-    } else {
-      let ref = task.id
-      Task {
-        if let provider = registry.closableProvider(for: ref) {
-          await errorPresenter.attempt(AppLabels.Error.completeFailed) {
-            try await provider.complete(ref)
-          }
-        }
-        selectionStore.clearActiveTask()
-      }
-    }
-  }
-
   // MARK: - Action dispatch
 
-  private func commit(_ action: ActiveTaskConfirmAction, task: TaskItem) {
-    switch action {
-    case .complete:
-      guard let provider = registry.closableProvider(for: task.id) else { return }
-      let ref = task.id
-      engine.stop()
+  /// Handles a tap on the completion circle.
+  ///
+  /// During a live focus phase, pauses first so provider-call latency doesn't leak into the
+  /// outgoing slice's credited time (D3 of design doc 0010); on success the slice closes
+  /// (`clearActiveTask()`) and the surface routes to Tasks, on failure the phase resumes and
+  /// the error surfaces. While idle or mid-break, only mutates the selection — no pause,
+  /// slice, or routing (D10).
+  private func completeTapped(_ task: TaskItem) {
+    guard let provider = registry.closableProvider(for: task.id) else { return }
+    let ref = task.id
+    guard sessionIsActive, !isBreakPhase else {
       Task {
         await errorPresenter.attempt(AppLabels.Error.completeFailed) {
           try await provider.complete(ref)
         }
         selectionStore.clearActiveTask()
-        if style == .detail { nav.showTasks() }
       }
-    case .clear:
-      engine.stop()
-      selectionStore.clearActiveTask()
-      if style == .detail { nav.showTasks() }
+      return
     }
+    engine.pause()
+    Task {
+      do {
+        try await provider.complete(ref)
+        selectionStore.clearActiveTask()
+        selectionStore.markPendingContinuation()
+        if style == .detail { nav.showTasks() }
+      } catch {
+        engine.resume()
+        errorPresenter.present(title: AppLabels.Error.completeFailed, error: error)
+      }
+    }
+  }
+
+  /// Pauses the live focus phase and routes to the task picker so the user can choose a
+  /// replacement; the outgoing slice closes once that selection lands (D2). During a break the
+  /// phase keeps running untouched — only the routing happens (D10).
+  private func swapTapped() {
+    if !isBreakPhase {
+      engine.pause()
+      selectionStore.markPendingContinuation()
+    }
+    nav.openMainWindow()
+    nav.showTasks()
+  }
+
+  /// Pauses, closes the outgoing slice, and detaches the active task. While idle or mid-break,
+  /// only detaches — no pause, slice, or routing (D10).
+  private func clearTapped() {
+    guard sessionIsActive, !isBreakPhase else {
+      selectionStore.clearActiveTask()
+      return
+    }
+    engine.pause()
+    selectionStore.clearActiveTask()
+    selectionStore.markPendingContinuation()
+    if style == .detail { nav.showTasks() }
   }
 }
 
