@@ -33,7 +33,7 @@ struct StatsTabView: View {
         description: "Complete a focus session to see your statistics here.")
     } else {
       let summary = statsViewModel.statCards
-      if summary.focusCount == 0 && summary.breakCount == 0 {
+      if summary.focusCount == 0 && summary.breakCount == 0 && summary.focusSeconds == 0 {
         emptyState(
           "No Sessions",
           description: "No focus sessions in this period.")
