@@ -37,6 +37,7 @@ private final class SelectionWritableProvider: WritableTaskProvider {
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   let defaultListID: String?
+  let contentFormat: ContentFormat = .markdown
 
   init(id: ProviderID, defaultListID: String? = nil) {
     self.id = id

@@ -287,6 +287,11 @@ struct LocalProviderTests {
     #expect(tasks[0].format == .markdown)
   }
 
+  @Test func contentFormatIsMarkdown() {
+    let provider = makeProvider()
+    #expect(provider.contentFormat == .markdown)
+  }
+
   @Test func existingTaskWithoutFormatFieldDecodesAsMarkdown() async throws {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".json")

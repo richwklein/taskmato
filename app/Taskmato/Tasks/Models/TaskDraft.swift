@@ -18,6 +18,10 @@ struct TaskDraft {
   /// Optional notes for the task.
   var notes: String = ""
 
+  /// The content format the created/updated task should use, stamped from
+  /// `WritableTaskProvider.contentFormat` before submission.
+  var format: ContentFormat = .markdown
+
   /// Priority level.
   var priority: TaskPriority = .none
 

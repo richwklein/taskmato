@@ -42,6 +42,7 @@ private final class StubWritableProvider: WritableTaskProvider {
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
   private(set) var defaultListID: String?
+  let contentFormat: ContentFormat = .markdown
 
   init(id: ProviderID) {
     self.id = id

@@ -18,6 +18,7 @@ private final class FakeWritableProvider: WritableTaskProvider {
   let entitlement: ProviderEntitlement = .free
 
   private(set) var defaultListID: String?
+  let contentFormat: ContentFormat = .plainText
   private(set) var addedDrafts: [TaskDraft] = []
   private(set) var setDefaultListCalls: [String] = []
   private(set) var createListCalls: [String] = []

@@ -21,7 +21,7 @@ struct AllTimeTaskTable: View {
   var body: some View {
     Table(rows.sorted(using: sortOrder), sortOrder: $sortOrder) {
       TableColumn("Task", value: \.title) { row in
-        Text(row.title).lineLimit(1)
+        Text(ContentFormat.markdown.attributedString(for: row.title)).lineLimit(1)
       }
       TableColumn("Provider", value: \.providerLabel) { row in
         Text(row.providerLabel).foregroundStyle(.secondary)

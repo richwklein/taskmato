@@ -66,7 +66,7 @@ struct TaskDonutChart: View {
             Circle()
               .fill(color(index))
               .frame(width: 10, height: 10)
-            Text(slice.label)
+            Text(ContentFormat.markdown.attributedString(for: slice.label))
               .lineLimit(1)
             Spacer()
             let pct = totalSeconds > 0 ? Int(slice.seconds / totalSeconds * 100) : 0

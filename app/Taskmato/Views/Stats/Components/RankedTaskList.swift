@@ -21,7 +21,7 @@ struct RankedTaskList: View {
       VStack(spacing: .iconLabel) {
         ForEach(slices) { slice in
           HStack(spacing: .contentGap) {
-            Text(slice.label)
+            Text(ContentFormat.markdown.attributedString(for: slice.label))
               .lineLimit(1)
             Spacer()
             Text(FocusDuration.label(seconds: slice.seconds))
