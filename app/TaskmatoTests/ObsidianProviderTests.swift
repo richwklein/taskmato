@@ -158,6 +158,33 @@ struct ObsidianProviderTokenExpansionTests {
     #expect(provider.expandTokens("{YYYY}", now: now) == "2026")
   }
 
+  @Test func supportedDateTokensAreValid() {
+    #expect(
+      ObsidianPatternTokens.invalidDateTokens(
+        in: "{year}, {YYYY}, {Year}, {month}, {MM}, {week}, {ww}, {day}, {DD}"
+      ).isEmpty)
+  }
+
+  @Test func invalidDateTokensAreReported() {
+    #expect(
+      ObsidianPatternTokens.invalidDateTokens(in: "Daily/{yy}/{mmm}/{weekday}/{D}.md")
+        == ["{yy}", "{mmm}", "{weekday}", "{D}"])
+  }
+
+  @Test func dateTokensWithInteriorSpacesAreReported() {
+    #expect(
+      ObsidianPatternTokens.invalidDateTokens(in: "Daily/{ year }/{ yy }/{week }.md")
+        == ["{ year }", "{ yy }", "{week }"])
+  }
+
+  @Test func malformedDateTokensAreReported() {
+    #expect(ObsidianPatternTokens.invalidDateTokens(in: "Daily/{w ! w}.md") == ["{w ! w}"])
+  }
+
+  @Test func duplicateInvalidDateTokensAreReportedOnce() {
+    #expect(ObsidianPatternTokens.invalidDateTokens(in: "{yy}/{yy}.md") == ["{yy}"])
+  }
+
   @Test func monthToken() {
     let provider = makeProvider()
     let now = date(year: 2026, month: 3, day: 15)

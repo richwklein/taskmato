@@ -34,7 +34,7 @@ final class ObsidianProvider: ClosableTaskProvider {
   private(set) var vaultURL: URL?
 
   /// Glob patterns (relative to vault root) used to select which markdown files are scanned.
-  /// Supports `{year}`, `{YYYY}`, `{month}`, `{MM}`, `{week}`, `{ww}`, `{day}`, `{DD}` tokens.
+  /// Supported date tokens are documented on ``expandTokens(_:now:)``.
   private(set) var filePatterns: [String]
 
   /// Human-readable vault name derived from the last path component of `vaultURL`.
@@ -454,6 +454,37 @@ final class ObsidianProvider: ClosableTaskProvider {
     }
     streamContinuation?.finish()
     streamContinuation = nil
+  }
+}
+
+// MARK: - Pattern tokens
+
+/// Validates Obsidian file-pattern date tokens before they are expanded.
+enum ObsidianPatternTokens {
+
+  /// Returns date-like brace tokens that won't be expanded by ``ObsidianProvider/expandTokens(_:now:)``.
+  static func invalidDateTokens(in pattern: String) -> [String] {
+    let supportedDateTokens = [
+      "{year}",
+      "{yyyy}",
+      "{month}",
+      "{mm}",
+      "{week}",
+      "{ww}",
+      "{day}",
+      "{dd}",
+    ]
+    let tokenPattern = /\{[^{}]*[A-Za-z][^{}]*\}/
+    var invalidTokens: [String] = []
+
+    for match in pattern.matches(of: tokenPattern) {
+      let token = String(match.output)
+      guard !supportedDateTokens.contains(token.lowercased()), !invalidTokens.contains(token)
+      else { continue }
+      invalidTokens.append(token)
+    }
+
+    return invalidTokens
   }
 }
 

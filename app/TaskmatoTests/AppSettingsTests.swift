@@ -115,7 +115,7 @@ struct AppSettingsTests {
   // MARK: - Focus presets: normalization
 
   @Test func normalizedPresetsClampsOutOfRangeValues() {
-    #expect(AppSettings.normalizedPresets([0, -5, 61, 500]) == [1, 60])
+    #expect(AppSettings.normalizedPresets([0, -5, 181, 500]) == [1, 180])
   }
 
   @Test func normalizedPresetsDropsDuplicates() {
@@ -172,7 +172,7 @@ struct AppSettingsTests {
   @Test func setFocusPresetsNormalizesBeforeAssigning() {
     let settings = makeSettings()
     settings.setFocusPresets([100, 100, -5])
-    #expect(settings.focusPresets == [1, 60])
+    #expect(settings.focusPresets == [1, 100])
   }
 
   // MARK: - Persistence

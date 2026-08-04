@@ -118,7 +118,7 @@ final class AppSettings {
   var longBreakDuration: TimeInterval { TimeInterval(longBreakMinutes * 60) }
 
   /// The valid range for a single focus preset, matching the Focus stepper in Settings.
-  private static let focusPresetRange = 1...60
+  private static let focusPresetRange = 1...180
 
   /// The maximum number of presets a user can keep in ``focusPresets``.
   private static let maxFocusPresets = 5
@@ -153,7 +153,7 @@ final class AppSettings {
   // MARK: - Focus presets
 
   /// Normalizes a raw focus-preset list to the rules a valid ``focusPresets`` must satisfy
-  /// (design doc 0009, D5): each value clamped to `1...60`, duplicates dropped, sorted
+  /// (design doc 0009, D5): each value clamped to `1...180`, duplicates dropped, sorted
   /// ascending, and capped at 5 entries. An empty input falls back to the key's shipped
   /// default (`[15, 25, 45, 60]`).
   ///
