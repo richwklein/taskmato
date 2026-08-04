@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.1.0](https://github.com/richwklein/taskmato/compare/v1.0.0...v1.1.0) (2026-08-04)
+
+
+### Features
+
+* attribute focus time in per-task slices within a phase ([#528](https://github.com/richwklein/taskmato/issues/528)) ([27b67c7](https://github.com/richwklein/taskmato/commit/27b67c75d3a6c28829ff0695e4b09950d95bd025))
+* quick-select focus duration presets ([#519](https://github.com/richwklein/taskmato/issues/519)) ([0cfe03d](https://github.com/richwklein/taskmato/commit/0cfe03dd3e2fad163f49bc36ed258ab07c39e2a7))
+* **settings:** improve provider configuration ([#521](https://github.com/richwklein/taskmato/issues/521)) ([ebd7fa1](https://github.com/richwklein/taskmato/commit/ebd7fa11f0fd84dc83cb2bd8317363f1d4d99c1b))
+* **tasks:** support inline Markdown in task titles and notes ([#529](https://github.com/richwklein/taskmato/issues/529)) ([ec2e336](https://github.com/richwklein/taskmato/commit/ec2e336c4acfb3def4ff8ac25f62a747c963f923))
+
+
+### Bug Fixes
+
+* **accessibility:** expose task forms and stats charts to assistive tech ([#525](https://github.com/richwklein/taskmato/issues/525)) ([97e3ae6](https://github.com/richwklein/taskmato/commit/97e3ae6d1d174828ccdad355ca930e47eae752bd))
+* present configuration sheet when enabling a provider that needs setup ([#520](https://github.com/richwklein/taskmato/issues/520)) ([1f6b019](https://github.com/richwklein/taskmato/commit/1f6b019614901f0911f4b7a67bb0c9f258d55b05))
+
+
+### Code Refactoring
+
+* **tasks:** tighten toolbar grouping and share sort menu with commands ([#526](https://github.com/richwklein/taskmato/issues/526)) ([770a720](https://github.com/richwklein/taskmato/commit/770a720145922c32ec7d1a460f0a3b4616e5e7ad))
+
+
+### Documentation
+
+* add design doc 0009 for focus duration presets ([#517](https://github.com/richwklein/taskmato/issues/517)) ([89f0432](https://github.com/richwklein/taskmato/commit/89f04320c338d40f15d8cb4353ce01ee728f03ea))
+
 ## [1.0.0](https://github.com/richwklein/taskmato/compare/v0.10.2...v1.0.0) (2026-08-02)
 
 Taskmato's first stable release — a native macOS menu bar Pomodoro timer that runs focus sessions against your real tasks.
