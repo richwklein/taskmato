@@ -44,7 +44,7 @@ struct JSONLocalTaskRepositoryTests {
 
   @Test func savedStoreRoundTripsThroughLoadAll() async throws {
     let repository = makeRepository()
-    let list = LocalList(id: UUID(), name: "Work")
+    let list = LocalList(id: UUID(), name: "Work", createdAt: Date())
     let task = makeTask(title: "Write report")
     let store = LocalStore(lists: [list], tasks: [task], defaultListID: list.id.uuidString)
     try await repository.save(store)
@@ -57,11 +57,11 @@ struct JSONLocalTaskRepositoryTests {
 
   @Test func saveOverwritesPreviousContent() async throws {
     let repository = makeRepository()
-    let firstList = LocalList(id: UUID(), name: "First")
+    let firstList = LocalList(id: UUID(), name: "First", createdAt: Date())
     try await repository.save(
       LocalStore(lists: [firstList], tasks: [], defaultListID: firstList.id.uuidString))
 
-    let secondList = LocalList(id: UUID(), name: "Second")
+    let secondList = LocalList(id: UUID(), name: "Second", createdAt: Date())
     try await repository.save(
       LocalStore(lists: [secondList], tasks: [], defaultListID: secondList.id.uuidString))
 
@@ -73,7 +73,7 @@ struct JSONLocalTaskRepositoryTests {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".json")
     let first = JSONLocalTaskRepository(fileURL: url)
-    let list = LocalList(id: UUID(), name: "Personal")
+    let list = LocalList(id: UUID(), name: "Personal", createdAt: Date())
     try await first.save(LocalStore(lists: [list], tasks: [], defaultListID: list.id.uuidString))
 
     let second = JSONLocalTaskRepository(fileURL: url)

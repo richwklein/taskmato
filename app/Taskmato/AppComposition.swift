@@ -7,6 +7,7 @@
 
 import AppKit
 import Foundation
+import SwiftData
 
 /// The composition root for Taskmato — constructs every service and exposes
 /// them as immutable properties for injection into the scene hierarchy.
@@ -46,7 +47,7 @@ struct AppComposition {
     let registry = ProviderRegistry(store: settingsStore)
     let notifications = NotificationService(settings: settings)
     let obsidianProvider = ObsidianProvider(store: settingsStore)
-    let localProvider = LocalProvider()
+    let localProvider = LocalProvider(repository: Self.makeLocalRepository())
     let remindersProvider = RemindersProvider(
       store: LiveRemindersEventStore(), settings: settingsStore)
     let statsViewModel = Self.makeStatsViewModel(store: store, registry: registry)
@@ -106,6 +107,25 @@ struct AppComposition {
     } catch {
       fatalError("Unable to open the Taskmato session store: \(error)")
     }
+  }
+
+  /// Opens the SwiftData local task store, trapping if it cannot be created, then runs the
+  /// one-shot JSON migration before any provider touches the container.
+  ///
+  /// The migration must run before ``LocalProvider`` is constructed — its async `reload()`
+  /// would otherwise be free to normalize an empty store over data the migration hasn't
+  /// imported yet.
+  private static func makeLocalRepository() -> SwiftDataLocalTaskRepository {
+    let container: ModelContainer
+    do {
+      container = try SwiftDataLocalTaskRepository.makeContainer(
+        url: SwiftDataLocalTaskRepository.defaultStoreURL())
+    } catch {
+      fatalError("Unable to open the Taskmato local task store: \(error)")
+    }
+    LocalStoreJSONMigrator.migrateIfNeeded(
+      jsonURL: JSONLocalTaskRepository.defaultFileURL(), into: container)
+    return SwiftDataLocalTaskRepository(modelContainer: container)
   }
 
   /// Builds the stats view model, resolving provider display names and tints through `registry`.
