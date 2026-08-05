@@ -54,6 +54,12 @@ struct TaskDetailView: View {
     return writable
   }
 
+  /// The currently selected list to pre-select when creating a task from this detail surface.
+  private var selectedListIDForNewTask: String? {
+    guard let provider = writableProvider else { return nil }
+    return sidebarSelection.selection?.listID(matching: provider.id)
+  }
+
   private var hasClosableProvider: Bool {
     registry.providers.contains { registry.isEnabled($0.id) && $0 is (any ClosableTaskProvider) }
   }
@@ -86,7 +92,8 @@ struct TaskDetailView: View {
       .sheet(isPresented: $isAddingTask) {
         if let provider = writableProvider {
           AddTaskView(
-            provider: provider, isPresented: $isAddingTask, errorPresenter: errorPresenter)
+            provider: provider, isPresented: $isAddingTask, errorPresenter: errorPresenter,
+            initialListID: selectedListIDForNewTask)
         }
       }
       .sheet(isPresented: $isEditingTask) {

@@ -13,4 +13,13 @@ enum SidebarSelection: Hashable, Codable, Sendable {
 
   /// A specific provider list identified by provider and list IDs.
   case list(SelectedList)
+
+  /// Returns the list ID when this selection belongs to `providerID`.
+  /// - Parameter providerID: The provider ID to match against this selection.
+  func listID(matching providerID: ProviderID) -> String? {
+    guard case .list(let selectedList) = self,
+      selectedList.providerID == providerID
+    else { return nil }
+    return selectedList.listID
+  }
 }

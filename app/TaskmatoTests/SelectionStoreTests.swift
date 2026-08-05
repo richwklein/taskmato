@@ -200,3 +200,25 @@ struct SelectionStoreTests {
     #expect(store.selection == .today)
   }
 }
+
+@Suite("SidebarSelection.listID(matching:)")
+struct NewTaskListSelectionTests {
+
+  @Test func returnsCurrentListWhenProviderMatches() {
+    let selection = SidebarSelection.list(
+      SelectedList(providerID: "local", listID: "next-week"))
+
+    #expect(selection.listID(matching: "local") == "next-week")
+  }
+
+  @Test func returnsNilWhenProviderDiffers() {
+    let selection = SidebarSelection.list(
+      SelectedList(providerID: "reminders", listID: "groceries"))
+
+    #expect(selection.listID(matching: "local") == nil)
+  }
+
+  @Test func returnsNilForTodaySelection() {
+    #expect(SidebarSelection.today.listID(matching: "local") == nil)
+  }
+}
