@@ -191,7 +191,7 @@ final class LocalProvider: WritableTaskProvider {
   /// Appends a new list with the given name and returns the provider-agnostic ``TaskList``.
   @discardableResult
   func createList(name: String) async throws -> TaskList {
-    let list = LocalList(id: UUID(), name: name)
+    let list = LocalList(id: UUID(), name: name, createdAt: Date())
     taskLists.append(list)
     await persist()
     return list.asTaskList
@@ -255,7 +255,7 @@ final class LocalProvider: WritableTaskProvider {
 
     var dirty = false
     if taskLists.isEmpty {
-      taskLists.append(LocalList(id: UUID(), name: "Default"))
+      taskLists.append(LocalList(id: UUID(), name: "Default", createdAt: Date()))
       dirty = true
     }
     let firstID = taskLists[0].id

@@ -132,7 +132,7 @@ struct LocalProviderTests {
   }
 
   @Test func listsWaitsForInitialLoadWhenCalledImmediatelyAfterConstruction() async throws {
-    let list = LocalList(id: UUID(), name: "Work")
+    let list = LocalList(id: UUID(), name: "Work", createdAt: Date())
     let seededStore = LocalStore(lists: [list], tasks: [], defaultListID: list.id.uuidString)
     // A real file read is often fast enough that querying immediately after construction
     // would happen to observe the completed load anyway — an artificially slow load makes the
