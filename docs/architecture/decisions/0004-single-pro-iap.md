@@ -4,6 +4,8 @@
 
 Accepted — 2026-05-29 (#339).
 
+Amended by [ADR-0010](0010-pro-portability-capability-gate.md) (2026-08-05): the single SKU is unchanged, but what it unlocks broadens from cloud providers to a portability capability set (export free; import and iCloud sync Pro).
+
 ## Context
 
 Cloud-backed task providers (Todoist, Linear, Notion, TickTick, Google Tasks, GitHub Issues) carry ongoing maintenance cost: OAuth flows, API surface drift, rate-limit handling. The free providers (Local, Obsidian, Reminders, Things 3) are local-only and stable.
