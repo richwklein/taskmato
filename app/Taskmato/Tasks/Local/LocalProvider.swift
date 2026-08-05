@@ -18,7 +18,7 @@ import os
 final class LocalProvider: WritableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
-  static let providerID: ProviderID = "local"
+  nonisolated static let providerID: ProviderID = "local"
 
   let id: ProviderID = LocalProvider.providerID
   let displayName: String = "Local"
@@ -43,28 +43,44 @@ final class LocalProvider: WritableTaskProvider {
   var activeTaskCount: Int { allTasks.filter { !$0.isCompleted }.count }
 
   private var allTasks: [LocalTask] = []
-  private let fileURL: URL
-  private let encoder = JSONEncoder()
-  private let decoder = JSONDecoder()
+  private let repository: any LocalTaskRepository
   private let logger = Logger(subsystem: "com.taskmato", category: "LocalProvider")
 
-  /// Creates a provider backed by the default production file path.
+  /// The initial load fired from ``init(repository:)``. Awaited via ``ready()``.
+  private var loadTask: Task<Void, Never>?
+
+  /// Creates a provider backed by the default production JSON repository.
   convenience init() {
-    let appSupport = FileManager.default.urls(
-      for: .applicationSupportDirectory, in: .userDomainMask
-    ).first!
-    let dir = appSupport.appendingPathComponent("Taskmato", isDirectory: true)
-    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    self.init(fileURL: dir.appendingPathComponent("local-tasks.json"))
+    self.init(
+      repository: JSONLocalTaskRepository(fileURL: JSONLocalTaskRepository.defaultFileURL()))
   }
 
   /// Creates a provider backed by a specific file URL. Pass a temporary path in tests.
-  init(fileURL: URL) {
-    self.fileURL = fileURL
-    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    encoder.dateEncodingStrategy = .iso8601
-    decoder.dateDecodingStrategy = .iso8601
-    load()
+  convenience init(fileURL: URL) {
+    self.init(repository: JSONLocalTaskRepository(fileURL: fileURL))
+  }
+
+  /// Creates a provider backed by an injected repository. Pass a fake repository in tests.
+  ///
+  /// The store loads asynchronously — the observable state populates moments after this
+  /// initializer returns. Await ``ready()`` in tests that need the load to have completed.
+  init(repository: any LocalTaskRepository) {
+    self.repository = repository
+    loadTask = Task { await self.reload() }
+  }
+
+  /// Awaits the initial load fired from ``init(repository:)``.
+  ///
+  /// There is exactly one in-flight load per provider instance: the one started by `init`.
+  /// ``lists()``, ``tasks(in:)``, and ``completedTasks()`` await this before reading state, so
+  /// a query issued moments after construction — as `AppSidebarView`'s one-shot startup
+  /// `.task` does — can no longer observe the pre-load empty state and cache it permanently
+  /// (the underlying regression: the old synchronous `init` made this impossible since loading
+  /// always completed before construction returned). Tests that need state populated before
+  /// asserting should await this rather than calling ``reload()`` again, which would race the
+  /// initial load.
+  func ready() async {
+    await loadTask?.value
   }
 
   // MARK: - TaskProvider
@@ -74,13 +90,15 @@ final class LocalProvider: WritableTaskProvider {
 
   /// Returns the managed lists expressed as provider-agnostic ``TaskList`` values.
   func lists() async throws -> [TaskList] {
-    taskLists.map(\.asTaskList)
+    await ready()
+    return taskLists.map(\.asTaskList)
   }
 
   /// Returns incomplete tasks, optionally scoped to a single list.
   ///
   /// - Parameter list: Scope results to a specific list, or `nil` for all incomplete tasks.
   func tasks(in list: TaskList?) async throws -> [TaskItem] {
+    await ready()
     let incomplete = allTasks.filter { !$0.isCompleted }
     if let list {
       let listID = UUID(uuidString: list.id)
@@ -101,7 +119,7 @@ final class LocalProvider: WritableTaskProvider {
     }
     allTasks[idx].isCompleted = true
     allTasks[idx].completedAt = Date()
-    save()
+    await persist()
   }
 
   /// Restores a completed task by clearing `isCompleted` and `completedAt`.
@@ -111,12 +129,14 @@ final class LocalProvider: WritableTaskProvider {
     }
     allTasks[idx].isCompleted = false
     allTasks[idx].completedAt = nil
-    save()
+    await persist()
   }
 
   /// Returns all soft-deleted tasks, sorted by completion date descending.
   func completedTasks() async throws -> [TaskItem] {
-    allTasks
+    await ready()
+    return
+      allTasks
       .filter { $0.isCompleted }
       .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
       .map { $0.asTaskItem(lists: taskLists) }
@@ -135,7 +155,7 @@ final class LocalProvider: WritableTaskProvider {
     }
     let newTask = LocalTask(from: resolved)
     allTasks.append(newTask)
-    save()
+    await persist()
     return newTask.asTaskItem(lists: taskLists)
   }
 
@@ -145,7 +165,7 @@ final class LocalProvider: WritableTaskProvider {
       throw LocalProviderError.listNotFound(listID)
     }
     defaultListID = listID
-    save()
+    await persist()
   }
 
   /// Applies `draft` to the task identified by `ref`.
@@ -154,7 +174,7 @@ final class LocalProvider: WritableTaskProvider {
       throw LocalProviderError.taskNotFound(ref.nativeID)
     }
     allTasks[idx].apply(draft)
-    save()
+    await persist()
   }
 
   /// Permanently removes the task identified by `ref` from the store.
@@ -163,7 +183,7 @@ final class LocalProvider: WritableTaskProvider {
       throw LocalProviderError.taskNotFound(ref.nativeID)
     }
     allTasks.removeAll { $0.id.uuidString == ref.nativeID }
-    save()
+    await persist()
   }
 
   // MARK: - WritableTaskProvider: list management
@@ -173,7 +193,7 @@ final class LocalProvider: WritableTaskProvider {
   func createList(name: String) async throws -> TaskList {
     let list = LocalList(id: UUID(), name: name)
     taskLists.append(list)
-    save()
+    await persist()
     return list.asTaskList
   }
 
@@ -183,7 +203,7 @@ final class LocalProvider: WritableTaskProvider {
       throw LocalProviderError.listNotFound(listID)
     }
     taskLists[idx].name = name
-    save()
+    await persist()
   }
 
   /// Deletes the list identified by `listID`, reassigning its tasks to the default list.
@@ -204,18 +224,35 @@ final class LocalProvider: WritableTaskProvider {
     for idx in allTasks.indices where allTasks[idx].listID == uuid {
       allTasks[idx].listID = fallbackID
     }
-    save()
+    await persist()
   }
 
   // MARK: - Persistence
 
-  private func load() {
-    if let data = try? Data(contentsOf: fileURL) {
-      let stored = try? decoder.decode(LocalStore.self, from: data)
-      taskLists = stored?.lists ?? []
-      allTasks = stored?.tasks ?? []
-      defaultListID = stored?.defaultListID
+  /// Loads the store from the repository and normalizes default-list invariants.
+  ///
+  /// Called once from ``init(repository:)``; awaited by tests and callers via ``ready()``.
+  /// On a read/decode failure this returns immediately, leaving the provider's in-memory
+  /// state at its empty initial values — it does **not** fall through into the default-list
+  /// normalization below, which would otherwise treat the empty in-memory state as "no lists
+  /// yet" and persist a fresh empty store over the corrupt file. Note this only protects the
+  /// file while the provider is idle: a subsequent mutator (``addTask(_:)``,
+  /// ``createList(name:)``, etc.) still calls ``persist()`` unconditionally and will overwrite
+  /// the primary file with fresh content. A successful load — including the legitimate "file
+  /// doesn't exist yet" empty-store case, which does not throw — proceeds into normalization
+  /// as usual.
+  func reload() async {
+    let stored: LocalStore
+    do {
+      stored = try await repository.loadAll()
+    } catch {
+      logger.error("LocalProvider failed to load: \(error.localizedDescription, privacy: .public)")
+      return
     }
+    taskLists = stored.lists
+    allTasks = stored.tasks
+    defaultListID = stored.defaultListID
+
     var dirty = false
     if taskLists.isEmpty {
       taskLists.append(LocalList(id: UUID(), name: "Default"))
@@ -231,27 +268,17 @@ final class LocalProvider: WritableTaskProvider {
       defaultListID = firstID.uuidString
       dirty = true
     }
-    if dirty { save() }
+    if dirty { await persist() }
   }
 
-  private func save() {
+  private func persist() async {
     let store = LocalStore(lists: taskLists, tasks: allTasks, defaultListID: defaultListID)
     do {
-      let data = try encoder.encode(store)
-      try data.write(to: fileURL, options: [])
+      try await repository.save(store)
     } catch {
       logger.error("LocalProvider failed to save: \(error.localizedDescription, privacy: .public)")
     }
   }
-}
-
-// MARK: - Persistence container
-
-/// Top-level JSON container for the local task store.
-private struct LocalStore: Codable {
-  var lists: [LocalList]
-  var tasks: [LocalTask]
-  var defaultListID: String?
 }
 
 // MARK: - Errors

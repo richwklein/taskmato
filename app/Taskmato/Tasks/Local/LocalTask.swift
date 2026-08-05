@@ -9,7 +9,7 @@ import Foundation
 ///
 /// Extends the core ``TaskItem`` properties with completion state. The ``asTaskItem(lists:)``
 /// method converts to the provider-agnostic representation used by the picker and session log.
-struct LocalTask: Codable, Identifiable {
+nonisolated struct LocalTask: Codable, Identifiable, Sendable {
 
   /// Stable unique identifier for this task.
   let id: UUID
@@ -50,7 +50,7 @@ struct LocalTask: Codable, Identifiable {
   /// Wall-clock time when the task was first created.
   let createdAt: Date
 
-  private enum CodingKeys: String, CodingKey {
+  private nonisolated enum CodingKeys: String, CodingKey {
     case id, title, notes, format, priority, dueDate, scheduledDate, startDate
     case listID, isCompleted, completedAt, createdAt
   }
@@ -95,7 +95,7 @@ extension LocalTask {
   ///
   /// The default preserves backward compatibility with JSON records written before the
   /// `format` field was introduced.
-  init(from decoder: Decoder) throws {
+  nonisolated init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     id = try container.decode(UUID.self, forKey: .id)
     title = try container.decode(String.self, forKey: .title)
