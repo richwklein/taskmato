@@ -40,38 +40,43 @@ private struct RawLocalStore: Codable {
 @MainActor
 struct LocalProviderTests {
 
-  /// Creates a provider backed by a unique temporary file so tests are fully isolated.
-  private func makeProvider() -> LocalProvider {
+  /// Creates a provider backed by a unique temporary file, with its initial load awaited so
+  /// tests are fully isolated and can read state synchronously right away.
+  private func makeProvider() async -> LocalProvider {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".json")
-    return LocalProvider(fileURL: url)
+    let provider = LocalProvider(fileURL: url)
+    await provider.ready()
+    return provider
   }
 
   // MARK: - Default list
 
-  @Test func createsDefaultListOnFirstLoad() {
-    let provider = makeProvider()
+  @Test func createsDefaultListOnFirstLoad() async {
+    let provider = await makeProvider()
     #expect(provider.taskLists.count == 1)
     #expect(provider.taskLists[0].name == "Default")
   }
 
-  @Test func defaultListIDIsSetOnFirstLoad() {
-    let provider = makeProvider()
+  @Test func defaultListIDIsSetOnFirstLoad() async {
+    let provider = await makeProvider()
     #expect(provider.defaultListID == provider.taskLists[0].id.uuidString)
   }
 
-  @Test func defaultListIDPersistsAcrossReload() {
+  @Test func defaultListIDPersistsAcrossReload() async {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".json")
     let first = LocalProvider(fileURL: url)
+    await first.ready()
     let storedID = first.defaultListID!
 
     let second = LocalProvider(fileURL: url)
+    await second.ready()
     #expect(second.defaultListID == storedID)
   }
 
   @Test func setDefaultListChangesDefault() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     try await provider.createList(name: "Work")
     let workID = provider.taskLists[1].id.uuidString
     try await provider.setDefaultList(workID)
@@ -79,19 +84,21 @@ struct LocalProviderTests {
   }
 
   @Test func setDefaultListThrowsForUnknownID() async {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     await #expect(throws: LocalProviderError.self) {
       try await provider.setDefaultList(UUID().uuidString)
     }
   }
 
-  @Test func doesNotDuplicateDefaultListOnReload() {
+  @Test func doesNotDuplicateDefaultListOnReload() async {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".json")
     let first = LocalProvider(fileURL: url)
+    await first.ready()
     let defaultID = first.taskLists[0].id
 
     let second = LocalProvider(fileURL: url)
+    await second.ready()
     #expect(second.taskLists.count == 1)
     #expect(second.taskLists[0].id == defaultID)
   }
@@ -117,16 +124,47 @@ struct LocalProviderTests {
     try data.write(to: url, options: [])
 
     let provider = LocalProvider(fileURL: url)
+    await provider.ready()
     let tasks = try await provider.tasks(in: nil)
     #expect(tasks.count == 1)
     #expect(tasks[0].title == "Orphan")
     #expect(tasks[0].list?.id == rawList.id.uuidString)
   }
 
+  @Test func listsWaitsForInitialLoadWhenCalledImmediatelyAfterConstruction() async throws {
+    let list = LocalList(id: UUID(), name: "Work")
+    let seededStore = LocalStore(lists: [list], tasks: [], defaultListID: list.id.uuidString)
+    // A real file read is often fast enough that querying immediately after construction
+    // would happen to observe the completed load anyway — an artificially slow load makes the
+    // race deterministic instead of relying on that luck.
+    let repository = FakeLocalTaskRepository(store: seededStore, loadDelayNanoseconds: 50_000_000)
+    let provider = LocalProvider(repository: repository)
+
+    // No `await provider.ready()` here — `lists()` must await the load itself, or this races
+    // the still-in-flight initial read and observes an empty store (the #412 regression: a
+    // caller that queries moments after construction, like `AppSidebarView`'s startup `.task`,
+    // would cache that empty snapshot permanently).
+    let lists = try await provider.lists()
+    #expect(lists.map(\.name) == ["Work"])
+  }
+
+  @Test func corruptFileOnDiskIsLeftUntouchedOnLoadFailure() async throws {
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString + ".json")
+    let corrupt = Data("not valid json".utf8)
+    try corrupt.write(to: url, options: [])
+
+    let provider = LocalProvider(fileURL: url)
+    await provider.ready()
+
+    let onDisk = try Data(contentsOf: url)
+    #expect(onDisk == corrupt)
+  }
+
   // MARK: - Task CRUD
 
   @Test func addTaskAppearsInActiveTasks() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "My task"
     try await provider.addTask(draft)
@@ -136,7 +174,7 @@ struct LocalProviderTests {
   }
 
   @Test func activeTaskCarriesCreatedAt() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     let before = Date()
     var draft = TaskDraft()
     draft.title = "Timestamped"
@@ -149,7 +187,7 @@ struct LocalProviderTests {
   }
 
   @Test func addTaskUsesDefaultListWhenNoDraftListID() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     let defaultID = provider.defaultListID!
     var draft = TaskDraft()
     draft.title = "Orphan"
@@ -164,17 +202,19 @@ struct LocalProviderTests {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString + ".json")
     let first = LocalProvider(fileURL: url)
+    await first.ready()
     var draft = TaskDraft()
     draft.title = "Persisted"
     try await first.addTask(draft)
 
     let second = LocalProvider(fileURL: url)
+    await second.ready()
     let tasks = try await second.tasks(in: nil)
     #expect(tasks.map(\.title).contains("Persisted"))
   }
 
   @Test func completeRemovesTaskFromActiveTasks() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "To complete"
     try await provider.addTask(draft)
@@ -185,7 +225,7 @@ struct LocalProviderTests {
   }
 
   @Test func completeAppearsInCompletedTasks() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "Done"
     try await provider.addTask(draft)
@@ -197,7 +237,7 @@ struct LocalProviderTests {
   }
 
   @Test func completedTasksItemsCarryCompletedAt() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "With Date"
     try await provider.addTask(draft)
@@ -213,7 +253,7 @@ struct LocalProviderTests {
   }
 
   @Test func reopenRestoresTaskToActive() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "Reopen me"
     try await provider.addTask(draft)
@@ -227,7 +267,7 @@ struct LocalProviderTests {
   }
 
   @Test func completedTasksExcludesActiveTasks() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     for title in ["A", "B", "C"] {
       var draft = TaskDraft()
       draft.title = title
@@ -243,7 +283,7 @@ struct LocalProviderTests {
   }
 
   @Test func deleteTaskRemovesPermanently() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "Delete me"
     try await provider.addTask(draft)
@@ -254,7 +294,7 @@ struct LocalProviderTests {
   }
 
   @Test func writableProviderDeleteTaskRemovesCompletedItem() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "Completed and deleted"
     try await provider.addTask(draft)
@@ -266,7 +306,7 @@ struct LocalProviderTests {
   }
 
   @Test func updateTaskAppliesNewTitle() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "Original"
     try await provider.addTask(draft)
@@ -279,7 +319,7 @@ struct LocalProviderTests {
   }
 
   @Test func addTaskHasMarkdownFormat() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "Markdown task"
     try await provider.addTask(draft)
@@ -287,8 +327,8 @@ struct LocalProviderTests {
     #expect(tasks[0].format == .markdown)
   }
 
-  @Test func contentFormatIsMarkdown() {
-    let provider = makeProvider()
+  @Test func contentFormatIsMarkdown() async {
+    let provider = await makeProvider()
     #expect(provider.contentFormat == .markdown)
   }
 
@@ -313,13 +353,14 @@ struct LocalProviderTests {
     try data.write(to: url, options: [])
 
     let provider = LocalProvider(fileURL: url)
+    await provider.ready()
     let tasks = try await provider.tasks(in: nil)
     #expect(tasks.count == 1)
     #expect(tasks[0].format == .markdown)
   }
 
   @Test func activeTaskCountExcludesCompleted() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     var draft = TaskDraft()
     draft.title = "Count me"
     try await provider.addTask(draft)
@@ -332,21 +373,21 @@ struct LocalProviderTests {
   // MARK: - List CRUD
 
   @Test func createListAddsToProvider() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     try await provider.createList(name: "Work")
     #expect(provider.taskLists.count == 2)
     #expect(provider.taskLists.map(\.name).contains("Work"))
   }
 
   @Test func renameListUpdatesName() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     let listID = provider.taskLists[0].id.uuidString
     try await provider.renameList(listID, name: "Personal")
     #expect(provider.taskLists[0].name == "Personal")
   }
 
   @Test func deleteNonDefaultListMovesTasksToDefault() async throws {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     try await provider.createList(name: "Secondary")
     let primaryID = provider.taskLists[0].id.uuidString  // Default = current default
     let secondaryID = provider.taskLists[1].id.uuidString
@@ -368,7 +409,7 @@ struct LocalProviderTests {
   }
 
   @Test func deleteDefaultListThrows() async {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     let defaultID = provider.defaultListID!
     await #expect(throws: LocalProviderError.self) {
       try await provider.deleteList(defaultID)
@@ -376,7 +417,7 @@ struct LocalProviderTests {
   }
 
   @Test func renameListThrowsForUnknownID() async {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     let unknown = UUID().uuidString
     await #expect(throws: (any Error).self) {
       try await provider.renameList(unknown, name: "Ghost")
@@ -384,7 +425,7 @@ struct LocalProviderTests {
   }
 
   @Test func deleteTaskThrowsForUnknownRef() async {
-    let provider = makeProvider()
+    let provider = await makeProvider()
     let ref = TaskRef(providerID: LocalProvider.providerID, nativeID: UUID().uuidString)
     await #expect(throws: (any Error).self) {
       try await provider.deleteTask(ref)

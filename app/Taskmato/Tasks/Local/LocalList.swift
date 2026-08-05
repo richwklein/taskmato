@@ -6,7 +6,7 @@
 import Foundation
 
 /// A named grouping of tasks managed by ``LocalProvider``.
-struct LocalList: Codable, Identifiable, Hashable {
+nonisolated struct LocalList: Codable, Identifiable, Hashable, Sendable {
 
   /// Stable unique identifier for this list.
   let id: UUID

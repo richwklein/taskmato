@@ -6,7 +6,7 @@
 import Foundation
 
 /// The priority level of a task, aligned with the obsidian-tasks emoji format.
-enum TaskPriority: Int, Codable, Comparable, CaseIterable, Sendable {
+nonisolated enum TaskPriority: Int, Codable, Comparable, CaseIterable, Sendable {
 
   /// No priority assigned.
   case none = 0
