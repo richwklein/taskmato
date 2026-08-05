@@ -249,8 +249,26 @@ left to GitHub; this table fixes only what each slice contains and in what order
 | **NEW — CloudKit sync of the session log** | Hero Pro feature (D6); drop `.unique`, App-Store-build container |
 | **NEW — Settings sync via `NSUbiquitousKeyValueStore`** | Follow-on (D8) |
 | #285 Configure ASC for distribution | Keep |
-| #287 Marketing site content | **Rework copy** — lead with portability/sync, not the provider list |
-| #288 Netlify → GitHub Pages | Keep |
+| #287 Marketing site content | **Re-brief** — the hero is portability/sync, not the provider list (see brief below) |
+| #288 Netlify → GitHub Pages | Keep — pure hosting infra, independent of Pro; may be pulled earlier to de-risk the cutover |
+
+The site lands in this slice because this is the first slice where Pro is **sellable** — StoreKit and
+the iCloud entitlement only work in the App Store build (D7), so there is no purchasable product, and
+nothing to market, before it. Marketing earlier would advertise a Pro no one can buy.
+
+**#287 content re-brief.** The site's hero shifts from "connect your task managers" to **"your focus
+data, everywhere."** Concretely:
+
+- **Headline / hero:** portability + sync — one focus history across every Mac, not a list of
+  integrations. Cloud providers are a supporting bullet ("and connects to Todoist, Linear, …"), not
+  the lede — the provider list is aspirational and must not anchor the pitch.
+- **Free-vs-Pro panel:** mirror D2 — free (local providers, single-machine stats, **export**) vs. Pro
+  (**import/merge**, **iCloud sync**, cloud providers). Frame Pro as "everywhere," never as
+  "pay to get your data out."
+- **Screenshots:** add a Stats view shown on two Macs / synced, alongside the existing menu-bar, main
+  window, and timer shots — the portability story needs a visual.
+- **Two download paths:** free Developer-ID DMG (local-only) and the App Store build (Pro-capable);
+  make the DMG-vs-App-Store distinction legible so DMG users know where Pro lives (D7).
 
 ### Slice 3 — cloud providers
 
