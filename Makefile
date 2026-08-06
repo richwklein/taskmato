@@ -22,7 +22,7 @@ RELEASE_SIGN_FLAGS = CODE_SIGN_IDENTITY="Developer ID Application" \
                      CODE_SIGNING_ALLOWED=YES \
                      DEVELOPMENT_TEAM=43757RE978
 
-.PHONY: help sync-version build run open test lint format format-check clean archive notarize release site-install site-dev site-build
+.PHONY: help sync-version build run open test test-failures lint format format-check clean archive notarize release site-install site-dev site-build
 
 help: ## List the available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -51,6 +51,9 @@ test: ## Run the unit test suite
 		-destination '$(DESTINATION)' \
 		-enableCodeCoverage YES \
 		$(SIGN_FLAGS)
+
+test-failures: ## Print assertion messages for the latest test run's failures
+	@bash scripts/test-failures.sh $(SCHEME)
 
 lint: ## Check for SwiftLint violations
 	swiftlint lint --strict

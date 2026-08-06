@@ -24,6 +24,7 @@ Screenshots and other images used in the docs (and elsewhere) live at [`assets/`
   - [`Marketing Site`](how-to/marketing-site.md) — Develop and build the Astro site at `site/`.
   - [`Update Icons`](how-to/update-icons.md)
   - [`Reset Stale Dev Builds`](how-to/reset-stale-dev-builds.md)
+  - [`Diagnose a Failing Test`](how-to/diagnose-failing-tests.md) — Surface the real assertion from a failed `make test` via `make test-failures`.
 - **Trying to understand *why* something works the way it does?** Start in [`explanation/`](explanation/).
 - **Wondering why a load-bearing decision was made?** Read the relevant ADR in [`architecture/decisions/`](architecture/decisions/).
 - **Reviewing a design proposal in flight?** Look in [`architecture/design/`](architecture/design/).
