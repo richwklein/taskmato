@@ -147,6 +147,8 @@ make format-check  # swift-format — must report zero issues
 
 Fix all violations before committing. Do not suppress lint rules without explicit approval.
 
+When a test fails, `make test` prints only the failing test's **name** — the actual assertion lives in the run's `.xcresult` bundle. Run `make test-failures` to print the assertion messages for the latest run instead of re-running the suite, and iterate on a single test with `-only-testing:` before a final full `make test`. See [`docs/how-to/diagnose-failing-tests.md`](docs/how-to/diagnose-failing-tests.md).
+
 ## Documentation Standards
 
 All public types, properties, and methods must have Swift doc comments (`///`).
