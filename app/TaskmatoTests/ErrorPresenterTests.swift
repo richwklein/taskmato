@@ -115,4 +115,21 @@ struct ErrorPresenterTests {
     #expect(presenter.current == second)
     #expect(presenter.queue.count == 1)
   }
+
+  // MARK: - attempt
+
+  @Test func attemptReturnsTrueOnSuccessWithoutQueueingAnError() async {
+    let presenter = makePresenter()
+    let succeeded = await presenter.attempt("Couldn't save") {}
+    #expect(succeeded)
+    #expect(presenter.queue.isEmpty)
+  }
+
+  @Test func attemptReturnsFalseAndQueuesAnErrorOnThrow() async {
+    let presenter = makePresenter()
+    let succeeded = await presenter.attempt("Couldn't save") { throw SampleError() }
+    #expect(!succeeded)
+    #expect(presenter.current?.title == "Couldn't save")
+    #expect(presenter.current?.detail == "The store is unavailable.")
+  }
 }

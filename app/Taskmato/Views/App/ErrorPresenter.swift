@@ -78,14 +78,21 @@ final class ErrorPresenter {
   /// Runs a throwing operation, surfacing `title` with the error's description on failure.
   ///
   /// Keeps user-initiated provider mutations to a single `await` at the call site instead of a
-  /// `do`/`catch`.
+  /// `do`/`catch`. Callers that need to react to success (e.g. clearing state only when a
+  /// delete actually succeeded) can use the returned value; existing statement-form call sites
+  /// are unaffected since the result is discardable.
+  /// - Returns: `true` if `operation` completed without throwing, `false` if it threw (in which
+  ///   case the error was already presented).
+  @discardableResult
   func attempt(
     _ title: String, severity: ErrorSeverity = .error, _ operation: () async throws -> Void
-  ) async {
+  ) async -> Bool {
     do {
       try await operation()
+      return true
     } catch {
       present(title: title, error: error, severity: severity)
+      return false
     }
   }
 

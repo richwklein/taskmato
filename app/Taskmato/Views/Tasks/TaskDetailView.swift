@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The task detail surface for the Today and list destinations of the window-first shell.
 ///
@@ -38,6 +39,9 @@ struct TaskDetailView: View {
   @State private var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
   @FocusState private var isSearchFocused: Bool
+  /// Gives the detail surface keyboard focus so `.onPasteCommand` (⌘V) routes here; the search
+  /// field keeps its own focus/paste when the user is typing in it.
+  @FocusState private var isDetailFocused: Bool
 
   /// Returns the writable provider for the current sidebar selection, falling back to the
   /// default writable provider (from settings, then first enabled in registration order).
@@ -89,6 +93,12 @@ struct TaskDetailView: View {
 
   var body: some View {
     trackedDetail
+      .focusable()
+      .focusEffectDisabled()
+      .focused($isDetailFocused)
+      .onPasteCommand(of: [.plainText]) { _ in handlePaste() }
+      .onAppear { isDetailFocused = true }
+      .onChange(of: sidebarSelection.selection) { _, _ in isDetailFocused = true }
       .sheet(isPresented: $isAddingTask) {
         if let provider = writableProvider {
           AddTaskView(
@@ -399,6 +409,19 @@ extension TaskDetailView {
       }
     }
     Divider()
+    Button {
+      TaskClipboard.copy(task)
+    } label: {
+      Label(AppLabels.Task.copy.title, systemImage: AppLabels.Task.copy.systemImage)
+    }
+    if registry.writableProvider(for: task.id) != nil {
+      Button {
+        handleCut(task)
+      } label: {
+        Label(AppLabels.Task.cut.title, systemImage: AppLabels.Task.cut.systemImage)
+      }
+    }
+    Divider()
     if registry.closableProvider(for: task.id) != nil {
       Button {
         handleComplete(task)
@@ -411,6 +434,11 @@ extension TaskDetailView {
   /// Context menu items shown on secondary-click of a completed task row or card.
   @ViewBuilder
   private func completedTaskContextMenu(for task: TaskItem) -> some View {
+    Button {
+      TaskClipboard.copy(task)
+    } label: {
+      Label(AppLabels.Task.copy.title, systemImage: AppLabels.Task.copy.systemImage)
+    }
     if registry.closableProvider(for: task.id) != nil {
       Button {
         handleRestore(task)
@@ -464,12 +492,17 @@ extension TaskDetailView {
     isLoading = false
   }
 
-  private func refresh() async {
+  /// Reloads the active-task sections for the current selection/query, and the completed
+  /// section too when it is shown. Split out to `internal` so the action handlers in
+  /// `TaskDetailActions.swift` can call it after a mutation.
+  func refresh() async {
     await loadTasks()
     if showCompleted { await loadCompleted() }
   }
 
-  private func loadCompleted() async {
+  /// Loads the completed tasks for the current selection/query into `completedTasks`. `internal`
+  /// for the same reason as ``refresh()``.
+  func loadCompleted() async {
     isLoadingCompleted = true
     let (tasks, _) = await queryService.completedTasks(
       query: currentQuery,
@@ -537,39 +570,6 @@ extension TaskDetailView {
 
   private func onCompleteHandler(for task: TaskItem) -> (() -> Void)? {
     registry.closableProvider(for: task.id) != nil ? { self.handleComplete(task) } : nil
-  }
-
-  private func handleComplete(_ task: TaskItem) {
-    Task {
-      if let provider = registry.closableProvider(for: task.id) {
-        await errorPresenter.attempt(AppLabels.Error.completeFailed) {
-          try await provider.complete(task.id)
-        }
-      }
-      await refresh()
-    }
-  }
-
-  private func handleRestore(_ task: TaskItem) {
-    Task {
-      if let provider = registry.closableProvider(for: task.id) {
-        await errorPresenter.attempt(AppLabels.Error.restoreFailed) {
-          try await provider.reopen(task.id)
-        }
-      }
-      await refresh()
-    }
-  }
-
-  private func handleDelete(_ task: TaskItem) {
-    Task {
-      if let provider = registry.provider(for: task.id) as? (any WritableTaskProvider) {
-        await errorPresenter.attempt(AppLabels.Error.deleteFailed) {
-          try await provider.deleteTask(task.id)
-        }
-      }
-      await loadCompleted()
-    }
   }
 
 }

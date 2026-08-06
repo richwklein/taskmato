@@ -81,6 +81,10 @@ enum AppLabels {
     static let restore = AppLabel("Restore Task", systemImage: "arrow.counterclockwise")
     /// Permanently deletes a task via its writable provider.
     static let delete = AppLabel("Delete Permanently", systemImage: "trash")
+    /// Copies a task to the clipboard as a Taskmato payload and plain-text title.
+    static let copy = AppLabel("Copy", systemImage: "doc.on.doc")
+    /// Copies a task to the clipboard, then deletes it from its writable provider.
+    static let cut = AppLabel("Cut", systemImage: "scissors")
   }
 
   /// Labels for the focus-duration presets feature (design doc 0009): the Settings editor,
