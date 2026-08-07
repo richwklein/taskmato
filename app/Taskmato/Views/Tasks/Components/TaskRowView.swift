@@ -46,7 +46,7 @@ struct TaskRowView: View {
     .padding(.vertical, .rowVertical)
     .contentShape(Rectangle())
     .onHover { hover in
-      if presenter.isCompleted { isHovered = hover }
+      if presenter.canDelete { isHovered = hover }
     }
     .confirmationDialog(
       "Delete this task permanently?", isPresented: $showDeleteConfirmation

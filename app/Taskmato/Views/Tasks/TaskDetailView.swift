@@ -3,8 +3,8 @@
 //  Taskmato
 //
 
+import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// The task detail surface for the Today and list destinations of the window-first shell.
 ///
@@ -30,22 +30,36 @@ struct TaskDetailView: View {
   var refreshToken: Int = 0
 
   @State private var query: String = ""
-  @State private var sections: [TaskSection] = []
+  /// Not `private`: `TaskDetailSelection.swift` resolves ``selection`` against this.
+  @State var sections: [TaskSection] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
-  @State private var isEditingTask = false
-  @State private var taskToEdit: TaskItem?
+  /// Not `private`: `TaskDetailContextMenu.swift`'s "Edit…" item sets this.
+  @State var isEditingTask = false
+  /// Not `private`: `TaskDetailContextMenu.swift`'s "Edit…" item sets this.
+  @State var taskToEdit: TaskItem?
   @State private var showCompleted = false
   @State private var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
   @FocusState private var isSearchFocused: Bool
-  /// Gives the detail surface keyboard focus so `.onPasteCommand` (⌘V) routes here; the search
-  /// field keeps its own focus/paste when the user is typing in it.
-  @FocusState private var isDetailFocused: Bool
+  /// The single selected active task (issue #546) — ephemeral, view-local, and independent of
+  /// ``TaskSelectionStore``'s active/tracked task. Drives the clipboard and `.onDeleteCommand`;
+  /// cleared whenever the sidebar selection changes. Not `private`: `handleDelete(_:)` in
+  /// `TaskDetailActions.swift` clears it when the selected task is removed.
+  @State var selection: TaskRef?
+  /// The active task pending permanent deletion via `.onDeleteCommand`, driving the
+  /// confirmation dialog. Not `private`: managed from `TaskDetailSelection.swift`.
+  @State var activeDeleteCandidate: TaskItem?
+
+  /// Maps between clipboard payloads/plain text and ``TaskDraft``, and answers cut/delete/paste
+  /// enablement (issue #546). Stateless, so a single instance is shared by both layouts. Not
+  /// `private`: `TaskDetailActions.swift`'s `copyToPasteboard(_:to:)` builds payloads with it.
+  let clipboardService = TaskClipboardService()
 
   /// Returns the writable provider for the current sidebar selection, falling back to the
-  /// default writable provider (from settings, then first enabled in registration order).
-  private var writableProvider: (any WritableTaskProvider)? {
+  /// default writable provider (from settings, then first enabled in registration order). Not
+  /// `private`: `TaskDetailSelection.swift` uses this to resolve the paste target.
+  var writableProvider: (any WritableTaskProvider)? {
     guard case .list(let sel) = sidebarSelection.selection,
       let provider = registry.providers.first(where: {
         $0.id == sel.providerID && registry.isEnabled($0.id)
@@ -59,7 +73,8 @@ struct TaskDetailView: View {
   }
 
   /// The currently selected list to pre-select when creating a task from this detail surface.
-  private var selectedListIDForNewTask: String? {
+  /// Not `private`: also used to resolve the paste target's list ID.
+  var selectedListIDForNewTask: String? {
     guard let provider = writableProvider else { return nil }
     return sidebarSelection.selection?.listID(matching: provider.id)
   }
@@ -93,12 +108,6 @@ struct TaskDetailView: View {
 
   var body: some View {
     trackedDetail
-      .focusable()
-      .focusEffectDisabled()
-      .focused($isDetailFocused)
-      .onPasteCommand(of: [.plainText]) { _ in handlePaste() }
-      .onAppear { isDetailFocused = true }
-      .onChange(of: sidebarSelection.selection) { _, _ in isDetailFocused = true }
       .sheet(isPresented: $isAddingTask) {
         if let provider = writableProvider {
           AddTaskView(
@@ -202,6 +211,7 @@ struct TaskDetailView: View {
       .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
       .onChange(of: sidebarSelection.selection) { _, _ in
         query = ""
+        selection = nil
         Task { await refresh() }
       }
       .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
@@ -278,18 +288,29 @@ struct TaskDetailView: View {
   // MARK: - List layout
 
   private var taskList: some View {
-    List {
-      SwiftUI.ForEach(sections) { section in
-        listSection(for: section)
-      }
+    attachClipboardModifiers(
+      to:
+        List(selection: $selection) {
+          SwiftUI.ForEach(sections) { section in
+            listSection(for: section)
+          }
 
-      if showCompleted && !completedTasks.isEmpty {
-        SwiftUI.Section {
-          SwiftUI.ForEach(completedTasks) { task in completedRow(task) }
-        } header: {
-          completedSectionHeader
+          if showCompleted && !completedTasks.isEmpty {
+            SwiftUI.Section {
+              SwiftUI.ForEach(completedTasks) { task in completedRow(task) }
+            } header: {
+              completedSectionHeader
+            }
+          }
         }
-      }
+        .onKeyPress(.return) { activateSelection() }
+        .onDeleteCommand { requestDeleteSelection() }
+    )
+    .confirmationDialog(
+      "Delete this task permanently?", isPresented: activeDeleteConfirmationBinding
+    ) {
+      Button("Delete", role: .destructive) { confirmDeleteSelection() }
+      Button("Cancel", role: .cancel) {}
     }
   }
 
@@ -297,16 +318,13 @@ struct TaskDetailView: View {
   private func listSection(for section: TaskSection) -> some View {
     SwiftUI.Section {
       SwiftUI.ForEach(section.tasks) { task in
-        Button {
-          select(task)
-        } label: {
-          TaskRowView(
-            task: task,
-            kind: .active(onComplete: onCompleteHandler(for: task)),
-            lineage: lineage(for: task)
-          )
-        }
-        .buttonStyle(.plain)
+        TaskRowView(
+          task: task,
+          kind: activeKind(for: task),
+          lineage: lineage(for: task)
+        )
+        .tag(task.id)
+        .onTableDoubleClick { _ = activateSelection() }
         .contextMenu { taskContextMenu(for: task) }
       }
     } header: {
@@ -320,45 +338,58 @@ struct TaskDetailView: View {
 
   private var taskGrid: some View {
     let columns = [GridItem(.adaptive(minimum: 180), spacing: .groupGap)]
-    return ScrollView {
-      VStack(alignment: .leading, spacing: .sectionGap) {
-        ForEach(sections) { section in
-          VStack(alignment: .leading, spacing: .contentGap) {
-            if shouldShowHeader(section) {
-              Text(section.header)
-                .font(.sectionHeader).padding(.horizontal, .stackTight)
-            }
-
-            LazyVGrid(columns: columns, spacing: .groupGap) {
-              ForEach(section.tasks) { task in
-                Button {
-                  select(task)
-                } label: {
-                  TaskCardView(
-                    task: task,
-                    kind: .active(onComplete: onCompleteHandler(for: task)),
-                    lineage: lineage(for: task)
-                  )
+    return attachClipboardModifiers(
+      to:
+        ScrollView {
+          VStack(alignment: .leading, spacing: .sectionGap) {
+            ForEach(sections) { section in
+              VStack(alignment: .leading, spacing: .contentGap) {
+                if shouldShowHeader(section) {
+                  Text(section.header)
+                    .font(.sectionHeader).padding(.horizontal, .stackTight)
                 }
-                .buttonStyle(.plain)
-                .contextMenu { taskContextMenu(for: task) }
+
+                LazyVGrid(columns: columns, spacing: .groupGap) {
+                  ForEach(section.tasks) { task in
+                    TaskCardView(
+                      task: task,
+                      kind: activeKind(for: task),
+                      lineage: lineage(for: task),
+                      isSelected: selection == task.id
+                    )
+                    .contentShape(RoundedRectangle.card)
+                    .onTapGesture { selection = task.id }
+                    .simultaneousGesture(TapGesture(count: 2).onEnded { select(task) })
+                    .contextMenu { taskContextMenu(for: task) }
+                  }
+                }
+
               }
             }
 
-          }
-        }
-
-        if showCompleted && !completedTasks.isEmpty {
-          VStack(alignment: .leading, spacing: .contentGap) {
-            completedSectionHeader
-              .padding(.horizontal, .stackTight)
-            LazyVGrid(columns: columns, spacing: .groupGap) {
-              ForEach(completedTasks) { task in completedCard(task) }
+            if showCompleted && !completedTasks.isEmpty {
+              VStack(alignment: .leading, spacing: .contentGap) {
+                completedSectionHeader
+                  .padding(.horizontal, .stackTight)
+                LazyVGrid(columns: columns, spacing: .groupGap) {
+                  ForEach(completedTasks) { task in completedCard(task) }
+                }
+              }
             }
           }
+          .padding(.cardPadding)
         }
-      }
-      .padding(.cardPadding)
+        .focusable()
+        .focusEffectDisabled()
+        .onMoveCommand { moveGridSelection($0) }
+        .onKeyPress(.return) { activateSelection() }
+        .onDeleteCommand { requestDeleteSelection() }
+    )
+    .confirmationDialog(
+      "Delete this task permanently?", isPresented: activeDeleteConfirmationBinding
+    ) {
+      Button("Delete", role: .destructive) { confirmDeleteSelection() }
+      Button("Cancel", role: .cancel) {}
     }
   }
 
@@ -374,86 +405,6 @@ struct TaskDetailView: View {
     }
   }
 
-}
-
-// MARK: - Context menus
-
-extension TaskDetailView {
-
-  /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.
-  @ViewBuilder
-  private func taskContextMenu(for task: TaskItem) -> some View {
-    Button {
-      select(task)
-    } label: {
-      Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
-    }
-    Menu {
-      ForEach(presenter.focusPresets, id: \.self) { minutes in
-        Button("\(minutes) min") {
-          startFocus(task, minutes: minutes)
-        }
-      }
-    } label: {
-      Label(
-        AppLabels.FocusPreset.startFocus.title,
-        systemImage: AppLabels.FocusPreset.startFocus.systemImage)
-    }
-    .disabled(!presenter.isIdle)
-    if registry.writableProvider(for: task.id) != nil {
-      Button {
-        taskToEdit = task
-        isEditingTask = true
-      } label: {
-        Label(AppLabels.Task.edit.title, systemImage: AppLabels.Task.edit.systemImage)
-      }
-    }
-    Divider()
-    Button {
-      TaskClipboard.copy(task)
-    } label: {
-      Label(AppLabels.Task.copy.title, systemImage: AppLabels.Task.copy.systemImage)
-    }
-    if registry.writableProvider(for: task.id) != nil {
-      Button {
-        handleCut(task)
-      } label: {
-        Label(AppLabels.Task.cut.title, systemImage: AppLabels.Task.cut.systemImage)
-      }
-    }
-    Divider()
-    if registry.closableProvider(for: task.id) != nil {
-      Button {
-        handleComplete(task)
-      } label: {
-        Label(AppLabels.Task.complete.title, systemImage: AppLabels.Task.complete.systemImage)
-      }
-    }
-  }
-
-  /// Context menu items shown on secondary-click of a completed task row or card.
-  @ViewBuilder
-  private func completedTaskContextMenu(for task: TaskItem) -> some View {
-    Button {
-      TaskClipboard.copy(task)
-    } label: {
-      Label(AppLabels.Task.copy.title, systemImage: AppLabels.Task.copy.systemImage)
-    }
-    if registry.closableProvider(for: task.id) != nil {
-      Button {
-        handleRestore(task)
-      } label: {
-        Label(AppLabels.Task.restore.title, systemImage: AppLabels.Task.restore.systemImage)
-      }
-    }
-    if registry.provider(for: task.id) is (any WritableTaskProvider) {
-      Button(role: .destructive) {
-        handleDelete(task)
-      } label: {
-        Label(AppLabels.Task.delete.title, systemImage: AppLabels.Task.delete.systemImage)
-      }
-    }
-  }
 }
 
 // MARK: - Data loading
@@ -534,6 +485,17 @@ extension TaskDetailView {
     )
   }
 
+  /// The active-task kind wired to this view's complete and — for writable providers only —
+  /// permanent-delete handlers. The trailing delete button reveals on hover (issue #546),
+  /// surfacing the same delete now reachable via the keyboard.
+  private func activeKind(for task: TaskItem) -> TaskItemKind {
+    let canDelete = registry.writableProvider(for: task.id) != nil
+    return .active(
+      onComplete: onCompleteHandler(for: task),
+      onDelete: canDelete ? { handleDelete(task) } : nil
+    )
+  }
+
   /// A ``TaskRowView`` wired to this view's restore and delete handlers.
   private func completedRow(_ task: TaskItem) -> some View {
     TaskRowView(task: task, kind: completedKind(for: task), lineage: lineage(for: task))
@@ -552,7 +514,13 @@ extension TaskDetailView {
       && navigationContext?.label != section.header
   }
 
-  private func select(_ task: TaskItem) {
+  /// Activates `task`: makes it the active/tracked task and switches to the Timer tab.
+  ///
+  /// This is the "activate" gesture (issue #546) — double-click, Return with a selection, or
+  /// the context-menu "Track Task" item — kept distinct from ``selection``, which only
+  /// highlights a row for the clipboard and never navigates. Not `private`:
+  /// `TaskDetailSelection.swift`'s `activateSelection()` calls this for Return.
+  func select(_ task: TaskItem) {
     selectionStore.select(task)
     nav.showTimer()
   }
@@ -560,8 +528,9 @@ extension TaskDetailView {
   /// Selects `task`, sets the focus length to `minutes`, and starts a session on it — the
   /// "Start Focus ▸" submenu's one-gesture action (design doc 0009, D7). Only reachable while
   /// `presenter.isIdle` (the submenu is disabled otherwise), so this never interrupts a
-  /// running or paused session.
-  private func startFocus(_ task: TaskItem, minutes: Int) {
+  /// running or paused session. Not `private`: called from `TaskDetailContextMenu.swift`'s
+  /// "Start Focus ▸" submenu.
+  func startFocus(_ task: TaskItem, minutes: Int) {
     selectionStore.select(task)
     settings.focusMinutes = minutes
     presenter.start()

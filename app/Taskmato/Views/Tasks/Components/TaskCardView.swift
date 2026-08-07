@@ -16,6 +16,11 @@ struct TaskCardView: View {
   let kind: TaskItemKind
   var lineage: TaskLineage?
 
+  /// Whether this card is the current grid selection (issue #546); draws an accent highlight
+  /// and adds the `.isSelected` accessibility trait. Grid-only — `TaskRowView` gets its
+  /// highlight for free from `List(selection:)`.
+  var isSelected: Bool = false
+
   @State private var isHovered = false
   @State private var showDeleteConfirmation = false
 
@@ -48,12 +53,17 @@ struct TaskCardView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .background(
       RoundedRectangle.card
-        .fill(Color.cardSurface)
+        .fill(isSelected ? Color.accentColor.opacity(.subtle) : Color.cardSurface)
+    )
+    .overlay(
+      RoundedRectangle.card
+        .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
     )
     .contentShape(RoundedRectangle.card)
     .onHover { hover in
-      if presenter.isCompleted { isHovered = hover }
+      if presenter.canDelete { isHovered = hover }
     }
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
     .confirmationDialog(
       "Delete this task permanently?", isPresented: $showDeleteConfirmation
     ) {
@@ -88,7 +98,7 @@ struct TaskCardView: View {
       priority: .high,
       dueDate: Calendar.current.date(byAdding: .day, value: -3, to: .now)
     )
-    TaskCardView(task: task, kind: .active(onComplete: {}))
+    TaskCardView(task: task, kind: .active(onComplete: {}, onDelete: {}))
       .padding()
       .frame(width: 200)
   }
