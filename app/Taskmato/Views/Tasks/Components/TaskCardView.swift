@@ -16,7 +16,13 @@ struct TaskCardView: View {
   let kind: TaskItemKind
   var lineage: TaskLineage?
 
-  @State private var isHovered = false
+  /// Whether this card is the current grid selection (issue #546).
+  var isSelected: Bool = false
+  /// Whether task content currently owns keyboard focus.
+  var isSelectionFocused: Bool = false
+
+  @State private var completionHover = false
+  @State private var cardHover = false
   @State private var showDeleteConfirmation = false
 
   private var presenter: TaskItemPresenter {
@@ -25,7 +31,7 @@ struct TaskCardView: View {
 
   var body: some View {
     HStack(alignment: .top, spacing: .iconLabel) {
-      TaskStateButtonView(presenter: presenter, isHovered: $isHovered)
+      TaskStateButtonView(presenter: presenter, isHovered: $completionHover)
       HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
         PriorityGlyph(priority: task.priority)
         VStack(alignment: .leading, spacing: .rowVertical) {
@@ -42,24 +48,32 @@ struct TaskCardView: View {
         }
       }
       TaskDeleteButtonView(
-        presenter: presenter, isHovered: isHovered, showConfirmation: $showDeleteConfirmation)
+        presenter: presenter, isHovered: cardHover, showConfirmation: $showDeleteConfirmation)
     }
     .padding(.cardPadding)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .background(
       RoundedRectangle.card
-        .fill(Color.cardSurface)
+        .fill(cardBackground)
+    )
+    .overlay(
+      RoundedRectangle.card
+        .strokeBorder(Color.clear, lineWidth: 2)
     )
     .contentShape(RoundedRectangle.card)
-    .onHover { hover in
-      if presenter.isCompleted { isHovered = hover }
-    }
+    .onHover { cardHover = $0 }
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
     .confirmationDialog(
       "Delete this task permanently?", isPresented: $showDeleteConfirmation
     ) {
       Button("Delete", role: .destructive) { presenter.onDelete?() }
       Button("Cancel", role: .cancel) {}
     }
+  }
+
+  private var cardBackground: Color {
+    guard isSelected else { return .cardSurface }
+    return isSelectionFocused ? .activeSelection : .inactiveSelection
   }
 
   /// The due date (active tasks) or completed-relative subtitle (completed tasks). The card's
@@ -88,7 +102,7 @@ struct TaskCardView: View {
       priority: .high,
       dueDate: Calendar.current.date(byAdding: .day, value: -3, to: .now)
     )
-    TaskCardView(task: task, kind: .active(onComplete: {}))
+    TaskCardView(task: task, kind: .active(onComplete: {}, onDelete: {}))
       .padding()
       .frame(width: 200)
   }
