@@ -38,8 +38,17 @@ protocol RemindersEventStore: AnyObject, Sendable {
     within interval: DateInterval
   ) async throws -> [ReminderSnapshot]
 
+  /// Returns the system default calendar for new reminders, or `nil` if none is configured.
+  func defaultCalendarForNewReminders() -> EKCalendar?
+
+  /// Creates a new, unsaved reminder bound to this store.
+  func newReminder() -> EKReminder
+
   /// Saves a modified reminder to the store.
   func save(_ reminder: EKReminder, commit: Bool) throws
+
+  /// Removes a reminder from the store.
+  func remove(_ reminder: EKReminder, commit: Bool) throws
 
   /// Looks up a reminder by its stable ``EKReminder/calendarItemIdentifier``.
   func reminder(withIdentifier identifier: String) -> EKReminder?

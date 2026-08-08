@@ -211,6 +211,8 @@ extension SettingsStore {
     // MARK: Reminders provider
 
     static let remindersListPatterns = SettingsKey("reminders.listPatterns", default: [String]())
+    static let remindersDefaultListOverride = SettingsKey<String?>(
+      "reminders.defaultListOverride", default: nil)
 
     // MARK: Codable navigation & selection blobs
 
