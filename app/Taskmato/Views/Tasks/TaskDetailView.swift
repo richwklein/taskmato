@@ -38,17 +38,25 @@ struct TaskDetailView: View {
   @State var isEditingTask = false
   /// Not `private`: `TaskDetailContextMenu.swift`'s "Edit…" item sets this.
   @State var taskToEdit: TaskItem?
-  @State private var showCompleted = false
-  @State private var completedTasks: [TaskItem] = []
+  /// Whether the completed-task section is visible. Not `private`: grid selection navigation in
+  /// `TaskDetailSelection.swift` includes completed tasks when this is true.
+  @State var showCompleted = false
+  /// Loaded completed tasks for the current query. Not `private`: selection resolution searches
+  /// these tasks so completed rows/cards support copy, cut, and delete.
+  @State var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
   @FocusState private var isSearchFocused: Bool
-  /// The single selected active task (issue #546) — ephemeral, view-local, and independent of
+  /// Incremented to ask the AppKit task-content responder to reclaim first-responder status.
+  @State var taskContentFocusToken = 0
+  /// Whether task content owns keyboard focus, driving active versus inactive selection color.
+  @State var isTaskContentFocused = false
+  /// The single selected task (issue #546) — ephemeral, view-local, and independent of
   /// ``TaskSelectionStore``'s active/tracked task. Drives the clipboard and `.onDeleteCommand`;
   /// cleared whenever the sidebar selection changes. Not `private`: `handleDelete(_:)` in
   /// `TaskDetailActions.swift` clears it when the selected task is removed.
   @State var selection: TaskRef?
-  /// The active task pending permanent deletion via `.onDeleteCommand`, driving the
-  /// confirmation dialog. Not `private`: managed from `TaskDetailSelection.swift`.
+  /// The selected task pending permanent deletion via `.onDeleteCommand`, driving the confirmation
+  /// dialog. Not `private`: managed from `TaskDetailSelection.swift`.
   @State var activeDeleteCandidate: TaskItem?
 
   /// Maps between clipboard payloads/plain text and ``TaskDraft``, and answers cut/delete/paste
@@ -73,7 +81,6 @@ struct TaskDetailView: View {
   }
 
   /// The currently selected list to pre-select when creating a task from this detail surface.
-  /// Not `private`: also used to resolve the paste target's list ID.
   var selectedListIDForNewTask: String? {
     guard let provider = writableProvider else { return nil }
     return sidebarSelection.selection?.listID(matching: provider.id)
@@ -200,7 +207,9 @@ struct TaskDetailView: View {
       .searchFocused($isSearchFocused)
       .task(id: query) { await refresh() }
       .task { await subscribeToProviderUpdates() }
-      .onAppear { Task { await refresh() } }
+      .onAppear {
+        Task { await refresh() }
+      }
       .onChange(of: refreshToken) { _, _ in Task { await refresh() } }
       .onChange(of: isAddingTask) { _, adding in
         if !adding { Task { await refresh() } }
@@ -212,7 +221,11 @@ struct TaskDetailView: View {
       .onChange(of: sidebarSelection.selection) { _, _ in
         query = ""
         selection = nil
+        isTaskContentFocused = false
         Task { await refresh() }
+      }
+      .onChange(of: isSearchFocused) { _, focused in
+        if focused { isTaskContentFocused = false }
       }
       .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
       .onChange(of: settings.taskSortField) { _, _ in Task { await refresh() } }
@@ -288,30 +301,31 @@ struct TaskDetailView: View {
   // MARK: - List layout
 
   private var taskList: some View {
-    attachClipboardModifiers(
+    attachActiveDeleteConfirmation(
       to:
-        List(selection: $selection) {
-          SwiftUI.ForEach(sections) { section in
-            listSection(for: section)
-          }
+        attachClipboardModifiers(
+          to:
+            attachTaskKeyboardResponder(
+              to:
+                List {
+                  SwiftUI.ForEach(sections) { section in
+                    listSection(for: section)
+                  }
 
-          if showCompleted && !completedTasks.isEmpty {
-            SwiftUI.Section {
-              SwiftUI.ForEach(completedTasks) { task in completedRow(task) }
-            } header: {
-              completedSectionHeader
-            }
-          }
-        }
-        .onKeyPress(.return) { activateSelection() }
-        .onDeleteCommand { requestDeleteSelection() }
+                  if showCompleted && !completedTasks.isEmpty {
+                    SwiftUI.Section {
+                      SwiftUI.ForEach(completedTasks) { task in completedRow(task) }
+                    } header: {
+                      completedSectionHeader
+                    }
+                  }
+                }
+                .onTableDoubleClick { _ = activateSelection() }
+                .contentShape(Rectangle())
+                .onTapGesture { focusTaskContent() }
+            )
+        )
     )
-    .confirmationDialog(
-      "Delete this task permanently?", isPresented: activeDeleteConfirmationBinding
-    ) {
-      Button("Delete", role: .destructive) { confirmDeleteSelection() }
-      Button("Cancel", role: .cancel) {}
-    }
   }
 
   @ViewBuilder
@@ -323,8 +337,12 @@ struct TaskDetailView: View {
           kind: activeKind(for: task),
           lineage: lineage(for: task)
         )
-        .tag(task.id)
-        .onTableDoubleClick { _ = activateSelection() }
+        .listRowBackground(selectionBackground(for: task))
+        .onTapGesture {
+          selection = task.id
+          focusTaskContent()
+        }
+        .accessibilityAddTraits(selection == task.id ? .isSelected : [])
         .contextMenu { taskContextMenu(for: task) }
       }
     } header: {
@@ -338,59 +356,60 @@ struct TaskDetailView: View {
 
   private var taskGrid: some View {
     let columns = [GridItem(.adaptive(minimum: 180), spacing: .groupGap)]
-    return attachClipboardModifiers(
+    return attachActiveDeleteConfirmation(
       to:
-        ScrollView {
-          VStack(alignment: .leading, spacing: .sectionGap) {
-            ForEach(sections) { section in
-              VStack(alignment: .leading, spacing: .contentGap) {
-                if shouldShowHeader(section) {
-                  Text(section.header)
-                    .font(.sectionHeader).padding(.horizontal, .stackTight)
-                }
+        attachClipboardModifiers(
+          to:
+            attachTaskKeyboardResponder(
+              to:
+                ScrollView {
+                  VStack(alignment: .leading, spacing: .sectionGap) {
+                    ForEach(sections) { section in
+                      VStack(alignment: .leading, spacing: .contentGap) {
+                        if shouldShowHeader(section) {
+                          Text(section.header)
+                            .font(.sectionHeader).padding(.horizontal, .stackTight)
+                        }
 
-                LazyVGrid(columns: columns, spacing: .groupGap) {
-                  ForEach(section.tasks) { task in
-                    TaskCardView(
-                      task: task,
-                      kind: activeKind(for: task),
-                      lineage: lineage(for: task),
-                      isSelected: selection == task.id
-                    )
-                    .contentShape(RoundedRectangle.card)
-                    .onTapGesture { selection = task.id }
-                    .simultaneousGesture(TapGesture(count: 2).onEnded { select(task) })
-                    .contextMenu { taskContextMenu(for: task) }
+                        LazyVGrid(columns: columns, spacing: .groupGap) {
+                          ForEach(section.tasks) { task in
+                            TaskCardView(
+                              task: task,
+                              kind: activeKind(for: task),
+                              lineage: lineage(for: task),
+                              isSelected: selection == task.id,
+                              isSelectionFocused: isTaskContentFocused
+                            )
+                            .contentShape(RoundedRectangle.card)
+                            .onTapGesture {
+                              selection = task.id
+                              focusTaskContent()
+                            }
+                            .simultaneousGesture(TapGesture(count: 2).onEnded { select(task) })
+                            .contextMenu { taskContextMenu(for: task) }
+                          }
+                        }
+
+                      }
+                    }
+
+                    if showCompleted && !completedTasks.isEmpty {
+                      VStack(alignment: .leading, spacing: .contentGap) {
+                        completedSectionHeader
+                          .padding(.horizontal, .stackTight)
+                        LazyVGrid(columns: columns, spacing: .groupGap) {
+                          ForEach(completedTasks) { task in completedCard(task) }
+                        }
+                      }
+                    }
                   }
+                  .padding(.cardPadding)
                 }
-
-              }
-            }
-
-            if showCompleted && !completedTasks.isEmpty {
-              VStack(alignment: .leading, spacing: .contentGap) {
-                completedSectionHeader
-                  .padding(.horizontal, .stackTight)
-                LazyVGrid(columns: columns, spacing: .groupGap) {
-                  ForEach(completedTasks) { task in completedCard(task) }
-                }
-              }
-            }
-          }
-          .padding(.cardPadding)
-        }
-        .focusable()
-        .focusEffectDisabled()
-        .onMoveCommand { moveGridSelection($0) }
-        .onKeyPress(.return) { activateSelection() }
-        .onDeleteCommand { requestDeleteSelection() }
+                .contentShape(Rectangle())
+                .onTapGesture { focusTaskContent() }
+            )
+        )
     )
-    .confirmationDialog(
-      "Delete this task permanently?", isPresented: activeDeleteConfirmationBinding
-    ) {
-      Button("Delete", role: .destructive) { confirmDeleteSelection() }
-      Button("Cancel", role: .cancel) {}
-    }
   }
 
   @ViewBuilder
@@ -465,7 +484,7 @@ extension TaskDetailView {
   }
 
   /// Builds a ``TaskLineage`` for flat-mode task rows and cards.
-  private func lineage(for task: TaskItem) -> TaskLineage? {
+  func lineage(for task: TaskItem) -> TaskLineage? {
     guard currentQuery.isCrossProvider else { return nil }
     let showIcon = registry.enabledIDs.count > 1
     let provider = registry.providers.first { $0.id == task.id.providerID }
@@ -477,7 +496,7 @@ extension TaskDetailView {
     return lin.isEmpty ? nil : lin
   }
 
-  private func completedKind(for task: TaskItem) -> TaskItemKind {
+  func completedKind(for task: TaskItem) -> TaskItemKind {
     let canDelete = registry.provider(for: task.id) is (any WritableTaskProvider)
     return .completed(
       onRestore: { handleRestore(task) },
@@ -494,18 +513,6 @@ extension TaskDetailView {
       onComplete: onCompleteHandler(for: task),
       onDelete: canDelete ? { handleDelete(task) } : nil
     )
-  }
-
-  /// A ``TaskRowView`` wired to this view's restore and delete handlers.
-  private func completedRow(_ task: TaskItem) -> some View {
-    TaskRowView(task: task, kind: completedKind(for: task), lineage: lineage(for: task))
-      .contextMenu { completedTaskContextMenu(for: task) }
-  }
-
-  /// A ``TaskCardView`` wired to this view's restore and delete handlers.
-  private func completedCard(_ task: TaskItem) -> some View {
-    TaskCardView(task: task, kind: completedKind(for: task), lineage: lineage(for: task))
-      .contextMenu { completedTaskContextMenu(for: task) }
   }
 
   private func shouldShowHeader(_ section: TaskSection) -> Bool {

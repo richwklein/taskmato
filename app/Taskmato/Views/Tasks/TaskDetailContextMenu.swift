@@ -38,16 +38,23 @@ extension TaskDetailView {
       }
     }
     Divider()
+    if registry.writableProvider(for: task.id) != nil {
+      Button {
+        handleCut(task)
+      } label: {
+        Label(AppLabels.Task.cut.title, systemImage: AppLabels.Task.cut.systemImage)
+      }
+    }
     Button {
       copyToPasteboard(task)
     } label: {
       Label(AppLabels.Task.copy.title, systemImage: AppLabels.Task.copy.systemImage)
     }
     if registry.writableProvider(for: task.id) != nil {
-      Button {
-        handleCut(task)
+      Button(role: .destructive) {
+        activeDeleteCandidate = task
       } label: {
-        Label(AppLabels.Task.cut.title, systemImage: AppLabels.Task.cut.systemImage)
+        Label(AppLabels.Task.delete.title, systemImage: AppLabels.Task.delete.systemImage)
       }
     }
     Divider()
@@ -63,6 +70,13 @@ extension TaskDetailView {
   /// Context menu items shown on secondary-click of a completed task row or card.
   @ViewBuilder
   func completedTaskContextMenu(for task: TaskItem) -> some View {
+    if registry.writableProvider(for: task.id) != nil {
+      Button {
+        handleCut(task)
+      } label: {
+        Label(AppLabels.Task.cut.title, systemImage: AppLabels.Task.cut.systemImage)
+      }
+    }
     Button {
       copyToPasteboard(task)
     } label: {
@@ -75,9 +89,9 @@ extension TaskDetailView {
         Label(AppLabels.Task.restore.title, systemImage: AppLabels.Task.restore.systemImage)
       }
     }
-    if registry.provider(for: task.id) is (any WritableTaskProvider) {
+    if registry.writableProvider(for: task.id) != nil {
       Button(role: .destructive) {
-        handleDelete(task)
+        activeDeleteCandidate = task
       } label: {
         Label(AppLabels.Task.delete.title, systemImage: AppLabels.Task.delete.systemImage)
       }

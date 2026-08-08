@@ -5,6 +5,7 @@
 
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Selection, keyboard, and clipboard wiring
 
@@ -14,10 +15,28 @@ import SwiftUI
 /// limit, mirroring the existing `TaskDetailActions.swift` split for mutating handlers.
 extension TaskDetailView {
 
-  /// The task currently identified by ``selection`` within the loaded active sections, or
-  /// `nil` when there is no selection or the selected ref fell out of `sections` (e.g. a
-  /// background refresh removed it).
+  /// Requests task-content focus through the invisible AppKit responder.
+  func focusTaskContent() {
+    taskContentFocusToken += 1
+  }
+
+  /// Returns the active or inactive selection fill for `task`.
+  func selectionBackground(for task: TaskItem) -> Color {
+    guard selection == task.id else { return .clear }
+    return isTaskContentFocused ? .activeSelection : .inactiveSelection
+  }
+
+  /// The task currently identified by ``selection`` within active or completed tasks, or `nil`
+  /// when there is no selection or the selected ref fell out of the loaded content.
   private func selectedTask() -> TaskItem? {
+    guard let selection else { return nil }
+    return sections.lazy.flatMap(\.tasks).first { $0.id == selection }
+      ?? completedTasks.first { $0.id == selection }
+  }
+
+  /// The active task currently identified by ``selection``, or `nil` when the selected task is
+  /// completed or no longer loaded.
+  private func selectedActiveTask() -> TaskItem? {
     guard let selection else { return nil }
     return sections.lazy.flatMap(\.tasks).first { $0.id == selection }
   }
@@ -39,35 +58,34 @@ extension TaskDetailView {
     return [clipboardService.payload(for: task)]
   }
 
-  /// `.onMoveCommand`: moves ``selection`` to the previous/next active task in display order for
-  /// the grid's **Left/Right** arrow keys. Up/Down are intentionally unhandled — vertical grid
-  /// navigation needs runtime column geometry and is deferred (issue #546, D10); the list gets
-  /// full arrow navigation natively from `NSTableView`. Clamps at the ends; with no selection,
-  /// Right selects the first task and Left the last.
-  func moveGridSelection(_ direction: MoveCommandDirection) {
-    let ids = sections.flatMap(\.tasks).map(\.id)
+  /// Moves ``selection`` to the previous/next selectable task in display order. Clamps at the
+  /// ends; with no selection, next selects the first task and previous selects the last.
+  func moveSelection(_ direction: MoveCommandDirection) {
+    let ids =
+      sections.flatMap(\.tasks).map(\.id)
+      + (showCompleted ? completedTasks.map(\.id) : [])
     guard !ids.isEmpty else { return }
     let current = selection.flatMap { ids.firstIndex(of: $0) }
     switch direction {
-    case .left:
+    case .left, .up:
       selection = current.map { ids[max(0, $0 - 1)] } ?? ids.last
-    case .right:
+    case .right, .down:
       selection = current.map { ids[min(ids.count - 1, $0 + 1)] } ?? ids.first
     default:
       break
     }
   }
 
-  /// `.onKeyPress(.return)`: activates ``selection`` (mirrors double-click), or ignores the key
-  /// when nothing is selected so Return keeps its default behavior elsewhere.
+  /// Activates an active ``selection`` (mirrors double-click), or ignores the key when nothing
+  /// active is selected so Return keeps its default behavior elsewhere.
   func activateSelection() -> KeyPress.Result {
-    guard let task = selectedTask() else { return .ignored }
+    guard let task = selectedActiveTask() else { return .ignored }
     select(task)
     return .handled
   }
 
-  /// `.onDeleteCommand`: requests confirmation to permanently delete ``selection``, or beeps
-  /// when it is not writable. No-ops silently when there is no selection.
+  /// Requests confirmation to permanently delete ``selection``, or beeps when it is not writable.
+  /// No-ops silently when there is no selection.
   func requestDeleteSelection() {
     guard let task = selectedTask() else { return }
     guard clipboardService.canDelete(isWritable: registry.writableProvider(for: task.id) != nil)
@@ -76,6 +94,62 @@ extension TaskDetailView {
       return
     }
     activeDeleteCandidate = task
+  }
+
+  /// Whether the current selection can be copied.
+  func canCopySelection() -> Bool {
+    selectedTask() != nil
+  }
+
+  /// Whether the current selection can be cut.
+  func canCutSelection() -> Bool {
+    guard let task = selectedTask() else { return false }
+    return clipboardService.canCut(isWritable: registry.writableProvider(for: task.id) != nil)
+  }
+
+  /// Whether the current selection can be deleted.
+  func canDeleteSelection() -> Bool {
+    guard let task = selectedTask() else { return false }
+    return clipboardService.canDelete(isWritable: registry.writableProvider(for: task.id) != nil)
+  }
+
+  /// Whether the current pasteboard content can be pasted into this task scope.
+  func canPasteSelection(from pasteboard: NSPasteboard = .general) -> Bool {
+    guard pasteProvider != nil else { return false }
+    let taskType = NSPasteboard.PasteboardType(UTType.taskmatoTask.identifier)
+    if pasteboard.data(forType: taskType) != nil {
+      return true
+    }
+    return pasteboard.string(forType: .string)?.isEmpty == false
+  }
+
+  /// Copies the current selection to the pasteboard.
+  func copySelectionToPasteboard() {
+    guard let task = selectedTask() else { return }
+    copyToPasteboard(task)
+  }
+
+  /// Cuts the current selection to the pasteboard.
+  func cutSelectionToPasteboard() {
+    guard let task = selectedTask(), canCutSelection() else { return }
+    handleCut(task)
+  }
+
+  /// Pastes the current pasteboard into this task scope using the same strict paste target as
+  /// `.pasteDestination`.
+  func pasteSelectionFromPasteboard(_ pasteboard: NSPasteboard = .general) {
+    guard
+      let target = clipboardService.pasteTarget(
+        for: pasteProvider, listID: selectedListIDForPaste)
+    else { return }
+    let taskType = NSPasteboard.PasteboardType(UTType.taskmatoTask.identifier)
+    if let data = pasteboard.data(forType: taskType) {
+      if let payload = try? JSONDecoder().decode(TaskClipboardPayload.self, from: data) {
+        handlePastePayloads([payload], target: target)
+      }
+    } else if let text = pasteboard.string(forType: .string) {
+      handlePasteTexts([text], target: target)
+    }
   }
 
   /// Confirms the pending deletion from ``requestDeleteSelection()``.
@@ -93,6 +167,34 @@ extension TaskDetailView {
     )
   }
 
+  /// Returns the writable provider that paste should target without redirecting a read-only list
+  /// selection to the default local provider.
+  var pasteProvider: (any WritableTaskProvider)? {
+    guard case .list(let sel) = sidebarSelection.selection else {
+      return registry.resolveDefaultWritableProvider(
+        preferredID: settings.defaultWritableProviderID)
+    }
+    return registry.enabledWritableProvider(id: sel.providerID)
+  }
+
+  /// The selected list ID to use for paste, only when that list belongs to ``pasteProvider``.
+  var selectedListIDForPaste: String? {
+    guard let provider = pasteProvider else { return nil }
+    return sidebarSelection.selection?.listID(matching: provider.id)
+  }
+
+  /// Attaches the shared selected-task delete confirmation dialog to `content`.
+  @ViewBuilder
+  func attachActiveDeleteConfirmation<Content: View>(to content: Content) -> some View {
+    content
+      .confirmationDialog(
+        "Delete this task permanently?", isPresented: activeDeleteConfirmationBinding
+      ) {
+        Button("Delete", role: .destructive) { confirmDeleteSelection() }
+        Button("Cancel", role: .cancel) {}
+      }
+  }
+
   /// Attaches copy/cut, and — only when a writable paste target exists (D5) — paste, to
   /// `content`. Shared by both layouts so list and grid get identical Edit-menu behavior.
   @ViewBuilder
@@ -102,7 +204,7 @@ extension TaskDetailView {
       .copyable(copyPayloads())
       .cuttable(for: TaskClipboardPayload.self, action: cutPayloads)
     let target = clipboardService.pasteTarget(
-      for: writableProvider, listID: selectedListIDForNewTask)
+      for: pasteProvider, listID: selectedListIDForPaste)
     if let target {
       withCopyAndCut
         .pasteDestination(for: TaskClipboardPayload.self) { payloads in
@@ -113,6 +215,27 @@ extension TaskDetailView {
         }
     } else {
       withCopyAndCut
+    }
+  }
+
+  /// Attaches the invisible task-content keyboard responder to `content`.
+  func attachTaskKeyboardResponder<Content: View>(to content: Content) -> some View {
+    content.overlay(alignment: .topLeading) {
+      TaskKeyboardResponder(
+        focusToken: taskContentFocusToken,
+        onReturn: { _ = activateSelection() },
+        onDelete: { requestDeleteSelection() },
+        onMove: { moveSelection($0) },
+        onCopy: { copySelectionToPasteboard() },
+        onCut: { cutSelectionToPasteboard() },
+        onPaste: { pasteSelectionFromPasteboard() },
+        canCopy: { canCopySelection() },
+        canCut: { canCutSelection() },
+        canPaste: { canPasteSelection() },
+        canDelete: { canDeleteSelection() },
+        onFocusChange: { isTaskContentFocused = $0 }
+      )
+      .frame(width: 0, height: 0)
     }
   }
 

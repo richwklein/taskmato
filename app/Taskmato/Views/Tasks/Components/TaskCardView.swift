@@ -16,12 +16,13 @@ struct TaskCardView: View {
   let kind: TaskItemKind
   var lineage: TaskLineage?
 
-  /// Whether this card is the current grid selection (issue #546); draws an accent highlight
-  /// and adds the `.isSelected` accessibility trait. Grid-only — `TaskRowView` gets its
-  /// highlight for free from `List(selection:)`.
+  /// Whether this card is the current grid selection (issue #546).
   var isSelected: Bool = false
+  /// Whether task content currently owns keyboard focus.
+  var isSelectionFocused: Bool = false
 
-  @State private var isHovered = false
+  @State private var completionHover = false
+  @State private var cardHover = false
   @State private var showDeleteConfirmation = false
 
   private var presenter: TaskItemPresenter {
@@ -30,7 +31,7 @@ struct TaskCardView: View {
 
   var body: some View {
     HStack(alignment: .top, spacing: .iconLabel) {
-      TaskStateButtonView(presenter: presenter, isHovered: $isHovered)
+      TaskStateButtonView(presenter: presenter, isHovered: $completionHover)
       HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
         PriorityGlyph(priority: task.priority)
         VStack(alignment: .leading, spacing: .rowVertical) {
@@ -47,22 +48,20 @@ struct TaskCardView: View {
         }
       }
       TaskDeleteButtonView(
-        presenter: presenter, isHovered: isHovered, showConfirmation: $showDeleteConfirmation)
+        presenter: presenter, isHovered: cardHover, showConfirmation: $showDeleteConfirmation)
     }
     .padding(.cardPadding)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .background(
       RoundedRectangle.card
-        .fill(isSelected ? Color.accentColor.opacity(.subtle) : Color.cardSurface)
+        .fill(cardBackground)
     )
     .overlay(
       RoundedRectangle.card
-        .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
+        .strokeBorder(Color.clear, lineWidth: 2)
     )
     .contentShape(RoundedRectangle.card)
-    .onHover { hover in
-      if presenter.canDelete { isHovered = hover }
-    }
+    .onHover { cardHover = $0 }
     .accessibilityAddTraits(isSelected ? .isSelected : [])
     .confirmationDialog(
       "Delete this task permanently?", isPresented: $showDeleteConfirmation
@@ -70,6 +69,11 @@ struct TaskCardView: View {
       Button("Delete", role: .destructive) { presenter.onDelete?() }
       Button("Cancel", role: .cancel) {}
     }
+  }
+
+  private var cardBackground: Color {
+    guard isSelected else { return .cardSurface }
+    return isSelectionFocused ? .activeSelection : .inactiveSelection
   }
 
   /// The due date (active tasks) or completed-relative subtitle (completed tasks). The card's

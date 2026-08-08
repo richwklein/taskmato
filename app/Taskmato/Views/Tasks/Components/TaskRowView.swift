@@ -17,7 +17,8 @@ struct TaskRowView: View {
   let kind: TaskItemKind
   var lineage: TaskLineage?
 
-  @State private var isHovered = false
+  @State private var completionHover = false
+  @State private var rowHover = false
   @State private var showDeleteConfirmation = false
 
   private var presenter: TaskItemPresenter {
@@ -26,7 +27,7 @@ struct TaskRowView: View {
 
   var body: some View {
     HStack(alignment: .top, spacing: .contentGap) {
-      TaskStateButtonView(presenter: presenter, isHovered: $isHovered)
+      TaskStateButtonView(presenter: presenter, isHovered: $completionHover)
       HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
         PriorityGlyph(priority: task.priority)
         VStack(alignment: .leading, spacing: .stackTight) {
@@ -41,13 +42,11 @@ struct TaskRowView: View {
         }
       }
       TaskDeleteButtonView(
-        presenter: presenter, isHovered: isHovered, showConfirmation: $showDeleteConfirmation)
+        presenter: presenter, isHovered: rowHover, showConfirmation: $showDeleteConfirmation)
     }
     .padding(.vertical, .rowVertical)
     .contentShape(Rectangle())
-    .onHover { hover in
-      if presenter.canDelete { isHovered = hover }
-    }
+    .onHover { rowHover = $0 }
     .confirmationDialog(
       "Delete this task permanently?", isPresented: $showDeleteConfirmation
     ) {
