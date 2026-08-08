@@ -158,18 +158,24 @@ struct AddTaskView: View {
     draft.dueDate = hasDueDate ? dueDate : nil
     draft.listID = selectedListID.isEmpty ? nil : selectedListID
     draft.format = provider.contentFormat
-    isPresented = false
+    // Dismiss only after the write completes — dismissing first (as this used to) races the
+    // sheet's `isAddingTask`-driven refresh against the provider write: for an in-process
+    // provider like LocalProvider the in-memory mutation usually beats the refresh anyway, but
+    // for RemindersProvider the refresh re-fetches from EventKit, which can lose that race and
+    // show a list missing the task that was just added.
     if let task = taskToEdit {
       Task {
         await errorPresenter.attempt(AppLabels.Error.updateFailed) {
           try await provider.updateTask(task.id, draft: draft)
         }
+        isPresented = false
       }
     } else {
       Task {
         await errorPresenter.attempt(AppLabels.Error.addFailed) {
           try await provider.addTask(draft)
         }
+        isPresented = false
       }
     }
   }
