@@ -320,8 +320,8 @@ final class ObsidianProvider: ClosableTaskProvider {
 
   /// Returns the path of `fileURL` relative to `vaultURL`, using `fileURL.path` as fallback.
   private nonisolated func relativePath(for fileURL: URL, relativeTo vaultURL: URL) -> String {
-    let vaultPath = vaultURL.standardized.path
-    let filePath = fileURL.standardized.path
+    let vaultPath = vaultURL.standardizedFileURL.resolvingSymlinksInPath().path
+    let filePath = fileURL.standardizedFileURL.resolvingSymlinksInPath().path
     guard filePath.hasPrefix(vaultPath + "/") else { return filePath }
     return String(filePath.dropFirst(vaultPath.count + 1))
   }
