@@ -46,6 +46,10 @@ final class MulticastAsyncStream<Element: Sendable> {
   /// Runs `body` after a subscriber terminates, allowing the owner to stop its source watcher.
   var isEmpty: Bool { continuations.isEmpty }
 
+  deinit {
+    continuations.removeAll()
+  }
+
   private func remove(_ id: UUID) {
     continuations.removeValue(forKey: id)
     if continuations.isEmpty { onEmpty?() }
