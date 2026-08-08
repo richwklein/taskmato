@@ -217,13 +217,15 @@ final class URLSchemeHandler {
       registry.isEnabled(provider.id)
     else { return nil }
     let all = (try? await provider.tasks(in: nil)) ?? []
-    return all.first { $0.id.nativeID == nativeID }
+    let ref = TaskRef(providerID: providerID, nativeID: nativeID)
+    return provider.resolve(ref, among: all)
   }
 
   private func crossProviderIDLookup(nativeID: String) async -> TaskItem? {
     for provider in registry.providers where registry.isEnabled(provider.id) {
       let all = (try? await provider.tasks(in: nil)) ?? []
-      if let found = all.first(where: { $0.id.nativeID == nativeID }) {
+      let ref = TaskRef(providerID: provider.id, nativeID: nativeID)
+      if let found = provider.resolve(ref, among: all) {
         return found
       }
     }

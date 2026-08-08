@@ -62,6 +62,56 @@ struct TaskSelectionStoreTests {
     #expect(store.activeTask == second)
   }
 
+  // MARK: - Refresh (issue #547)
+
+  @Test func refreshActiveTaskUpdatesFieldsForMatchingRef() {
+    let store = makeStore()
+    let original = makeItem(providerID: "alpha", nativeID: "1", title: "Old title")
+    store.select(original)
+    let updated = makeItem(providerID: "alpha", nativeID: "1", title: "New title")
+    store.refreshActiveTask(updated)
+    #expect(store.activeTask?.title == "New title")
+  }
+
+  @Test func refreshActiveTaskIgnoresMismatchedRef() {
+    let store = makeStore()
+    let original = makeItem(providerID: "alpha", nativeID: "1", title: "Original")
+    store.select(original)
+    let other = makeItem(providerID: "alpha", nativeID: "2", title: "Different task")
+    store.refreshActiveTask(other)
+    #expect(store.activeTask == original)
+  }
+
+  @Test func refreshActiveTaskDoesNotFireOnActiveTaskChanged() {
+    let store = makeStore()
+    let original = makeItem(providerID: "alpha", nativeID: "1", title: "Original")
+    store.select(original)
+    var fired = false
+    store.onActiveTaskChanged = { _ in fired = true }
+    store.refreshActiveTask(makeItem(providerID: "alpha", nativeID: "1", title: "Updated"))
+    #expect(fired == false)
+  }
+
+  @Test func refreshActiveTaskDoesNotAffectRecents() {
+    let store = makeStore()
+    let original = makeItem(providerID: "alpha", nativeID: "1", title: "Original")
+    store.select(original)
+    let updated = makeItem(providerID: "alpha", nativeID: "1", title: "Updated")
+    store.refreshActiveTask(updated)
+    #expect(store.recents(for: "alpha") == [original])
+  }
+
+  @Test func refreshActiveTaskMigratesMatchingRecentReference() {
+    let store = makeStore()
+    let old = makeItem(providerID: "alpha", nativeID: "tasks.md:1", title: "Original")
+    let current = makeItem(
+      providerID: "alpha", nativeID: "tasks.md#fp=abc#line=1", title: "Updated")
+    store.select(old)
+    store.refreshActiveTask(current, replacing: old.id)
+    #expect(store.activeTask == current)
+    #expect(store.recents(for: "alpha").first == current)
+  }
+
   // MARK: - Recents
 
   @Test func selectAddsToRecents() {

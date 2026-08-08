@@ -51,7 +51,7 @@ struct MainNavigationTests {
     let nav = MainNavigation(
       settings: AppSettings(store: settings), selectionStore: store,
       statsViewModel: statsViewModel, store: settings)
-    registry.onProviderStateChanged = { [weak store, weak nav] in
+    registry.onProviderStateChanged = { [weak store, weak nav] _ in
       store?.validateSelection()
       nav?.reconcileTaskScope()
     }
