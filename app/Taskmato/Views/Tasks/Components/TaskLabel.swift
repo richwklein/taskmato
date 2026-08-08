@@ -187,6 +187,11 @@ enum AppLabels {
     static let setDefaultFailed = "Couldn't set default list"
     /// An ad-hoc task from a `taskmato://` link could not be created.
     static let adhocCreateFailed = "Couldn't create task"
+    /// The active task vanished from its provider mid-focus — deleted, completed elsewhere, or
+    /// its provider temporarily unreadable; these all look identical from here (issue #547).
+    static func taskNotAvailable(title: String) -> String {
+      "\u{201C}\(title)\u{201D} is not available"
+    }
   }
 
   /// Labels for provider sidebar actions.

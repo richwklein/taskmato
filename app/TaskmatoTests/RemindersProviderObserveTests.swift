@@ -56,6 +56,31 @@ struct RemindersProviderObserveTests {
     #expect(emitted?.first?.title == "Task 1")
   }
 
+  @Test func observeMulticastsUpdatesToConcurrentSubscribers() async throws {
+    let (provider, store) = try await makeAuthorizedProvider()
+    let cal = store.makeCalendar(title: "Work")
+    store.stubbedCalendars = [cal]
+    store.stubbedReminders = [
+      store.makeReminder(title: "Task 1", calendar: cal)
+    ]
+
+    guard let firstStream = provider.observe(), let secondStream = provider.observe() else {
+      Issue.record("observe() returned nil")
+      return
+    }
+
+    #expect(store.observerAddCount == 1)
+
+    var firstIterator = firstStream.makeAsyncIterator()
+    var secondIterator = secondStream.makeAsyncIterator()
+    store.fireNotification()
+
+    let first = await firstIterator.next()
+    let second = await secondIterator.next()
+    #expect(first?.map(\.title) == ["Task 1"])
+    #expect(second?.map(\.title) == ["Task 1"])
+  }
+
   @Test func observeDebounceCoalescesBurstNotifications() async throws {
     let (provider, store) = try await makeAuthorizedProvider()
     let cal = store.makeCalendar(title: "Work")

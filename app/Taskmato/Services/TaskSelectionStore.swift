@@ -69,6 +69,21 @@ final class TaskSelectionStore {
     onActiveTaskChanged?(nil)
   }
 
+  /// Updates the active task's cached fields (title, notes, priority, …) from a freshly
+  /// reloaded snapshot of the same reference, so external edits show up without a new selection.
+  ///
+  /// Unlike ``select(_:)`` this does not touch recents or the pending-continuation flag, and does
+  /// not fire ``onActiveTaskChanged`` — the reference is unchanged, so no new attribution slice
+  /// should open (`ActiveTaskReconciler`, issue #547). One accepted consequence: a focus segment
+  /// already open against this task keeps the pre-refresh `taskTitle` when it closes, since that
+  /// title was captured as a breakpoint before the rename was known.
+  /// - Parameter task: The reloaded task. Ignored if its `id` no longer matches `activeTask`.
+  func refreshActiveTask(_ task: TaskItem) {
+    guard task.id == activeTask?.id else { return }
+    activeTask = task
+    persist()
+  }
+
   /// Marks the next ``select(_:)`` as a genuine handoff continuation (D9) — call after a
   /// complete/swap/clear pauses the phase and routes to the picker.
   func markPendingContinuation() {

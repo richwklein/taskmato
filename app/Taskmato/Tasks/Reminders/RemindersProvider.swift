@@ -33,7 +33,11 @@ final class RemindersProvider: ClosableTaskProvider {
 
   private let store: any RemindersEventStore
   private let settings: SettingsStore
-  private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
+  /// Live subscribers of ``observe()``, keyed so each can be torn down independently — e.g. the
+  /// Tasks tab's `TaskDetailView` and the composition root's live active-task reconciliation
+  /// (issue #547) both hold one at once. A single stored continuation would have the second
+  /// caller's `observe()` silently steal every future update from the first.
+  private var continuations: [UUID: AsyncStream<[TaskItem]>.Continuation] = [:]
   private var observer: NSObjectProtocol?
   private let debouncer = Debouncer()
 
@@ -127,18 +131,21 @@ final class RemindersProvider: ClosableTaskProvider {
 
   func observe() -> AsyncStream<[TaskItem]>? {
     guard isAuthorized else { return nil }
+    let id = UUID()
     let (stream, continuation) = AsyncStream<[TaskItem]>.makeStream()
-    streamContinuation = continuation
-    observer = store.addObserver(
-      forName: .EKEventStoreChanged
-    ) { [weak self] in
-      Task { @MainActor [weak self] in
-        self?.scheduleDebounce()
+    continuations[id] = continuation
+    if observer == nil {
+      observer = store.addObserver(
+        forName: .EKEventStoreChanged
+      ) { [weak self] in
+        Task { @MainActor [weak self] in
+          self?.scheduleDebounce()
+        }
       }
     }
     continuation.onTermination = { [weak self] _ in
       Task { @MainActor [weak self] in
-        self?.stopObserving()
+        self?.removeSubscriber(id)
       }
     }
     return stream
@@ -148,8 +155,16 @@ final class RemindersProvider: ClosableTaskProvider {
     debouncer.schedule { [weak self] in
       guard let self else { return }
       let updated = (try? await self.tasks(in: nil)) ?? []
-      self.streamContinuation?.yield(updated)
+      for continuation in self.continuations.values {
+        continuation.yield(updated)
+      }
     }
+  }
+
+  private func removeSubscriber(_ id: UUID) {
+    continuations.removeValue(forKey: id)
+    guard continuations.isEmpty else { return }
+    stopObserving()
   }
 
   private func stopObserving() {
@@ -158,8 +173,10 @@ final class RemindersProvider: ClosableTaskProvider {
       store.removeObserver(observer)
       self.observer = nil
     }
-    streamContinuation?.finish()
-    streamContinuation = nil
+    for continuation in continuations.values {
+      continuation.finish()
+    }
+    continuations.removeAll()
   }
 
   // MARK: - ClosableTaskProvider

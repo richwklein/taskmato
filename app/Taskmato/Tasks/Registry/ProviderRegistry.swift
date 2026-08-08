@@ -69,8 +69,9 @@ final class ProviderRegistry {
   /// Enables a registered provider so its tasks appear in fan-out queries.
   /// - Parameter provider: The provider to enable.
   func enable(_ provider: any TaskProvider) {
-    enabledIDs.insert(provider.id)
+    let inserted = enabledIDs.insert(provider.id).inserted
     persist()
+    if inserted { onProviderStateChanged?() }
   }
 
   /// Disables a provider by ID, excluding it from future fan-out queries.
