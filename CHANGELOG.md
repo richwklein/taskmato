@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.2.0](https://github.com/richwklein/taskmato/compare/v1.1.0...v1.2.0) (2026-08-08)
+
+
+### Features
+
+* reconcile active tasks removed by providers ([#552](https://github.com/richwklein/taskmato/issues/552)) ([80f7680](https://github.com/richwklein/taskmato/commit/80f76806cae77397b38f44000de78c6b1f0012ab))
+* **tasks:** support creating, editing, and deleting Reminders tasks ([#553](https://github.com/richwklein/taskmato/issues/553)) ([82e5c6b](https://github.com/richwklein/taskmato/commit/82e5c6b10d4bf1bd207087e160e95138997259cf))
+* **tasks:** support cut, copy, and paste for task items ([#544](https://github.com/richwklein/taskmato/issues/544)) ([d91908c](https://github.com/richwklein/taskmato/commit/d91908c8def7efb5b2d0169fd3d4e30783cda20c))
+* **tasks:** support task selection with double-click activation ([#548](https://github.com/richwklein/taskmato/issues/548)) ([3d99c27](https://github.com/richwklein/taskmato/commit/3d99c27047816e9178d085008f77320d4432e239))
+
+
+### Bug Fixes
+
+* **stats:** show focus time before phase completes ([#532](https://github.com/richwklein/taskmato/issues/532)) ([23b70b1](https://github.com/richwklein/taskmato/commit/23b70b1f31d0e01950651d0fc2334db23f4e8922))
+* **tasks:** pre-select current list when adding task from toolbar/menu bar ([#537](https://github.com/richwklein/taskmato/issues/537)) ([bf885a0](https://github.com/richwklein/taskmato/commit/bf885a0e56b6d087419336a97f0cbf3e2d590715))
+
+
+### Code Refactoring
+
+* **tasks:** back LocalProvider with SwiftData and migrate JSON store ([#539](https://github.com/richwklein/taskmato/issues/539)) ([27beab6](https://github.com/richwklein/taskmato/commit/27beab6035a253a4a15114b990525507923f1842))
+* **tasks:** extract LocalTaskRepository from LocalProvider ([#536](https://github.com/richwklein/taskmato/issues/536)) ([1d1486b](https://github.com/richwklein/taskmato/commit/1d1486b824060dac437672eb37868a3d1e53b096))
+
+
+### Documentation
+
+* **architecture:** reframe Taskmato Pro as a portability capability gate ([#538](https://github.com/richwklein/taskmato/issues/538)) ([2c9b313](https://github.com/richwklein/taskmato/commit/2c9b31395b3f9ca03eb6897c618cb8fb02df0507))
+
+
+### Miscellaneous Chores
+
+* add make test-failures to surface assertions from failed test runs ([#545](https://github.com/richwklein/taskmato/issues/545)) ([7f8fda0](https://github.com/richwklein/taskmato/commit/7f8fda0b10e68f8f59c3991eb6b2106a71525af4))
+
 ## [1.1.0](https://github.com/richwklein/taskmato/compare/v1.0.0...v1.1.0) (2026-08-04)
 
 
