@@ -45,8 +45,7 @@ final class ObsidianProvider: ClosableTaskProvider {
 
   private let store: SettingsStore
   private let parser = ObsidianTaskParser()
-  /// Live subscribers of ``observe()``, keyed so each consumer can cancel independently.
-  private var continuations: [UUID: AsyncStream<[TaskItem]>.Continuation] = [:]
+  private let updates = MulticastAsyncStream<[TaskItem]>()
   private var fsEventStream: FSEventStreamRef?
   private let debouncer = Debouncer()
 
@@ -56,6 +55,7 @@ final class ObsidianProvider: ClosableTaskProvider {
     self.store = store
     self.filePatterns = store[SettingsStore.Keys.obsidianFilePatterns]
     restoreVaultBookmark()
+    updates.onEmpty = { [weak self] in self?.stopWatching() }
   }
 
   /// Creates a pre-configured provider for unit tests, bypassing the settings-store bookmark lookup.
@@ -67,6 +67,7 @@ final class ObsidianProvider: ClosableTaskProvider {
     self.store = store
     self.filePatterns = filePatterns
     self.vaultURL = vaultURL
+    updates.onEmpty = { [weak self] in self?.stopWatching() }
   }
 
   // MARK: - TaskProvider
@@ -142,18 +143,47 @@ final class ObsidianProvider: ClosableTaskProvider {
   /// coalesced by a 250 ms debounce before a full rescan is triggered.
   func observe() -> AsyncStream<[TaskItem]>? {
     guard let vaultURL else { return nil }
-    let id = UUID()
-    let (stream, continuation) = AsyncStream<[TaskItem]>.makeStream()
-    continuations[id] = continuation
+    let stream = updates.subscribe()
     if fsEventStream == nil {
       startWatching(vaultURL: vaultURL)
     }
-    continuation.onTermination = { [weak self] _ in
-      Task { @MainActor [weak self] in
-        self?.removeSubscriber(id)
-      }
-    }
     return stream
+  }
+
+  /// Matches current fingerprint IDs and legacy path/line IDs without making line the identity.
+  func matches(_ ref: TaskRef, to task: TaskItem) -> Bool {
+    guard ref.providerID == Self.providerID,
+      let persisted = ObsidianTaskIdentity.parseNativeID(ref.nativeID),
+      let current = ObsidianTaskIdentity.parseNativeID(task.id.nativeID),
+      persisted.fileRelativePath == current.fileRelativePath
+    else { return false }
+    if let fingerprint = persisted.fingerprint {
+      return fingerprint == current.fingerprint
+    }
+    return persisted.lineNumber == current.lineNumber
+  }
+
+  /// Resolves duplicate content fingerprints with the persisted line as a non-authoritative hint.
+  func resolve(_ ref: TaskRef, among tasks: [TaskItem]) -> TaskItem? {
+    let candidates = tasks.filter { matches(ref, to: $0) }
+    guard candidates.count > 1,
+      let lineNumber = ObsidianTaskIdentity.parseNativeID(ref.nativeID)?.lineNumber
+    else { return candidates.first }
+    let ranked = candidates.sorted {
+      distance(from: lineNumber, to: $0) < distance(from: lineNumber, to: $1)
+    }
+    guard distance(from: lineNumber, to: ranked[0]) < distance(from: lineNumber, to: ranked[1])
+    else {
+      return nil
+    }
+    return ranked[0]
+  }
+
+  private func distance(from lineNumber: Int, to task: TaskItem) -> Int {
+    guard let currentLine = ObsidianTaskIdentity.parseNativeID(task.id.nativeID)?.lineNumber else {
+      return Int.max
+    }
+    return abs(currentLine - lineNumber)
   }
 
   // MARK: - ClosableTaskProvider
@@ -348,26 +378,11 @@ final class ObsidianProvider: ClosableTaskProvider {
         var lines = try String(contentsOf: fileURL, encoding: .utf8)
           .components(separatedBy: "\n")
 
-        let matches = lines.enumerated().compactMap { index, line -> (Int, String)? in
-          guard ObsidianTaskIdentity.fingerprint(for: line) == identity.fingerprint else {
-            return nil
-          }
-          if let rewritten = Self.rewriteLine(line, from: fromCheckbox, to: toCheckbox) {
-            return (index, rewritten)
-          }
-          guard let fallbackFrom else { return nil }
-          if let rewritten = Self.rewriteLine(line, from: fallbackFrom, to: toCheckbox) {
-            return (index, rewritten)
-          }
-          return nil
-        }
-
-        guard let (targetIndex, rewritten) = matches.first else {
-          throw ObsidianProviderError.taskNotFound(ref.nativeID)
-        }
-        guard matches.count == 1 else {
-          throw ObsidianProviderError.ambiguousTaskRef(ref.nativeID)
-        }
+        let matches = Self.matchingLines(
+          lines, identity: identity, from: fromCheckbox, replacement: toCheckbox,
+          fallbackFrom: fallbackFrom)
+        let target = try Self.selectTarget(matches, lineNumber: identity.lineNumber, ref: ref)
+        let (targetIndex, rewritten) = target
         lines[targetIndex] = rewritten
         let updated = lines.joined(separator: "\n")
         try Data(updated.utf8).write(to: fileURL, options: [])
@@ -398,8 +413,48 @@ final class ObsidianProvider: ClosableTaskProvider {
     guard remainder.hasPrefix(orderedSuffix) else { return nil }
     return numPart + ". [\(toCheckbox)] " + remainder.dropFirst(orderedSuffix.count)
   }
+
+  private nonisolated static func rewrittenLine(
+    _ line: String, from: String, replacement: String, fallbackFrom: String?
+  ) -> String? {
+    rewriteLine(line, from: from, to: replacement)
+      ?? fallbackFrom.flatMap { rewriteLine(line, from: $0, to: replacement) }
+  }
+
+  private nonisolated static func matchingLines(
+    _ lines: [String], identity: ObsidianTaskIdentity.Components,
+    from: String, replacement: String, fallbackFrom: String?
+  ) -> [(Int, String)] {
+    lines.enumerated().compactMap { index, line in
+      if let fingerprint = identity.fingerprint {
+        guard ObsidianTaskIdentity.fingerprint(for: line) == fingerprint else { return nil }
+      } else {
+        guard identity.lineNumber == index + 1 else { return nil }
+      }
+      guard
+        let rewritten = rewrittenLine(
+          line, from: from, replacement: replacement, fallbackFrom: fallbackFrom)
+      else { return nil }
+      return (index, rewritten)
+    }
+  }
+
+  private nonisolated static func selectTarget(
+    _ matches: [(Int, String)], lineNumber: Int?, ref: TaskRef
+  ) throws -> (Int, String) {
+    guard !matches.isEmpty else { throw ObsidianProviderError.taskNotFound(ref.nativeID) }
+    guard matches.count > 1 else { return matches[0] }
+    guard let lineNumber else { throw ObsidianProviderError.ambiguousTaskRef(ref.nativeID) }
+    let ranked = matches.sorted { abs($0.0 + 1 - lineNumber) < abs($1.0 + 1 - lineNumber) }
+    let bestDistance = abs(ranked[0].0 + 1 - lineNumber)
+    guard ranked.dropFirst().first.map({ abs($0.0 + 1 - lineNumber) > bestDistance }) ?? true
+    else { throw ObsidianProviderError.ambiguousTaskRef(ref.nativeID) }
+    return ranked[0]
+  }
 }
 
+/// Retained by the FSEventStream context while callbacks may still arrive; the weak provider
+/// reference prevents the stream bridge from extending the provider's lifetime.
 private final class ObsidianFSEventContext: @unchecked Sendable {
   weak var provider: ObsidianProvider?
 
@@ -409,6 +464,8 @@ private final class ObsidianFSEventContext: @unchecked Sendable {
   }
 }
 
+/// C callback table for the FSEventStream context, including its explicit Unmanaged ownership
+/// bridge and hop back to the provider's main actor.
 private nonisolated enum ObsidianFSEventCallbacks {
   static let retain: CFAllocatorRetainCallBack = { info in
     guard let info else { return nil }
@@ -471,16 +528,8 @@ extension ObsidianProvider {
     debouncer.schedule { [weak self] in
       guard let self else { return }
       let updated = (try? await self.tasks(in: nil)) ?? []
-      for continuation in self.continuations.values {
-        continuation.yield(updated)
-      }
+      self.updates.yield(updated)
     }
-  }
-
-  private func removeSubscriber(_ id: UUID) {
-    continuations.removeValue(forKey: id)
-    guard continuations.isEmpty else { return }
-    stopWatching()
   }
 
   private func stopWatching() {
@@ -491,11 +540,7 @@ extension ObsidianProvider {
       FSEventStreamInvalidate(stream)
       FSEventStreamRelease(stream)
     }
-    let subscribers = Array(continuations.values)
-    continuations.removeAll()
-    for continuation in subscribers {
-      continuation.finish()
-    }
+    updates.finish()
   }
 }
 
@@ -530,9 +575,6 @@ enum ObsidianPatternTokens {
   }
 }
 
-// MARK: - Errors
-
-/// Errors thrown by ``ObsidianProvider`` operations.
 enum ObsidianProviderError: LocalizedError {
   /// The vault directory has not been configured by the user.
   case vaultNotConfigured

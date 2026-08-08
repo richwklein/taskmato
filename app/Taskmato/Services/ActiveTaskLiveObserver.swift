@@ -52,9 +52,10 @@ final class ActiveTaskLiveObserver {
 
     for provider in registry.providers where registry.isEnabled(provider.id) {
       guard providerTasks[provider.id] == nil, let stream = provider.observe() else { continue }
+      let providerID = provider.id
       providerTasks[provider.id] = Task { [weak reconciler] in
         for await _ in stream {
-          await reconciler?.reconcile()
+          await reconciler?.reconcile(changedProviderID: providerID)
         }
       }
     }

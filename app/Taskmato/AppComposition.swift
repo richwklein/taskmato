@@ -159,12 +159,12 @@ struct AppComposition {
     _ registry: ProviderRegistry, sidebarSelection side: SelectionStore, nav: MainNavigation,
     reconciler rec: ActiveTaskReconciler, liveObserver live: ActiveTaskLiveObserver
   ) {
-    registry.onProviderStateChanged = { [weak side, weak nav, weak rec, weak live] in
+    registry.onProviderStateChanged = { [weak side, weak nav, weak rec, weak live] providerID in
       side?.validateSelection()
       nav?.reconcileTaskScope()
       live?.reconcileSubscriptions()
       guard let rec else { return }
-      Task { await rec.reconcile() }
+      Task { await rec.reconcile(changedProviderID: providerID) }
     }
   }
 

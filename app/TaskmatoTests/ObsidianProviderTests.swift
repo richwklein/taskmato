@@ -240,7 +240,7 @@ struct ObsidianProviderCompletionRewritingTests {
     #expect(updated == "- [ ] Keep done")
   }
 
-  @Test func completeThrowsWhenContentFingerprintIsAmbiguous() async throws {
+  @Test func completeUsesLineHintForDuplicateContent() async throws {
     let vault = try makeVault()
     defer { try? FileManager.default.removeItem(at: vault) }
     try write(
@@ -250,10 +250,38 @@ struct ObsidianProviderCompletionRewritingTests {
       """, at: "tasks.md", in: vault)
     let provider = makeProvider(vaultURL: vault)
     let task = try #require((try await provider.tasks(in: nil)).first)
+    try await provider.complete(task.id)
+
+    let updated = try String(contentsOf: vault.appending(path: "tasks.md"), encoding: .utf8)
+    #expect(updated == "- [x] Same task\n- [ ] Same task")
+  }
+
+  @Test func completeThrowsWhenFingerprintHasNoLineHintAndIsAmbiguous() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write(
+      """
+      - [ ] Same task
+      - [ ] Same task
+      """, at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let task = try #require((try await provider.tasks(in: nil)).first)
+    let fingerprintOnlyID = task.id.nativeID.components(separatedBy: "#line=")[0]
+    let ref = TaskRef(providerID: task.id.providerID, nativeID: fingerprintOnlyID)
 
     await #expect(throws: ObsidianProviderError.self) {
-      try await provider.complete(task.id)
+      try await provider.complete(ref)
     }
+  }
+
+  @Test func legacyPathLineReferenceMatchesCurrentFingerprintTask() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write("- [ ] Legacy task", at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let task = try #require((try await provider.tasks(in: nil)).first)
+    let legacy = TaskRef(providerID: "obsidian", nativeID: "tasks.md:1")
+    #expect(provider.matches(legacy, to: task))
   }
 }
 

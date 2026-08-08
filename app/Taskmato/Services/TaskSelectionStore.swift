@@ -77,10 +77,16 @@ final class TaskSelectionStore {
   /// should open (`ActiveTaskReconciler`, issue #547). One accepted consequence: a focus segment
   /// already open against this task keeps the pre-refresh `taskTitle` when it closes, since that
   /// title was captured as a breakpoint before the rename was known.
-  /// - Parameter task: The reloaded task. Ignored if its `id` no longer matches `activeTask`.
-  func refreshActiveTask(_ task: TaskItem) {
-    guard task.id == activeTask?.id else { return }
+  /// - Parameters:
+  ///   - task: The reloaded task.
+  ///   - replacing: The persisted reference being refreshed, which may be a legacy provider ID.
+  func refreshActiveTask(_ task: TaskItem, replacing: TaskRef? = nil) {
+    guard let current = activeTask, replacing == current.id || task.id == current.id else { return }
     activeTask = task
+    if let replacing {
+      let key = replacing.providerID.rawValue
+      recentsByProvider[key]?.replaceFirst(where: { $0.id == replacing }, with: task)
+    }
     persist()
   }
 
@@ -127,5 +133,14 @@ final class TaskSelectionStore {
     recentsByProvider =
       store.value(forKey: SettingsStore.Keys.recentsByProvider, as: [String: [TaskItem]].self)
       ?? [:]
+  }
+}
+
+extension Array {
+  fileprivate mutating func replaceFirst(
+    where predicate: (Element) throws -> Bool, with replacement: Element
+  ) rethrows {
+    guard let index = try firstIndex(where: predicate) else { return }
+    self[index] = replacement
   }
 }

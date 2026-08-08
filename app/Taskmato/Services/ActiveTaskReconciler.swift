@@ -53,9 +53,10 @@ final class ActiveTaskReconciler {
   /// makes startup safe, since providers load asynchronously and a naive check would otherwise
   /// clear valid tasks before their provider warms up. A disabled provider is left alone: the
   /// snapshot is recoverable by re-enabling it.
-  func reconcile() async {
+  func reconcile(changedProviderID: ProviderID? = nil) async {
     guard let active = selectionStore.activeTask else { return }
     let providerID = active.id.providerID
+    guard changedProviderID == nil || changedProviderID == providerID else { return }
     guard registry.isEnabled(providerID), registry.providerLists[providerID] != nil,
       let provider = registry.provider(for: active.id), provider.isAuthorized
     else { return }
@@ -67,8 +68,8 @@ final class ActiveTaskReconciler {
       return  // A transient fetch failure is not evidence of removal — try again next reload.
     }
 
-    if let match = open.first(where: { $0.id == active.id }) {
-      if match != active { selectionStore.refreshActiveTask(match) }
+    if let match = provider.resolve(active.id, among: open) {
+      if match != active { selectionStore.refreshActiveTask(match, replacing: active.id) }
       return
     }
 

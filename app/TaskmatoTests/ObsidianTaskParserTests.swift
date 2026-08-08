@@ -276,7 +276,11 @@ struct ObsidianTaskParserTests {
   @Test func nativeIDSurvivesLineShiftForSameContent() {
     let before = parse("- [ ] Earlier\n- [ ] Stable task")
     let after = parse("- [ ] Stable task")
-    #expect(before[1].id.nativeID == after[0].id.nativeID)
+    #expect(
+      ObsidianTaskIdentity.parseNativeID(before[1].id.nativeID)?.fingerprint
+        == ObsidianTaskIdentity.parseNativeID(after[0].id.nativeID)?.fingerprint)
+    #expect(ObsidianTaskIdentity.parseNativeID(before[1].id.nativeID)?.lineNumber == 2)
+    #expect(ObsidianTaskIdentity.parseNativeID(after[0].id.nativeID)?.lineNumber == 1)
   }
 
   @Test func nativeIDChangesWhenContentChangesAtSameLine() {

@@ -36,7 +36,7 @@ final class ProviderRegistry {
   /// injected closure rather than a direct dependency so the registry stays unaware of the
   /// selection concern.
   @ObservationIgnored
-  var onProviderStateChanged: (() -> Void)?
+  var onProviderStateChanged: ((ProviderID) -> Void)?
 
   private let store: SettingsStore
 
@@ -71,7 +71,7 @@ final class ProviderRegistry {
   func enable(_ provider: any TaskProvider) {
     let inserted = enabledIDs.insert(provider.id).inserted
     persist()
-    if inserted { onProviderStateChanged?() }
+    if inserted { onProviderStateChanged?(provider.id) }
   }
 
   /// Disables a provider by ID, excluding it from future fan-out queries.
@@ -82,7 +82,7 @@ final class ProviderRegistry {
     enabledIDs.remove(providerID)
     providerLists.removeValue(forKey: providerID)
     persist()
-    onProviderStateChanged?()
+    onProviderStateChanged?(providerID)
   }
 
   /// Returns `true` if the provider with the given ID is currently enabled.
@@ -98,7 +98,7 @@ final class ProviderRegistry {
   /// Call this after every `provider.lists()` load — on appear, after add, delete, or rename.
   func setLists(_ lists: [TaskList], forProviderID providerID: ProviderID) {
     providerLists[providerID] = lists
-    onProviderStateChanged?()
+    onProviderStateChanged?(providerID)
   }
 
   // MARK: - Provider lookup

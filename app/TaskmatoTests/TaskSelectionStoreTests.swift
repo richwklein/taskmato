@@ -101,6 +101,17 @@ struct TaskSelectionStoreTests {
     #expect(store.recents(for: "alpha") == [original])
   }
 
+  @Test func refreshActiveTaskMigratesMatchingRecentReference() {
+    let store = makeStore()
+    let old = makeItem(providerID: "alpha", nativeID: "tasks.md:1", title: "Original")
+    let current = makeItem(
+      providerID: "alpha", nativeID: "tasks.md#fp=abc#line=1", title: "Updated")
+    store.select(old)
+    store.refreshActiveTask(current, replacing: old.id)
+    #expect(store.activeTask == current)
+    #expect(store.recents(for: "alpha").first == current)
+  }
+
   // MARK: - Recents
 
   @Test func selectAddsToRecents() {

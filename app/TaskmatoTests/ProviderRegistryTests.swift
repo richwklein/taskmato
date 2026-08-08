@@ -157,7 +157,7 @@ struct ProviderRegistryTests {
     let provider = StubProvider(id: "alpha")
     registry.register(provider)
     var callCount = 0
-    registry.onProviderStateChanged = { callCount += 1 }
+    registry.onProviderStateChanged = { _ in callCount += 1 }
 
     registry.enable(provider)
     registry.enable(provider)

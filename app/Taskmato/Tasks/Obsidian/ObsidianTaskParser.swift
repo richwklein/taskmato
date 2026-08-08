@@ -59,7 +59,8 @@ nonisolated struct ObsidianTaskParser: Sendable {
     )
     let items = raw.map { entry in
       buildTaskItem(
-        rawLine: entry.rawLine, section: entry.section, notes: entry.notes, context: context
+        rawLine: entry.rawLine, section: entry.section, notes: entry.notes, context: context,
+        lineNumber: entry.lineNumber
       )
     }
     return ParseResult(items: items, listName: listName)
@@ -89,7 +90,8 @@ nonisolated struct ObsidianTaskParser: Sendable {
     )
     let entries = raw.map { entry in
       buildCompletedEntry(
-        rawLine: entry.rawLine, section: entry.section, notes: entry.notes, context: context
+        rawLine: entry.rawLine, section: entry.section, notes: entry.notes, context: context,
+        lineNumber: entry.lineNumber
       )
     }
     return CompletedParseResult(entries: entries, listName: listName)
@@ -100,6 +102,7 @@ nonisolated struct ObsidianTaskParser: Sendable {
   /// Raw task line collected by the state machine before field extraction.
   nonisolated private struct RawEntry {
     let rawLine: String
+    let lineNumber: Int
     let section: String?
     let notes: String?
   }
@@ -117,6 +120,7 @@ nonisolated struct ObsidianTaskParser: Sendable {
     var listName: String?
     var currentSection: String?
     var pendingRaw: String?
+    var pendingLineNumber: Int?
     var pendingSection: String?
     var notesBuffer: [String] = []
 
@@ -127,16 +131,18 @@ nonisolated struct ObsidianTaskParser: Sendable {
       collected.append(
         RawEntry(
           rawLine: raw,
+          lineNumber: pendingLineNumber ?? 0,
           section: pendingSection,
           notes: notes.isEmpty ? nil : notes
         )
       )
       pendingRaw = nil
+      pendingLineNumber = nil
       pendingSection = nil
       notesBuffer = []
     }
 
-    for line in lines {
+    for (offset, line) in lines.enumerated() {
       if let heading = h1(line) {
         finalize()
         if listName == nil { listName = heading }
@@ -146,6 +152,7 @@ nonisolated struct ObsidianTaskParser: Sendable {
       } else if isTarget(line) {
         finalize()
         pendingRaw = line
+        pendingLineNumber = offset + 1
         pendingSection = currentSection
       } else if shouldSkip(line) {
         finalize()
@@ -197,23 +204,6 @@ nonisolated struct ObsidianTaskParser: Sendable {
     return idx > line.startIndex && line[idx...].hasPrefix(". \(bracket) ")
   }
 
-  /// Strips the task list marker (`- [ ] `, `1. [x] `, etc.) from the beginning of a raw task line.
-  private func stripTaskMarker(from line: String) -> String {
-    for prefix in ["- [ ] ", "- [x] ", "- [X] "] where line.hasPrefix(prefix) {
-      return String(line.dropFirst(prefix.count))
-    }
-    var idx = line.startIndex
-    while idx < line.endIndex, line[idx].isNumber {
-      idx = line.index(after: idx)
-    }
-    guard idx > line.startIndex else { return line }
-    let rest = String(line[idx...])
-    for suffix in [". [ ] ", ". [x] ", ". [X] "] where rest.hasPrefix(suffix) {
-      return String(rest.dropFirst(suffix.count))
-    }
-    return line
-  }
-
   private func isIndented(_ line: String) -> Bool {
     line.hasPrefix("    ") || line.hasPrefix("\t")
   }
@@ -238,9 +228,10 @@ nonisolated struct ObsidianTaskParser: Sendable {
     rawLine: String,
     section: String?,
     notes: String?,
-    context: FileContext
+    context: FileContext,
+    lineNumber: Int
   ) -> TaskItem {
-    var text = stripTaskMarker(from: rawLine)
+    var text = ObsidianTaskIdentity.stripTaskMarker(from: rawLine)
 
     let priority = extractPriority(from: &text)
     let dueDate = extractDate(emoji: "📅", from: &text)
@@ -253,7 +244,8 @@ nonisolated struct ObsidianTaskParser: Sendable {
         providerID: context.providerID,
         nativeID: ObsidianTaskIdentity.nativeID(
           fileRelativePath: context.fileRelativePath,
-          rawLine: rawLine
+          rawLine: rawLine,
+          lineNumber: lineNumber
         )
       ),
       title: title,
@@ -275,9 +267,10 @@ nonisolated struct ObsidianTaskParser: Sendable {
     rawLine: String,
     section: String?,
     notes: String?,
-    context: FileContext
+    context: FileContext,
+    lineNumber: Int
   ) -> TaskItem {
-    var text = stripTaskMarker(from: rawLine)
+    var text = ObsidianTaskIdentity.stripTaskMarker(from: rawLine)
 
     let completedAt = extractDate(emoji: "✅", from: &text)
     let priority = extractPriority(from: &text)
@@ -291,7 +284,8 @@ nonisolated struct ObsidianTaskParser: Sendable {
         providerID: context.providerID,
         nativeID: ObsidianTaskIdentity.nativeID(
           fileRelativePath: context.fileRelativePath,
-          rawLine: rawLine
+          rawLine: rawLine,
+          lineNumber: lineNumber
         )
       ),
       title: title,
@@ -365,26 +359,60 @@ nonisolated struct ObsidianTaskParser: Sendable {
 /// Builds and parses Obsidian task references from vault-relative path plus task content.
 nonisolated enum ObsidianTaskIdentity {
   private static let fingerprintSeparator = "#fp="
+  private static let lineSeparator = "#line="
 
-  /// Returns the native ID for a task line in a vault-relative file.
-  static func nativeID(fileRelativePath: String, rawLine: String) -> String {
-    "\(fileRelativePath)\(fingerprintSeparator)\(fingerprint(for: rawLine))"
+  /// Components parsed from a current or legacy native ID.
+  struct Components: Sendable {
+    let fileRelativePath: String
+    let fingerprint: String?
+    let lineNumber: Int?
   }
 
-  /// Splits a native ID back into the vault-relative path and stable content fingerprint.
-  static func parseNativeID(
-    _ nativeID: String
-  ) -> (fileRelativePath: String, fingerprint: String)? {
-    guard
-      let range = nativeID.range(
-        of: fingerprintSeparator,
-        options: [.backwards]
-      )
+  /// Returns the native ID for a task line in a vault-relative file.
+  static func nativeID(fileRelativePath: String, rawLine: String, lineNumber: Int) -> String {
+    "\(fileRelativePath)\(fingerprintSeparator)\(fingerprint(for: rawLine))\(lineSeparator)\(lineNumber)"
+  }
+
+  /// Parses current fingerprint IDs and the pre-fingerprint `path:line` format.
+  static func parseNativeID(_ nativeID: String) -> Components? {
+    if let range = nativeID.range(of: fingerprintSeparator) {
+      let fileRelativePath = String(nativeID[..<range.lowerBound])
+      let suffix = String(nativeID[range.upperBound...])
+      let parts = suffix.split(separator: "#", maxSplits: 1).map(String.init)
+      let fingerprint = parts.first
+      let linePart = parts.dropFirst().first
+      let lineNumber: Int? = {
+        guard let linePart, linePart.hasPrefix(String(lineSeparator.dropFirst())) else {
+          return nil
+        }
+        return Int(linePart.dropFirst(lineSeparator.dropFirst().count))
+      }()
+      guard !fileRelativePath.isEmpty, let fingerprint, !fingerprint.isEmpty else { return nil }
+      return Components(
+        fileRelativePath: fileRelativePath, fingerprint: fingerprint, lineNumber: lineNumber)
+    }
+
+    guard let separator = nativeID.lastIndex(of: ":"),
+      let lineNumber = Int(nativeID[nativeID.index(after: separator)...])
     else { return nil }
-    let fileRelativePath = String(nativeID[..<range.lowerBound])
-    let fingerprint = String(nativeID[range.upperBound...])
-    guard !fileRelativePath.isEmpty, !fingerprint.isEmpty else { return nil }
-    return (fileRelativePath, fingerprint)
+    let fileRelativePath = String(nativeID[..<separator])
+    guard !fileRelativePath.isEmpty else { return nil }
+    return Components(fileRelativePath: fileRelativePath, fingerprint: nil, lineNumber: lineNumber)
+  }
+
+  /// Returns the line content without its unordered or ordered checkbox marker.
+  static func stripTaskMarker(from line: String) -> String {
+    for prefix in ["- [ ] ", "- [x] ", "- [X] "] where line.hasPrefix(prefix) {
+      return String(line.dropFirst(prefix.count))
+    }
+    var idx = line.startIndex
+    while idx < line.endIndex, line[idx].isNumber { idx = line.index(after: idx) }
+    guard idx > line.startIndex else { return line }
+    let rest = String(line[idx...])
+    for suffix in [". [ ] ", ". [x] ", ". [X] "] where rest.hasPrefix(suffix) {
+      return String(rest.dropFirst(suffix.count))
+    }
+    return line
   }
 
   /// Returns a stable hash for the task content after dropping its checkbox marker.
@@ -397,22 +425,6 @@ nonisolated enum ObsidianTaskIdentity {
       .split(whereSeparator: \.isWhitespace)
       .joined(separator: " ")
       .trimmingCharacters(in: .whitespacesAndNewlines)
-  }
-
-  private static func stripTaskMarker(from line: String) -> String {
-    for prefix in ["- [ ] ", "- [x] ", "- [X] "] where line.hasPrefix(prefix) {
-      return String(line.dropFirst(prefix.count))
-    }
-    var idx = line.startIndex
-    while idx < line.endIndex, line[idx].isNumber {
-      idx = line.index(after: idx)
-    }
-    guard idx > line.startIndex else { return line }
-    let rest = String(line[idx...])
-    for suffix in [". [ ] ", ". [x] ", ". [X] "] where rest.hasPrefix(suffix) {
-      return String(rest.dropFirst(suffix.count))
-    }
-    return line
   }
 
   private static func stableHash(_ content: String) -> String {
