@@ -103,12 +103,11 @@ extension ClosableTaskProvider {
   func completedTasks() async throws -> [TaskItem] { [] }
 }
 
-/// A `ClosableTaskProvider` that also supports creating tasks and managing lists.
+/// A `ClosableTaskProvider` that also supports creating and updating tasks, and choosing a
+/// default target list from among the provider's existing lists.
 ///
-/// Providers conforming to this protocol expose the full write surface: task creation,
-/// list lifecycle (create, rename, delete), task deletion, and a persistent default-list
-/// preference. `LocalProvider` conforms immediately; `ObsidianProvider` and
-/// `RemindersProvider` will conform in follow-on milestones.
+/// `LocalProvider` and `RemindersProvider` conform. Providers that also need to create,
+/// rename, or delete lists (not just tasks) conform to ``WritableListProvider`` instead.
 protocol WritableTaskProvider: ClosableTaskProvider {
 
   /// The ID of the list new tasks target by default, or `nil` if none is set.
@@ -124,8 +123,24 @@ protocol WritableTaskProvider: ClosableTaskProvider {
   func addTask(_ draft: TaskDraft) async throws -> TaskItem
 
   /// Persists `listID` as the default target for new tasks.
-  /// - Throws: if `listID` does not identify a known list.
+  /// - Throws: if `listID` does not identify one of the provider's current ``lists()``.
   func setDefaultList(_ listID: String) async throws
+
+  /// Updates the task identified by `ref` with values from `draft`.
+  /// - Throws: if the task cannot be found or the update fails.
+  func updateTask(_ ref: TaskRef, draft: TaskDraft) async throws
+
+  /// Permanently removes the task identified by `ref` from the provider's store.
+  /// - Throws: if the task cannot be found or removal fails.
+  func deleteTask(_ ref: TaskRef) async throws
+}
+
+/// A `WritableTaskProvider` that also owns list lifecycle: create, rename, and delete.
+///
+/// Only providers where Taskmato is the sole or primary owner of the list structure (e.g.
+/// `LocalProvider`) conform. Providers backed by a system with its own mature list-management
+/// UI (e.g. Reminders.app for `RemindersProvider`) conform to ``WritableTaskProvider`` only.
+protocol WritableListProvider: WritableTaskProvider {
 
   /// Creates a new list with `name` and returns the provider-agnostic ``TaskList``.
   @discardableResult
@@ -141,12 +156,4 @@ protocol WritableTaskProvider: ClosableTaskProvider {
   /// another list before deleting the current default.
   /// - Throws: if `listID` is the default list or does not identify a known list.
   func deleteList(_ listID: String) async throws
-
-  /// Updates the task identified by `ref` with values from `draft`.
-  /// - Throws: if the task cannot be found or the update fails.
-  func updateTask(_ ref: TaskRef, draft: TaskDraft) async throws
-
-  /// Permanently removes the task identified by `ref` from the provider's store.
-  /// - Throws: if the task cannot be found or removal fails.
-  func deleteTask(_ ref: TaskRef) async throws
 }

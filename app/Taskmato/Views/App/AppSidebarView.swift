@@ -136,7 +136,7 @@ struct AppSidebarView: View {
         listRow(list, provider: provider)
           .tag(AppDestination.list(SelectedList(providerID: provider.id, listID: list.id)))
       }
-      if provider is (any WritableTaskProvider) {
+      if provider is (any WritableListProvider) {
         newListRow(providerID: provider.id)
       }
     } header: {
@@ -264,28 +264,31 @@ struct AppSidebarView: View {
     }
     .disabled(isDefaultList)
 
-    Button {
-      renamingListID = list.id
-      renameBuffer = list.name
-      renameFocused = list.id
-    } label: {
-      Label(AppLabels.Sidebar.rename.title, systemImage: AppLabels.Sidebar.rename.systemImage)
-    }
-
-    Divider()
-
-    Button(role: .destructive) {
-      Task {
-        await errorPresenter.attempt(AppLabels.Error.listDeleteFailed) {
-          try await writable.deleteList(list.id)
-        }
-        await loadLists(for: provider)
+    if let listProvider = resolved.listProvider {
+      Button {
+        renamingListID = list.id
+        renameBuffer = list.name
+        renameFocused = list.id
+      } label: {
+        Label(AppLabels.Sidebar.rename.title, systemImage: AppLabels.Sidebar.rename.systemImage)
       }
-    } label: {
-      Label(
-        AppLabels.Sidebar.deleteList.title, systemImage: AppLabels.Sidebar.deleteList.systemImage)
+
+      Divider()
+
+      Button(role: .destructive) {
+        Task {
+          await errorPresenter.attempt(AppLabels.Error.listDeleteFailed) {
+            try await listProvider.deleteList(list.id)
+          }
+          await loadLists(for: provider)
+        }
+      } label: {
+        Label(
+          AppLabels.Sidebar.deleteList.title,
+          systemImage: AppLabels.Sidebar.deleteList.systemImage)
+      }
+      .disabled(isDefaultList)
     }
-    .disabled(isDefaultList)
   }
 
   /// Resolves the row-targeted context-menu action from a selection set, or `nil` for non-writable rows.
@@ -296,15 +299,18 @@ struct AppSidebarView: View {
       let writable = provider as? (any WritableTaskProvider),
       let list = lists(for: provider).first(where: { $0.id == selectedList.listID })
     else { return nil }
-    return ListAction(list: list, provider: provider, writable: writable)
+    let listProvider = provider as? (any WritableListProvider)
+    return ListAction(
+      list: list, provider: provider, writable: writable, listProvider: listProvider)
   }
 
-  /// Tuple-like value that bundles the list, owning provider, and its writable interface
+  /// Tuple-like value that bundles the list, owning provider, and its writable interfaces
   /// resolved from a context-menu selection.
   private struct ListAction {
     let list: TaskList
     let provider: any TaskProvider
     let writable: any WritableTaskProvider
+    let listProvider: (any WritableListProvider)?
   }
 
   /// Provider and list ID targeted by the "Add Task…" context-menu sheet.
@@ -326,41 +332,6 @@ struct AppSidebarView: View {
       Text(list.name)
         .lineLimit(1)
     }
-  }
-
-  // MARK: - New list row
-
-  @ViewBuilder
-  private func newListRow(providerID: ProviderID) -> some View {
-    let nameBinding = Binding(
-      get: { newListName[providerID] ?? "" },
-      set: { newListName[providerID] = $0 }
-    )
-
-    HStack(spacing: .iconLabel) {
-      Image(systemName: "plus")
-        .imageScale(.small)
-        .foregroundStyle(.secondary)
-
-      TextField("New list", text: nameBinding)
-        .textFieldStyle(.plain)
-        .onSubmit {
-          let trimmed = (newListName[providerID] ?? "").trimmingCharacters(in: .whitespaces)
-          guard !trimmed.isEmpty else { return }
-          guard
-            let writable = registry.providers.first(where: { $0.id == providerID })
-              as? (any WritableTaskProvider)
-          else { return }
-          newListName[providerID] = ""
-          Task {
-            await errorPresenter.attempt(AppLabels.Error.listCreateFailed) {
-              _ = try await writable.createList(name: trimmed)
-            }
-            await loadLists(for: writable)
-          }
-        }
-    }
-    .foregroundStyle(.secondary)
   }
 
   // MARK: - Add Provider menu
@@ -437,11 +408,48 @@ struct AppSidebarView: View {
     (provider as? (any WritableTaskProvider))?.defaultListID == listID
   }
 
-  // MARK: - Rename helpers
+}
 
-  private func commitRename(list: TaskList, provider: any TaskProvider) {
+// MARK: - New list row, rename helpers
+
+extension AppSidebarView {
+
+  @ViewBuilder
+  fileprivate func newListRow(providerID: ProviderID) -> some View {
+    let nameBinding = Binding(
+      get: { newListName[providerID] ?? "" },
+      set: { newListName[providerID] = $0 }
+    )
+
+    HStack(spacing: .iconLabel) {
+      Image(systemName: "plus")
+        .imageScale(.small)
+        .foregroundStyle(.secondary)
+
+      TextField("New list", text: nameBinding)
+        .textFieldStyle(.plain)
+        .onSubmit {
+          let trimmed = (newListName[providerID] ?? "").trimmingCharacters(in: .whitespaces)
+          guard !trimmed.isEmpty else { return }
+          guard
+            let writable = registry.providers.first(where: { $0.id == providerID })
+              as? (any WritableListProvider)
+          else { return }
+          newListName[providerID] = ""
+          Task {
+            await errorPresenter.attempt(AppLabels.Error.listCreateFailed) {
+              _ = try await writable.createList(name: trimmed)
+            }
+            await loadLists(for: writable)
+          }
+        }
+    }
+    .foregroundStyle(.secondary)
+  }
+
+  fileprivate func commitRename(list: TaskList, provider: any TaskProvider) {
     let trimmed = renameBuffer.trimmingCharacters(in: .whitespaces)
-    guard !trimmed.isEmpty, let writable = provider as? (any WritableTaskProvider) else {
+    guard !trimmed.isEmpty, let writable = provider as? (any WritableListProvider) else {
       cancelRename()
       return
     }
@@ -454,7 +462,7 @@ struct AppSidebarView: View {
     }
   }
 
-  private func cancelRename() {
+  fileprivate func cancelRename() {
     renamingListID = nil
     renameBuffer = ""
   }

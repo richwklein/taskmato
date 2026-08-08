@@ -41,7 +41,7 @@ struct TaskItemPresenter {
 
   /// The complete action, present only for an active task whose provider supports completion.
   var onComplete: (() -> Void)? {
-    if case .active(let onComplete) = kind { return onComplete }
+    if case .active(let onComplete, _) = kind { return onComplete }
     return nil
   }
 
@@ -51,10 +51,12 @@ struct TaskItemPresenter {
     return nil
   }
 
-  /// The permanent-delete action, present for a completed task on a writable provider.
+  /// The permanent-delete action, present for an active or completed task on a writable provider.
   var onDelete: (() -> Void)? {
-    if case .completed(_, let onDelete) = kind { return onDelete }
-    return nil
+    switch kind {
+    case .active(_, let onDelete): return onDelete
+    case .completed(_, let onDelete): return onDelete
+    }
   }
 
   /// Whether the leading control is a hover-toggling completion circle (active + completable).

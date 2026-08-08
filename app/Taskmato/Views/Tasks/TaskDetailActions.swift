@@ -3,7 +3,9 @@
 //  Taskmato
 //
 
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Mutating action handlers
 
@@ -33,8 +35,9 @@ extension TaskDetailView {
     }
   }
 
-  /// Permanently deletes `task` via its writable provider, clearing it as the active task only
-  /// when the delete succeeds and it was the task currently being tracked.
+  /// Permanently deletes `task` via its writable provider. Clears it as the active task and/or
+  /// the view's selection when the delete succeeds and either matched. Shared by the completed
+  /// row's delete button, `.onDeleteCommand` on an active task (issue #546), and cut.
   func handleDelete(_ task: TaskItem) {
     Task {
       var didDelete = false
@@ -43,71 +46,39 @@ extension TaskDetailView {
           try await provider.deleteTask(task.id)
         }
       }
-      if didDelete && selectionStore.activeTask?.id == task.id {
-        selectionStore.clearActiveTask()
+      if didDelete {
+        if selectionStore.activeTask?.id == task.id {
+          selectionStore.clearActiveTask()
+        }
+        if selection == task.id {
+          selection = nil
+        }
       }
-      await loadCompleted()
+      await refresh()
     }
   }
 
-  /// Copies `task` to the clipboard, then deletes it from its writable provider — the standard
-  /// OS cut timing (copy first, then remove), accepted even though a failed delete can leave a
-  /// duplicatable clipboard entry. Clears the active task only when the delete succeeds.
+  /// Writes `task` to `pasteboard` as both the rich Taskmato payload and a plain-text title
+  /// fallback (issue #546). Backs the right-click Copy/Cut menu items, which sit outside
+  /// SwiftUI's automatic `.copyable`/`.cuttable` Edit-menu wiring and so write the pasteboard
+  /// manually rather than through a `Transferable` return value.
+  /// - Parameters:
+  ///   - task: The task to copy.
+  ///   - pasteboard: The pasteboard to write to; defaults to the system general pasteboard.
+  func copyToPasteboard(_ task: TaskItem, to pasteboard: NSPasteboard = .general) {
+    pasteboard.clearContents()
+    let payload = clipboardService.payload(for: task)
+    if let data = try? JSONEncoder().encode(payload) {
+      pasteboard.setData(data, forType: NSPasteboard.PasteboardType(UTType.taskmatoTask.identifier))
+    }
+    pasteboard.setString(task.title, forType: .string)
+  }
+
+  /// Handles the right-click Cut menu item: writes `task` to the pasteboard, then deletes it —
+  /// the manual equivalent of the automatic `.cuttable` Edit-menu/⌘X path (which returns its
+  /// payload for SwiftUI to write instead of calling ``copyToPasteboard(_:to:)``).
   func handleCut(_ task: TaskItem) {
-    TaskClipboard.copy(task)
-    Task {
-      guard let provider = registry.writableProvider(for: task.id) else {
-        await refresh()
-        return
-      }
-      let didDelete = await errorPresenter.attempt(AppLabels.Error.deleteFailed) {
-        try await provider.deleteTask(task.id)
-      }
-      if didDelete && selectionStore.activeTask?.id == task.id {
-        selectionStore.clearActiveTask()
-      }
-      await refresh()
-    }
-  }
-
-  /// Resolves the writable provider and destination list ID that ⌘V should target.
-  ///
-  /// `.today` targets the default writable provider's default list; a writable `.list`
-  /// selection targets that provider and list; a read-only provider or no selection is a
-  /// no-op (`nil`) rather than silently redirecting to another provider.
-  func pasteDestination() -> (provider: any WritableTaskProvider, listID: String?)? {
-    switch sidebarSelection.selection {
-    case .today:
-      guard
-        let provider = registry.resolveDefaultWritableProvider(
-          preferredID: settings.defaultWritableProviderID)
-      else { return nil }
-      return (provider, nil)
-    case .list(let sel):
-      guard
-        let provider = registry.providers.first(where: {
-          $0.id == sel.providerID && registry.isEnabled($0.id)
-        }) as? (any WritableTaskProvider)
-      else { return nil }
-      return (provider, sel.listID)
-    case nil:
-      return nil
-    }
-  }
-
-  /// Handles ⌘V / Edit ▸ Paste: reads the clipboard and adds a task to the resolved paste
-  /// destination. No-ops gracefully when there is no writable destination or the clipboard
-  /// holds neither a Taskmato payload nor plain text.
-  func handlePaste() {
-    guard let destination = pasteDestination() else { return }
-    guard let payload = TaskClipboard.readPayload() else { return }
-    Task {
-      let draft = payload.makeDraft(
-        listID: destination.listID, format: destination.provider.contentFormat)
-      await errorPresenter.attempt(AppLabels.Error.addFailed) {
-        try await destination.provider.addTask(draft)
-      }
-      await refresh()
-    }
+    copyToPasteboard(task)
+    handleDelete(task)
   }
 }
