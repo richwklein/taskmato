@@ -15,7 +15,7 @@ import os
 /// so completed tasks can be surfaced via ``completedTasks()``.
 @Observable
 @MainActor
-final class LocalProvider: WritableTaskProvider {
+final class LocalProvider: WritableListProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
   nonisolated static let providerID: ProviderID = "local"
