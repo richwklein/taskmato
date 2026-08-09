@@ -156,18 +156,51 @@ struct ObsidianProviderWritableTests {
     defer { try? FileManager.default.removeItem(at: vault) }
     try write(
       """
-      ## Section A
-      - [ ] First
-
-      ## Section B
-      - [ ] Second
+      1. [ ] First
+      2. [x] Second
       """, at: "tasks.md", in: vault)
     let provider = makeProvider(vaultURL: vault, defaultListID: "tasks.md")
     var draft = TaskDraft()
     draft.title = "Top level"
     _ = try await provider.addTask(draft)
     let content = try read("tasks.md", in: vault)
-    #expect(content.hasSuffix("- [ ] Top level"))
+    #expect(content == "1. [ ] First\n2. [x] Second\n3. [ ] Top level")
+  }
+
+  @Test func addTaskUsesOrderedStyleFromPrecedingCompletedTask() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write(
+      """
+      ## Section A
+      1. [ ] First
+      2. [x] Done
+      """, at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault, defaultListID: "tasks.md")
+    var draft = TaskDraft()
+    draft.title = "Next"
+    draft.section = "Section A"
+    _ = try await provider.addTask(draft)
+    let content = try read("tasks.md", in: vault)
+    let expected = """
+      ## Section A
+      1. [ ] First
+      2. [x] Done
+      3. [ ] Next
+      """
+    #expect(content == expected)
+  }
+
+  @Test func addTaskDefaultsToUnorderedWhenNoTaskEvidenceExists() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write("", at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault, defaultListID: "tasks.md")
+    var draft = TaskDraft()
+    draft.title = "First task"
+    _ = try await provider.addTask(draft)
+    let content = try read("tasks.md", in: vault)
+    #expect(content == "- [ ] First task")
   }
 
   @Test func addTaskToExistingSectionAppendsAfterLastLineInBlock() async throws {
@@ -232,14 +265,14 @@ struct ObsidianProviderWritableTests {
   @Test func updateTaskInPlaceRewritesLineWithoutMoving() async throws {
     let vault = try makeVault()
     defer { try? FileManager.default.removeItem(at: vault) }
-    try write("- [ ] Original", at: "tasks.md", in: vault)
+    try write("7. [ ] Original", at: "tasks.md", in: vault)
     let provider = makeProvider(vaultURL: vault)
     let ref = TaskRef(providerID: "obsidian", nativeID: "tasks.md:1")
     var draft = TaskDraft()
     draft.title = "Updated"
     try await provider.updateTask(ref, draft: draft)
     let content = try read("tasks.md", in: vault)
-    #expect(content == "- [ ] Updated")
+    #expect(content == "7. [ ] Updated")
   }
 
   @Test func updateTaskMovesToADifferentSectionInSameFile() async throws {
@@ -251,7 +284,7 @@ struct ObsidianProviderWritableTests {
       - [ ] Move me
 
       ## Section B
-      - [ ] Existing
+      4. [x] Existing
       """, at: "tasks.md", in: vault)
     let provider = makeProvider(vaultURL: vault)
     let ref = TaskRef(providerID: "obsidian", nativeID: "tasks.md:2")
@@ -264,8 +297,8 @@ struct ObsidianProviderWritableTests {
       ## Section A
 
       ## Section B
-      - [ ] Existing
-      - [ ] Move me
+      4. [x] Existing
+      5. [ ] Move me
       """
     #expect(content == expected)
   }
@@ -273,8 +306,8 @@ struct ObsidianProviderWritableTests {
   @Test func updateTaskMovesToADifferentFile() async throws {
     let vault = try makeVault()
     defer { try? FileManager.default.removeItem(at: vault) }
-    try write("- [ ] Move me", at: "source.md", in: vault)
-    try write("- [ ] Existing", at: "dest.md", in: vault)
+    try write("1. [ ] Move me", at: "source.md", in: vault)
+    try write("9. [x] Existing", at: "dest.md", in: vault)
     let provider = makeProvider(vaultURL: vault)
     let ref = TaskRef(providerID: "obsidian", nativeID: "source.md:1")
     var draft = TaskDraft()
@@ -282,7 +315,7 @@ struct ObsidianProviderWritableTests {
     draft.listID = "dest.md"
     try await provider.updateTask(ref, draft: draft)
     #expect(try read("source.md", in: vault).isEmpty)
-    #expect(try read("dest.md", in: vault) == "- [ ] Existing\n- [ ] Move me")
+    #expect(try read("dest.md", in: vault) == "9. [x] Existing\n10. [ ] Move me")
   }
 
   @Test func updateTaskThrowsForStaleRef() async throws {

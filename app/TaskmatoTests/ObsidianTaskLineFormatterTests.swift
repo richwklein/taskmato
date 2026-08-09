@@ -44,6 +44,11 @@ struct ObsidianTaskLineFormatterTests {
     #expect(line == "- [x] Done")
   }
 
+  @Test func formatsOrderedTaskWhenNumberProvided() {
+    let line = formatter.formatLine(title: "Write unit tests", orderedNumber: 3)
+    #expect(line == "3. [ ] Write unit tests")
+  }
+
   @Test func trimsTitleWhitespace() {
     let line = formatter.formatLine(title: "  Padded  ")
     #expect(line == "- [ ] Padded")

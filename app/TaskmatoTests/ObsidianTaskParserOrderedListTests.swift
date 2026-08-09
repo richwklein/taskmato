@@ -82,4 +82,11 @@ struct ObsidianTaskParserOrderedListTests {
     #expect(tasks[0].section == "Goals")
     #expect(tasks[1].section == "Goals")
   }
+
+  @Test func detectsOrderedTaskPrefixAndNumber() {
+    #expect(ObsidianTaskParser.isOrderedTask("12. [x] Done"))
+    #expect(ObsidianTaskParser.orderedTaskNumber("12. [x] Done") == 12)
+    #expect(!ObsidianTaskParser.isOrderedTask("- [ ] Unordered"))
+    #expect(ObsidianTaskParser.orderedTaskNumber("- [ ] Unordered") == nil)
+  }
 }
