@@ -15,11 +15,8 @@ extension TaskDetailView {
       kind: completedKind(for: task),
       lineage: lineage(for: task)
     )
+    .tag(task.id)
     .listRowBackground(selectionBackground(for: task))
-    .onTapGesture {
-      selection = task.id
-      focusTaskContent()
-    }
     .accessibilityAddTraits(selection == task.id ? .isSelected : [])
     .contextMenu { completedTaskContextMenu(for: task) }
   }

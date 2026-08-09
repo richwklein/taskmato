@@ -224,6 +224,11 @@ struct TaskDetailView: View {
         isTaskContentFocused = false
         Task { await refresh() }
       }
+      .onChange(of: selection) { _, newSelection in
+        // Native List selection changes after the table handles the click. Reclaim first
+        // responder status after that handoff so Return and task commands keep working.
+        if newSelection != nil { focusTaskContent() }
+      }
       .onChange(of: isSearchFocused) { _, focused in
         if focused { isTaskContentFocused = false }
       }
@@ -307,7 +312,7 @@ struct TaskDetailView: View {
           to:
             attachTaskKeyboardResponder(
               to:
-                List {
+                List(selection: $selection) {
                   SwiftUI.ForEach(sections) { section in
                     listSection(for: section)
                   }
@@ -337,11 +342,8 @@ struct TaskDetailView: View {
           kind: activeKind(for: task),
           lineage: lineage(for: task)
         )
+        .tag(task.id)
         .listRowBackground(selectionBackground(for: task))
-        .onTapGesture {
-          selection = task.id
-          focusTaskContent()
-        }
         .accessibilityAddTraits(selection == task.id ? .isSelected : [])
         .contextMenu { taskContextMenu(for: task) }
       }
