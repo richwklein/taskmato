@@ -66,9 +66,9 @@ struct ObsidianTaskParserOrderedListTests {
     #expect(tasks[0].title == "Task")
   }
 
-  @Test func orderedTaskNativeIDUsesLineNumber() {
+  @Test func orderedTaskNativeIDUsesFingerprint() {
     let tasks = parse("1. [ ] Task at line 1")
-    #expect(tasks[0].id.nativeID == "tasks.md:1")
+    #expect(tasks[0].id.nativeID.hasPrefix("tasks.md#fp="))
   }
 
   @Test func orderedTaskSectionAssignment() {

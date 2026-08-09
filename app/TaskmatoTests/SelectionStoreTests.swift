@@ -79,7 +79,7 @@ struct SelectionStoreTests {
     let settings = SettingsStore(defaults: defaults)
     let registry = ProviderRegistry(store: settings)
     let store = SelectionStore(registry: registry, store: settings)
-    registry.onProviderStateChanged = { [weak store] in store?.validateSelection() }
+    registry.onProviderStateChanged = { [weak store] _ in store?.validateSelection() }
     return (registry, store)
   }
 

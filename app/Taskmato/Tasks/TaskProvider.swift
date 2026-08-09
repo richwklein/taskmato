@@ -66,6 +66,18 @@ protocol TaskProvider: AnyObject, Sendable {
   ///
   /// Return `nil` if the provider does not support live updates.
   func observe() -> AsyncStream<[TaskItem]>?
+
+  /// Returns whether `task` represents the persisted reference `ref`.
+  ///
+  /// The default requires exact equality. Providers whose native identifiers can evolve while
+  /// preserving task identity may override this to support legacy references and migration.
+  /// - Parameters:
+  ///   - ref: The persisted or externally supplied task reference.
+  ///   - task: A freshly loaded provider task.
+  func matches(_ ref: TaskRef, to task: TaskItem) -> Bool
+
+  /// Resolves a persisted reference against freshly loaded tasks, or returns `nil` when absent.
+  func resolve(_ ref: TaskRef, among tasks: [TaskItem]) -> TaskItem?
 }
 
 extension TaskProvider {
@@ -73,6 +85,10 @@ extension TaskProvider {
   var displayOrder: Int { Int.max }
   var tint: ProviderTint { .gray }
   func sections(in list: TaskList) async throws -> [String] { [] }
+  func matches(_ ref: TaskRef, to task: TaskItem) -> Bool { ref == task.id }
+  func resolve(_ ref: TaskRef, among tasks: [TaskItem]) -> TaskItem? {
+    tasks.first { matches(ref, to: $0) }
+  }
 }
 
 /// A `TaskProvider` that supports toggling task completion state in the source system.

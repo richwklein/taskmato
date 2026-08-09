@@ -79,10 +79,17 @@ extension ObsidianProvider {
     }.value
 
     let taskList = TaskList(id: relPath, providerID: Self.providerID, name: "")
-    let nativeID = "\(relPath):\(insertedLineNumber)"
-    guard let item = try await tasks(in: taskList).first(where: { $0.id.nativeID == nativeID })
+    // The fingerprint is deterministic from the exact line text we just wrote, so the expected
+    // ID can be computed directly instead of re-deriving it from the re-read task — this is the
+    // same identity scheme ``ObsidianTaskParser`` uses when it re-parses the file.
+    let expectedNativeID = ObsidianTaskIdentity.nativeID(
+      fileRelativePath: relPath, rawLine: taskLine, lineNumber: insertedLineNumber
+    )
+    guard
+      let item = try await tasks(in: taskList).first(where: { $0.id.nativeID == expectedNativeID }
+      )
     else {
-      throw ObsidianProviderError.taskNotFound(nativeID)
+      throw ObsidianProviderError.taskNotFound(expectedNativeID)
     }
     return item
   }
@@ -96,7 +103,10 @@ extension ObsidianProvider {
     guard let vaultURL else {
       throw ObsidianProviderError.vaultNotConfigured
     }
-    let (currentRelPath, lineNumber) = try Self.parseNativeID(ref.nativeID)
+    guard let identity = ObsidianTaskIdentity.parseNativeID(ref.nativeID) else {
+      throw ObsidianProviderError.invalidNativeID(ref.nativeID)
+    }
+    let currentRelPath = identity.fileRelativePath
     let targetRelPath = draft.listID ?? currentRelPath
     let (taskLine, noteLines) = Self.formatLines(for: draft)
 
@@ -107,7 +117,7 @@ extension ObsidianProvider {
         var sourceLines = try String(contentsOf: sourceFileURL, encoding: .utf8)
           .components(separatedBy: "\n")
         let (taskIndex, noteEndIndex) = try Self.lineRange(
-          atLine: lineNumber, in: sourceLines, ref: ref.nativeID
+          for: identity, in: sourceLines, ref: ref.nativeID
         )
         let currentSection = Self.section(ofLineAt: taskIndex, in: sourceLines)
 
@@ -146,8 +156,10 @@ extension ObsidianProvider {
     guard let vaultURL else {
       throw ObsidianProviderError.vaultNotConfigured
     }
-    let (relPath, lineNumber) = try Self.parseNativeID(ref.nativeID)
-    let fileURL = vaultURL.appending(path: relPath)
+    guard let identity = ObsidianTaskIdentity.parseNativeID(ref.nativeID) else {
+      throw ObsidianProviderError.invalidNativeID(ref.nativeID)
+    }
+    let fileURL = vaultURL.appending(path: identity.fileRelativePath)
 
     try await Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else { return }
@@ -155,7 +167,7 @@ extension ObsidianProvider {
         var lines = try String(contentsOf: fileURL, encoding: .utf8)
           .components(separatedBy: "\n")
         let (taskIndex, noteEndIndex) = try Self.lineRange(
-          atLine: lineNumber, in: lines, ref: ref.nativeID
+          for: identity, in: lines, ref: ref.nativeID
         )
         lines.removeSubrange(taskIndex..<noteEndIndex)
         try Data(lines.joined(separator: "\n").utf8).write(to: fileURL, options: [])
@@ -178,41 +190,53 @@ extension ObsidianProvider {
 
   // MARK: - Write-side section/line-range helpers
 
-  /// Splits `nativeID` into its vault-relative path and 1-based line number.
-  private nonisolated static func parseNativeID(_ nativeID: String) throws -> (
-    relPath: String, lineNumber: Int
-  ) {
-    let parts = nativeID.split(separator: ":", maxSplits: 1)
-    guard parts.count == 2, let lineNumber = Int(parts[1]) else {
-      throw ObsidianProviderError.invalidNativeID(nativeID)
-    }
-    return (String(parts[0]), lineNumber)
-  }
-
-  /// Resolves the task line at `lineNumber` (1-based) in `lines`, verifying it's still a task
-  /// line, and returns its index plus the index just past its trailing indented note lines.
+  /// Resolves the task line identified by `identity` in `lines`, and returns its index plus the
+  /// index just past its trailing indented note lines.
   ///
-  /// Unlike `complete`/`reopen`'s checkbox-swap fallback, there's no reliable secondary key to
-  /// re-locate a moved line here (`TaskRef` carries no title), so a stale line number surfaces
-  /// as `.taskNotFound` rather than being silently relocated by a file-wide scan.
+  /// Matches by content fingerprint rather than trusting the persisted line number as ground
+  /// truth — the file may have gained or lost lines elsewhere since `ref` was captured. Legacy
+  /// refs from before the fingerprint scheme (no `fingerprint` component) fall back to matching
+  /// by line number alone. Mirrors ``ObsidianProvider``'s read-side `matches`/`resolve` and the
+  /// `complete`/`reopen` rewrite path's own fingerprint matching.
   private nonisolated static func lineRange(
-    atLine lineNumber: Int,
+    for identity: ObsidianTaskIdentity.Components,
     in lines: [String],
     ref nativeID: String
   ) throws -> (taskIndex: Int, noteEndIndex: Int) {
-    let index = lineNumber - 1
-    guard index >= 0, index < lines.count,
-      ObsidianTaskParser.isIncompleteTask(lines[index])
-        || ObsidianTaskParser.isCompletedTask(
-          lines[index])
-    else {
-      throw ObsidianProviderError.taskNotFound(nativeID)
+    let candidates = lines.indices.filter { index in
+      guard
+        ObsidianTaskParser.isIncompleteTask(lines[index])
+          || ObsidianTaskParser.isCompletedTask(lines[index])
+      else { return false }
+      if let fingerprint = identity.fingerprint {
+        return ObsidianTaskIdentity.fingerprint(for: lines[index]) == fingerprint
+      }
+      return identity.lineNumber == index + 1
     }
-    var noteEnd = index + 1
+    let taskIndex = try selectIndex(candidates, lineNumber: identity.lineNumber, ref: nativeID)
+    var noteEnd = taskIndex + 1
     while noteEnd < lines.count, ObsidianTaskParser.isIndented(lines[noteEnd]) {
       noteEnd += 1
     }
-    return (index, noteEnd)
+    return (taskIndex, noteEnd)
+  }
+
+  /// Picks the single matching line index from `candidates`, disambiguating multiple
+  /// identical-content matches by proximity to `lineNumber` — the same tie-breaking rule
+  /// ``ObsidianProvider``'s `complete`/`reopen` rewrite path uses for duplicate fingerprints.
+  private nonisolated static func selectIndex(
+    _ candidates: [Int], lineNumber: Int?, ref nativeID: String
+  ) throws -> Int {
+    guard !candidates.isEmpty else { throw ObsidianProviderError.taskNotFound(nativeID) }
+    guard candidates.count > 1 else { return candidates[0] }
+    guard let lineNumber else { throw ObsidianProviderError.ambiguousTaskRef(nativeID) }
+    let ranked = candidates.sorted { abs($0 + 1 - lineNumber) < abs($1 + 1 - lineNumber) }
+    let bestDistance = abs(ranked[0] + 1 - lineNumber)
+    guard ranked.dropFirst().first.map({ abs($0 + 1 - lineNumber) > bestDistance }) ?? true
+    else {
+      throw ObsidianProviderError.ambiguousTaskRef(nativeID)
+    }
+    return ranked[0]
   }
 
   /// Returns the section (nearest preceding subheading) for the line at `index`, scanning

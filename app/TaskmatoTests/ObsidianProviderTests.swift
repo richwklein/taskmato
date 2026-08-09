@@ -34,6 +34,76 @@ private func makeProvider(vaultURL: URL?) -> ObsidianProvider {
   )
 }
 
+private enum ObserveTimeoutError: Error {
+  case timedOut
+  case finished
+}
+
+private func nextObservedTasks(
+  from stream: AsyncStream<[TaskItem]>, timeout: Duration = .seconds(5)
+) async throws -> [TaskItem] {
+  try await withThrowingTaskGroup(of: [TaskItem]?.self) { group in
+    group.addTask {
+      var iterator = stream.makeAsyncIterator()
+      return await iterator.next()
+    }
+    group.addTask {
+      try await Task.sleep(for: timeout)
+      throw ObserveTimeoutError.timedOut
+    }
+    guard let result = try await group.next() else { throw ObserveTimeoutError.timedOut }
+    group.cancelAll()
+    guard let tasks = result else { throw ObserveTimeoutError.finished }
+    return tasks
+  }
+}
+
+// MARK: - observe()
+
+@Suite("ObsidianProvider — observe")
+@MainActor
+struct ObsidianProviderObserveTests {
+
+  @Test func observeReturnsNilWhenVaultNotConfigured() {
+    let provider = makeProvider(vaultURL: nil)
+    #expect(provider.observe() == nil)
+  }
+
+  @Test func observeMulticastsUpdatesToConcurrentSubscribers() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write("- [ ] Task 1", at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+
+    guard let firstStream = provider.observe(), let secondStream = provider.observe() else {
+      Issue.record("observe() returned nil")
+      return
+    }
+
+    try await Task.sleep(for: .milliseconds(100))
+    try write("- [ ] Task 1\n- [ ] Task 2", at: "tasks.md", in: vault)
+
+    let first = try await nextObservedTasks(from: firstStream)
+    let second = try await nextObservedTasks(from: secondStream)
+    #expect(first.map(\.title).sorted() == ["Task 1", "Task 2"])
+    #expect(second.map(\.title).sorted() == ["Task 1", "Task 2"])
+  }
+
+  @Test func clearVaultFinishesExistingObservation() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write("- [ ] Task 1", at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let stream = try #require(provider.observe())
+
+    provider.clearVault()
+
+    var iterator = stream.makeAsyncIterator()
+    #expect(await iterator.next() == nil)
+    #expect(!provider.isConfigured)
+  }
+}
+
 // MARK: - completedTasks()
 
 @Suite("ObsidianProvider — completedTasks")
@@ -124,6 +194,94 @@ struct ObsidianProviderCompletedTasksTests {
     #expect(tasks.count == 2)
     #expect(tasks[0].title == "Has date")
     #expect(tasks[1].title == "No date")
+  }
+}
+
+// MARK: - complete() / reopen()
+
+@Suite("ObsidianProvider — completion rewriting")
+@MainActor
+struct ObsidianProviderCompletionRewritingTests {
+
+  @Test func completeUsesContentFingerprintAfterLineShift() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write(
+      """
+      - [ ] Delete me
+      - [ ] Keep me
+      """, at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let task = try #require((try await provider.tasks(in: nil)).first { $0.title == "Keep me" })
+
+    try write("- [ ] Keep me", at: "tasks.md", in: vault)
+    try await provider.complete(task.id)
+
+    let updated = try String(contentsOf: vault.appending(path: "tasks.md"), encoding: .utf8)
+    #expect(updated == "- [x] Keep me")
+  }
+
+  @Test func reopenUsesContentFingerprintAfterLineShift() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write(
+      """
+      - [x] Done first
+      - [x] Keep done
+      """, at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let task = try #require(
+      (try await provider.completedTasks()).first { $0.title == "Keep done" })
+
+    try write("- [x] Keep done", at: "tasks.md", in: vault)
+    try await provider.reopen(task.id)
+
+    let updated = try String(contentsOf: vault.appending(path: "tasks.md"), encoding: .utf8)
+    #expect(updated == "- [ ] Keep done")
+  }
+
+  @Test func completeUsesLineHintForDuplicateContent() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write(
+      """
+      - [ ] Same task
+      - [ ] Same task
+      """, at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let task = try #require((try await provider.tasks(in: nil)).first)
+    try await provider.complete(task.id)
+
+    let updated = try String(contentsOf: vault.appending(path: "tasks.md"), encoding: .utf8)
+    #expect(updated == "- [x] Same task\n- [ ] Same task")
+  }
+
+  @Test func completeThrowsWhenFingerprintHasNoLineHintAndIsAmbiguous() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write(
+      """
+      - [ ] Same task
+      - [ ] Same task
+      """, at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let task = try #require((try await provider.tasks(in: nil)).first)
+    let fingerprintOnlyID = task.id.nativeID.components(separatedBy: "#line=")[0]
+    let ref = TaskRef(providerID: task.id.providerID, nativeID: fingerprintOnlyID)
+
+    await #expect(throws: ObsidianProviderError.self) {
+      try await provider.complete(ref)
+    }
+  }
+
+  @Test func legacyPathLineReferenceMatchesCurrentFingerprintTask() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write("- [ ] Legacy task", at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    let task = try #require((try await provider.tasks(in: nil)).first)
+    let legacy = TaskRef(providerID: "obsidian", nativeID: "tasks.md:1")
+    #expect(provider.matches(legacy, to: task))
   }
 }
 

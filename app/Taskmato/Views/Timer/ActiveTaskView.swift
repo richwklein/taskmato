@@ -164,10 +164,10 @@ struct ActiveTaskView: View {
     let ref = task.id
     guard sessionIsActive, !isBreakPhase else {
       Task {
-        await errorPresenter.attempt(AppLabels.Error.completeFailed) {
+        let succeeded = await errorPresenter.attempt(AppLabels.Error.completeFailed) {
           try await provider.complete(ref)
         }
-        selectionStore.clearActiveTask()
+        if succeeded { selectionStore.clearActiveTask() }
       }
       return
     }

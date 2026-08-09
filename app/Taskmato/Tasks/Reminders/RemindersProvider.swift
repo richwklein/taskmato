@@ -52,7 +52,7 @@ final class RemindersProvider: WritableTaskProvider {
 
   private let store: any RemindersEventStore
   private let settings: SettingsStore
-  private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
+  private let updates = MulticastAsyncStream<[TaskItem]>()
   private var observer: NSObjectProtocol?
   private let debouncer = Debouncer()
 
@@ -68,6 +68,7 @@ final class RemindersProvider: WritableTaskProvider {
     self.listPatterns = settings[SettingsStore.Keys.remindersListPatterns]
     self.defaultListOverride = settings[SettingsStore.Keys.remindersDefaultListOverride]
     isAuthorized = store.authorizationStatus() == .fullAccess
+    updates.onEmpty = { [weak self] in self?.stopObserving() }
   }
 
   // MARK: - Authorization
@@ -147,18 +148,14 @@ final class RemindersProvider: WritableTaskProvider {
 
   func observe() -> AsyncStream<[TaskItem]>? {
     guard isAuthorized else { return nil }
-    let (stream, continuation) = AsyncStream<[TaskItem]>.makeStream()
-    streamContinuation = continuation
-    observer = store.addObserver(
-      forName: .EKEventStoreChanged
-    ) { [weak self] in
-      Task { @MainActor [weak self] in
-        self?.scheduleDebounce()
-      }
-    }
-    continuation.onTermination = { [weak self] _ in
-      Task { @MainActor [weak self] in
-        self?.stopObserving()
+    let stream = updates.subscribe()
+    if observer == nil {
+      observer = store.addObserver(
+        forName: .EKEventStoreChanged
+      ) { [weak self] in
+        Task { @MainActor [weak self] in
+          self?.scheduleDebounce()
+        }
       }
     }
     return stream
@@ -168,7 +165,7 @@ final class RemindersProvider: WritableTaskProvider {
     debouncer.schedule { [weak self] in
       guard let self else { return }
       let updated = (try? await self.tasks(in: nil)) ?? []
-      self.streamContinuation?.yield(updated)
+      self.updates.yield(updated)
     }
   }
 
@@ -178,8 +175,7 @@ final class RemindersProvider: WritableTaskProvider {
       store.removeObserver(observer)
       self.observer = nil
     }
-    streamContinuation?.finish()
-    streamContinuation = nil
+    updates.finish()
   }
 
   // MARK: - ClosableTaskProvider

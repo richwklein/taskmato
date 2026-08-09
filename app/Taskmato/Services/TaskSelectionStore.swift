@@ -69,6 +69,27 @@ final class TaskSelectionStore {
     onActiveTaskChanged?(nil)
   }
 
+  /// Updates the active task's cached fields (title, notes, priority, …) from a freshly
+  /// reloaded snapshot of the same reference, so external edits show up without a new selection.
+  ///
+  /// Unlike ``select(_:)`` this does not touch recents or the pending-continuation flag, and does
+  /// not fire ``onActiveTaskChanged`` — the reference is unchanged, so no new attribution slice
+  /// should open (`ActiveTaskReconciler`, issue #547). One accepted consequence: a focus segment
+  /// already open against this task keeps the pre-refresh `taskTitle` when it closes, since that
+  /// title was captured as a breakpoint before the rename was known.
+  /// - Parameters:
+  ///   - task: The reloaded task.
+  ///   - replacing: The persisted reference being refreshed, which may be a legacy provider ID.
+  func refreshActiveTask(_ task: TaskItem, replacing: TaskRef? = nil) {
+    guard let current = activeTask, replacing == current.id || task.id == current.id else { return }
+    activeTask = task
+    if let replacing {
+      let key = replacing.providerID.rawValue
+      recentsByProvider[key]?.replaceFirst(where: { $0.id == replacing }, with: task)
+    }
+    persist()
+  }
+
   /// Marks the next ``select(_:)`` as a genuine handoff continuation (D9) — call after a
   /// complete/swap/clear pauses the phase and routes to the picker.
   func markPendingContinuation() {
@@ -112,5 +133,14 @@ final class TaskSelectionStore {
     recentsByProvider =
       store.value(forKey: SettingsStore.Keys.recentsByProvider, as: [String: [TaskItem]].self)
       ?? [:]
+  }
+}
+
+extension Array {
+  fileprivate mutating func replaceFirst(
+    where predicate: (Element) throws -> Bool, with replacement: Element
+  ) rethrows {
+    guard let index = try firstIndex(where: predicate) else { return }
+    self[index] = replacement
   }
 }

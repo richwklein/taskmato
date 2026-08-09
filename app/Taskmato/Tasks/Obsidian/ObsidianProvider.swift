@@ -65,7 +65,7 @@ final class ObsidianProvider: WritableTaskProvider {
 
   private let store: SettingsStore
   private let parser = ObsidianTaskParser()
-  private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
+  private let updates = MulticastAsyncStream<[TaskItem]>()
   private var fsEventStream: FSEventStreamRef?
   private let debouncer = Debouncer()
 
@@ -76,6 +76,7 @@ final class ObsidianProvider: WritableTaskProvider {
     self.filePatterns = store[SettingsStore.Keys.obsidianFilePatterns]
     self.defaultListOverride = store[SettingsStore.Keys.obsidianDefaultListID]
     restoreVaultBookmark()
+    updates.onEmpty = { [weak self] in self?.stopWatching() }
   }
 
   /// Creates a pre-configured provider for unit tests, bypassing the settings-store bookmark lookup.
@@ -89,6 +90,7 @@ final class ObsidianProvider: WritableTaskProvider {
     self.filePatterns = filePatterns
     self.vaultURL = vaultURL
     self.defaultListOverride = defaultListID
+    updates.onEmpty = { [weak self] in self?.stopWatching() }
   }
 
   // MARK: - TaskProvider
@@ -164,18 +166,53 @@ final class ObsidianProvider: WritableTaskProvider {
   /// coalesced by a 250 ms debounce before a full rescan is triggered.
   func observe() -> AsyncStream<[TaskItem]>? {
     guard let vaultURL else { return nil }
-    let (stream, continuation) = AsyncStream<[TaskItem]>.makeStream()
-    streamContinuation = continuation
-    startWatching(vaultURL: vaultURL, continuation: continuation)
+    let stream = updates.subscribe()
+    if fsEventStream == nil {
+      startWatching(vaultURL: vaultURL)
+    }
     return stream
+  }
+
+  /// Matches current fingerprint IDs and legacy path/line IDs without making line the identity.
+  func matches(_ ref: TaskRef, to task: TaskItem) -> Bool {
+    guard ref.providerID == Self.providerID,
+      let persisted = ObsidianTaskIdentity.parseNativeID(ref.nativeID),
+      let current = ObsidianTaskIdentity.parseNativeID(task.id.nativeID),
+      persisted.fileRelativePath == current.fileRelativePath
+    else { return false }
+    if let fingerprint = persisted.fingerprint {
+      return fingerprint == current.fingerprint
+    }
+    return persisted.lineNumber == current.lineNumber
+  }
+
+  /// Resolves duplicate content fingerprints with the persisted line as a non-authoritative hint.
+  func resolve(_ ref: TaskRef, among tasks: [TaskItem]) -> TaskItem? {
+    let candidates = tasks.filter { matches(ref, to: $0) }
+    guard candidates.count > 1,
+      let lineNumber = ObsidianTaskIdentity.parseNativeID(ref.nativeID)?.lineNumber
+    else { return candidates.first }
+    let ranked = candidates.sorted {
+      distance(from: lineNumber, to: $0) < distance(from: lineNumber, to: $1)
+    }
+    guard distance(from: lineNumber, to: ranked[0]) < distance(from: lineNumber, to: ranked[1])
+    else {
+      return nil
+    }
+    return ranked[0]
+  }
+
+  private func distance(from lineNumber: Int, to task: TaskItem) -> Int {
+    guard let currentLine = ObsidianTaskIdentity.parseNativeID(task.id.nativeID)?.lineNumber else {
+      return Int.max
+    }
+    return abs(currentLine - lineNumber)
   }
 
   // MARK: - ClosableTaskProvider
 
   /// Rewrites the task checkbox from `[ ]` to `[x]` in the vault file, supporting both
   /// unordered (`- [ ] `) and ordered (`1. [ ] `) list formats.
-  ///
-  /// The stored line number is tried first; a file-wide search is the fallback for stale refs.
   func complete(_ ref: TaskRef) async throws {
     try await rewrite(ref: ref, from: " ", to: "x")
   }
@@ -336,8 +373,8 @@ final class ObsidianProvider: WritableTaskProvider {
 
   /// Returns the path of `fileURL` relative to `vaultURL`, using `fileURL.path` as fallback.
   private nonisolated func relativePath(for fileURL: URL, relativeTo vaultURL: URL) -> String {
-    let vaultPath = vaultURL.standardized.path
-    let filePath = fileURL.standardized.path
+    let vaultPath = vaultURL.standardizedFileURL.resolvingSymlinksInPath().path
+    let filePath = fileURL.standardizedFileURL.resolvingSymlinksInPath().path
     guard filePath.hasPrefix(vaultPath + "/") else { return filePath }
     return String(filePath.dropFirst(vaultPath.count + 1))
   }
@@ -353,39 +390,22 @@ final class ObsidianProvider: WritableTaskProvider {
     guard let vaultURL else {
       throw ObsidianProviderError.vaultNotConfigured
     }
-    let parts = ref.nativeID.split(separator: ":", maxSplits: 1)
-    guard parts.count == 2, let lineNumber = Int(parts[1]) else {
+    guard let identity = ObsidianTaskIdentity.parseNativeID(ref.nativeID) else {
       throw ObsidianProviderError.invalidNativeID(ref.nativeID)
     }
-    let relPath = String(parts[0])
-    let fileURL = vaultURL.appending(path: relPath)
+    let fileURL = vaultURL.appending(path: identity.fileRelativePath)
 
     try await Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else { return }
       try self.withVaultAccess(vaultURL) { _ in
         var lines = try String(contentsOf: fileURL, encoding: .utf8)
           .components(separatedBy: "\n")
-        let index = lineNumber - 1
 
-        // Try the stored line number first; fall back to a file-wide search for stale refs.
-        let (targetIndex, rewritten): (Int, String) = try {
-          if index < lines.count {
-            if let rewrite = Self.rewriteLine(lines[index], from: fromCheckbox, to: toCheckbox) {
-              return (index, rewrite)
-            }
-            if let alt = fallbackFrom {
-              if let rewrite = Self.rewriteLine(lines[index], from: alt, to: toCheckbox) {
-                return (index, rewrite)
-              }
-            }
-          }
-          for (idx, line) in lines.enumerated() {
-            if let rewrite = Self.rewriteLine(line, from: fromCheckbox, to: toCheckbox) {
-              return (idx, rewrite)
-            }
-          }
-          throw ObsidianProviderError.taskNotFound(ref.nativeID)
-        }()
+        let matches = Self.matchingLines(
+          lines, identity: identity, from: fromCheckbox, replacement: toCheckbox,
+          fallbackFrom: fallbackFrom)
+        let target = try Self.selectTarget(matches, lineNumber: identity.lineNumber, ref: ref)
+        let (targetIndex, rewritten) = target
         lines[targetIndex] = rewritten
         let updated = lines.joined(separator: "\n")
         try Data(updated.utf8).write(to: fileURL, options: [])
@@ -417,45 +437,112 @@ final class ObsidianProvider: WritableTaskProvider {
     return numPart + ". [\(toCheckbox)] " + remainder.dropFirst(orderedSuffix.count)
   }
 
+  private nonisolated static func rewrittenLine(
+    _ line: String, from: String, replacement: String, fallbackFrom: String?
+  ) -> String? {
+    rewriteLine(line, from: from, to: replacement)
+      ?? fallbackFrom.flatMap { rewriteLine(line, from: $0, to: replacement) }
+  }
+
+  private nonisolated static func matchingLines(
+    _ lines: [String], identity: ObsidianTaskIdentity.Components,
+    from: String, replacement: String, fallbackFrom: String?
+  ) -> [(Int, String)] {
+    lines.enumerated().compactMap { index, line in
+      if let fingerprint = identity.fingerprint {
+        guard ObsidianTaskIdentity.fingerprint(for: line) == fingerprint else { return nil }
+      } else {
+        guard identity.lineNumber == index + 1 else { return nil }
+      }
+      guard
+        let rewritten = rewrittenLine(
+          line, from: from, replacement: replacement, fallbackFrom: fallbackFrom)
+      else { return nil }
+      return (index, rewritten)
+    }
+  }
+
+  private nonisolated static func selectTarget(
+    _ matches: [(Int, String)], lineNumber: Int?, ref: TaskRef
+  ) throws -> (Int, String) {
+    guard !matches.isEmpty else { throw ObsidianProviderError.taskNotFound(ref.nativeID) }
+    guard matches.count > 1 else { return matches[0] }
+    guard let lineNumber else { throw ObsidianProviderError.ambiguousTaskRef(ref.nativeID) }
+    let ranked = matches.sorted { abs($0.0 + 1 - lineNumber) < abs($1.0 + 1 - lineNumber) }
+    let bestDistance = abs(ranked[0].0 + 1 - lineNumber)
+    guard ranked.dropFirst().first.map({ abs($0.0 + 1 - lineNumber) > bestDistance }) ?? true
+    else { throw ObsidianProviderError.ambiguousTaskRef(ref.nativeID) }
+    return ranked[0]
+  }
+}
+
+/// Retained by the FSEventStream context while callbacks may still arrive; the weak provider
+/// reference prevents the stream bridge from extending the provider's lifetime.
+private final class ObsidianFSEventContext: @unchecked Sendable {
+  weak var provider: ObsidianProvider?
+
+  @MainActor
+  init(provider: ObsidianProvider) {
+    self.provider = provider
+  }
+}
+
+/// C callback table for the FSEventStream context, including its explicit Unmanaged ownership
+/// bridge and hop back to the provider's main actor.
+private nonisolated enum ObsidianFSEventCallbacks {
+  static let retain: CFAllocatorRetainCallBack = { info in
+    guard let info else { return nil }
+    return UnsafeRawPointer(Unmanaged<ObsidianFSEventContext>.fromOpaque(info).retain().toOpaque())
+  }
+
+  static let release: CFAllocatorReleaseCallBack = { info in
+    guard let info else { return }
+    Unmanaged<ObsidianFSEventContext>.fromOpaque(info).release()
+  }
+
+  static let handleEvent: FSEventStreamCallback = { _, info, _, _, _, _ in
+    guard let info else { return }
+    let context = Unmanaged<ObsidianFSEventContext>.fromOpaque(info).takeUnretainedValue()
+    Task { @MainActor [context] in
+      context.provider?.handleFSEvent()
+    }
+  }
+}
+
+extension ObsidianProvider {
+
   // MARK: - File-system watching (FSEventStream)
 
-  private func startWatching(
-    vaultURL: URL,
-    continuation: AsyncStream<[TaskItem]>.Continuation
-  ) {
+  private func startWatching(vaultURL: URL) {
     let paths = [vaultURL.path] as CFArray
-    // Pass an unretained pointer to self; safe because the stream is always stopped before
-    // the provider is released (ObsidianProvider is a long-lived app singleton).
+    let context = ObsidianFSEventContext(provider: self)
     var ctx = FSEventStreamContext(
       version: 0,
-      info: Unmanaged.passUnretained(self).toOpaque(),
-      retain: nil,
-      release: nil,
+      info: Unmanaged.passUnretained(context).toOpaque(),
+      retain: ObsidianFSEventCallbacks.retain,
+      release: ObsidianFSEventCallbacks.release,
       copyDescription: nil
     )
-    let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
-      guard let info else { return }
-      let provider = Unmanaged<ObsidianProvider>.fromOpaque(info).takeUnretainedValue()
-      Task { @MainActor in provider.handleFSEvent() }
-    }
     guard
       let stream = FSEventStreamCreate(
         kCFAllocatorDefault,
-        callback,
+        ObsidianFSEventCallbacks.handleEvent,
         &ctx,
         paths,
         FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
         0.0,
         UInt32(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes)
       )
-    else { return }
+    else {
+      return
+    }
     FSEventStreamSetDispatchQueue(stream, .global(qos: .utility))
     FSEventStreamStart(stream)
     fsEventStream = stream
   }
 
   /// Called on `@MainActor` each time the FSEventStream fires; starts (or restarts) the debounce timer.
-  private func handleFSEvent() {
+  fileprivate func handleFSEvent() {
     scheduleDebounce()
   }
 
@@ -464,80 +551,18 @@ final class ObsidianProvider: WritableTaskProvider {
     debouncer.schedule { [weak self] in
       guard let self else { return }
       let updated = (try? await self.tasks(in: nil)) ?? []
-      self.streamContinuation?.yield(updated)
+      self.updates.yield(updated)
     }
   }
 
   private func stopWatching() {
     debouncer.cancel()
     if let stream = fsEventStream {
-      FSEventStreamStop(stream)
-      FSEventStreamRelease(stream)
       fsEventStream = nil
+      FSEventStreamStop(stream)
+      FSEventStreamInvalidate(stream)
+      FSEventStreamRelease(stream)
     }
-    streamContinuation?.finish()
-    streamContinuation = nil
-  }
-}
-
-// MARK: - Pattern tokens
-
-/// Validates Obsidian file-pattern date tokens before they are expanded.
-enum ObsidianPatternTokens {
-
-  /// Returns date-like brace tokens that won't be expanded by ``ObsidianProvider/expandTokens(_:now:)``.
-  static func invalidDateTokens(in pattern: String) -> [String] {
-    let supportedDateTokens = [
-      "{year}",
-      "{yyyy}",
-      "{month}",
-      "{mm}",
-      "{week}",
-      "{ww}",
-      "{day}",
-      "{dd}",
-    ]
-    let tokenPattern = /\{[^{}]*[A-Za-z][^{}]*\}/
-    var invalidTokens: [String] = []
-
-    for match in pattern.matches(of: tokenPattern) {
-      let token = String(match.output)
-      guard !supportedDateTokens.contains(token.lowercased()), !invalidTokens.contains(token)
-      else { continue }
-      invalidTokens.append(token)
-    }
-
-    return invalidTokens
-  }
-}
-
-// MARK: - Errors
-
-/// Errors thrown by ``ObsidianProvider`` operations.
-enum ObsidianProviderError: LocalizedError {
-  /// The vault directory has not been configured by the user.
-  case vaultNotConfigured
-  /// The `TaskRef.nativeID` does not follow the expected `path:lineNumber` format.
-  case invalidNativeID(String)
-  /// No matching task line was found in the vault file.
-  case taskNotFound(String)
-  /// No file matches the given vault-relative list ID.
-  case listNotFound(String)
-  /// No heading matching the given section text was found in the target file.
-  case sectionNotFound(list: String, section: String)
-
-  var errorDescription: String? {
-    switch self {
-    case .vaultNotConfigured:
-      return "No Obsidian vault has been selected."
-    case .invalidNativeID(let id):
-      return "Invalid task reference: \"\(id)\"."
-    case .taskNotFound(let id):
-      return "Could not locate task \"\(id)\" in the vault."
-    case .listNotFound(let id):
-      return "Could not locate list \"\(id)\" in the vault."
-    case .sectionNotFound(let list, let section):
-      return "Could not locate section \"\(section)\" in \"\(list)\"."
-    }
+    updates.finish()
   }
 }
