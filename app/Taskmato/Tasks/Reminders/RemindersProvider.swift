@@ -272,8 +272,12 @@ final class RemindersProvider: WritableTaskProvider {
     reminder.notes = draft.notes.isEmpty ? nil : draft.notes
     reminder.calendar = calendar
     reminder.priority = mapPriority(draft.priority)
-    reminder.dueDateComponents = draft.dueDate.map {
-      Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: $0)
+    reminder.dueDateComponents = draft.dueDate.map { date in
+      let components: Set<Calendar.Component> =
+        draft.dueDateIncludesTime
+        ? [.year, .month, .day, .hour, .minute]
+        : [.year, .month, .day]
+      return Calendar.current.dateComponents(components, from: date)
     }
   }
 
@@ -293,6 +297,7 @@ final class RemindersProvider: WritableTaskProvider {
       dueDate: reminder.dueDateComponents.flatMap {
         Calendar.current.date(from: $0)
       },
+      dueDateIncludesTime: reminder.dueDateComponents?.hour != nil,
       scheduledDate: nil,
       startDate: reminder.startDateComponents.flatMap {
         Calendar.current.date(from: $0)

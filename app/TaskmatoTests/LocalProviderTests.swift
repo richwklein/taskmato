@@ -186,6 +186,27 @@ struct LocalProviderTests {
     #expect(createdAt <= after)
   }
 
+  @Test func addTaskPreservesDueDateIncludesTimeFlag() async throws {
+    let provider = await makeProvider()
+    var draft = TaskDraft()
+    draft.title = "Meeting"
+    draft.dueDate = Date()
+    draft.dueDateIncludesTime = true
+    try await provider.addTask(draft)
+    let tasks = try await provider.tasks(in: nil)
+    #expect(tasks.first?.dueDateIncludesTime == true)
+  }
+
+  @Test func addTaskDefaultsDueDateIncludesTimeToFalse() async throws {
+    let provider = await makeProvider()
+    var draft = TaskDraft()
+    draft.title = "All day"
+    draft.dueDate = Date()
+    try await provider.addTask(draft)
+    let tasks = try await provider.tasks(in: nil)
+    #expect(tasks.first?.dueDateIncludesTime == false)
+  }
+
   @Test func addTaskUsesDefaultListWhenNoDraftListID() async throws {
     let provider = await makeProvider()
     let defaultID = provider.defaultListID!

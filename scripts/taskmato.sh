@@ -5,7 +5,7 @@
 # Usage:
 #   taskmato <title>
 #   taskmato --title <title> [--priority none|lowest|low|medium|high|highest]
-#             [--due YYYY-MM-DD] [--list <name>] [--provider <id>]
+#             [--due "YYYY-MM-DD[ HH:MM]"] [--list <name>] [--section <name>] [--provider <id>]
 #   taskmato --provider <id> --id <native-id>
 #   taskmato --provider <id> --title <title>
 #
@@ -60,8 +60,12 @@ Options:
                           for ad-hoc creation when no matching task is found
   --id <native-id>        Look up task by its native provider ID (requires --provider)
   --priority <level>      Priority: none, lowest, low, medium, high, highest
-  --due <YYYY-MM-DD>      Due date for ad-hoc task creation
+  --due <date[ time]>     Due date for ad-hoc task creation: "YYYY-MM-DD" for date only, or
+                          "YYYY-MM-DD HH:MM" (24-hour, quoted) to also set a due time. Ignored
+                          by providers without a time convention (e.g. Obsidian).
   --list <name>           List name for ad-hoc task creation
+  --section <name>        Section (heading) within the list for ad-hoc task creation
+                          (Obsidian only; ignored by providers without sections)
   -h, --help              Show this help
 EOF
 }
@@ -72,6 +76,7 @@ TITLE=""
 PRIORITY=""
 DUE=""
 LIST=""
+SECTION=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -81,6 +86,7 @@ while [[ $# -gt 0 ]]; do
     --priority) PRIORITY="$2"; shift 2 ;;
     --due)      DUE="$2"; shift 2 ;;
     --list)     LIST="$2"; shift 2 ;;
+    --section)  SECTION="$2"; shift 2 ;;
     -h|--help)  usage; exit 0 ;;
     -*)
       echo "Unknown option: $1" >&2
@@ -107,6 +113,7 @@ QUERY=""
 [[ -n "$PRIORITY"  ]] && add_param "priority" "$PRIORITY"
 [[ -n "$DUE"       ]] && add_param "due"      "$DUE"
 [[ -n "$LIST"      ]] && add_param "list"     "$LIST"
+[[ -n "$SECTION"   ]] && add_param "section"  "$SECTION"
 
 if [[ -z "$QUERY" ]]; then
   echo "Error: at least --title or --provider + --id is required." >&2

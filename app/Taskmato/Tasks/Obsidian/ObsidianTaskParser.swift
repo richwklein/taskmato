@@ -54,8 +54,8 @@ nonisolated struct ObsidianTaskParser: Sendable {
     )
     let (raw, listName) = collectEntries(
       from: content,
-      isTarget: isIncompleteTask,
-      shouldSkip: isCompletedTask
+      isTarget: Self.isIncompleteTask,
+      shouldSkip: Self.isCompletedTask
     )
     let items = raw.map { entry in
       buildTaskItem(
@@ -85,8 +85,8 @@ nonisolated struct ObsidianTaskParser: Sendable {
     )
     let (raw, listName) = collectEntries(
       from: content,
-      isTarget: isCompletedTask,
-      shouldSkip: isIncompleteTask
+      isTarget: Self.isCompletedTask,
+      shouldSkip: Self.isIncompleteTask
     )
     let entries = raw.map { entry in
       buildCompletedEntry(
@@ -143,10 +143,10 @@ nonisolated struct ObsidianTaskParser: Sendable {
     }
 
     for (offset, line) in lines.enumerated() {
-      if let heading = h1(line) {
+      if let heading = Self.h1(line) {
         finalize()
         if listName == nil { listName = heading }
-      } else if let heading = subheading(line) {
+      } else if let heading = Self.subheading(line) {
         finalize()
         currentSection = heading
       } else if isTarget(line) {
@@ -156,7 +156,7 @@ nonisolated struct ObsidianTaskParser: Sendable {
         pendingSection = currentSection
       } else if shouldSkip(line) {
         finalize()
-      } else if pendingRaw != nil, isIndented(line) {
+      } else if pendingRaw != nil, Self.isIndented(line) {
         notesBuffer.append(stripIndent(line))
       } else if !line.trimmingCharacters(in: .whitespaces).isEmpty {
         finalize()
@@ -169,12 +169,19 @@ nonisolated struct ObsidianTaskParser: Sendable {
 
   // MARK: - Line classification
 
-  private func h1(_ line: String) -> String? {
+  /// Returns the heading text of `line` if it is an H1 (`# `) markdown heading, or `nil`.
+  ///
+  /// Shared with ``ObsidianProvider``'s write-side section-block boundary detection.
+  static func h1(_ line: String) -> String? {
     guard line.hasPrefix("# ") else { return nil }
     return String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
   }
 
-  private func subheading(_ line: String) -> String? {
+  /// Returns the heading text of `line` if it is a `##`–`######` markdown subheading, or `nil`.
+  ///
+  /// Shared with ``ObsidianProvider``'s write-side section matching so both read and write use
+  /// the exact same heading-classification rule.
+  static func subheading(_ line: String) -> String? {
     guard
       line.hasPrefix("## ") || line.hasPrefix("### ") || line.hasPrefix("#### ")
         || line.hasPrefix("##### ") || line.hasPrefix("###### ")
@@ -185,18 +192,23 @@ nonisolated struct ObsidianTaskParser: Sendable {
     return nil
   }
 
-  private func isIncompleteTask(_ line: String) -> Bool {
+  /// Returns `true` if `line` is an incomplete task list item (`- [ ] ` or `N. [ ] `).
+  ///
+  /// Shared with ``ObsidianProvider``'s write-side task-line lookup so both read and write agree
+  /// on what counts as a task line.
+  static func isIncompleteTask(_ line: String) -> Bool {
     line.hasPrefix("- [ ] ") || matchesOrderedItem(line, bracket: "[ ]")
   }
 
-  private func isCompletedTask(_ line: String) -> Bool {
+  /// Returns `true` if `line` is a completed task list item (`- [x] `/`- [X] ` or `N. [x/X] `).
+  static func isCompletedTask(_ line: String) -> Bool {
     line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
       || matchesOrderedItem(line, bracket: "[x]")
       || matchesOrderedItem(line, bracket: "[X]")
   }
 
   /// Returns `true` when `line` is an ordered list item (`1. <bracket> `) with the given bracket content.
-  private func matchesOrderedItem(_ line: String, bracket: String) -> Bool {
+  private static func matchesOrderedItem(_ line: String, bracket: String) -> Bool {
     var idx = line.startIndex
     while idx < line.endIndex, line[idx].isNumber {
       idx = line.index(after: idx)
@@ -204,7 +216,11 @@ nonisolated struct ObsidianTaskParser: Sendable {
     return idx > line.startIndex && line[idx...].hasPrefix(". \(bracket) ")
   }
 
-  private func isIndented(_ line: String) -> Bool {
+  /// Returns `true` if `line` is indented (a task's note/continuation line).
+  ///
+  /// Shared with ``ObsidianProvider``'s write-side note-block detection so both read and write
+  /// agree on what counts as a task's trailing notes.
+  static func isIndented(_ line: String) -> Bool {
     line.hasPrefix("    ") || line.hasPrefix("\t")
   }
 
@@ -305,7 +321,9 @@ nonisolated struct ObsidianTaskParser: Sendable {
 
   // MARK: - Field extraction
 
-  nonisolated private static let priorityEmojis: [(String, TaskPriority)] = [
+  /// Priority emoji, in match-priority order. Shared with ``ObsidianTaskLineFormatter`` so read
+  /// and write use the exact same emoji↔priority mapping.
+  nonisolated static let priorityEmojis: [(String, TaskPriority)] = [
     ("🔺", .highest),
     ("⏫", .high),
     ("🔼", .medium),

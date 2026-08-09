@@ -8,18 +8,21 @@ import CoreServices
 import Foundation
 import Observation
 
-/// A task provider that reads incomplete tasks from all matching markdown files in an Obsidian vault.
+/// A task provider that reads and writes tasks in all matching markdown files in an Obsidian vault.
 ///
 /// Vault directory access uses a security-scoped bookmark persisted in ``UserDefaults``.
-/// The provider is read-write: `complete(_:)` rewrites the task line from `- [ ]` to `- [x]`
-/// in place; `reopen(_:)` reverses the operation; `completedTasks()` scans the vault for
-/// `- [x]` lines and returns them sorted by their `✅` completion date.
+/// `complete(_:)` rewrites the task line from `- [ ]` to `- [x]` in place; `reopen(_:)` reverses
+/// the operation; `completedTasks()` scans the vault for `- [x]` lines and returns them sorted by
+/// their `✅` completion date. The provider conforms to ``WritableTaskProvider`` so tasks can also
+/// be created, edited, and deleted — but not ``WritableListProvider``: vault files already have a
+/// mature native lifecycle (Obsidian.app, Finder, sync tools), so file create/rename/delete stays
+/// out of scope. See ADR-0011.
 ///
 /// - Note: `observe()` watches the vault recursively using `FSEventStreamCreate`. Rapid
 ///   change notifications are coalesced by a 250 ms debounce before a rescan is triggered.
 @Observable
 @MainActor
-final class ObsidianProvider: ClosableTaskProvider {
+final class ObsidianProvider: WritableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
   nonisolated static let providerID: ProviderID = "obsidian"
@@ -30,12 +33,29 @@ final class ObsidianProvider: ClosableTaskProvider {
   let tint: ProviderTint = .purple
   let entitlement: ProviderEntitlement = .free
 
+  /// The `ContentFormat` new and edited tasks use — Obsidian task lines are markdown.
+  let contentFormat: ContentFormat = .markdown
+
+  /// Obsidian's `📅 YYYY-MM-DD` task-line format has no time-of-day convention — writes are
+  /// always date-only, matching the obsidian-tasks plugin other tools in a vault expect.
+  let supportsDueTime: Bool = false
+
   /// The user-selected vault directory, resolved from the stored security-scoped bookmark.
   private(set) var vaultURL: URL?
 
   /// Glob patterns (relative to vault root) used to select which markdown files are scanned.
   /// Supported date tokens are documented on ``expandTokens(_:now:)``.
   private(set) var filePatterns: [String]
+
+  /// User-selected default file (vault-relative path), or `nil` if none has been chosen.
+  ///
+  /// Unlike Reminders, Obsidian has no system-level default to fall back to.
+  var defaultListOverride: String? {
+    didSet { store[SettingsStore.Keys.obsidianDefaultListID] = defaultListOverride }
+  }
+
+  /// The vault-relative path of the file new tasks target by default, or `nil` if none is set.
+  var defaultListID: String? { defaultListOverride }
 
   /// Human-readable vault name derived from the last path component of `vaultURL`.
   var vaultName: String { vaultURL?.lastPathComponent ?? "" }
@@ -54,6 +74,7 @@ final class ObsidianProvider: ClosableTaskProvider {
   init(store: SettingsStore = SettingsStore()) {
     self.store = store
     self.filePatterns = store[SettingsStore.Keys.obsidianFilePatterns]
+    self.defaultListOverride = store[SettingsStore.Keys.obsidianDefaultListID]
     restoreVaultBookmark()
     updates.onEmpty = { [weak self] in self?.stopWatching() }
   }
@@ -62,11 +83,13 @@ final class ObsidianProvider: ClosableTaskProvider {
   init(
     store: SettingsStore,
     vaultURL: URL?,
-    filePatterns: [String] = ObsidianProvider.defaultPatterns
+    filePatterns: [String] = ObsidianProvider.defaultPatterns,
+    defaultListID: String? = nil
   ) {
     self.store = store
     self.filePatterns = filePatterns
     self.vaultURL = vaultURL
+    self.defaultListOverride = defaultListID
     updates.onEmpty = { [weak self] in self?.stopWatching() }
   }
 
@@ -281,7 +304,7 @@ final class ObsidianProvider: ClosableTaskProvider {
   }
 
   /// Wraps `perform` with security-scoped resource access for `url`.
-  private nonisolated func withVaultAccess<T>(_ url: URL, perform: (URL) throws -> T) throws -> T {
+  nonisolated func withVaultAccess<T>(_ url: URL, perform: (URL) throws -> T) throws -> T {
     let didStart = url.startAccessingSecurityScopedResource()
     defer { if didStart { url.stopAccessingSecurityScopedResource() } }
     return try perform(url)
@@ -541,60 +564,5 @@ extension ObsidianProvider {
       FSEventStreamRelease(stream)
     }
     updates.finish()
-  }
-}
-
-// MARK: - Pattern tokens
-
-/// Validates Obsidian file-pattern date tokens before they are expanded.
-enum ObsidianPatternTokens {
-
-  /// Returns date-like brace tokens that won't be expanded by ``ObsidianProvider/expandTokens(_:now:)``.
-  static func invalidDateTokens(in pattern: String) -> [String] {
-    let supportedDateTokens = [
-      "{year}",
-      "{yyyy}",
-      "{month}",
-      "{mm}",
-      "{week}",
-      "{ww}",
-      "{day}",
-      "{dd}",
-    ]
-    let tokenPattern = /\{[^{}]*[A-Za-z][^{}]*\}/
-    var invalidTokens: [String] = []
-
-    for match in pattern.matches(of: tokenPattern) {
-      let token = String(match.output)
-      guard !supportedDateTokens.contains(token.lowercased()), !invalidTokens.contains(token)
-      else { continue }
-      invalidTokens.append(token)
-    }
-
-    return invalidTokens
-  }
-}
-
-enum ObsidianProviderError: LocalizedError {
-  /// The vault directory has not been configured by the user.
-  case vaultNotConfigured
-  /// The `TaskRef.nativeID` does not follow the expected `path#fp=fingerprint` format.
-  case invalidNativeID(String)
-  /// No matching task line was found in the vault file.
-  case taskNotFound(String)
-  /// More than one task line matched the content fingerprint.
-  case ambiguousTaskRef(String)
-
-  var errorDescription: String? {
-    switch self {
-    case .vaultNotConfigured:
-      return "No Obsidian vault has been selected."
-    case .invalidNativeID(let id):
-      return "Invalid task reference: \"\(id)\"."
-    case .taskNotFound(let id):
-      return "Could not locate task \"\(id)\" in the vault."
-    case .ambiguousTaskRef(let id):
-      return "Could not uniquely locate task \"\(id)\" in the vault."
-    }
   }
 }

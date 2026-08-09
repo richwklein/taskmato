@@ -53,6 +53,15 @@ protocol TaskProvider: AnyObject, Sendable {
   /// - Parameter list: The list to scope results to, or `nil` for all lists.
   func tasks(in list: TaskList?) async throws -> [TaskItem]
 
+  /// Returns all sections (e.g. markdown headings) available within `list`, in document order,
+  /// whether or not they currently contain any tasks.
+  ///
+  /// Sections are an organizational concept independent of writability — a read-only provider
+  /// could group tasks by section too. Providers that don't group tasks into sections return an
+  /// empty array; only ``ObsidianProvider`` currently overrides this.
+  /// - Parameter list: The list to scan for sections.
+  func sections(in list: TaskList) async throws -> [String]
+
   /// Returns a stream that emits an updated task array whenever the provider's data changes.
   ///
   /// Return `nil` if the provider does not support live updates.
@@ -75,6 +84,7 @@ extension TaskProvider {
   var isAuthorized: Bool { true }
   var displayOrder: Int { Int.max }
   var tint: ProviderTint { .gray }
+  func sections(in list: TaskList) async throws -> [String] { [] }
   func matches(_ ref: TaskRef, to task: TaskItem) -> Bool { ref == task.id }
   func resolve(_ ref: TaskRef, among tasks: [TaskItem]) -> TaskItem? {
     tasks.first { matches(ref, to: $0) }
@@ -103,6 +113,10 @@ extension ClosableTaskProvider {
   func completedTasks() async throws -> [TaskItem] { [] }
 }
 
+extension WritableTaskProvider {
+  var supportsDueTime: Bool { true }
+}
+
 /// A `ClosableTaskProvider` that also supports creating and updating tasks, and choosing a
 /// default target list from among the provider's existing lists.
 ///
@@ -115,6 +129,13 @@ protocol WritableTaskProvider: ClosableTaskProvider {
 
   /// The `ContentFormat` this provider creates new tasks with.
   var contentFormat: ContentFormat { get }
+
+  /// Whether this provider persists `TaskDraft.dueDateIncludesTime`/`TaskItem.dueDateIncludesTime`.
+  ///
+  /// `true` by default. Providers whose native format has no time-of-day convention (e.g.
+  /// Obsidian's `📅 YYYY-MM-DD`, which always writes date-only) override this to `false` so the
+  /// Add Task dialog doesn't offer a "due time" affordance that would silently be dropped.
+  var supportsDueTime: Bool { get }
 
   /// Creates a new task from `draft` and returns the resulting item.
   ///

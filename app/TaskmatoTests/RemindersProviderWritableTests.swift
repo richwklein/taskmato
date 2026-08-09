@@ -123,6 +123,42 @@ struct RemindersProviderWritableTests {
     #expect(comps.day == 15)
   }
 
+  @Test func addTaskWithDateOnlyDueDateOmitsHourAndMinute() async throws {
+    let (provider, store) = try await makeAuthorizedProvider()
+    let work = store.makeCalendar(title: "Work")
+    store.stubbedCalendars = [work]
+    store.stubbedDefaultCalendar = work
+    var draft = TaskDraft()
+    draft.title = "Buy milk"
+    draft.dueDate = Calendar.current.date(
+      from: DateComponents(year: 2026, month: 6, day: 15, hour: 9, minute: 30))
+    draft.dueDateIncludesTime = false
+    let item = try await provider.addTask(draft)
+    #expect(store.savedReminders.first?.dueDateComponents?.hour == nil)
+    #expect(store.savedReminders.first?.dueDateComponents?.minute == nil)
+    #expect(item.dueDateIncludesTime == false)
+  }
+
+  @Test func addTaskWithDateAndTimeDueDateIncludesHourAndMinute() async throws {
+    let (provider, store) = try await makeAuthorizedProvider()
+    let work = store.makeCalendar(title: "Work")
+    store.stubbedCalendars = [work]
+    store.stubbedDefaultCalendar = work
+    var draft = TaskDraft()
+    draft.title = "Buy milk"
+    draft.dueDate = Calendar.current.date(
+      from: DateComponents(year: 2026, month: 6, day: 15, hour: 9, minute: 30))
+    draft.dueDateIncludesTime = true
+    let item = try await provider.addTask(draft)
+    #expect(store.savedReminders.first?.dueDateComponents?.hour == 9)
+    #expect(store.savedReminders.first?.dueDateComponents?.minute == 30)
+    #expect(item.dueDateIncludesTime == true)
+    let comps = Calendar.current.dateComponents(
+      [.year, .month, .day, .hour, .minute], from: item.dueDate!)
+    #expect(comps.hour == 9)
+    #expect(comps.minute == 30)
+  }
+
   @Test(
     arguments: [
       (TaskPriority.none, 0),

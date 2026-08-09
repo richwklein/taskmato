@@ -26,7 +26,10 @@ struct AddTaskView: View {
   @State private var notes = ""
   @State private var priority: TaskPriority = .none
   @State private var selectedListID: String = ""
+  @State private var sections: [String] = []
+  @State private var selectedSection: String?
   @State private var hasDueDate = false
+  @State private var hasDueTime = false
   @State private var dueDate = Date()
   @State private var showNotes = false
   @State private var taskLists: [TaskList] = []
@@ -42,6 +45,10 @@ struct AddTaskView: View {
   }
 
   private var isMarkdownCapable: Bool { provider.contentFormat == .markdown }
+
+  /// Width reserved for row labels ("List", "Priority", "Due date", …) so the due-date row —
+  /// kept outside the `Grid` above — still lines up with the Grid's own label column.
+  private static let labelColumnWidth: CGFloat = 60
 
   var body: some View {
     VStack(alignment: .leading, spacing: .sectionGap) {
@@ -73,6 +80,21 @@ struct AddTaskView: View {
           .frame(maxWidth: .infinity, alignment: .leading)
         }
 
+        if !sections.isEmpty {
+          GridRow {
+            Text("Section")
+              .foregroundStyle(.secondary)
+            Picker("Section", selection: $selectedSection) {
+              ForEach(sections, id: \.self) { section in
+                Text(section).tag(String?.some(section))
+              }
+            }
+            .labelsHidden()
+            .accessibilityLabel("Section")
+            .frame(maxWidth: .infinity, alignment: .leading)
+          }
+        }
+
         GridRow {
           Text("Priority")
             .foregroundStyle(.secondary)
@@ -90,20 +112,20 @@ struct AddTaskView: View {
           .pickerStyle(.menu)
           .frame(maxWidth: .infinity, alignment: .leading)
         }
+      }
 
-        GridRow {
-          Text("Due date")
-            .foregroundStyle(.secondary)
-          HStack {
-            Toggle("Has due date", isOn: $hasDueDate)
-              .labelsHidden()
-              .accessibilityLabel("Has due date")
-              .accessibilityHint("Enables the due date picker")
-            if hasDueDate {
-              DatePicker("Due date", selection: $dueDate, displayedComponents: .date)
-                .labelsHidden()
-                .accessibilityLabel("Due date")
-            }
+      // Kept out of the Grid above: the date/time chip row's width varies as chips are
+      // added and removed, and Grid shares column widths across all its rows — inside the
+      // Grid, that variation was dragging the List/Priority pickers wider too whenever a
+      // chip appeared, visibly shifting the whole form.
+      HStack(spacing: 12) {
+        Text("Due date")
+          .foregroundStyle(.secondary)
+          .frame(width: Self.labelColumnWidth, alignment: .leading)
+        HStack(spacing: 8) {
+          dateChip
+          if hasDueDate, provider.supportsDueTime {
+            timeChip
           }
         }
       }
@@ -125,7 +147,10 @@ struct AddTaskView: View {
       }
     }
     .padding()
-    .frame(width: 360)
+    // Wide enough to fit both due-date chips at once (label + date chip + time chip) without
+    // ever needing to grow — a fixed width that had to expand when the time chip appeared was
+    // what made the form visibly shift.
+    .frame(width: 420)
     .onAppear {
       isTitleFocused = true
       if let task = taskToEdit {
@@ -133,6 +158,7 @@ struct AddTaskView: View {
         notes = task.notes ?? ""
         priority = task.priority
         hasDueDate = task.dueDate != nil
+        hasDueTime = task.dueDateIncludesTime
         if let due = task.dueDate { dueDate = due }
         showNotes = !(task.notes ?? "").isEmpty
         selectedListID = task.list?.id ?? ""
@@ -146,6 +172,111 @@ struct AddTaskView: View {
         selectedListID = provider.defaultListID ?? first.id
       }
     }
+    .task(id: selectedListID) {
+      guard !selectedListID.isEmpty else {
+        sections = []
+        selectedSection = nil
+        return
+      }
+      let list = TaskList(id: selectedListID, providerID: provider.id, name: "")
+      sections = (try? await provider.sections(in: list)) ?? []
+      // No "None" option: once a file has at least one heading, a task inserted anywhere below
+      // it reads back as belonging to that heading anyway (Obsidian has no way to mark a task as
+      // deliberately section-less past that point), so the picker only offers real targets.
+      let editingSection = (taskToEdit?.list?.id == selectedListID ? taskToEdit?.section : nil)
+      if let editingSection, sections.contains(editingSection) {
+        selectedSection = editingSection
+      } else {
+        selectedSection = sections.first
+      }
+    }
+  }
+
+  // MARK: - Due date / time chips
+
+  /// A capsule showing the selected due date with a clear button, or an "Add Date" button when
+  /// no due date is set — mirroring Reminders.app's date-chip affordance.
+  @ViewBuilder
+  private var dateChip: some View {
+    if hasDueDate {
+      HStack(spacing: 4) {
+        Image(systemName: "calendar")
+        DatePicker("Due date", selection: $dueDate, displayedComponents: .date)
+          .labelsHidden()
+          .datePickerStyle(.compact)
+          .fixedSize()
+        Button {
+          hasDueDate = false
+          hasDueTime = false
+        } label: {
+          Image(systemName: "xmark.circle.fill")
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Remove due date")
+      }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 4)
+      .background(Capsule().fill(Color.accentColor.opacity(0.15)))
+    } else {
+      Button {
+        hasDueDate = true
+        dueDate = Date()
+      } label: {
+        Label("Add Date", systemImage: "calendar")
+      }
+      .buttonStyle(.bordered)
+      .controlSize(.small)
+    }
+  }
+
+  /// A capsule showing the selected due time with a clear button, or an "Add Time" button when
+  /// no due time is set. Adding a time seeds it from the current wall-clock time rather than
+  /// whatever time-of-day `dueDate` already happens to carry (e.g. midnight from a date-only
+  /// value), so the picker opens on a meaningful default.
+  @ViewBuilder
+  private var timeChip: some View {
+    if hasDueTime {
+      HStack(spacing: 4) {
+        Image(systemName: "clock")
+        DatePicker("Due time", selection: $dueDate, displayedComponents: .hourAndMinute)
+          .labelsHidden()
+          .datePickerStyle(.compact)
+          .fixedSize()
+        Button {
+          hasDueTime = false
+        } label: {
+          Image(systemName: "xmark.circle.fill")
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Remove due time")
+      }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 4)
+      .background(Capsule().fill(Color.accentColor.opacity(0.15)))
+    } else {
+      Button {
+        hasDueTime = true
+        dueDate = Self.mergingCurrentTime(into: dueDate)
+      } label: {
+        Label("Add Time", systemImage: "clock")
+      }
+      .buttonStyle(.bordered)
+      .controlSize(.small)
+    }
+  }
+
+  /// Returns `date` with its hour/minute replaced by the current wall-clock time.
+  private static func mergingCurrentTime(into date: Date) -> Date {
+    let calendar = Calendar.current
+    let nowComponents = calendar.dateComponents([.hour, .minute], from: Date())
+    return calendar.date(
+      bySettingHour: nowComponents.hour ?? 0,
+      minute: nowComponents.minute ?? 0,
+      second: 0,
+      of: date
+    ) ?? date
   }
 
   // MARK: - Private
@@ -155,8 +286,15 @@ struct AddTaskView: View {
     draft.title = title.trimmingCharacters(in: .whitespaces)
     draft.notes = notes
     draft.priority = priority
-    draft.dueDate = hasDueDate ? dueDate : nil
+    if hasDueDate {
+      draft.dueDate = hasDueTime ? dueDate : Calendar.current.startOfDay(for: dueDate)
+      draft.dueDateIncludesTime = hasDueTime
+    } else {
+      draft.dueDate = nil
+      draft.dueDateIncludesTime = false
+    }
     draft.listID = selectedListID.isEmpty ? nil : selectedListID
+    draft.section = selectedSection
     draft.format = provider.contentFormat
     // Dismiss only after the write completes — dismissing first (as this used to) races the
     // sheet's `isAddingTask`-driven refresh against the provider write: for an in-process

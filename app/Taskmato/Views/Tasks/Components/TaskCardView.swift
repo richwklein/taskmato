@@ -81,9 +81,14 @@ struct TaskCardView: View {
   @ViewBuilder
   private var metadata: some View {
     if let due = presenter.dueDate {
-      Text(due, format: .dateTime.month(.abbreviated).day().year())
-        .font(.taskMetadata)
-        .foregroundStyle(presenter.dueIsUrgent ? Color.dueUrgent : Color.secondary)
+      Text(
+        due,
+        format: presenter.dueDateIncludesTime
+          ? .dateTime.month(.abbreviated).day().year().hour().minute()
+          : .dateTime.month(.abbreviated).day().year()
+      )
+      .font(.taskMetadata)
+      .foregroundStyle(presenter.dueIsUrgent ? Color.dueUrgent : Color.secondary)
     } else if presenter.isCompleted {
       Text(presenter.completedSubtitle)
         .font(.taskMetadata)

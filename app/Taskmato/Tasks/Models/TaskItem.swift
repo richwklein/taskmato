@@ -30,6 +30,9 @@ nonisolated struct TaskItem: Identifiable, Hashable, Codable, Sendable {
   /// The date by which the task is due.
   var dueDate: Date?
 
+  /// Whether `dueDate` carries a meaningful time-of-day, or is date-only.
+  var dueDateIncludesTime: Bool = false
+
   /// The date the task is scheduled to be worked on.
   var scheduledDate: Date?
 
