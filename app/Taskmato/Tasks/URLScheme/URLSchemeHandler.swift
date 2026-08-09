@@ -15,8 +15,16 @@ struct AdHocTaskParams {
   let priority: TaskPriority
   /// Parsed due date, or `nil` if no `due` param was supplied.
   let dueDate: Date?
+  /// Whether `dueDate` carries a meaningful time-of-day (the `due` param included one), or is
+  /// date-only.
+  let dueDateIncludesTime: Bool
   /// Raw list name from the URL, or `nil` if the param was absent.
   let listName: String?
+  /// Raw section (sub-grouping within the list) from the URL, or `nil` if the param was absent.
+  ///
+  /// Passed straight through to ``TaskDraft/section`` — unlike `listName`, no name-to-ID
+  /// resolution is needed since a section is already a plain string.
+  let section: String?
   /// Raw provider ID from the URL, or `nil` if the param was absent.
   ///
   /// When set and the named provider is an enabled ``WritableTaskProvider``, ad-hoc task
@@ -146,6 +154,8 @@ final class URLSchemeHandler {
     draft.title = adHocParams.title
     draft.priority = adHocParams.priority
     draft.dueDate = adHocParams.dueDate
+    draft.dueDateIncludesTime = adHocParams.dueDateIncludesTime
+    draft.section = adHocParams.section
     if let name = adHocParams.listName {
       let lists: [TaskList]
       if let cached = registry.providerLists[writable.id] {
@@ -245,11 +255,14 @@ final class URLSchemeHandler {
   }
 
   private func buildAdHocParams(from params: [String: String], title: String) -> AdHocTaskParams {
-    AdHocTaskParams(
+    let due = params["due"].flatMap(parseDueDate(_:))
+    return AdHocTaskParams(
       title: title,
       priority: params["priority"].flatMap(TaskPriority.init(urlParam:)) ?? .none,
-      dueDate: params["due"].flatMap(parseDate(_:)),
+      dueDate: due?.date,
+      dueDateIncludesTime: due?.includesTime ?? false,
       listName: params["list"],
+      section: params["section"],
       providerID: params["provider"]
     )
   }
@@ -266,10 +279,40 @@ final class URLSchemeHandler {
     }
   }
 
-  private func parseDate(_ string: String) -> Date? {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withFullDate, .withDashSeparatorInDate]
-    return formatter.date(from: string)
+  /// Parses a `due` param of the form `YYYY-MM-DD` or `YYYY-MM-DD HH:MM` (the space arrives
+  /// decoded from a `+` or `%20` in the URL query), returning the date plus whether a time was
+  /// given. Built via `Calendar.current` rather than `ISO8601DateFormatter`, which parses
+  /// date-only strings as UTC midnight — that lands on the *previous* local day west of UTC
+  /// (e.g. `"2026-08-10"` became 2026-08-09 in a US timezone). Matches ``AddTaskView``'s
+  /// date-only path, which builds the date the same way for the same reason.
+  private func parseDueDate(_ string: String) -> (date: Date, includesTime: Bool)? {
+    let parts = string.trimmingCharacters(in: .whitespaces).split(separator: " ", maxSplits: 1)
+    guard var components = parts.first.flatMap(Self.dateComponents(_:)) else { return nil }
+    guard parts.count == 2 else {
+      return Calendar.current.date(from: components).map { ($0, false) }
+    }
+    guard let (hour, minute) = Self.timeComponents(String(parts[1])) else { return nil }
+    components.hour = hour
+    components.minute = minute
+    return Calendar.current.date(from: components).map { ($0, true) }
+  }
+
+  /// Parses a `YYYY-MM-DD` substring into year/month/day `DateComponents`.
+  private nonisolated static func dateComponents(_ substring: Substring) -> DateComponents? {
+    let parts = substring.split(separator: "-").compactMap { Int($0) }
+    guard parts.count == 3 else { return nil }
+    var components = DateComponents()
+    components.year = parts[0]
+    components.month = parts[1]
+    components.day = parts[2]
+    return components
+  }
+
+  /// Parses an `HH:MM` string into hour/minute.
+  private nonisolated static func timeComponents(_ string: String) -> (hour: Int, minute: Int)? {
+    let parts = string.split(separator: ":").compactMap { Int($0) }
+    guard parts.count == 2 else { return nil }
+    return (parts[0], parts[1])
   }
 }
 

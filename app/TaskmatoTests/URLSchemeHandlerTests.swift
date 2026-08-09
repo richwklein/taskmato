@@ -69,10 +69,11 @@ private final class StubWritableProvider: WritableTaskProvider {
       format: .plainText,
       priority: draft.priority,
       dueDate: draft.dueDate,
+      dueDateIncludesTime: draft.dueDateIncludesTime,
       scheduledDate: nil,
       startDate: nil,
       list: nil,
-      section: nil,
+      section: draft.section,
       sourceURL: nil
     )
   }
@@ -207,10 +208,61 @@ struct URLSchemeHandlerTests {
     #expect(ctx.selectionStore.activeTask?.priority == .high)
   }
 
-  @Test func adHocTaskWithDueDate() async {
+  @Test func adHocTaskWithDueDate() async throws {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=Due+Task&due=2026-12-01")!)
-    #expect(ctx.selectionStore.activeTask?.dueDate != nil)
+    let dueDate = try #require(ctx.selectionStore.activeTask?.dueDate)
+    let comps = Calendar.current.dateComponents([.year, .month, .day], from: dueDate)
+    // Regression: --due must parse as local midnight, not UTC midnight — ISO8601DateFormatter's
+    // UTC parsing landed on the previous local day west of UTC.
+    #expect(comps.year == 2026)
+    #expect(comps.month == 12)
+    #expect(comps.day == 1)
+    #expect(ctx.selectionStore.activeTask?.dueDateIncludesTime == false)
+  }
+
+  @Test func adHocTaskWithDueTimeSetsDueDateIncludesTime() async throws {
+    let ctx = makeHandler()
+    await ctx.handler.handle(
+      URL(string: "taskmato://start?title=Due+Task+With+Time&due=2026-12-01+14:30")!)
+    let dueDate = try #require(ctx.selectionStore.activeTask?.dueDate)
+    let comps = Calendar.current.dateComponents(
+      [.year, .month, .day, .hour, .minute], from: dueDate)
+    #expect(comps.year == 2026)
+    #expect(comps.month == 12)
+    #expect(comps.day == 1)
+    #expect(comps.hour == 14)
+    #expect(comps.minute == 30)
+    #expect(ctx.selectionStore.activeTask?.dueDateIncludesTime == true)
+  }
+
+  @Test func adHocTaskWithMalformedDueTimeYieldsNoDueDate() async {
+    let ctx = makeHandler()
+    await ctx.handler.handle(
+      URL(string: "taskmato://start?title=Bad+Due+Time&due=2026-12-01+not-a-time")!)
+    #expect(ctx.selectionStore.activeTask?.dueDate == nil)
+  }
+
+  @Test func adHocTaskWithSectionPassesSectionThroughToDraft() async throws {
+    let ctx = makeHandler(enableLocalProvider: true)
+    // LocalProvider has no sections concept, so verify via a stub provider that echoes
+    // draft.section back onto the created TaskItem.
+    let stub = StubWritableProvider(id: "sectioned")
+    ctx.registry.register(stub)
+    ctx.registry.enable(stub)
+    await ctx.handler.handle(
+      URL(string: "taskmato://start?title=Sectioned&provider=sectioned&section=Backlog")!)
+    #expect(ctx.selectionStore.activeTask?.section == "Backlog")
+  }
+
+  @Test func adHocTaskWithoutSectionLeavesDraftSectionNil() async throws {
+    let ctx = makeHandler(enableLocalProvider: true)
+    let stub = StubWritableProvider(id: "sectioned")
+    ctx.registry.register(stub)
+    ctx.registry.enable(stub)
+    await ctx.handler.handle(
+      URL(string: "taskmato://start?title=Unsectioned&provider=sectioned")!)
+    #expect(ctx.selectionStore.activeTask?.section == nil)
   }
 
   // MARK: - Ad-hoc: URL param provider override
