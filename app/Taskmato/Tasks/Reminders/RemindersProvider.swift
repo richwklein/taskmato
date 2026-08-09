@@ -9,11 +9,14 @@ import Foundation
 /// A task provider backed by Apple Reminders via EventKit.
 ///
 /// Authorization is lazy: ``lists()`` and ``tasks(in:)`` return empty arrays until
-/// ``authorize()`` succeeds. The provider conforms to ``ClosableTaskProvider`` so
-/// completing a Pomodoro can mark the reminder done in the source system.
+/// ``authorize()`` succeeds. The provider conforms to ``WritableTaskProvider`` so tasks can be
+/// created, edited, completed, and deleted from Taskmato — but not ``WritableListProvider``:
+/// Reminders lists (EventKit calendars) already have a mature native management UI
+/// (Reminders.app, iCloud/Exchange account settings), so list create/rename/delete stays out of
+/// scope. See ADR-0011.
 @Observable
 @MainActor
-final class RemindersProvider: ClosableTaskProvider {
+final class RemindersProvider: WritableTaskProvider {
 
   /// Stable provider identifier used in ``TaskRef`` values.
   static let providerID: ProviderID = "reminders"
@@ -31,9 +34,25 @@ final class RemindersProvider: ClosableTaskProvider {
   /// Empty array means no filtering — all calendars are returned.
   private(set) var listPatterns: [String]
 
+  /// The `ContentFormat` new and edited reminders use — Reminders notes are plain text.
+  let contentFormat: ContentFormat = .plainText
+
+  /// User-selected default calendar identifier, or `nil` to fall back to the system default.
+  private var defaultListOverride: String? {
+    didSet { settings[SettingsStore.Keys.remindersDefaultListOverride] = defaultListOverride }
+  }
+
+  /// The ID of the calendar new tasks target by default.
+  ///
+  /// Reflects an explicit ``setDefaultList(_:)`` override when set, otherwise falls back to
+  /// EventKit's own default calendar for new reminders.
+  var defaultListID: String? {
+    defaultListOverride ?? store.defaultCalendarForNewReminders()?.calendarIdentifier
+  }
+
   private let store: any RemindersEventStore
   private let settings: SettingsStore
-  private var streamContinuation: AsyncStream<[TaskItem]>.Continuation?
+  private let updates = MulticastAsyncStream<[TaskItem]>()
   private var observer: NSObjectProtocol?
   private let debouncer = Debouncer()
 
@@ -47,7 +66,9 @@ final class RemindersProvider: ClosableTaskProvider {
     self.store = store
     self.settings = settings
     self.listPatterns = settings[SettingsStore.Keys.remindersListPatterns]
+    self.defaultListOverride = settings[SettingsStore.Keys.remindersDefaultListOverride]
     isAuthorized = store.authorizationStatus() == .fullAccess
+    updates.onEmpty = { [weak self] in self?.stopObserving() }
   }
 
   // MARK: - Authorization
@@ -127,18 +148,14 @@ final class RemindersProvider: ClosableTaskProvider {
 
   func observe() -> AsyncStream<[TaskItem]>? {
     guard isAuthorized else { return nil }
-    let (stream, continuation) = AsyncStream<[TaskItem]>.makeStream()
-    streamContinuation = continuation
-    observer = store.addObserver(
-      forName: .EKEventStoreChanged
-    ) { [weak self] in
-      Task { @MainActor [weak self] in
-        self?.scheduleDebounce()
-      }
-    }
-    continuation.onTermination = { [weak self] _ in
-      Task { @MainActor [weak self] in
-        self?.stopObserving()
+    let stream = updates.subscribe()
+    if observer == nil {
+      observer = store.addObserver(
+        forName: .EKEventStoreChanged
+      ) { [weak self] in
+        Task { @MainActor [weak self] in
+          self?.scheduleDebounce()
+        }
       }
     }
     return stream
@@ -148,7 +165,7 @@ final class RemindersProvider: ClosableTaskProvider {
     debouncer.schedule { [weak self] in
       guard let self else { return }
       let updated = (try? await self.tasks(in: nil)) ?? []
-      self.streamContinuation?.yield(updated)
+      self.updates.yield(updated)
     }
   }
 
@@ -158,8 +175,7 @@ final class RemindersProvider: ClosableTaskProvider {
       store.removeObserver(observer)
       self.observer = nil
     }
-    streamContinuation?.finish()
-    streamContinuation = nil
+    updates.finish()
   }
 
   // MARK: - ClosableTaskProvider
@@ -192,6 +208,73 @@ final class RemindersProvider: ClosableTaskProvider {
     reminder.isCompleted = false
     reminder.completionDate = nil
     try store.save(reminder, commit: true)
+  }
+
+  // MARK: - WritableTaskProvider
+
+  /// Persists `listID` as the default target for new tasks.
+  ///
+  /// Validated against the pattern-filtered ``lists()`` set so the default stays consistent
+  /// with what the sidebar actually shows.
+  func setDefaultList(_ listID: String) async throws {
+    guard try await lists().contains(where: { $0.id == listID }) else {
+      throw RemindersProviderError.listNotFound(listID)
+    }
+    defaultListOverride = listID
+  }
+
+  /// Creates a new reminder from `draft` and returns the resulting item.
+  ///
+  /// Targets `draft.listID` if set, otherwise ``defaultListID``.
+  @discardableResult
+  func addTask(_ draft: TaskDraft) async throws -> TaskItem {
+    let calendarID = draft.listID ?? defaultListID
+    guard let calendarID,
+      let calendar = store.calendars(for: .reminder)
+        .first(where: { $0.calendarIdentifier == calendarID })
+    else {
+      throw RemindersProviderError.listNotFound(calendarID ?? "")
+    }
+    let reminder = store.newReminder()
+    apply(draft, to: reminder, calendar: calendar)
+    try store.save(reminder, commit: true)
+    return mapToTaskItem(ReminderSnapshot(reminder))
+  }
+
+  /// Applies `draft` to the reminder identified by `ref`, including re-parenting to a
+  /// different calendar when `draft.listID` differs and resolves to a known calendar.
+  func updateTask(_ ref: TaskRef, draft: TaskDraft) async throws {
+    guard let reminder = store.reminder(withIdentifier: ref.nativeID) else {
+      throw RemindersProviderError.reminderNotFound(ref.nativeID)
+    }
+    let calendarID = draft.listID ?? reminder.calendar?.calendarIdentifier
+    guard let calendarID,
+      let calendar = store.calendars(for: .reminder)
+        .first(where: { $0.calendarIdentifier == calendarID })
+    else {
+      throw RemindersProviderError.listNotFound(calendarID ?? "")
+    }
+    apply(draft, to: reminder, calendar: calendar)
+    try store.save(reminder, commit: true)
+  }
+
+  /// Permanently removes the reminder identified by `ref` from the store.
+  func deleteTask(_ ref: TaskRef) async throws {
+    guard let reminder = store.reminder(withIdentifier: ref.nativeID) else {
+      throw RemindersProviderError.reminderNotFound(ref.nativeID)
+    }
+    try store.remove(reminder, commit: true)
+  }
+
+  /// Applies `draft`'s fields to `reminder`, assigning it to `calendar`.
+  private func apply(_ draft: TaskDraft, to reminder: EKReminder, calendar: EKCalendar) {
+    reminder.title = draft.title
+    reminder.notes = draft.notes.isEmpty ? nil : draft.notes
+    reminder.calendar = calendar
+    reminder.priority = mapPriority(draft.priority)
+    reminder.dueDateComponents = draft.dueDate.map {
+      Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: $0)
+    }
   }
 
   // MARK: - Mapping
@@ -237,6 +320,18 @@ final class RemindersProvider: ClosableTaskProvider {
     default: .none
     }
   }
+
+  /// Maps ``TaskPriority`` to the CalDAV priority integer, collapsing to the same 3 bands the
+  /// read side maps back from — `lowest`/`low` and `high`/`highest` are indistinguishable on
+  /// read, so a write-then-reread round-trips stably.
+  private func mapPriority(_ priority: TaskPriority) -> Int {
+    switch priority {
+    case .none: 0
+    case .lowest, .low: 9
+    case .medium: 5
+    case .high, .highest: 1
+    }
+  }
 }
 
 // MARK: - Errors
@@ -256,6 +351,9 @@ enum RemindersProviderError: LocalizedError, Equatable {
   /// No reminder with the given identifier exists in the store.
   case reminderNotFound(String)
 
+  /// No calendar with the given identifier is among the provider's current lists.
+  case listNotFound(String)
+
   var errorDescription: String? {
     switch self {
     case .accessDenied:
@@ -270,6 +368,8 @@ enum RemindersProviderError: LocalizedError, Equatable {
         + "Grant full access in System Settings > Privacy & Security > Reminders."
     case .reminderNotFound(let id):
       return "Could not find reminder \"\(id)\"."
+    case .listNotFound(let id):
+      return "Could not find Reminders list \"\(id)\"."
     }
   }
 }

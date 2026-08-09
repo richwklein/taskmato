@@ -37,7 +37,8 @@ struct TaskItemPresenterTests {
   // MARK: - Kind
 
   @Test func activeKindIsNotCompleted() {
-    let presenter = TaskItemPresenter(task: makeTask(), kind: .active(onComplete: {}))
+    let presenter = TaskItemPresenter(
+      task: makeTask(), kind: .active(onComplete: {}, onDelete: nil))
     #expect(!presenter.isCompleted)
     #expect(!presenter.showsRestore)
   }
@@ -54,7 +55,7 @@ struct TaskItemPresenterTests {
   @Test func activeExposesCompletionToggleWhenCompletable() {
     var completed = false
     let presenter = TaskItemPresenter(
-      task: makeTask(), kind: .active(onComplete: { completed = true }))
+      task: makeTask(), kind: .active(onComplete: { completed = true }, onDelete: nil))
     #expect(presenter.showsCompletionToggle)
     #expect(presenter.onRestore == nil)
     #expect(presenter.onDelete == nil)
@@ -63,7 +64,8 @@ struct TaskItemPresenterTests {
   }
 
   @Test func readOnlyActiveHasNoCompletionToggle() {
-    let presenter = TaskItemPresenter(task: makeTask(), kind: .active(onComplete: nil))
+    let presenter = TaskItemPresenter(
+      task: makeTask(), kind: .active(onComplete: nil, onDelete: nil))
     #expect(!presenter.showsCompletionToggle)
     #expect(presenter.onComplete == nil)
   }
@@ -102,7 +104,7 @@ struct TaskItemPresenterTests {
   @Test func dueDateShownWhenActive() {
     let due = Date(timeIntervalSinceNow: 3600)
     let presenter = TaskItemPresenter(
-      task: makeTask(dueDate: due), kind: .active(onComplete: {}))
+      task: makeTask(dueDate: due), kind: .active(onComplete: {}, onDelete: nil))
     #expect(presenter.dueDate == due)
   }
 
@@ -112,34 +114,41 @@ struct TaskItemPresenterTests {
     let future = Date(timeIntervalSinceNow: 7 * 86_400)
 
     #expect(
-      TaskItemPresenter(task: makeTask(dueDate: past), kind: .active(onComplete: {})).dueIsUrgent)
-    #expect(
-      TaskItemPresenter(task: makeTask(dueDate: today), kind: .active(onComplete: {})).dueIsUrgent)
-    #expect(
-      !TaskItemPresenter(task: makeTask(dueDate: future), kind: .active(onComplete: {}))
+      TaskItemPresenter(task: makeTask(dueDate: past), kind: .active(onComplete: {}, onDelete: nil))
         .dueIsUrgent)
     #expect(
-      !TaskItemPresenter(task: makeTask(dueDate: nil), kind: .active(onComplete: {})).dueIsUrgent)
+      TaskItemPresenter(
+        task: makeTask(dueDate: today), kind: .active(onComplete: {}, onDelete: nil)
+      ).dueIsUrgent)
+    #expect(
+      !TaskItemPresenter(
+        task: makeTask(dueDate: future), kind: .active(onComplete: {}, onDelete: nil)
+      )
+      .dueIsUrgent)
+    #expect(
+      !TaskItemPresenter(task: makeTask(dueDate: nil), kind: .active(onComplete: {}, onDelete: nil))
+        .dueIsUrgent)
   }
 
   // MARK: - Lineage
 
   @Test func displayLineageNilWhenAbsent() {
-    let presenter = TaskItemPresenter(task: makeTask(), kind: .active(onComplete: {}))
+    let presenter = TaskItemPresenter(
+      task: makeTask(), kind: .active(onComplete: {}, onDelete: nil))
     #expect(presenter.displayLineage == nil)
   }
 
   @Test func displayLineageNilWhenEmpty() {
     let empty = TaskLineage(providerIcon: nil, listName: nil, sectionName: nil)
     let presenter = TaskItemPresenter(
-      task: makeTask(), kind: .active(onComplete: {}), lineage: empty)
+      task: makeTask(), kind: .active(onComplete: {}, onDelete: nil), lineage: empty)
     #expect(presenter.displayLineage == nil)
   }
 
   @Test func displayLineagePassesThroughWhenPopulated() {
     let lineage = TaskLineage(providerIcon: "tray", listName: "Work", sectionName: nil)
     let presenter = TaskItemPresenter(
-      task: makeTask(), kind: .active(onComplete: {}), lineage: lineage)
+      task: makeTask(), kind: .active(onComplete: {}, onDelete: nil), lineage: lineage)
     #expect(presenter.displayLineage?.contextLabel == "Work")
   }
 

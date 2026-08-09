@@ -33,6 +33,18 @@ final class FakeRemindersEventStore: RemindersEventStore {
   /// Reminders passed to ``save(_:commit:)``, in call order.
   private(set) var savedReminders: [EKReminder] = []
 
+  /// Number of registered change observers.
+  private(set) var observerAddCount = 0
+
+  /// Number of removed change observers.
+  private(set) var observerRemoveCount = 0
+
+  /// Reminders passed to ``remove(_:commit:)``, in call order.
+  private(set) var removedReminders: [EKReminder] = []
+
+  /// Calendar returned by ``defaultCalendarForNewReminders()``.
+  var stubbedDefaultCalendar: EKCalendar?
+
   /// Callback registered via ``addObserver(forName:using:)``.
   /// Call ``fireNotification()`` to invoke it from tests.
   private var observerCallback: (@Sendable () -> Void)?
@@ -77,8 +89,20 @@ final class FakeRemindersEventStore: RemindersEventStore {
     stubbedReminders.filter { $0.isCompleted }.map(ReminderSnapshot.init)
   }
 
+  func defaultCalendarForNewReminders() -> EKCalendar? {
+    stubbedDefaultCalendar
+  }
+
+  func newReminder() -> EKReminder {
+    EKReminder(eventStore: backingStore)
+  }
+
   func save(_ reminder: EKReminder, commit: Bool) throws {
     savedReminders.append(reminder)
+  }
+
+  func remove(_ reminder: EKReminder, commit: Bool) throws {
+    removedReminders.append(reminder)
   }
 
   func reminder(withIdentifier identifier: String) -> EKReminder? {
@@ -89,6 +113,7 @@ final class FakeRemindersEventStore: RemindersEventStore {
     forName name: NSNotification.Name,
     using block: @escaping @Sendable () -> Void
   ) -> NSObjectProtocol {
+    observerAddCount += 1
     observerCallback = block
     let token = NSObject()
     observerToken = token
@@ -96,6 +121,7 @@ final class FakeRemindersEventStore: RemindersEventStore {
   }
 
   func removeObserver(_ observer: NSObjectProtocol) {
+    observerRemoveCount += 1
     observerCallback = nil
     observerToken = nil
   }

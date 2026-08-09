@@ -7,7 +7,7 @@ import SwiftUI
 
 /// The trailing permanent-delete control shared by ``TaskRowView`` and ``TaskCardView``.
 ///
-/// Renders for a completed task on a writable provider, revealing on hover or keyboard focus;
+/// Renders for an active or completed task on a writable provider, revealing on hover or keyboard focus;
 /// requesting deletion sets `showConfirmation`, which the host view surfaces via its confirmation
 /// dialog. Renders nothing for tasks that cannot be deleted.
 ///

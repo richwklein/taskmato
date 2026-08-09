@@ -267,20 +267,31 @@ struct ObsidianTaskParserTests {
 
   // MARK: - nativeID and providerID
 
-  @Test func nativeIDContainsRelativePathAndLineNumber() {
+  @Test func nativeIDContainsRelativePathAndFingerprint() {
     let tasks = parse("- [ ] Task at line 1")
-    #expect(tasks[0].id.nativeID == "tasks.md:1")
+    #expect(tasks[0].id.nativeID.hasPrefix("tasks.md#fp="))
+    #expect(!tasks[0].id.nativeID.contains(":1"))
   }
 
-  @Test func nativeIDUsesCorrectLineNumber() {
-    let content = "\n\n- [ ] Task at line 3"
-    let tasks = parse(content)
-    #expect(tasks[0].id.nativeID == "tasks.md:3")
+  @Test func nativeIDSurvivesLineShiftForSameContent() {
+    let before = parse("- [ ] Earlier\n- [ ] Stable task")
+    let after = parse("- [ ] Stable task")
+    #expect(
+      ObsidianTaskIdentity.parseNativeID(before[1].id.nativeID)?.fingerprint
+        == ObsidianTaskIdentity.parseNativeID(after[0].id.nativeID)?.fingerprint)
+    #expect(ObsidianTaskIdentity.parseNativeID(before[1].id.nativeID)?.lineNumber == 2)
+    #expect(ObsidianTaskIdentity.parseNativeID(after[0].id.nativeID)?.lineNumber == 1)
+  }
+
+  @Test func nativeIDChangesWhenContentChangesAtSameLine() {
+    let before = parse("- [ ] First task")
+    let after = parse("- [ ] Second task")
+    #expect(before[0].id.nativeID != after[0].id.nativeID)
   }
 
   @Test func nativeIDUsesSubpathRelativePath() {
     let tasks = parse("- [ ] Task", relativePath: "Projects/Work.md")
-    #expect(tasks[0].id.nativeID == "Projects/Work.md:1")
+    #expect(tasks[0].id.nativeID.hasPrefix("Projects/Work.md#fp="))
   }
 
   @Test func providerIDIsPreserved() {
@@ -427,8 +438,20 @@ struct ObsidianTaskParserCompletedTests {
 
   @Test func completedTaskPreservesNativeID() {
     let entries = parseCompleted("- [x] Task", relativePath: "Projects/done.md")
-    #expect(entries[0].id.nativeID == "Projects/done.md:1")
+    #expect(entries[0].id.nativeID.hasPrefix("Projects/done.md#fp="))
     #expect(entries[0].id.providerID == "obsidian")
+  }
+
+  @Test func completedTaskSharesNativeIDWithIncompleteMarker() {
+    let incomplete = ObsidianTaskParser().parse(
+      content: "- [ ] Task",
+      providerID: providerID,
+      fileRelativePath: "tasks.md",
+      vaultName: "MyVault",
+      list: dummyList
+    ).items
+    let completed = parseCompleted("- [x] Task")
+    #expect(completed[0].id.nativeID == incomplete[0].id.nativeID)
   }
 
   @Test func completedTaskPreservesNotes() {

@@ -152,6 +152,19 @@ struct ProviderRegistryTests {
     #expect(registry.isEnabled("alpha"))
   }
 
+  @Test func enableNotifiesProviderStateChangedOnceWhenStateChanges() {
+    let registry = makeRegistry()
+    let provider = StubProvider(id: "alpha")
+    registry.register(provider)
+    var callCount = 0
+    registry.onProviderStateChanged = { _ in callCount += 1 }
+
+    registry.enable(provider)
+    registry.enable(provider)
+
+    #expect(callCount == 1)
+  }
+
   @Test func disableMarksProviderDisabled() {
     let registry = makeRegistry()
     let provider = StubProvider(id: "alpha")

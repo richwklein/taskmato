@@ -56,8 +56,20 @@ final class LiveRemindersEventStore: RemindersEventStore {
     }
   }
 
+  func defaultCalendarForNewReminders() -> EKCalendar? {
+    store.defaultCalendarForNewReminders()
+  }
+
+  func newReminder() -> EKReminder {
+    EKReminder(eventStore: store)
+  }
+
   func save(_ reminder: EKReminder, commit: Bool) throws {
     try store.save(reminder, commit: commit)
+  }
+
+  func remove(_ reminder: EKReminder, commit: Bool) throws {
+    try store.remove(reminder, commit: commit)
   }
 
   func reminder(withIdentifier identifier: String) -> EKReminder? {

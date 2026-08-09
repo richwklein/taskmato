@@ -35,6 +35,8 @@ struct AppComposition {
   let errorPresenter: ErrorPresenter
   let phaseOrchestrator: PhaseOrchestrator
   let focusAttribution: FocusAttribution
+  let activeTaskReconciler: ActiveTaskReconciler
+  let activeTaskLiveObserver: ActiveTaskLiveObserver
 
   /// Constructs every service, registers providers, and launches the phase-end orchestrator.
   init() {
@@ -60,7 +62,6 @@ struct AppComposition {
     let nav = MainNavigation(
       settings: settings, selectionStore: sidebarSelection, statsViewModel: statsViewModel,
       store: settingsStore)
-    Self.wireProviderRegistry(registry, sidebarSelection: sidebarSelection, nav: nav)
     // A notification tap opens the main window at Timer (design doc 0008, D5).
     notifications.onNotificationTapped = { nav.showTimerInMainWindow() }
     let errorPresenter = ErrorPresenter()
@@ -75,6 +76,13 @@ struct AppComposition {
     Self.wireFocusHandoff(
       engine: engine, settings: settings, nav: nav, selectionStore: selectionStore,
       attribution: focusAttribution)
+    let activeTaskReconciliation = Self.wireActiveTaskReconciliation(
+      registry: registry, selectionStore: selectionStore,
+      runtime: (engine: engine, attribution: focusAttribution),
+      navigation: (sidebarSelection: sidebarSelection, nav: nav),
+      errorPresenter: errorPresenter)
+    self.activeTaskLiveObserver = activeTaskReconciliation.liveObserver
+    self.activeTaskReconciler = activeTaskReconciliation.reconciler
     self.focusAttribution = focusAttribution
     self.engine = engine
     self.settings = settings
@@ -142,15 +150,40 @@ struct AppComposition {
       })
   }
 
-  /// Revalidates the sidebar selection and reconciles the task-scope destination whenever a
-  /// provider's enabled state changes (design doc 0008, D9).
+  /// Revalidates the sidebar selection, reconciles the task-scope destination, and reconciles
+  /// the active task whenever a provider's enabled state or list cache changes (design doc 0008,
+  /// D9; issue #547 for the active-task leg). One explicit closure rather than a chain of
+  /// independent wiring calls, so a future caller can't accidentally overwrite an earlier leg by
+  /// assigning `onProviderStateChanged` again instead of composing onto it.
   private static func wireProviderRegistry(
-    _ registry: ProviderRegistry, sidebarSelection: SelectionStore, nav: MainNavigation
+    _ registry: ProviderRegistry, sidebarSelection side: SelectionStore, nav: MainNavigation,
+    reconciler rec: ActiveTaskReconciler, liveObserver live: ActiveTaskLiveObserver
   ) {
-    registry.onProviderStateChanged = { [weak sidebarSelection, weak nav] in
-      sidebarSelection?.validateSelection()
+    registry.onProviderStateChanged = { [weak side, weak nav, weak rec, weak live] providerID in
+      side?.validateSelection()
       nav?.reconcileTaskScope()
+      live?.reconcileSubscriptions()
+      guard let rec else { return }
+      Task { await rec.reconcile(changedProviderID: providerID) }
     }
+  }
+
+  /// Builds and wires active-task reconciliation on registry reloads and provider live pushes.
+  private static func wireActiveTaskReconciliation(
+    registry: ProviderRegistry, selectionStore: TaskSelectionStore,
+    runtime: (engine: SessionEngine, attribution: FocusAttribution),
+    navigation: (sidebarSelection: SelectionStore, nav: MainNavigation),
+    errorPresenter: ErrorPresenter
+  ) -> (reconciler: ActiveTaskReconciler, liveObserver: ActiveTaskLiveObserver) {
+    let reconciler = ActiveTaskReconciler(
+      registry: registry, selectionStore: selectionStore, engine: runtime.engine,
+      attribution: runtime.attribution, errorPresenter: errorPresenter)
+    let liveObserver = ActiveTaskLiveObserver(registry: registry, reconciler: reconciler)
+    Self.wireProviderRegistry(
+      registry, sidebarSelection: navigation.sidebarSelection, nav: navigation.nav,
+      reconciler: reconciler, liveObserver: liveObserver)
+    liveObserver.start()
+    return (reconciler, liveObserver)
   }
 
   /// Requests notification authorization at launch and refreshes it on each app activation.

@@ -3,6 +3,7 @@
 //  Taskmato
 //
 
+import AppKit
 import SwiftUI
 
 extension Color {
@@ -24,6 +25,12 @@ extension Color {
 
   /// Fill behind a card surface to lift it off the background.
   static let cardSurface: Color = .secondary.opacity(.subtle)
+
+  /// Native inactive-selection fill, matching a selected list row when the table is not focused.
+  static let inactiveSelection: Color = Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
+
+  /// Native active-selection fill, matching a selected list row when the table is focused.
+  static let activeSelection: Color = Color(nsColor: .selectedContentBackgroundColor)
 
   /// Marker on the provider's default (favorite) list.
   static let favoriteStar: Color = .yellow
