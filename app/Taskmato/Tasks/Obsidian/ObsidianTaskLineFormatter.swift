@@ -17,6 +17,7 @@ nonisolated struct ObsidianTaskLineFormatter: Sendable {
   /// - Parameters:
   ///   - title: The task title, written verbatim (trimmed).
   ///   - checkbox: The checkbox character (`" "` for incomplete, `"x"` for complete).
+  ///   - orderedNumber: The literal list number to emit for ordered tasks, or `nil` for unordered.
   ///   - priority: Appended as the matching priority emoji, omitted for `.none`.
   ///   - startDate: Appended as `🛫 yyyy-MM-dd`, when present.
   ///   - scheduledDate: Appended as `⏰ yyyy-MM-dd`, when present.
@@ -25,12 +26,14 @@ nonisolated struct ObsidianTaskLineFormatter: Sendable {
   func formatLine(
     title: String,
     checkbox: String = " ",
+    orderedNumber: Int? = nil,
     priority: TaskPriority = .none,
     startDate: Date? = nil,
     scheduledDate: Date? = nil,
     dueDate: Date? = nil
   ) -> String {
-    var line = "- [\(checkbox)] \(title.trimmingCharacters(in: .whitespaces))"
+    let prefix = orderedNumber.map { "\($0)." } ?? "-"
+    var line = "\(prefix) [\(checkbox)] \(title.trimmingCharacters(in: .whitespaces))"
 
     if let emoji = Self.priorityEmoji(for: priority) {
       line += " \(emoji)"

@@ -207,13 +207,47 @@ nonisolated struct ObsidianTaskParser: Sendable {
       || matchesOrderedItem(line, bracket: "[X]")
   }
 
+  /// Returns `true` if `line` is an ordered task list item (`N. [ ] `, `N. [x] `, or `N. [X] `).
+  ///
+  /// Shared with ``ObsidianProvider``'s write-side style detection so both read and write agree
+  /// on what counts as an ordered task line.
+  static func isOrderedTask(_ line: String) -> Bool {
+    orderedTaskPrefixRange(in: line) != nil
+  }
+
+  /// Returns the numeric prefix for an ordered task list item, or `nil` when `line` is unordered.
+  ///
+  /// Shared with ``ObsidianProvider``'s write-side style preservation so both read and write use
+  /// the same ordered-number extraction.
+  static func orderedTaskNumber(_ line: String) -> Int? {
+    guard let numberRange = orderedTaskNumberRange(in: line) else { return nil }
+    return Int(line[numberRange])
+  }
+
   /// Returns `true` when `line` is an ordered list item (`1. <bracket> `) with the given bracket content.
   private static func matchesOrderedItem(_ line: String, bracket: String) -> Bool {
+    guard let prefixRange = orderedTaskPrefixRange(in: line) else { return false }
+    return line[prefixRange.upperBound...].hasPrefix("\(bracket) ")
+  }
+
+  /// Returns the range covering the numeric portion of an ordered-list prefix.
+  private static func orderedTaskNumberRange(in line: String) -> Range<String.Index>? {
     var idx = line.startIndex
     while idx < line.endIndex, line[idx].isNumber {
       idx = line.index(after: idx)
     }
-    return idx > line.startIndex && line[idx...].hasPrefix(". \(bracket) ")
+    guard idx > line.startIndex, idx < line.endIndex, line[idx] == "." else { return nil }
+    let spaceIndex = line.index(after: idx)
+    guard spaceIndex < line.endIndex, line[spaceIndex] == " " else { return nil }
+    return line.startIndex..<idx
+  }
+
+  /// Returns the range covering the ordered-list prefix (`N. `) at the start of `line`.
+  static func orderedTaskPrefixRange(in line: String) -> Range<String.Index>? {
+    guard let numberRange = orderedTaskNumberRange(in: line) else { return nil }
+    let dotIndex = numberRange.upperBound
+    let spaceIndex = line.index(after: dotIndex)
+    return line.startIndex..<line.index(after: spaceIndex)
   }
 
   /// Returns `true` if `line` is indented (a task's note/continuation line).
@@ -423,11 +457,11 @@ nonisolated enum ObsidianTaskIdentity {
     for prefix in ["- [ ] ", "- [x] ", "- [X] "] where line.hasPrefix(prefix) {
       return String(line.dropFirst(prefix.count))
     }
-    var idx = line.startIndex
-    while idx < line.endIndex, line[idx].isNumber { idx = line.index(after: idx) }
-    guard idx > line.startIndex else { return line }
-    let rest = String(line[idx...])
-    for suffix in [". [ ] ", ". [x] ", ". [X] "] where rest.hasPrefix(suffix) {
+    guard let prefixRange = ObsidianTaskParser.orderedTaskPrefixRange(in: line) else {
+      return line
+    }
+    let rest = line[prefixRange.upperBound...]
+    for suffix in ["[ ] ", "[x] ", "[X] "] where rest.hasPrefix(suffix) {
       return String(rest.dropFirst(suffix.count))
     }
     return line

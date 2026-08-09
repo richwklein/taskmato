@@ -15,6 +15,31 @@ import Foundation
 /// architectural boundary between the two.
 extension ObsidianProvider {
 
+  /// The style to use for a newly written task line.
+  private enum TaskLineStyle {
+    case unordered
+    case ordered(Int)
+
+    nonisolated var orderedNumber: Int? {
+      switch self {
+      case .unordered:
+        return nil
+      case .ordered(let number):
+        return number
+      }
+    }
+  }
+
+  /// The captured state needed to apply an update or move to a task.
+  private struct UpdateTaskContext {
+    let draft: TaskDraft
+    let ref: String
+    let identity: ObsidianTaskIdentity.Components
+    let currentRelPath: String
+    let targetRelPath: String
+    let vaultURL: URL
+  }
+
   // MARK: - TaskProvider
 
   /// Returns every heading in `list`'s file, in document order, regardless of whether it
@@ -61,20 +86,25 @@ extension ObsidianProvider {
       throw ObsidianProviderError.listNotFound("")
     }
     let fileURL = vaultURL.appending(path: relPath)
-    let (taskLine, noteLines) = Self.formatLines(for: draft)
 
-    let insertedLineNumber = try await Task.detached(priority: .userInitiated) { [weak self] in
+    let (insertedLineNumber, taskLine) = try await Task.detached(
+      priority: .userInitiated
+    ) { [weak self] in
       guard let self else { throw ObsidianProviderError.vaultNotConfigured }
       return try self.withVaultAccess(vaultURL) { _ in
         var lines = try String(contentsOf: fileURL, encoding: .utf8)
           .components(separatedBy: "\n")
+        let wasEmptyFile = lines == [""]
         let insertionIndex = try Self.insertionIndex(
           forSection: draft.section, in: lines, list: relPath
         )
+        let style = Self.style(forInsertionAt: insertionIndex, in: lines, section: draft.section)
+        let (taskLine, noteLines) = Self.formatLines(for: draft, orderedNumber: style.orderedNumber)
         lines.insert(contentsOf: [taskLine] + noteLines, at: insertionIndex)
+        if wasEmptyFile { lines.removeLast() }
         let updated = lines.joined(separator: "\n")
         try Data(updated.utf8).write(to: fileURL, options: [])
-        return insertionIndex + 1
+        return (insertionIndex + 1, taskLine)
       }
     }.value
 
@@ -108,45 +138,20 @@ extension ObsidianProvider {
     }
     let currentRelPath = identity.fileRelativePath
     let targetRelPath = draft.listID ?? currentRelPath
-    let (taskLine, noteLines) = Self.formatLines(for: draft)
 
     try await Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else { return }
       try self.withVaultAccess(vaultURL) { _ in
-        let sourceFileURL = vaultURL.appending(path: currentRelPath)
-        var sourceLines = try String(contentsOf: sourceFileURL, encoding: .utf8)
-          .components(separatedBy: "\n")
-        let (taskIndex, noteEndIndex) = try Self.lineRange(
-          for: identity, in: sourceLines, ref: ref.nativeID
+        try Self.writeUpdatedTask(
+          context: UpdateTaskContext(
+            draft: draft,
+            ref: ref.nativeID,
+            identity: identity,
+            currentRelPath: currentRelPath,
+            targetRelPath: targetRelPath,
+            vaultURL: vaultURL
+          )
         )
-        let currentSection = Self.section(ofLineAt: taskIndex, in: sourceLines)
-
-        if targetRelPath == currentRelPath, draft.section == currentSection {
-          sourceLines.replaceSubrange(taskIndex..<noteEndIndex, with: [taskLine] + noteLines)
-          try Data(sourceLines.joined(separator: "\n").utf8).write(to: sourceFileURL, options: [])
-          return
-        }
-
-        sourceLines.removeSubrange(taskIndex..<noteEndIndex)
-
-        if targetRelPath == currentRelPath {
-          let insertionIndex = try Self.insertionIndex(
-            forSection: draft.section, in: sourceLines, list: targetRelPath
-          )
-          sourceLines.insert(contentsOf: [taskLine] + noteLines, at: insertionIndex)
-          try Data(sourceLines.joined(separator: "\n").utf8).write(to: sourceFileURL, options: [])
-        } else {
-          try Data(sourceLines.joined(separator: "\n").utf8).write(to: sourceFileURL, options: [])
-
-          let destFileURL = vaultURL.appending(path: targetRelPath)
-          var destLines = try String(contentsOf: destFileURL, encoding: .utf8)
-            .components(separatedBy: "\n")
-          let insertionIndex = try Self.insertionIndex(
-            forSection: draft.section, in: destLines, list: targetRelPath
-          )
-          destLines.insert(contentsOf: [taskLine] + noteLines, at: insertionIndex)
-          try Data(destLines.joined(separator: "\n").utf8).write(to: destFileURL, options: [])
-        }
       }
     }.value
   }
@@ -179,13 +184,129 @@ extension ObsidianProvider {
   private nonisolated static func formatLines(for draft: TaskDraft) -> (
     taskLine: String, noteLines: [String]
   ) {
+    formatLines(for: draft, orderedNumber: nil)
+  }
+
+  /// Builds the task line and note lines for `draft` via ``ObsidianTaskLineFormatter``.
+  private nonisolated static func formatLines(
+    for draft: TaskDraft,
+    orderedNumber: Int?
+  ) -> (taskLine: String, noteLines: [String]) {
     let formatter = ObsidianTaskLineFormatter()
     let taskLine = formatter.formatLine(
       title: draft.title,
+      orderedNumber: orderedNumber,
       priority: draft.priority,
       dueDate: draft.dueDate
     )
     return (taskLine, formatter.formatNoteLines(draft.notes))
+  }
+
+  /// Returns the style for a new task inserted at `insertionIndex`.
+  ///
+  /// New tasks use the nearest preceding recognized task within the destination section, or the
+  /// nearest preceding recognized task anywhere in the file when `section` is `nil`.
+  private nonisolated static func style(
+    forInsertionAt insertionIndex: Int,
+    in lines: [String],
+    section: String?
+  ) -> TaskLineStyle {
+    var lineIndex = insertionIndex - 1
+    while lineIndex >= 0 {
+      let line = lines[lineIndex]
+      if ObsidianTaskParser.isIncompleteTask(line) || ObsidianTaskParser.isCompletedTask(line) {
+        return style(forInsertedTaskLine: line)
+      }
+      if section != nil {
+        if ObsidianTaskParser.h1(line) != nil || ObsidianTaskParser.subheading(line) != nil {
+          break
+        }
+      }
+      lineIndex -= 1
+    }
+    return .unordered
+  }
+
+  /// Returns the style for rewriting `line` in place.
+  ///
+  /// In-place edits preserve the exact list style and number already present on the line.
+  private nonisolated static func style(forTaskLine line: String) -> TaskLineStyle {
+    guard ObsidianTaskParser.isOrderedTask(line) else { return .unordered }
+    guard let orderedNumber = ObsidianTaskParser.orderedTaskNumber(line) else {
+      return .ordered(1)
+    }
+    return .ordered(orderedNumber)
+  }
+
+  /// Returns the style for a new line following `line`, advancing ordered numbering when needed.
+  private nonisolated static func style(forInsertedTaskLine line: String) -> TaskLineStyle {
+    guard ObsidianTaskParser.isOrderedTask(line) else { return .unordered }
+    guard let orderedNumber = ObsidianTaskParser.orderedTaskNumber(line) else {
+      return .ordered(1)
+    }
+    return .ordered(orderedNumber == Int.max ? 1 : orderedNumber + 1)
+  }
+
+  /// Applies an update or move to the task identified by `ref`.
+  private nonisolated static func writeUpdatedTask(context: UpdateTaskContext) throws {
+    let sourceFileURL = context.vaultURL.appending(path: context.currentRelPath)
+    var sourceLines = try String(contentsOf: sourceFileURL, encoding: .utf8)
+      .components(separatedBy: "\n")
+    let (taskIndex, noteEndIndex) = try Self.lineRange(
+      for: context.identity, in: sourceLines, ref: context.ref
+    )
+    let currentSection = Self.section(ofLineAt: taskIndex, in: sourceLines)
+
+    if context.targetRelPath == context.currentRelPath, context.draft.section == currentSection {
+      let style = Self.style(forTaskLine: sourceLines[taskIndex])
+      let (taskLine, noteLines) = Self.formatLines(
+        for: context.draft,
+        orderedNumber: style.orderedNumber
+      )
+      sourceLines.replaceSubrange(taskIndex..<noteEndIndex, with: [taskLine] + noteLines)
+      try Data(sourceLines.joined(separator: "\n").utf8).write(to: sourceFileURL, options: [])
+      return
+    }
+
+    sourceLines.removeSubrange(taskIndex..<noteEndIndex)
+
+    if context.targetRelPath == context.currentRelPath {
+      let insertionIndex = try Self.insertionIndex(
+        forSection: context.draft.section, in: sourceLines, list: context.targetRelPath
+      )
+      let style = Self.style(
+        forInsertionAt: insertionIndex,
+        in: sourceLines,
+        section: context.draft.section
+      )
+      let (taskLine, noteLines) = Self.formatLines(
+        for: context.draft,
+        orderedNumber: style.orderedNumber
+      )
+      sourceLines.insert(contentsOf: [taskLine] + noteLines, at: insertionIndex)
+      try Data(sourceLines.joined(separator: "\n").utf8).write(to: sourceFileURL, options: [])
+      return
+    }
+
+    try Data(sourceLines.joined(separator: "\n").utf8).write(to: sourceFileURL, options: [])
+
+    let destFileURL = context.vaultURL.appending(path: context.targetRelPath)
+    var destLines = try String(contentsOf: destFileURL, encoding: .utf8)
+      .components(separatedBy: "\n")
+    let insertionIndex = try Self.insertionIndex(
+      forSection: context.draft.section, in: destLines, list: context.targetRelPath
+    )
+    let style = Self.style(
+      forInsertionAt: insertionIndex,
+      in: destLines,
+      section: context.draft.section
+    )
+    let (taskLine, noteLines) = Self.formatLines(
+      for: context.draft,
+      orderedNumber: style.orderedNumber
+    )
+    destLines.insert(contentsOf: [taskLine] + noteLines, at: insertionIndex)
+    try Data(destLines.joined(separator: "\n").utf8).write(to: destFileURL, options: [])
   }
 
   // MARK: - Write-side section/line-range helpers
