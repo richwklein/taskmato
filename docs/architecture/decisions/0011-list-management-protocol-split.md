@@ -24,6 +24,15 @@ would mean either building that risky surface anyway, or stub-throwing from the 
 exactly what ADR-0001 says the layered hierarchy exists to avoid ("no stub throws... UI
 affordances gated at the type level").
 
+Conforming `ObsidianProvider` to write support ([#328](https://github.com/richwklein/taskmato/issues/328))
+raises the same question. Obsidian "lists" are markdown files (file-as-list, not folder-as-list —
+`TaskList.id` is a vault-relative file path), and a vault file's lifecycle is already owned by a
+mature native surface: Obsidian.app itself, Finder, and third-party sync tools (iCloud Drive,
+Syncthing, git). Building in-app file create/rename/delete from inside a Pomodoro timer app would
+duplicate that surface and add real risk — deleting a note deletes everything in it, not just its
+tasks — for a capability users already have elsewhere. The same reasoning that kept
+`RemindersProvider` off `WritableListProvider` applies directly.
+
 ## Decision
 
 Split `WritableTaskProvider` into two tiers:
@@ -35,20 +44,20 @@ Split `WritableTaskProvider` into two tiers:
   `renameList`, `deleteList`.
 
 `LocalProvider` conforms to `WritableListProvider` (Taskmato is the sole owner of its list
-structure). `RemindersProvider` conforms to `WritableTaskProvider` only — it gets task CRUD and
-default-list selection among the calendars Reminders already exposes, with no in-app list
-creation, rename, or delete.
+structure). `RemindersProvider` and `ObsidianProvider` conform to `WritableTaskProvider` only —
+each gets task CRUD and default-list selection among the lists it already exposes (EventKit
+calendars for Reminders, vault files for Obsidian), with no in-app list creation, rename, or
+delete. For Obsidian, `addTask`/`updateTask` additionally support targeting a specific section
+(a markdown heading within a file) via `TaskDraft.section`/`TaskItem.section` — inserting or
+moving a task within an *existing* heading's task block is task-level content editing, not list
+lifecycle, so it stays in scope for the base tier the same way Reminders' due-date and priority
+edits do.
 
 UI affordances that create, rename, or delete lists (the sidebar's "New list" row, and the
 Rename/Delete context-menu items) gate on `is WritableListProvider`. Affordances scoped to task
 creation and default-list selection (the "+" add-task button, the sidebar star) continue to
 gate on the base `WritableTaskProvider` tier, so they apply uniformly to every writable
-provider, including Reminders.
-
-`ObsidianProvider`'s future write conformance ([#328](https://github.com/richwklein/taskmato/issues/328))
-should re-evaluate against this same question — whether Taskmato should own vault folder
-lifecycle, or whether that too belongs to a tier below `WritableListProvider` — rather than
-assuming full list CRUD by default.
+provider, including Reminders and Obsidian.
 
 ## Consequences
 
@@ -60,8 +69,8 @@ assuming full list CRUD by default.
   provider.
 - Call sites that only need task creation (`ProviderRegistry`'s writable-provider resolution,
   the Settings "Default writable provider" picker, the URL scheme handler, task detail actions)
-  stay on `WritableTaskProvider` and pick up Reminders automatically once it conforms — no UI
-  change required for those surfaces.
+  stay on `WritableTaskProvider` and pick up Reminders and Obsidian automatically once each
+  conforms — no UI change required for those surfaces.
 - Adding a future provider tier below `WritableListProvider` (e.g., a provider that can rename
   but not create/delete lists) would mean a further protocol split; the pattern established here
   extends to that case without disrupting existing conformers.

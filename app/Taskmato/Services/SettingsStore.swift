@@ -207,6 +207,8 @@ extension SettingsStore {
 
     static let obsidianFilePatterns = SettingsKey("obsidian.filePatterns", default: ["**/*.md"])
     static let obsidianVaultBookmark = "obsidian.vaultBookmark"
+    static let obsidianDefaultListID = SettingsKey<String?>(
+      "obsidian.defaultListID", default: nil)
 
     // MARK: Reminders provider
 

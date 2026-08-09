@@ -28,6 +28,13 @@ struct TaskDraft {
   /// Due date, or `nil` if no due date is set.
   var dueDate: Date?
 
+  /// Whether `dueDate` carries a meaningful time-of-day, or is date-only.
+  var dueDateIncludesTime: Bool = false
+
   /// The provider-local list ID this task should belong to, or `nil` for the default list.
   var listID: String?
+
+  /// An optional sub-grouping within the target list (e.g. a markdown heading in Obsidian).
+  /// `nil` targets the list's top level. Providers without sections ignore this field.
+  var section: String?
 }

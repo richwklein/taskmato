@@ -74,6 +74,9 @@ struct TaskItemPresenter {
   /// completed subtitle instead.
   var dueDate: Date? { isCompleted ? nil : task.dueDate }
 
+  /// Whether ``dueDate`` carries a meaningful time-of-day, or is date-only.
+  var dueDateIncludesTime: Bool { isCompleted ? false : task.dueDateIncludesTime }
+
   /// `true` when the due date is today or already past.
   var dueIsUrgent: Bool { task.dueDate?.isUrgentDueDate ?? false }
 

@@ -95,7 +95,7 @@ struct SettingsView: View {
 
       Section("Tasks") {
         Picker("Default writable provider", selection: $settings.defaultWritableProviderID) {
-          Text("Automatic").tag(ProviderID?.none)
+          Label("Automatic", systemImage: "wand.and.stars").tag(ProviderID?.none)
           ForEach(writableProviderEntries) { entry in
             Label(entry.displayName, systemImage: entry.icon).tag(ProviderID?.some(entry.id))
           }

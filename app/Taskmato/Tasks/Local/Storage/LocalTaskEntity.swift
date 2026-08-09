@@ -33,6 +33,12 @@ final class LocalTaskEntity {
   /// The date by which the task is due.
   var dueDate: Date?
 
+  /// Whether `dueDate` carries a meaningful time-of-day, or is date-only.
+  ///
+  /// Defaults to `false` so lightweight SwiftData migration fills existing records that
+  /// predate this field.
+  var dueDateIncludesTime: Bool = false
+
   /// The date the task is scheduled to be worked on.
   var scheduledDate: Date?
 
@@ -54,8 +60,8 @@ final class LocalTaskEntity {
   /// Creates a persistence record from explicit field values.
   init(
     id: UUID, title: String, notes: String?, format: ContentFormat, priority: TaskPriority,
-    dueDate: Date?, scheduledDate: Date?, startDate: Date?, listID: UUID?, isCompleted: Bool,
-    completedAt: Date?, createdAt: Date
+    dueDate: Date?, dueDateIncludesTime: Bool = false, scheduledDate: Date?, startDate: Date?,
+    listID: UUID?, isCompleted: Bool, completedAt: Date?, createdAt: Date
   ) {
     self.id = id
     self.title = title
@@ -63,6 +69,7 @@ final class LocalTaskEntity {
     self.format = format
     self.priority = priority
     self.dueDate = dueDate
+    self.dueDateIncludesTime = dueDateIncludesTime
     self.scheduledDate = scheduledDate
     self.startDate = startDate
     self.listID = listID
@@ -78,7 +85,8 @@ extension LocalTaskEntity {
   convenience init(task: LocalTask) {
     self.init(
       id: task.id, title: task.title, notes: task.notes, format: task.format,
-      priority: task.priority, dueDate: task.dueDate, scheduledDate: task.scheduledDate,
+      priority: task.priority, dueDate: task.dueDate,
+      dueDateIncludesTime: task.dueDateIncludesTime, scheduledDate: task.scheduledDate,
       startDate: task.startDate, listID: task.listID, isCompleted: task.isCompleted,
       completedAt: task.completedAt, createdAt: task.createdAt)
   }
@@ -92,6 +100,7 @@ extension LocalTaskEntity {
     format = task.format
     priority = task.priority
     dueDate = task.dueDate
+    dueDateIncludesTime = task.dueDateIncludesTime
     scheduledDate = task.scheduledDate
     startDate = task.startDate
     listID = task.listID
@@ -107,7 +116,8 @@ extension LocalTask {
   nonisolated init(entity: LocalTaskEntity) {
     self.init(
       id: entity.id, title: entity.title, notes: entity.notes, format: entity.format,
-      priority: entity.priority, dueDate: entity.dueDate, scheduledDate: entity.scheduledDate,
+      priority: entity.priority, dueDate: entity.dueDate,
+      dueDateIncludesTime: entity.dueDateIncludesTime, scheduledDate: entity.scheduledDate,
       startDate: entity.startDate, listID: entity.listID, isCompleted: entity.isCompleted,
       completedAt: entity.completedAt, createdAt: entity.createdAt)
   }

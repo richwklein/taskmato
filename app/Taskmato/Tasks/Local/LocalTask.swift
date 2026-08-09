@@ -32,6 +32,9 @@ nonisolated struct LocalTask: Codable, Identifiable, Sendable {
   /// The date by which the task is due.
   var dueDate: Date?
 
+  /// Whether `dueDate` carries a meaningful time-of-day, or is date-only.
+  var dueDateIncludesTime: Bool = false
+
   /// The date the task is scheduled to be worked on.
   var scheduledDate: Date?
 
@@ -51,7 +54,7 @@ nonisolated struct LocalTask: Codable, Identifiable, Sendable {
   let createdAt: Date
 
   private nonisolated enum CodingKeys: String, CodingKey {
-    case id, title, notes, format, priority, dueDate, scheduledDate, startDate
+    case id, title, notes, format, priority, dueDate, dueDateIncludesTime, scheduledDate, startDate
     case listID, isCompleted, completedAt, createdAt
   }
 
@@ -71,6 +74,7 @@ nonisolated struct LocalTask: Codable, Identifiable, Sendable {
       format: format,
       priority: priority,
       dueDate: dueDate,
+      dueDateIncludesTime: dueDateIncludesTime,
       scheduledDate: scheduledDate,
       startDate: startDate,
       list: taskList,
@@ -85,6 +89,7 @@ nonisolated struct LocalTask: Codable, Identifiable, Sendable {
     notes = draft.notes.isEmpty ? nil : draft.notes
     priority = draft.priority
     dueDate = draft.dueDate
+    dueDateIncludesTime = draft.dueDateIncludesTime
     listID = draft.listID.flatMap(UUID.init)
   }
 }
@@ -103,6 +108,8 @@ extension LocalTask {
     format = try container.decodeIfPresent(ContentFormat.self, forKey: .format) ?? .markdown
     priority = try container.decode(TaskPriority.self, forKey: .priority)
     dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
+    dueDateIncludesTime =
+      try container.decodeIfPresent(Bool.self, forKey: .dueDateIncludesTime) ?? false
     scheduledDate = try container.decodeIfPresent(Date.self, forKey: .scheduledDate)
     startDate = try container.decodeIfPresent(Date.self, forKey: .startDate)
     listID = try container.decodeIfPresent(UUID.self, forKey: .listID)
@@ -119,6 +126,7 @@ extension LocalTask {
     format = draft.format
     priority = draft.priority
     dueDate = draft.dueDate
+    dueDateIncludesTime = draft.dueDateIncludesTime
     scheduledDate = nil
     startDate = nil
     listID = draft.listID.flatMap(UUID.init)
