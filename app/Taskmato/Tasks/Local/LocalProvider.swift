@@ -149,9 +149,13 @@ final class LocalProvider: WritableListProvider {
   /// If `draft.listID` is `nil`, the task is assigned to the provider's default list.
   @discardableResult
   func addTask(_ draft: TaskDraft) async throws -> TaskItem {
+    await ready()
     var resolved = draft
     if resolved.listID == nil {
       resolved.listID = defaultListID ?? taskLists.first?.id.uuidString
+    }
+    guard resolved.listID != nil else {
+      throw LocalProviderError.noListAvailable
     }
     let newTask = LocalTask(from: resolved)
     allTasks.append(newTask)
@@ -292,6 +296,9 @@ enum LocalProviderError: LocalizedError {
   /// No list matching the given ID exists in the store.
   case listNotFound(String)
 
+  /// The store has no list available for a new task.
+  case noListAvailable
+
   /// The list cannot be deleted because it is the current default list.
   case cannotDeleteDefaultList(String)
 
@@ -301,6 +308,8 @@ enum LocalProviderError: LocalizedError {
       return "Could not find task \"\(nativeID)\"."
     case .listNotFound(let listID):
       return "Could not find list \"\(listID)\"."
+    case .noListAvailable:
+      return "No local task list is available. Create a list before adding a task."
     case .cannotDeleteDefaultList(let listID):
       return "Cannot delete the default list \"\(listID)\". Promote another list first."
     }

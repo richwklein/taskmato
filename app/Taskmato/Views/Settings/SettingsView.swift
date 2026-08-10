@@ -101,7 +101,8 @@ struct SettingsView: View {
           }
         }
         Text(
-          "The provider used when creating ad-hoc tasks from the command line or the Add Task sheet."
+          "Used when the current sidebar context has no writable provider, and by URL or CLI "
+            + "creation when no provider is specified."
         )
         .font(.caption)
         .foregroundStyle(.secondary)

@@ -21,6 +21,7 @@ struct MainWindowView: View {
   var selectionStore: TaskSelectionStore
   var registry: ProviderRegistry
   var queryService: TaskQueryService
+  var destinationResolver: TaskDestinationResolver
   var sidebarSelection: SelectionStore
   var nav: MainNavigation
   var errorPresenter: ErrorPresenter
@@ -46,6 +47,7 @@ struct MainWindowView: View {
         nav: nav,
         presenter: presenter,
         registry: registry,
+        destinationResolver: destinationResolver,
         settings: settings,
         errorPresenter: errorPresenter,
         onTaskAdded: { taskAddedToken += 1 }
@@ -102,6 +104,7 @@ struct MainWindowView: View {
         selectionStore: selectionStore,
         registry: registry,
         queryService: queryService,
+        destinationResolver: destinationResolver,
         sidebarSelection: sidebarSelection,
         nav: nav,
         settings: settings,
@@ -136,7 +139,7 @@ struct MainWindowView: View {
     let settings = AppSettings()
     let registry = ProviderRegistry()
     let selectionStore = SelectionStore(registry: registry)
-    return MainWindowView(
+    MainWindowView(
       presenter: TimerPresenter(engine: engine, settings: settings),
       engine: engine,
       settings: settings,
@@ -144,6 +147,7 @@ struct MainWindowView: View {
       selectionStore: TaskSelectionStore(),
       registry: registry,
       queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
+      destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),
       sidebarSelection: selectionStore,
       nav: MainNavigation(
         settings: settings, selectionStore: selectionStore, statsViewModel: .preview),

@@ -76,14 +76,31 @@ extension ObsidianProvider {
   ///
   /// When `draft.section` is given, the line is inserted as the last item in that heading's
   /// existing task block (a continuation of that section's list), rather than at the end of the
-  /// file. Targets `draft.listID` if set, otherwise ``defaultListID``.
+  /// file. Targets `draft.listID` if set, otherwise the configured default or first matching file.
   @discardableResult
   func addTask(_ draft: TaskDraft) async throws -> TaskItem {
     guard let vaultURL else {
       throw ObsidianProviderError.vaultNotConfigured
     }
-    guard let relPath = draft.listID ?? defaultListID else {
-      throw ObsidianProviderError.listNotFound("")
+    let availableLists = try await lists()
+    let relPath: String
+    if let explicitListID = draft.listID {
+      guard availableLists.contains(where: { $0.id == explicitListID }) else {
+        throw ObsidianProviderError.listNotFound(explicitListID)
+      }
+      relPath = explicitListID
+    } else if let defaultListID {
+      if availableLists.contains(where: { $0.id == defaultListID }) {
+        relPath = defaultListID
+      } else if let firstList = availableLists.first {
+        relPath = firstList.id
+      } else {
+        throw ObsidianProviderError.noListAvailable
+      }
+    } else if let firstList = availableLists.first {
+      relPath = firstList.id
+    } else {
+      throw ObsidianProviderError.noListAvailable
     }
     let fileURL = vaultURL.appending(path: relPath)
 

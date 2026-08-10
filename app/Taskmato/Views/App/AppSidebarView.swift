@@ -9,7 +9,7 @@ import SwiftUI
 ///
 /// A single `List` bound to ``MainNavigation/destination`` holds every destination: the
 /// pinned Timer and Today rows, one collapsible ``Section`` per enabled provider (list rows,
-/// inline rename, star-default, and a "New list" row for writable providers), and a
+/// inline rename, and a "New list" row for writable providers), and a
 /// collapsible Stats section of scope rows. Section expansion is persisted via
 /// ``AppSettings/collapsedSidebarSections``; enabling or configuring a provider re-expands
 /// its section. When no provider is enabled, the provider area is replaced by an add hint.
@@ -18,6 +18,7 @@ struct AppSidebarView: View {
   @Bindable var nav: MainNavigation
   var presenter: TimerPresenter
   var registry: ProviderRegistry
+  var destinationResolver: TaskDestinationResolver
   var settings: AppSettings
   var errorPresenter: ErrorPresenter
   /// Called after a task is successfully added from the list context-menu "Add Task…" item.
@@ -103,6 +104,7 @@ struct AppSidebarView: View {
       if let target = addTaskTarget {
         AddTaskView(
           provider: target.provider,
+          destinationResolver: destinationResolver,
           isPresented: $isAddingTask,
           errorPresenter: errorPresenter,
           initialListID: target.listID
@@ -189,35 +191,12 @@ struct AppSidebarView: View {
 
   @ViewBuilder
   private func listRow(_ list: TaskList, provider: any TaskProvider) -> some View {
-    let writable = provider as? (any WritableTaskProvider)
-    let isDefaultList = isDefault(list.id, for: provider)
-
     HStack(spacing: .iconLabel) {
       Image(systemName: "list.bullet")
         .imageScale(.small)
         .foregroundStyle(.secondary)
 
       listNameField(list: list, provider: provider)
-
-      Spacer()
-
-      if writable != nil {
-        Button {
-          let id = list.id
-          Task {
-            await errorPresenter.attempt(AppLabels.Error.setDefaultFailed) {
-              try await writable?.setDefaultList(id)
-            }
-          }
-        } label: {
-          Image(systemName: isDefaultList ? "star.fill" : "star")
-            .imageScale(.small)
-        }
-        .buttonStyle(.borderless)
-        .foregroundStyle(isDefaultList ? Color.favoriteStar : Color.secondary)
-        .help(isDefaultList ? "Default list" : "Set as default list")
-        .accessibilityLabel(isDefaultList ? "Default list" : "Set as default list")
-      }
     }
   }
 
@@ -260,7 +239,8 @@ struct AppSidebarView: View {
       }
     } label: {
       Label(
-        AppLabels.Sidebar.setDefault.title, systemImage: AppLabels.Sidebar.setDefault.systemImage)
+        "Set as Default List for \(provider.displayName)",
+        systemImage: AppLabels.Sidebar.setDefault.systemImage)
     }
     .disabled(isDefaultList)
 
@@ -515,11 +495,12 @@ private struct SidebarTimerRow: View {
     let registry = ProviderRegistry()
     let settings = AppSettings()
     let selectionStore = SelectionStore(registry: registry)
-    return AppSidebarView(
+    AppSidebarView(
       nav: MainNavigation(
         settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
       presenter: TimerPresenter(engine: SessionEngine(), settings: settings),
       registry: registry,
+      destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),
       settings: settings,
       errorPresenter: ErrorPresenter()
     )

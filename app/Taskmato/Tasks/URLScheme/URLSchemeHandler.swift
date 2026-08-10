@@ -65,6 +65,7 @@ final class URLSchemeHandler {
   private let settings: AppSettings
   private let nav: MainNavigation
   private let errorPresenter: ErrorPresenter
+  private let destinationResolver: TaskDestinationResolver
 
   init(
     registry: ProviderRegistry,
@@ -73,7 +74,8 @@ final class URLSchemeHandler {
     engine: SessionEngine,
     settings: AppSettings,
     nav: MainNavigation,
-    errorPresenter: ErrorPresenter
+    errorPresenter: ErrorPresenter,
+    destinationResolver: TaskDestinationResolver
   ) {
     self.registry = registry
     self.queryService = queryService
@@ -82,6 +84,7 @@ final class URLSchemeHandler {
     self.settings = settings
     self.nav = nav
     self.errorPresenter = errorPresenter
+    self.destinationResolver = destinationResolver
   }
 
   /// Handles the given URL, selecting the resolved task and starting a focus session if
@@ -133,20 +136,13 @@ final class URLSchemeHandler {
   /// Returns `nil` after surfacing an error on the window-root banner when no enabled writable
   /// provider is available or the write fails; the caller then starts no session.
   func makeAdHocTask(from adHocParams: AdHocTaskParams) async -> TaskItem? {
-    // Level 1: URL param targets a specific provider (strict — no implicit fallback within level).
-    let urlTargeted = adHocParams.providerID
-      .map(ProviderID.init(_:))
-      .flatMap(registry.enabledWritableProvider(id:))
-    // Level 2 & 3: settings default, then first enabled writable provider.
-    let writable =
-      urlTargeted
-      ?? registry.resolveDefaultWritableProvider(preferredID: settings.defaultWritableProviderID)
-
-    guard let writable else {
-      errorPresenter.present(
-        TransientError(
-          title: AppLabels.Error.adhocCreateFailed,
-          detail: "No writable task list is available."))
+    let destination: TaskDestination
+    do {
+      destination = try await destinationResolver.resolve(
+        providerID: adHocParams.providerID.map(ProviderID.init(_:)),
+        listName: adHocParams.listName)
+    } catch {
+      errorPresenter.present(title: AppLabels.Error.adhocCreateFailed, error: error)
       return nil
     }
 
@@ -156,19 +152,9 @@ final class URLSchemeHandler {
     draft.dueDate = adHocParams.dueDate
     draft.dueDateIncludesTime = adHocParams.dueDateIncludesTime
     draft.section = adHocParams.section
-    if let name = adHocParams.listName {
-      let lists: [TaskList]
-      if let cached = registry.providerLists[writable.id] {
-        lists = cached
-      } else {
-        lists = (try? await writable.lists()) ?? []
-      }
-      draft.listID =
-        lists.first { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }?.id
-        ?? writable.defaultListID
-    }
+    draft.listID = destination.listID
     do {
-      return try await writable.addTask(draft)
+      return try await destination.provider.addTask(draft)
     } catch {
       errorPresenter.present(title: AppLabels.Error.adhocCreateFailed, error: error)
       return nil

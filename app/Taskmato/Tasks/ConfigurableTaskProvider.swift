@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// A `TaskProvider` that exposes a user-facing setup sheet.
+/// A `TaskProvider` that exposes a user-facing setup or settings sheet.
 ///
 /// Conform to this protocol to opt in to the "Configure…" context-menu action in
 /// the provider sidebar. The provider produces its own configuration view, so no
@@ -20,7 +20,7 @@ protocol ConfigurableTaskProvider: TaskProvider {
   /// immediately presents ``configurationView()``.
   var needsConfiguration: Bool { get }
 
-  /// Produces the view displayed inside the modal configuration sheet.
+  /// Produces the view displayed inside the modal configuration or settings sheet.
   @MainActor
   func configurationView() -> AnyView
 }

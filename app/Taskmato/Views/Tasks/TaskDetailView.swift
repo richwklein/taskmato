@@ -19,6 +19,7 @@ struct TaskDetailView: View {
   var selectionStore: TaskSelectionStore
   var registry: ProviderRegistry
   var queryService: TaskQueryService
+  var destinationResolver: TaskDestinationResolver
   var sidebarSelection: SelectionStore
   var nav: MainNavigation
   @Bindable var settings: AppSettings
@@ -34,6 +35,7 @@ struct TaskDetailView: View {
   @State var sections: [TaskSection] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
+  @State private var newTaskDestination: TaskDestination?
   /// Not `private`: `TaskDetailContextMenu.swift`'s "Edit…" item sets this.
   @State var isEditingTask = false
   /// Not `private`: `TaskDetailContextMenu.swift`'s "Edit…" item sets this.
@@ -64,26 +66,10 @@ struct TaskDetailView: View {
   /// `private`: `TaskDetailActions.swift`'s `copyToPasteboard(_:to:)` builds payloads with it.
   let clipboardService = TaskClipboardService()
 
-  /// Returns the writable provider for the current sidebar selection, falling back to the
-  /// default writable provider (from settings, then first enabled in registration order). Not
-  /// `private`: `TaskDetailSelection.swift` uses this to resolve the paste target.
+  /// Returns the writable provider for the current sidebar selection using the shared resolver.
+  /// Not `private`: `TaskDetailSelection.swift` uses this to resolve the paste target.
   var writableProvider: (any WritableTaskProvider)? {
-    guard case .list(let sel) = sidebarSelection.selection,
-      let provider = registry.providers.first(where: {
-        $0.id == sel.providerID && registry.isEnabled($0.id)
-      }),
-      let writable = provider as? (any WritableTaskProvider)
-    else {
-      return registry.resolveDefaultWritableProvider(
-        preferredID: settings.defaultWritableProviderID)
-    }
-    return writable
-  }
-
-  /// The currently selected list to pre-select when creating a task from this detail surface.
-  var selectedListIDForNewTask: String? {
-    guard let provider = writableProvider else { return nil }
-    return sidebarSelection.selection?.listID(matching: provider.id)
+    destinationResolver.provider(sidebarSelection: sidebarSelection.selection)
   }
 
   private var hasClosableProvider: Bool {
@@ -118,15 +104,16 @@ struct TaskDetailView: View {
       .sheet(isPresented: $isAddingTask) {
         if let provider = writableProvider {
           AddTaskView(
-            provider: provider, isPresented: $isAddingTask, errorPresenter: errorPresenter,
-            initialListID: selectedListIDForNewTask)
+            provider: provider, destinationResolver: destinationResolver,
+            isPresented: $isAddingTask, errorPresenter: errorPresenter,
+            initialListID: newTaskDestination?.listID)
         }
       }
       .sheet(isPresented: $isEditingTask) {
         if let task = taskToEdit, let provider = registry.writableProvider(for: task.id) {
           AddTaskView(
-            provider: provider, isPresented: $isEditingTask, errorPresenter: errorPresenter,
-            taskToEdit: task)
+            provider: provider, destinationResolver: destinationResolver,
+            isPresented: $isEditingTask, errorPresenter: errorPresenter, taskToEdit: task)
         }
       }
       .toolbar {
@@ -135,7 +122,7 @@ struct TaskDetailView: View {
         if writableProvider != nil {
           ToolbarItem(placement: .automatic) {
             Button {
-              isAddingTask = true
+              Task { await prepareNewTask() }
             } label: {
               Label(AppLabels.Task.add.title, systemImage: AppLabels.Task.add.systemImage)
             }
@@ -178,7 +165,10 @@ struct TaskDetailView: View {
       }
       .focusedSceneValue(\.taskViewActive, true)
       .focusedSceneValue(\.focusSearch, { isSearchFocused = true })
-      .focusedSceneValue(\.addTask, writableProvider != nil ? { isAddingTask = true } : nil)
+      .focusedSceneValue(
+        \.addTask,
+        writableProvider != nil ? { Task { await prepareNewTask() } } : nil
+      )
       .focusedSceneValue(
         \.toggleCompleted,
         hasClosableProvider
@@ -195,6 +185,16 @@ struct TaskDetailView: View {
         \.toggleCompletedIcon,
         hasClosableProvider ? completedToggleSpec.systemImage : nil
       )
+  }
+
+  private func prepareNewTask() async {
+    do {
+      newTaskDestination = try await destinationResolver.resolve(
+        sidebarSelection: sidebarSelection.selection)
+      isAddingTask = true
+    } catch {
+      errorPresenter.present(title: AppLabels.Error.addFailed, error: error)
+    }
   }
 
   /// The detail content plus search and change-tracking modifiers.
@@ -557,10 +557,11 @@ extension TaskDetailView {
     let registry = ProviderRegistry()
     let settings = AppSettings()
     let selectionStore = SelectionStore(registry: registry)
-    return TaskDetailView(
+    TaskDetailView(
       selectionStore: TaskSelectionStore(),
       registry: registry,
       queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
+      destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),
       sidebarSelection: selectionStore,
       nav: MainNavigation(
         settings: settings, selectionStore: selectionStore, statsViewModel: .preview),

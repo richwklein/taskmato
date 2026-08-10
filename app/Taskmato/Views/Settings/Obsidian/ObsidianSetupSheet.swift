@@ -125,6 +125,8 @@ struct ObsidianSetupSheet: View {
             provider.clearVault()
           }
         }
+
+        ProviderDefaultListSettings(provider: provider)
       } else {
         Text("No vault selected.")
           .foregroundStyle(.secondary)

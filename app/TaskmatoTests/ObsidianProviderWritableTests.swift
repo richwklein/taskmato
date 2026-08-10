@@ -106,6 +106,17 @@ struct ObsidianProviderWritableTests {
     #expect(item.list?.id == "tasks.md")
   }
 
+  @Test func addTaskFallsBackToFirstMatchingListWhenNoDefaultExists() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write("- [ ] Existing", at: "tasks.md", in: vault)
+    let provider = makeProvider(vaultURL: vault)
+    var draft = TaskDraft()
+    draft.title = "Buy milk"
+    let item = try await provider.addTask(draft)
+    #expect(item.list?.id == "tasks.md")
+  }
+
   @Test func addTaskThrowsWhenNoListResolves() async throws {
     let vault = try makeVault()
     defer { try? FileManager.default.removeItem(at: vault) }
