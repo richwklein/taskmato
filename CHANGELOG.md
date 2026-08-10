@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.2.0](https://github.com/richwklein/taskmato/compare/v1.1.0...v1.2.0) (2026-08-10)
+
+
+### Features
+
+* reconcile active tasks removed by providers ([#552](https://github.com/richwklein/taskmato/issues/552)) ([80f7680](https://github.com/richwklein/taskmato/commit/80f76806cae77397b38f44000de78c6b1f0012ab))
+* **tasks:** clarify default task destinations ([#563](https://github.com/richwklein/taskmato/issues/563)) ([5cc0e5f](https://github.com/richwklein/taskmato/commit/5cc0e5f125c384ab48e805246d65086b725f3302))
+* **tasks:** support creating, editing, and deleting Reminders tasks ([#553](https://github.com/richwklein/taskmato/issues/553)) ([82e5c6b](https://github.com/richwklein/taskmato/commit/82e5c6b10d4bf1bd207087e160e95138997259cf))
+* **tasks:** support cut, copy, and paste for task items ([#544](https://github.com/richwklein/taskmato/issues/544)) ([d91908c](https://github.com/richwklein/taskmato/commit/d91908c8def7efb5b2d0169fd3d4e30783cda20c))
+* **tasks:** support task selection with double-click activation ([#548](https://github.com/richwklein/taskmato/issues/548)) ([3d99c27](https://github.com/richwklein/taskmato/commit/3d99c27047816e9178d085008f77320d4432e239))
+* **tasks:** writable Obsidian provider with section-targeted writes ([#557](https://github.com/richwklein/taskmato/issues/557)) ([2a1a6bf](https://github.com/richwklein/taskmato/commit/2a1a6bfb2bf0206781bae0a1954b5b1f9c9ccdff))
+
+
+### Bug Fixes
+
+* **stats:** show focus time before phase completes ([#532](https://github.com/richwklein/taskmato/issues/532)) ([23b70b1](https://github.com/richwklein/taskmato/commit/23b70b1f31d0e01950651d0fc2334db23f4e8922))
+* **tasks:** pre-select current list when adding task from toolbar/menu bar ([#537](https://github.com/richwklein/taskmato/issues/537)) ([bf885a0](https://github.com/richwklein/taskmato/commit/bf885a0e56b6d087419336a97f0cbf3e2d590715))
+* **tasks:** restore list double-click focus ([#560](https://github.com/richwklein/taskmato/issues/560)) ([c2154ef](https://github.com/richwklein/taskmato/commit/c2154ef1e5391b2f11669492a9a7812dc57869f1))
+
+
+### Code Refactoring
+
+* **tasks:** back LocalProvider with SwiftData and migrate JSON store ([#539](https://github.com/richwklein/taskmato/issues/539)) ([27beab6](https://github.com/richwklein/taskmato/commit/27beab6035a253a4a15114b990525507923f1842))
+* **tasks:** extract LocalTaskRepository from LocalProvider ([#536](https://github.com/richwklein/taskmato/issues/536)) ([1d1486b](https://github.com/richwklein/taskmato/commit/1d1486b824060dac437672eb37868a3d1e53b096))
+
+
+### Documentation
+
+* **architecture:** reframe Taskmato Pro as a portability capability gate ([#538](https://github.com/richwklein/taskmato/issues/538)) ([2c9b313](https://github.com/richwklein/taskmato/commit/2c9b31395b3f9ca03eb6897c618cb8fb02df0507))
+
+
+### Miscellaneous Chores
+
+* add make test-failures to surface assertions from failed test runs ([#545](https://github.com/richwklein/taskmato/issues/545)) ([7f8fda0](https://github.com/richwklein/taskmato/commit/7f8fda0b10e68f8f59c3991eb6b2106a71525af4))
+* **deps-dev:** bump @vitest/eslint-plugin from 1.6.24 to 1.6.25 in /site in the vitest group ([#550](https://github.com/richwklein/taskmato/issues/550)) ([406623a](https://github.com/richwklein/taskmato/commit/406623a1f5fb6ec1d261f295711c19c2a41bb9cd))
+* **deps-dev:** bump eslint-plugin-astro from 3.0.1 to 3.1.0 in /site in the eslint group ([#549](https://github.com/richwklein/taskmato/issues/549)) ([ce399ca](https://github.com/richwklein/taskmato/commit/ce399ca247c89735ded9edbed1d052fbcaada131))
+* **deps:** bump github/codeql-action from 4.37.3 to 4.37.5 in the third-party-actions group ([#551](https://github.com/richwklein/taskmato/issues/551)) ([a71a02e](https://github.com/richwklein/taskmato/commit/a71a02e06779f130d89bdaf8d1f0a3b366b9e1af))
+
 ## [1.1.0](https://github.com/richwklein/taskmato/compare/v1.0.0...v1.1.0) (2026-08-04)
 
 
