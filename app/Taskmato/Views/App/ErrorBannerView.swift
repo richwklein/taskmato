@@ -69,13 +69,7 @@ extension ErrorSeverity {
 
 #if DEBUG
   #Preview {
-    let presenter = ErrorPresenter()
-    presenter.present(
-      TransientError(
-        title: "Couldn't complete task",
-        detail: "Reminders access has been revoked in System Settings.",
-        severity: .error))
-    return ErrorBannerView(presenter: presenter)
+    ErrorBannerView(presenter: ErrorPresenter())
       .frame(width: 420)
   }
 #endif

@@ -225,14 +225,29 @@ final class RemindersProvider: WritableTaskProvider {
 
   /// Creates a new reminder from `draft` and returns the resulting item.
   ///
-  /// Targets `draft.listID` if set, otherwise ``defaultListID``.
+  /// Targets `draft.listID` if set, otherwise the valid system default or first visible list.
   @discardableResult
   func addTask(_ draft: TaskDraft) async throws -> TaskItem {
-    let calendarID = draft.listID ?? defaultListID
+    let availableLists = try await lists()
+    let calendarID: String?
+    if let explicitListID = draft.listID {
+      calendarID = explicitListID
+    } else if let defaultListID {
+      if availableLists.contains(where: { $0.id == defaultListID }) {
+        calendarID = defaultListID
+      } else {
+        calendarID = availableLists.first?.id
+      }
+    } else {
+      calendarID = availableLists.first?.id
+    }
     guard let calendarID,
       let calendar = store.calendars(for: .reminder)
         .first(where: { $0.calendarIdentifier == calendarID })
     else {
+      if draft.listID == nil {
+        throw RemindersProviderError.noListAvailable
+      }
       throw RemindersProviderError.listNotFound(calendarID ?? "")
     }
     let reminder = store.newReminder()
@@ -359,6 +374,9 @@ enum RemindersProviderError: LocalizedError, Equatable {
   /// No calendar with the given identifier is among the provider's current lists.
   case listNotFound(String)
 
+  /// No visible reminder list is available for a new task.
+  case noListAvailable
+
   var errorDescription: String? {
     switch self {
     case .accessDenied:
@@ -375,6 +393,8 @@ enum RemindersProviderError: LocalizedError, Equatable {
       return "Could not find reminder \"\(id)\"."
     case .listNotFound(let id):
       return "Could not find Reminders list \"\(id)\"."
+    case .noListAvailable:
+      return "No Reminders list is available. Configure or create a list before adding a task."
     }
   }
 }

@@ -45,7 +45,7 @@ private final class StubWritableProvider: WritableTaskProvider {
   let displayName: String
   let icon: String = "square"
   let entitlement: ProviderEntitlement = .free
-  let defaultListID: String? = nil
+  let defaultListID: String? = "default"
   let contentFormat: ContentFormat = .markdown
 
   init(id: ProviderID) {
@@ -54,7 +54,9 @@ private final class StubWritableProvider: WritableTaskProvider {
   }
 
   nonisolated func authorize() async throws {}
-  func lists() async throws -> [TaskList] { [] }
+  func lists() async throws -> [TaskList] {
+    [TaskList(id: "default", providerID: id, name: "Default")]
+  }
   func tasks(in _: TaskList?) async throws -> [TaskItem] { [] }
   func observe() -> AsyncStream<[TaskItem]>? { nil }
   func complete(_: TaskRef) async throws {}
@@ -128,6 +130,7 @@ struct URLSchemeHandlerTests {
     }
 
     let errorPresenter = ErrorPresenter()
+    let destinationResolver = TaskDestinationResolver(registry: registry, settings: settings)
     let handler = URLSchemeHandler(
       registry: registry,
       queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
@@ -138,7 +141,8 @@ struct URLSchemeHandlerTests {
         settings: settings,
         selectionStore: SelectionStore(registry: registry, store: settingsStore),
         statsViewModel: .preview),
-      errorPresenter: errorPresenter
+      errorPresenter: errorPresenter,
+      destinationResolver: destinationResolver
     )
     return HandlerContext(
       handler: handler,

@@ -170,11 +170,10 @@ extension TaskDetailView {
   /// Returns the writable provider that paste should target without redirecting a read-only list
   /// selection to the default local provider.
   var pasteProvider: (any WritableTaskProvider)? {
-    guard case .list(let sel) = sidebarSelection.selection else {
-      return registry.resolveDefaultWritableProvider(
-        preferredID: settings.defaultWritableProviderID)
+    guard case .list = sidebarSelection.selection else {
+      return destinationResolver.provider()
     }
-    return registry.enabledWritableProvider(id: sel.providerID)
+    return destinationResolver.provider(sidebarSelection: sidebarSelection.selection)
   }
 
   /// The selected list ID to use for paste, only when that list belongs to ``pasteProvider``.
@@ -262,7 +261,11 @@ extension TaskDetailView {
   private func performPaste(_ draft: TaskDraft, provider: any WritableTaskProvider) {
     Task {
       await errorPresenter.attempt(AppLabels.Error.addFailed) {
-        try await provider.addTask(draft)
+        let destination = try await destinationResolver.resolve(
+          providerID: provider.id, listID: draft.listID)
+        var routedDraft = draft
+        routedDraft.listID = destination.listID
+        try await destination.provider.addTask(routedDraft)
       }
       await refresh()
     }

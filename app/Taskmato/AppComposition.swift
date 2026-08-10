@@ -25,6 +25,7 @@ struct AppComposition {
   let selectionStore: TaskSelectionStore
   let registry: ProviderRegistry
   let queryService: TaskQueryService
+  let destinationResolver: TaskDestinationResolver
   let sidebarSelection: SelectionStore
   let notifications: NotificationService
   let obsidianProvider: ObsidianProvider
@@ -58,6 +59,7 @@ struct AppComposition {
       [obsidianProvider, localProvider, remindersProvider], into: registry,
       fallback: localProvider)
     let queryService = TaskQueryService(registry: registry, sorter: TaskSorter())
+    let destinationResolver = TaskDestinationResolver(registry: registry, settings: settings)
     let sidebarSelection = SelectionStore(registry: registry, store: settingsStore)
     let nav = MainNavigation(
       settings: settings, selectionStore: sidebarSelection, statsViewModel: statsViewModel,
@@ -68,22 +70,16 @@ struct AppComposition {
     let urlHandler = URLSchemeHandler(
       registry: registry, queryService: queryService, selectionStore: selectionStore,
       engine: engine, settings: settings,
-      nav: nav, errorPresenter: errorPresenter
+      nav: nav, errorPresenter: errorPresenter, destinationResolver: destinationResolver
     )
-    let (phaseOrchestrator, focusAttribution) = Self.makePhaseOrchestrator(
-      engine: engine, store: store, settings: settings, selectionStore: selectionStore,
-      notifications: notifications)
-    Self.wireFocusHandoff(
-      engine: engine, settings: settings, nav: nav, selectionStore: selectionStore,
-      attribution: focusAttribution)
-    let activeTaskReconciliation = Self.wireActiveTaskReconciliation(
-      registry: registry, selectionStore: selectionStore,
-      runtime: (engine: engine, attribution: focusAttribution),
-      navigation: (sidebarSelection: sidebarSelection, nav: nav),
-      errorPresenter: errorPresenter)
-    self.activeTaskLiveObserver = activeTaskReconciliation.liveObserver
-    self.activeTaskReconciler = activeTaskReconciliation.reconciler
-    self.focusAttribution = focusAttribution
+    let runtime = Self.makeRuntime(
+      RuntimeInputs(
+        engine: engine, store: store, settings: settings, selectionStore: selectionStore,
+        registry: registry, sidebarSelection: sidebarSelection, nav: nav,
+        notifications: notifications, errorPresenter: errorPresenter))
+    self.activeTaskLiveObserver = runtime.activeTaskReconciliation.liveObserver
+    self.activeTaskReconciler = runtime.activeTaskReconciliation.reconciler
+    self.focusAttribution = runtime.focusAttribution
     self.engine = engine
     self.settings = settings
     self.timerPresenter = TimerPresenter(engine: engine, settings: settings)
@@ -92,6 +88,7 @@ struct AppComposition {
     self.selectionStore = selectionStore
     self.registry = registry
     self.queryService = queryService
+    self.destinationResolver = destinationResolver
     self.sidebarSelection = sidebarSelection
     self.notifications = notifications
     self.obsidianProvider = obsidianProvider
@@ -100,7 +97,7 @@ struct AppComposition {
     self.urlHandler = urlHandler
     self.nav = nav
     self.errorPresenter = errorPresenter
-    self.phaseOrchestrator = phaseOrchestrator
+    self.phaseOrchestrator = runtime.phaseOrchestrator
   }
 
   /// Opens the SwiftData session store, trapping if it cannot be created.
@@ -206,6 +203,44 @@ struct AppComposition {
       selectionStore: selectionStore, notifications: notifications, attribution: attribution)
     Task { await orchestrator.run() }
     return (orchestrator, attribution)
+  }
+
+  /// Builds the phase and active-task runtime services that share registry and navigation wiring.
+  private static func makeRuntime(_ inputs: RuntimeInputs) -> RuntimeServices {
+    let (phaseOrchestrator, focusAttribution) = Self.makePhaseOrchestrator(
+      engine: inputs.engine, store: inputs.store, settings: inputs.settings,
+      selectionStore: inputs.selectionStore, notifications: inputs.notifications)
+    Self.wireFocusHandoff(
+      engine: inputs.engine, settings: inputs.settings, nav: inputs.nav,
+      selectionStore: inputs.selectionStore,
+      attribution: focusAttribution)
+    let activeTaskReconciliation = Self.wireActiveTaskReconciliation(
+      registry: inputs.registry, selectionStore: inputs.selectionStore,
+      runtime: (engine: inputs.engine, attribution: focusAttribution),
+      navigation: (sidebarSelection: inputs.sidebarSelection, nav: inputs.nav),
+      errorPresenter: inputs.errorPresenter)
+    return RuntimeServices(
+      phaseOrchestrator: phaseOrchestrator, focusAttribution: focusAttribution,
+      activeTaskReconciliation: activeTaskReconciliation)
+  }
+
+  private struct RuntimeInputs {
+    let engine: SessionEngine
+    let store: SessionStore
+    let settings: AppSettings
+    let selectionStore: TaskSelectionStore
+    let registry: ProviderRegistry
+    let sidebarSelection: SelectionStore
+    let nav: MainNavigation
+    let notifications: NotificationService
+    let errorPresenter: ErrorPresenter
+  }
+
+  private struct RuntimeServices {
+    let phaseOrchestrator: PhaseOrchestrator
+    let focusAttribution: FocusAttribution
+    let activeTaskReconciliation:
+      (reconciler: ActiveTaskReconciler, liveObserver: ActiveTaskLiveObserver)
   }
 
   /// Wires the two focus-handoff callbacks onto `selectionStore` (D4/D9 of design doc 0010): a

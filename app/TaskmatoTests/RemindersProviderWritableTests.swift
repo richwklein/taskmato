@@ -96,6 +96,19 @@ struct RemindersProviderWritableTests {
     #expect(item.list?.id == work.calendarIdentifier)
   }
 
+  @Test func addTaskFallsBackToFirstVisibleListWhenSystemDefaultIsFiltered() async throws {
+    let (provider, store) = try await makeAuthorizedProvider()
+    let work = store.makeCalendar(title: "Work")
+    let personal = store.makeCalendar(title: "Personal")
+    store.stubbedCalendars = [work, personal]
+    store.stubbedDefaultCalendar = work
+    provider.setListPatterns(["Personal"])
+    var draft = TaskDraft()
+    draft.title = "Buy milk"
+    let item = try await provider.addTask(draft)
+    #expect(item.list?.id == personal.calendarIdentifier)
+  }
+
   @Test func addTaskThrowsWhenNoListResolves() async throws {
     let (provider, _) = try await makeAuthorizedProvider()
     var draft = TaskDraft()

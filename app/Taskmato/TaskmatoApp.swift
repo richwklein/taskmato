@@ -49,6 +49,7 @@ struct TaskmatoApp: App {
         selectionStore: composition.selectionStore,
         registry: composition.registry,
         queryService: composition.queryService,
+        destinationResolver: composition.destinationResolver,
         sidebarSelection: composition.sidebarSelection,
         nav: composition.nav,
         errorPresenter: composition.errorPresenter

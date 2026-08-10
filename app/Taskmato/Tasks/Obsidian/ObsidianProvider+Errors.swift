@@ -46,6 +46,8 @@ enum ObsidianProviderError: LocalizedError {
   case ambiguousTaskRef(String)
   /// No file matches the given vault-relative list ID.
   case listNotFound(String)
+  /// No matching markdown file is available for a new task.
+  case noListAvailable
   /// No heading matching the given section text was found in the target file.
   case sectionNotFound(list: String, section: String)
 
@@ -61,6 +63,9 @@ enum ObsidianProviderError: LocalizedError {
       return "Could not uniquely locate task \"\(id)\" in the vault."
     case .listNotFound(let id):
       return "Could not locate list \"\(id)\" in the vault."
+    case .noListAvailable:
+      return
+        "No matching Obsidian files are available. Configure a file pattern before adding a task."
     case .sectionNotFound(let list, let section):
       return "Could not locate section \"\(section)\" in \"\(list)\"."
     }

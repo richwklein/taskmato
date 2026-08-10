@@ -16,6 +16,7 @@ import SwiftUI
 struct AddTaskView: View {
 
   var provider: any WritableTaskProvider
+  var destinationResolver: TaskDestinationResolver
   @Binding var isPresented: Bool
   var errorPresenter: ErrorPresenter
   var taskToEdit: TaskItem?
@@ -54,6 +55,12 @@ struct AddTaskView: View {
     VStack(alignment: .leading, spacing: .sectionGap) {
       Text(sheetTitle)
         .font(.sheetTitle)
+
+      if !isEditing {
+        Text("Adding to \(provider.displayName)")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+      }
 
       TextField("Task title", text: $title)
         .textFieldStyle(.roundedBorder)
@@ -169,7 +176,15 @@ struct AddTaskView: View {
     .task {
       taskLists = (try? await provider.lists()) ?? []
       if taskToEdit == nil, selectedListID.isEmpty, let first = taskLists.first {
-        selectedListID = provider.defaultListID ?? first.id
+        if let defaultID = provider.defaultListID {
+          if taskLists.contains(where: { $0.id == defaultID }) {
+            selectedListID = defaultID
+          } else {
+            selectedListID = first.id
+          }
+        } else {
+          selectedListID = first.id
+        }
       }
     }
     .task(id: selectedListID) {
@@ -311,7 +326,11 @@ struct AddTaskView: View {
     } else {
       Task {
         await errorPresenter.attempt(AppLabels.Error.addFailed) {
-          try await provider.addTask(draft)
+          let destination = try await destinationResolver.resolve(
+            providerID: provider.id, listID: draft.listID)
+          var routedDraft = draft
+          routedDraft.listID = destination.listID
+          try await destination.provider.addTask(routedDraft)
         }
         isPresented = false
       }

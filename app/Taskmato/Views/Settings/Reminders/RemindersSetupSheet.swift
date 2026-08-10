@@ -88,29 +88,33 @@ struct RemindersSetupSheet: View {
 
   @ViewBuilder
   private var authorizedView: some View {
-    RemindersSettingsFieldRow("List patterns") {
-      VStack(alignment: .leading, spacing: .iconLabel) {
-        TextField("e.g. Work*, *Personal*", text: $patternText)
-          .autocorrectionDisabled()
-          .focused($isPatternFocused)
-          .onSubmit { commitPatterns() }
-          .onChange(of: isPatternFocused) { _, focused in
-            if !focused { commitPatterns() }
-          }
+    VStack(alignment: .leading, spacing: .sectionGap) {
+      RemindersSettingsFieldRow("List patterns") {
+        VStack(alignment: .leading, spacing: .iconLabel) {
+          TextField("e.g. Work*, *Personal*", text: $patternText)
+            .autocorrectionDisabled()
+            .focused($isPatternFocused)
+            .onSubmit { commitPatterns() }
+            .onChange(of: isPatternFocused) { _, focused in
+              if !focused { commitPatterns() }
+            }
 
-        if showsListPatternWarning {
-          Label(
-            "No reminder lists match this pattern.",
-            systemImage: "exclamationmark.triangle.fill"
-          )
-          .font(.caption)
-          .foregroundStyle(Color.statusWarning)
-        } else {
-          Text(listSummaryText)
+          if showsListPatternWarning {
+            Label(
+              "No reminder lists match this pattern.",
+              systemImage: "exclamationmark.triangle.fill"
+            )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.statusWarning)
+          } else {
+            Text(listSummaryText)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
         }
       }
+
+      ProviderDefaultListSettings(provider: provider)
     }
   }
 
