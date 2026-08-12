@@ -81,6 +81,28 @@ struct SwiftDataSessionRepositoryTests {
     #expect(session?.segments.first?.taskTitle == nil)
   }
 
+  // MARK: - Provider cosmetics snapshot (ADR-0010, D4)
+
+  @Test func upsertPreservesProviderCosmeticsSnapshot() async throws {
+    let repository = try SwiftDataSessionRepository.makeInMemory()
+    let id = UUID()
+    let start = Date(timeIntervalSinceReferenceDate: 0)
+    let ref = TaskRef(providerID: "obsidian", nativeID: "a")
+    let session = Session(
+      id: id, phase: .focus, startedAt: start, endedAt: start.addingTimeInterval(900),
+      wasCompleted: true,
+      segments: [
+        FocusSegment(
+          id: UUID(), taskRef: ref, taskTitle: "Task A", seconds: 900,
+          providerLabel: "Obsidian", providerTint: .purple)
+      ])
+    try await repository.upsert(session)
+
+    let sessions = try await repository.sessions(over: Self.allTime)
+    #expect(sessions.first?.segments.first?.providerLabel == "Obsidian")
+    #expect(sessions.first?.segments.first?.providerTint == .purple)
+  }
+
   // MARK: - upsert (D7 of design doc 0010)
 
   @Test func upsertInsertsWhenIDIsNew() async throws {

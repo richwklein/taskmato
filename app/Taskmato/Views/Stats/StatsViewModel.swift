@@ -98,13 +98,15 @@ final class StatsViewModel {
       }
     }
 
+    let snapshots = providerSnapshots
     return
       order
       .compactMap { key -> DayTotal? in
         guard let entry = accumulated[key] else { return nil }
         return DayTotal(
           day: entry.day, providerID: entry.providerID,
-          tint: displayTint(for: entry.providerID), minutes: Int(entry.seconds / 60))
+          tint: displayTint(for: entry.providerID, in: snapshots), minutes: Int(entry.seconds / 60)
+        )
       }
       .sorted { ($0.day, $0.providerID) < ($1.day, $1.providerID) }
   }
@@ -124,13 +126,14 @@ final class StatsViewModel {
       }
     }
 
+    let snapshots = providerSnapshots
     return
       order
       .map { providerID in
         ProviderSlice(
           providerID: providerID,
-          label: displayLabel(for: providerID),
-          tint: displayTint(for: providerID),
+          label: displayLabel(for: providerID, in: snapshots),
+          tint: displayTint(for: providerID, in: snapshots),
           minutes: Int((accumulated[providerID] ?? 0) / 60))
       }
       .sorted { $0.minutes > $1.minutes }
@@ -142,6 +145,7 @@ final class StatsViewModel {
   var allTaskRows: [AllTimeTaskRow] {
     var order: [String] = []
     var accumulated: [String: TaskBucket] = [:]
+    let snapshots = providerSnapshots
 
     for session in sessions where session.phase == .focus {
       for segment in session.segments {
@@ -166,7 +170,8 @@ final class StatsViewModel {
       order
       .compactMap { key -> AllTimeTaskRow? in
         guard let entry = accumulated[key] else { return nil }
-        let resolvedLabel = entry.taskRef.map { providerLabel($0.providerID.rawValue) } ?? "—"
+        let resolvedLabel =
+          entry.taskRef.map { displayLabel(for: $0.providerID.rawValue, in: snapshots) } ?? "—"
         return AllTimeTaskRow(
           taskRef: entry.taskRef, title: entry.title, providerLabel: resolvedLabel,
           totalMinutes: Int(entry.seconds / 60), lastSessionDate: entry.last)
@@ -228,6 +233,35 @@ final class StatsViewModel {
     var last: Date
   }
 
+  /// Latest provider cosmetics snapshot per provider id, harvested from segment snapshots.
+  ///
+  /// Sessions arrive oldest-first, so the last non-`nil` snapshot seen for a provider — the most
+  /// recent — wins if a provider's name or tint ever differs across records.
+  private struct ProviderSnapshots {
+    private var labels: [String: String] = [:]
+    private var tints: [String: ProviderTint] = [:]
+
+    init(sessions: [Session]) {
+      for session in sessions {
+        for segment in session.segments {
+          guard let providerID = segment.taskRef?.providerID.rawValue else { continue }
+          if let label = segment.providerLabel { labels[providerID] = label }
+          if let tint = segment.providerTint { tints[providerID] = tint }
+        }
+      }
+    }
+
+    /// The most recent snapshot label recorded for `providerID`, if any.
+    func label(for providerID: String) -> String? { labels[providerID] }
+
+    /// The most recent snapshot tint recorded for `providerID`, if any.
+    func tint(for providerID: String) -> ProviderTint? { tints[providerID] }
+  }
+
+  /// Snapshots harvested from the full log, so a provider absent from the current period still
+  /// resolves.
+  private var providerSnapshots: ProviderSnapshots { ProviderSnapshots(sessions: sessions) }
+
   /// Focus sessions that started today (calendar day, local time zone), regardless of
   /// completion — the population time metrics sum over.
   private var todaysFocus: [Session] {
@@ -251,14 +285,20 @@ final class StatsViewModel {
     }
   }
 
-  /// Display label for a provider grouping key, handling the untracked sentinel.
-  private func displayLabel(for providerID: String) -> String {
-    providerID == Self.untrackedKey ? "Untracked" : providerLabel(providerID)
+  /// Display label for a provider grouping key: the record's snapshot first, then the live
+  /// registry closure, so a ported record renders correctly with the provider absent (D4).
+  private func displayLabel(for providerID: String, in snapshots: ProviderSnapshots) -> String {
+    guard providerID != Self.untrackedKey else { return "Untracked" }
+    return snapshots.label(for: providerID) ?? providerLabel(providerID)
   }
 
-  /// Display color for a provider grouping key, gray for the untracked sentinel.
-  private func displayTint(for providerID: String) -> ProviderTint {
-    providerID == Self.untrackedKey ? .gray : providerTint(providerID)
+  /// Display color for a provider grouping key: snapshot first, then the live registry closure;
+  /// gray for the untracked sentinel.
+  private func displayTint(
+    for providerID: String, in snapshots: ProviderSnapshots
+  ) -> ProviderTint {
+    guard providerID != Self.untrackedKey else { return .gray }
+    return snapshots.tint(for: providerID) ?? providerTint(providerID)
   }
 
   /// The date range the scope-dependent outputs are computed over, honoring `offset`.

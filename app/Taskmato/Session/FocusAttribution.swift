@@ -5,6 +5,10 @@
 
 import Foundation
 
+/// Resolves a provider's display cosmetics for the snapshot written onto each closed slice.
+/// Returns `nil` when the provider is not registered.
+typealias ProviderCosmeticsResolver = (ProviderID) -> (label: String, tint: ProviderTint)?
+
 /// Task-agnostic breakpoint log that partitions one focus phase's consumed time into per-task
 /// ``FocusSegment`` values (D4 of design doc 0010).
 ///
@@ -31,12 +35,20 @@ final class FocusAttribution {
 
   private var breakpoints: [Breakpoint] = []
 
+  private let cosmetics: ProviderCosmeticsResolver
+
   /// `true` while a focus phase is seeded and not yet finished.
   private(set) var isLive = false
 
   /// Invoked synchronously whenever a slice closes mid-phase (a task change while live), with
   /// the newly closed segment. ``PhaseOrchestrator`` uses this to upsert the durable draft.
   var onSliceClosed: ((FocusSegment) -> Void)?
+
+  /// - Parameter cosmetics: Resolves the provider label and tint snapshotted onto each closed
+  ///   slice (ADR-0010, D4). Defaults to no snapshot, leaving both fields `nil`.
+  init(cosmetics: @escaping ProviderCosmeticsResolver = { _ in nil }) {
+    self.cosmetics = cosmetics
+  }
 
   /// Seeds the log for a freshly begun focus phase with the task active at that moment.
   /// - Parameter task: The active task when the phase began, or `nil` for untracked focus.
@@ -60,9 +72,7 @@ final class FocusAttribution {
     breakpoints.append(Breakpoint(consumedSeconds: consumedSeconds, task: task))
     let seconds = consumedSeconds - last.consumedSeconds
     guard seconds > 0 else { return }
-    onSliceClosed?(
-      FocusSegment(
-        id: UUID(), taskRef: last.task?.id, taskTitle: last.task?.title, seconds: seconds))
+    onSliceClosed?(segment(for: last.task, seconds: seconds))
   }
 
   /// Resolves the full breakpoint log into segments and clears the log for the next phase.
@@ -80,11 +90,16 @@ final class FocusAttribution {
         index + 1 < breakpoints.count ? breakpoints[index + 1].consumedSeconds : consumedSeconds
       let seconds = end - breakpoint.consumedSeconds
       guard seconds > 0 else { continue }
-      segments.append(
-        FocusSegment(
-          id: UUID(), taskRef: breakpoint.task?.id, taskTitle: breakpoint.task?.title,
-          seconds: seconds))
+      segments.append(segment(for: breakpoint.task, seconds: seconds))
     }
     return segments
+  }
+
+  /// Builds a slice, snapshotting the owning provider's cosmetics when it resolves.
+  private func segment(for task: TaskItem?, seconds: TimeInterval) -> FocusSegment {
+    let snapshot = task.flatMap { cosmetics($0.id.providerID) }
+    return FocusSegment(
+      id: UUID(), taskRef: task?.id, taskTitle: task?.title, seconds: seconds,
+      providerLabel: snapshot?.label, providerTint: snapshot?.tint)
   }
 }

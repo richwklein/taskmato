@@ -45,4 +45,27 @@ struct SessionTests {
   @Test func durationIsComputedFromTimestamps() {
     #expect(makeSession().duration == 1500)
   }
+
+  // MARK: - Provider cosmetics snapshot (ADR-0010, D4)
+
+  @Test func focusSegmentRoundTripsProviderCosmetics() throws {
+    let ref = TaskRef(providerID: "obsidian", nativeID: "vault/tasks.md:10")
+    let segment = FocusSegment(
+      id: UUID(), taskRef: ref, taskTitle: "Write plan", seconds: 900,
+      providerLabel: "Obsidian", providerTint: .purple)
+    let data = try JSONEncoder().encode(segment)
+    let decoded = try JSONDecoder().decode(FocusSegment.self, from: data)
+    #expect(decoded.providerLabel == "Obsidian")
+    #expect(decoded.providerTint == .purple)
+  }
+
+  @Test func legacyFocusSegmentJSONWithoutCosmeticsDecodesWithNilFields() throws {
+    let json = """
+      {"id":"\(UUID().uuidString)","taskRef":null,"taskTitle":null,"seconds":900}
+      """
+    let data = Data(json.utf8)
+    let decoded = try JSONDecoder().decode(FocusSegment.self, from: data)
+    #expect(decoded.providerLabel == nil)
+    #expect(decoded.providerTint == nil)
+  }
 }

@@ -193,23 +193,30 @@ struct AppComposition {
 
   /// Builds the phase-end orchestrator (and its ``FocusAttribution`` collaborator) and
   /// launches the orchestrator, fire-and-forget, for the app's lifetime.
+  ///
+  /// `inputs.registry` resolves each focus slice's owning provider's label and tint, snapshotted
+  /// onto the slice at close (ADR-0010, D4).
   private static func makePhaseOrchestrator(
-    engine: SessionEngine, store: SessionStore, settings: AppSettings,
-    selectionStore: TaskSelectionStore, notifications: NotificationService
+    _ inputs: RuntimeInputs
   ) -> (orchestrator: PhaseOrchestrator, attribution: FocusAttribution) {
-    let attribution = FocusAttribution()
+    let registry = inputs.registry
+    let attribution = FocusAttribution(cosmetics: { [registry] providerID in
+      guard let provider = registry.providers.first(where: { $0.id == providerID }) else {
+        return nil
+      }
+      return (provider.displayName, provider.tint)
+    })
     let orchestrator = PhaseOrchestrator(
-      events: engine.phaseEvents, engine: engine, store: store, settings: settings,
-      selectionStore: selectionStore, notifications: notifications, attribution: attribution)
+      events: inputs.engine.phaseEvents, engine: inputs.engine, store: inputs.store,
+      settings: inputs.settings, selectionStore: inputs.selectionStore,
+      notifications: inputs.notifications, attribution: attribution)
     Task { await orchestrator.run() }
     return (orchestrator, attribution)
   }
 
   /// Builds the phase and active-task runtime services that share registry and navigation wiring.
   private static func makeRuntime(_ inputs: RuntimeInputs) -> RuntimeServices {
-    let (phaseOrchestrator, focusAttribution) = Self.makePhaseOrchestrator(
-      engine: inputs.engine, store: inputs.store, settings: inputs.settings,
-      selectionStore: inputs.selectionStore, notifications: inputs.notifications)
+    let (phaseOrchestrator, focusAttribution) = Self.makePhaseOrchestrator(inputs)
     Self.wireFocusHandoff(
       engine: inputs.engine, settings: inputs.settings, nav: inputs.nav,
       selectionStore: inputs.selectionStore,
