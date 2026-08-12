@@ -28,11 +28,14 @@ struct StatsViewModelTests {
 
   private func focus(
     start: Date, minutes: Int = 25, completed: Bool = true,
-    provider: ProviderID? = nil, nativeID: String = "t1", title: String? = nil
+    provider: ProviderID? = nil, nativeID: String = "t1", title: String? = nil,
+    providerLabel: String? = nil, providerTint: ProviderTint? = nil
   ) -> Session {
     let ref = provider.map { TaskRef(providerID: $0, nativeID: nativeID) }
     let seconds = TimeInterval(minutes * 60)
-    let segment = FocusSegment(id: UUID(), taskRef: ref, taskTitle: title, seconds: seconds)
+    let segment = FocusSegment(
+      id: UUID(), taskRef: ref, taskTitle: title, seconds: seconds, providerLabel: providerLabel,
+      providerTint: providerTint)
     return Session(
       id: UUID(), phase: .focus, startedAt: start,
       endedAt: start.addingTimeInterval(seconds),
@@ -328,6 +331,76 @@ struct StatsViewModelTests {
     let totals = viewModel.dailyFocusTotals
     #expect(totals.first { $0.providerID == "local" }?.tint == .green)
     #expect(totals.first { $0.providerID == "__untracked__" }?.tint == .gray)
+  }
+
+  // MARK: - Provider cosmetics snapshot (ADR-0010, D4)
+
+  @Test func snapshotResolvesWhenProviderIsAbsentFromTheLiveRegistry() async {
+    let day = Self.fixedNoon(day: 500)
+    let viewModel = await makeViewModel([
+      focus(
+        start: day, minutes: 25, provider: "obsidian", nativeID: "a", title: "Task A",
+        providerLabel: "Obsidian", providerTint: .purple)
+    ])
+    viewModel.scope = .allTime
+
+    let breakdown = viewModel.providerBreakdown
+    #expect(breakdown.first?.label == "Obsidian")
+    #expect(breakdown.first?.tint == .purple)
+
+    let totals = viewModel.dailyFocusTotals
+    #expect(totals.first?.tint == .purple)
+
+    let rows = viewModel.allTaskRows
+    #expect(rows.first?.providerLabel == "Obsidian")
+  }
+
+  @Test func snapshotMatchesLiveRegistryWhenProviderIsPresent() async {
+    let day = Self.fixedNoon(day: 501)
+    let viewModel = await makeViewModel(
+      [
+        focus(
+          start: day, minutes: 25, provider: "obsidian", nativeID: "a", title: "Task A",
+          providerLabel: "Obsidian", providerTint: .purple)
+      ],
+      providerLabel: { ["obsidian": "Obsidian"][$0] ?? $0 },
+      providerTint: { ["obsidian": ProviderTint.purple][$0] ?? .gray })
+    viewModel.scope = .allTime
+
+    let breakdown = viewModel.providerBreakdown
+    #expect(breakdown.first?.label == "Obsidian")
+    #expect(breakdown.first?.tint == .purple)
+  }
+
+  @Test func legacySnapshotlessSegmentsStillResolveThroughTheLiveRegistry() async {
+    let day = Self.fixedNoon(day: 502)
+    let viewModel = await makeViewModel(
+      [focus(start: day, minutes: 25, provider: "reminders", nativeID: "a", title: "Task A")],
+      providerLabel: { ["reminders": "Reminders"][$0] ?? $0 },
+      providerTint: { ["reminders": ProviderTint.orange][$0] ?? .gray })
+    viewModel.scope = .allTime
+
+    let breakdown = viewModel.providerBreakdown
+    #expect(breakdown.first?.label == "Reminders")
+    #expect(breakdown.first?.tint == .orange)
+  }
+
+  @Test func latestSnapshotWinsAcrossSessions() async {
+    let earlier = Self.fixedNoon(day: 503)
+    let later = Self.fixedNoon(day: 504)
+    let viewModel = await makeViewModel([
+      focus(
+        start: earlier, minutes: 25, provider: "obsidian", nativeID: "a", title: "Task A",
+        providerLabel: "Old Name", providerTint: .green),
+      focus(
+        start: later, minutes: 25, provider: "obsidian", nativeID: "a", title: "Task A",
+        providerLabel: "New Name", providerTint: .purple),
+    ])
+    viewModel.scope = .allTime
+
+    let breakdown = viewModel.providerBreakdown
+    #expect(breakdown.first?.label == "New Name")
+    #expect(breakdown.first?.tint == .purple)
   }
 
   // MARK: - Live updates via the store

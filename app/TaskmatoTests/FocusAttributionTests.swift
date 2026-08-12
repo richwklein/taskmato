@@ -192,4 +192,48 @@ struct FocusAttributionTests {
     #expect(segments.first?.taskRef == taskC.id)
     #expect(segments.first?.seconds == 100)
   }
+
+  // MARK: - Provider cosmetics snapshot (ADR-0010, D4)
+
+  @Test func finishSnapshotsCosmeticsWhenResolverMatches() {
+    let attribution = FocusAttribution(cosmetics: { _ in ("Local", .green) })
+    attribution.begin(task: taskA)
+    let segments = attribution.finish(consumedSeconds: 300)
+    #expect(segments.first?.providerLabel == "Local")
+    #expect(segments.first?.providerTint == .green)
+  }
+
+  @Test func taskChangedSnapshotsCosmeticsOnTheClosedSlice() {
+    let attribution = FocusAttribution(cosmetics: { _ in ("Local", .green) })
+    var closed: [FocusSegment] = []
+    attribution.onSliceClosed = { closed.append($0) }
+    attribution.begin(task: taskA)
+    attribution.taskChanged(to: taskB, consumedSeconds: 400)
+    #expect(closed.first?.providerLabel == "Local")
+    #expect(closed.first?.providerTint == .green)
+  }
+
+  @Test func untrackedFocusYieldsNilCosmetics() {
+    let attribution = FocusAttribution(cosmetics: { _ in ("Local", .green) })
+    attribution.begin(task: nil)
+    let segments = attribution.finish(consumedSeconds: 300)
+    #expect(segments.first?.providerLabel == nil)
+    #expect(segments.first?.providerTint == nil)
+  }
+
+  @Test func resolverReturningNilYieldsNilCosmetics() {
+    let attribution = FocusAttribution(cosmetics: { _ in nil })
+    attribution.begin(task: taskA)
+    let segments = attribution.finish(consumedSeconds: 300)
+    #expect(segments.first?.providerLabel == nil)
+    #expect(segments.first?.providerTint == nil)
+  }
+
+  @Test func defaultInitYieldsNilCosmetics() {
+    let attribution = FocusAttribution()
+    attribution.begin(task: taskA)
+    let segments = attribution.finish(consumedSeconds: 300)
+    #expect(segments.first?.providerLabel == nil)
+    #expect(segments.first?.providerTint == nil)
+  }
 }

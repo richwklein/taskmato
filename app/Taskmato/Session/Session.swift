@@ -22,6 +22,33 @@ nonisolated struct FocusSegment: Codable, Sendable, Identifiable, Equatable {
 
   /// Focus seconds attributed to this slice.
   let seconds: TimeInterval
+
+  /// Provider display name captured at slice close, so ported or synced stats render the real
+  /// name with the provider absent (ADR-0010, D4).
+  ///
+  /// `nil` for untracked focus, for a provider missing from the registry at capture time, and
+  /// for records written before D4.
+  let providerLabel: String?
+
+  /// Provider semantic tint captured at slice close; `nil` under the same conditions as
+  /// ``providerLabel``.
+  let providerTint: ProviderTint?
+
+  /// Creates a focus slice.
+  /// - Parameters:
+  ///   - providerLabel: Provider display-name snapshot; omit when the provider does not resolve.
+  ///   - providerTint: Provider tint snapshot; omit when the provider does not resolve.
+  init(
+    id: UUID, taskRef: TaskRef?, taskTitle: String?, seconds: TimeInterval,
+    providerLabel: String? = nil, providerTint: ProviderTint? = nil
+  ) {
+    self.id = id
+    self.taskRef = taskRef
+    self.taskTitle = taskTitle
+    self.seconds = seconds
+    self.providerLabel = providerLabel
+    self.providerTint = providerTint
+  }
 }
 
 /// An immutable record of a single Pomodoro phase.
