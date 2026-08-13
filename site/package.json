@@ -2,7 +2,7 @@
   "name": "taskmato-site",
   "private": true,
   "description": "Taskmato marketing site — GitHub Pages",
-  "version": "1.3.0",
+  "version": "1.0.0",
   "type": "module",
   "packageManager": "pnpm@10.24.0",
   "scripts": {
