@@ -127,6 +127,9 @@ struct TaskmatoCommands: Commands {
   @FocusedValue(\.toggleCompleted) private var toggleCompleted
   @FocusedValue(\.toggleCompletedTitle) private var toggleCompletedTitle
   @FocusedValue(\.toggleCompletedIcon) private var toggleCompletedIcon
+  @FocusedValue(\.openInProvider) private var openInProvider
+  @FocusedValue(\.openInProviderTitle) private var openInProviderTitle
+  @FocusedValue(\.openInProviderIcon) private var openInProviderIcon
   @FocusedValue(\.timerToggle) private var timerToggle
   @FocusedValue(\.timerToggleTitle) private var timerToggleTitle
   @FocusedValue(\.timerSkip) private var timerSkip
@@ -185,6 +188,20 @@ struct TaskmatoCommands: Commands {
           }
         }
       }
+      Divider()
+      // Title and glyph both come from the selected task's provider, so the item reads
+      // "Open in Obsidian" beside Obsidian's own icon — matching its context-menu twin. Falls
+      // back to the generic label when nothing resolvable is selected and the item is disabled.
+      Button {
+        openInProvider?()
+      } label: {
+        Label(
+          openInProviderTitle ?? AppLabels.Task.openInProvider.title,
+          systemImage: openInProviderIcon ?? AppLabels.Task.openInProvider.systemImage
+        )
+      }
+      .keyboardShortcut("o", modifiers: [.command, .shift])
+      .disabled(openInProvider == nil)
     }
     // Edit → Find… (⌘F); disabled when not on a task destination (focusSearch is only
     // published by the task detail surface).

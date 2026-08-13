@@ -9,6 +9,20 @@ import SwiftUI
 /// Split from `TaskDetailView.swift` to keep that file under the repo's file-length limit.
 extension TaskDetailView {
 
+  /// The "Open in …" item naming `task`'s provider, or nothing when it carries no resolvable
+  /// deep link (Local and ad-hoc tasks). Shared by both the active and completed context menus,
+  /// since completed rows carry the same `sourceURL`.
+  @ViewBuilder
+  func openInProviderItem(for task: TaskItem) -> some View {
+    if let link = TaskProviderLink(task: task, registry: registry) {
+      Button {
+        openInProvider(task)
+      } label: {
+        Label(link.label.title, systemImage: link.label.systemImage)
+      }
+    }
+  }
+
   /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.
   @ViewBuilder
   func taskContextMenu(for task: TaskItem) -> some View {
@@ -37,6 +51,7 @@ extension TaskDetailView {
         Label(AppLabels.Task.edit.title, systemImage: AppLabels.Task.edit.systemImage)
       }
     }
+    openInProviderItem(for: task)
     Divider()
     if registry.writableProvider(for: task.id) != nil {
       Button {
@@ -82,6 +97,7 @@ extension TaskDetailView {
     } label: {
       Label(AppLabels.Task.copy.title, systemImage: AppLabels.Task.copy.systemImage)
     }
+    openInProviderItem(for: task)
     if registry.closableProvider(for: task.id) != nil {
       Button {
         handleRestore(task)

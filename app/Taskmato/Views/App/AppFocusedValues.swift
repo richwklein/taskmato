@@ -47,6 +47,18 @@ private struct TaskViewActiveKey: FocusedValueKey {
   typealias Value = Bool
 }
 
+private struct OpenInProviderKey: FocusedValueKey {
+  typealias Value = () -> Void
+}
+
+private struct OpenInProviderTitleKey: FocusedValueKey {
+  typealias Value = String
+}
+
+private struct OpenInProviderIconKey: FocusedValueKey {
+  typealias Value = String
+}
+
 // MARK: - FocusedValues extensions
 
 extension FocusedValues {
@@ -113,5 +125,25 @@ extension FocusedValues {
   var taskViewActive: Bool? {
     get { self[TaskViewActiveKey.self] }
     set { self[TaskViewActiveKey.self] = newValue }
+  }
+
+  /// Opens the selected task's provider deep link. Published by ``TaskDetailView`` when the
+  /// current selection resolves a ``TaskProviderLink``.
+  var openInProvider: (() -> Void)? {
+    get { self[OpenInProviderKey.self] }
+    set { self[OpenInProviderKey.self] = newValue }
+  }
+
+  /// The current title for the Open in Provider command, e.g. "Open in Obsidian".
+  var openInProviderTitle: String? {
+    get { self[OpenInProviderTitleKey.self] }
+    set { self[OpenInProviderTitleKey.self] = newValue }
+  }
+
+  /// The SF Symbol name for the Open in Provider command — the owning provider's own icon, the
+  /// same glyph its context-menu item and ``TaskSourceBadge`` show.
+  var openInProviderIcon: String? {
+    get { self[OpenInProviderIconKey.self] }
+    set { self[OpenInProviderIconKey.self] = newValue }
   }
 }
