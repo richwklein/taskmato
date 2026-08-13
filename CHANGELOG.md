@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/richwklein/taskmato/compare/v1.2.0...v1.3.0) (2026-08-13)
+
+
+### Features
+
+* **stats:** snapshot provider label and tint onto focus segments ([#567](https://github.com/richwklein/taskmato/issues/567)) ([cbd6d1a](https://github.com/richwklein/taskmato/commit/cbd6d1abcdacc5d8b02ab07a2338af619112da64))
+* **tasks:** add Open in Provider action to task detail view ([#571](https://github.com/richwklein/taskmato/issues/571)) ([68bb8c5](https://github.com/richwklein/taskmato/commit/68bb8c5a910904df024bedff15cb4c4686239bdd))
+
+
+### Documentation
+
+* document macOS sandbox entitlements ([#565](https://github.com/richwklein/taskmato/issues/565)) ([b750c50](https://github.com/richwklein/taskmato/commit/b750c508f42266768149f1c638651f458fc67db2))
+
 ## [1.2.0](https://github.com/richwklein/taskmato/compare/v1.1.0...v1.2.0) (2026-08-10)
 
 
