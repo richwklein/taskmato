@@ -21,7 +21,7 @@ cd site
 pnpm run build
 ```
 
-Static HTML is written to `site/dist/`. Assets are prefixed with the GitHub Pages base path `/taskmato/`, so paths like `/css/style.css` become `/taskmato/css/style.css` in the final HTML.
+Static HTML is written to `site/dist/`. The site is served from the root of a custom domain, so `astro.config.ts` sets no `base` and asset paths are emitted unprefixed (`/icon.png`, not `/taskmato/icon.png`).
 
 ## Available commands
 
@@ -47,17 +47,33 @@ Or use the Makefile shortcuts from the repo root:
 
 ## GitHub Pages deployment
 
-Deployment automation lives in [#289](https://github.com/richwklein/taskmato/issues/289). Once merged, the CI workflow will build `site/` and deploy `site/dist/` to the `gh-pages` branch, which GitHub Pages serves at `https://richwklein.github.io/taskmato/`.
+The site is published to GitHub Pages by [`.github/workflows/site-deploy.yaml`](../../.github/workflows/site-deploy.yaml) using the artifact-upload flow — there is no `gh-pages` branch. The workflow builds `site/` and uploads `site/dist/` as the Pages artifact.
+
+It runs in two situations:
+
+- **On release** — `code-release.yaml` calls it after a release is published, so the live site always matches a tagged version.
+- **Manually** — `workflow_dispatch` for an out-of-band redeploy, optionally against a specific `ref`.
+
+Merging a change under `site/` does **not** deploy it. A release or a manual dispatch is required.
 
 ## Custom domain
 
-The site currently targets the default GitHub Pages URL with `base: '/taskmato'` in `astro.config.ts`. Moving to a custom domain (`taskmato.com`) requires:
+The site is served at `https://taskmato.com`. The pieces that make that work:
 
-1. A CNAME file in the repository root pointing to `richwklein.github.io`
-2. Updating `astro.config.ts` to use `base: '/'`
-3. DNS configuration via your registrar (e.g., Bluehost)
+| Layer          | Setting                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| Registrar      | Bluehost (also hosts the DNS zone)                                                                   |
+| Apex `A`       | `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`                            |
+| `www` `CNAME`  | `richwklein.github.io`                                                                               |
+| Verification   | `_github-pages-challenge-richwklein` `TXT`, from github.com/settings/pages                             |
+| Repo setting   | Custom domain `taskmato.com` with **Enforce HTTPS** enabled                                          |
+| Astro          | `site: 'https://taskmato.com'`, no `base`                                                            |
 
-This is tracked in [#288](https://github.com/richwklein/taskmato/issues/288) (milestone 1.3.0).
+Because Pages publishes from a workflow rather than a branch, the custom domain lives in the repository's Pages settings; a `CNAME` file in the build artifact is not required.
+
+Domain verification is what stops another GitHub account from claiming `taskmato.com` if it is ever unassigned here — keep the TXT record in place.
+
+GitHub redirects the default `richwklein.github.io/taskmato` URL to the custom domain automatically, so older links keep working.
 
 ## Content & design
 
