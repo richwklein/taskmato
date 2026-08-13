@@ -3,8 +3,7 @@ import { defineConfig } from 'astro/config'
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://richwklein.github.io',
-  base: '/taskmato',
+  site: 'https://taskmato.com',
   output: 'static',
   vite: { plugins: [tailwindcss()] },
 })
