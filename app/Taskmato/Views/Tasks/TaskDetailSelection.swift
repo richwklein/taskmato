@@ -96,6 +96,42 @@ extension TaskDetailView {
     activeDeleteCandidate = task
   }
 
+  /// The provider deep link for the current selection, or `nil` when there is no selection or
+  /// it has nothing to open (Local and ad-hoc tasks).
+  func selectedProviderLink() -> TaskProviderLink? {
+    guard let task = selectedTask() else { return nil }
+    return TaskProviderLink(task: task, registry: registry)
+  }
+
+  /// Opens `task`'s provider deep link, or no-ops when it has none.
+  func openInProvider(_ task: TaskItem) {
+    guard let link = TaskProviderLink(task: task, registry: registry) else { return }
+    openURL(link.url)
+  }
+
+  /// The action that opens the current selection's provider link, or `nil` when there is
+  /// nothing to open. Gates on the resolved link, not merely on a selection, so the command
+  /// stays disabled for Local and ad-hoc tasks rather than offering an action that no-ops.
+  /// Feeds the `\.openInProvider` focused-scene value; split out to a standalone method —
+  /// rather than an inline closure in `TaskDetailView.body` — so the type-checker doesn't have
+  /// to infer through a nested optional-closure expression there.
+  func openInProviderAction() -> (() -> Void)? {
+    guard let link = selectedProviderLink() else { return nil }
+    return { openURL(link.url) }
+  }
+
+  /// Attaches the Open in Provider focused-scene values to `content`. Kept out of `body`'s own
+  /// modifier chain — which already publishes six other focused-scene values — so the Swift
+  /// type-checker isn't asked to solve one over-long chained expression (mirrors why
+  /// ``trackedDetail`` was already split out of `body`).
+  @ViewBuilder
+  func attachOpenInProviderFocusedValues<Content: View>(to content: Content) -> some View {
+    content
+      .focusedSceneValue(\.openInProvider, openInProviderAction())
+      .focusedSceneValue(\.openInProviderTitle, selectedProviderLink()?.title)
+      .focusedSceneValue(\.openInProviderIcon, selectedProviderLink()?.icon)
+  }
+
   /// Whether the current selection can be copied.
   func canCopySelection() -> Bool {
     selectedTask() != nil

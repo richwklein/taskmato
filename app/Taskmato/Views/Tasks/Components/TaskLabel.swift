@@ -85,6 +85,9 @@ enum AppLabels {
     static let copy = AppLabel("Copy", systemImage: "doc.on.doc")
     /// Copies a task to the clipboard, then deletes it from its writable provider.
     static let cut = AppLabel("Cut", systemImage: "scissors")
+    /// Greyed-out File-menu placeholder shown when no resolvable task is selected; every
+    /// enabled instance instead uses ``TaskProviderLink/title`` to name the provider.
+    static let openInProvider = AppLabel("Open in Provider", systemImage: "arrow.up.forward.app")
   }
 
   /// Labels for the focus-duration presets feature (design doc 0009): the Settings editor,

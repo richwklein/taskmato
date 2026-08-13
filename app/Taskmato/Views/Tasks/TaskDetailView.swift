@@ -30,6 +30,10 @@ struct TaskDetailView: View {
   /// Bumped by the sidebar after adding a task, so the detail reloads the affected list.
   var refreshToken: Int = 0
 
+  /// Opens a task's provider deep link, matching what ``TaskSourceBadge`` does via `Link`. Not
+  /// `private`: `TaskDetailSelection.swift`'s `openInProvider(_:)` calls this.
+  @Environment(\.openURL) var openURL
+
   @State private var query: String = ""
   /// Not `private`: `TaskDetailSelection.swift` resolves ``selection`` against this.
   @State var sections: [TaskSection] = []
@@ -100,6 +104,14 @@ struct TaskDetailView: View {
   }
 
   var body: some View {
+    attachOpenInProviderFocusedValues(to: detailWithCommands)
+  }
+
+  /// `trackedDetail` plus sheets, toolbar, and the focused-scene values every command menu
+  /// besides Open in Provider reads. Split out so ``body`` can attach Open in Provider's
+  /// focused-scene values as a separate, smaller expression (see
+  /// ``attachOpenInProviderFocusedValues(to:)``).
+  private var detailWithCommands: some View {
     trackedDetail
       .sheet(isPresented: $isAddingTask) {
         if let provider = writableProvider {
