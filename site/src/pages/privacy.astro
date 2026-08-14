@@ -1,0 +1,96 @@
+---
+import Page from '@layouts/Page.astro'
+import { CONTAINER_PATH, formatDate, POLICY_UPDATED, SUPPORT_EMAIL, withBase } from '@utils/site'
+
+const description =
+  "Taskmato's privacy policy: what the app stores, what it can access, and how it handles your data."
+---
+
+<Page
+  title="Privacy Policy — Taskmato"
+  description={description}
+  heading="Privacy Policy"
+  updated={formatDate(POLICY_UPDATED)}
+>
+  <h2>The short version</h2>
+  <p>
+    Taskmato runs entirely on your Mac. It has no servers, accounts, or analytics. The app does not
+    send your data anywhere, and its sandbox configuration blocks outgoing network connections.
+  </p>
+
+  <h2>What Taskmato stores on your Mac</h2>
+  <p>
+    Taskmato stores your focus sessions, local tasks, app settings, and information about active and
+    recent tasks. If you use the Obsidian provider, it also stores a bookmark to the vault folder
+    you selected. This data stays in the app's sandbox container at <code>{CONTAINER_PATH}</code>.
+  </p>
+
+  <h2>Optional access</h2>
+  <p>
+    Taskmato does not request permissions when it launches. It asks for access only when you enable
+    a feature that needs it. The built-in Local provider does not require additional access.
+  </p>
+  <ul>
+    <li>
+      <strong>Apple Reminders</strong>: When you enable the Reminders provider, Taskmato requests
+      full Reminders access. It can read, create, update, complete, reopen, and delete reminders.
+      Taskmato may store a reminder's identifier and task details when it is active, recent, or
+      linked to a focus session.
+    </li>
+    <li>
+      <strong>Obsidian vault</strong>: When you set up the Obsidian provider, you select a vault
+      folder. Taskmato can read and update Markdown task files in that folder. It stores a
+      security-scoped bookmark so it can open the same folder later.
+    </li>
+    <li>
+      <strong>Notifications</strong>: When you turn on phase-end alerts, Taskmato requests
+      notification permission. It schedules notifications locally through macOS. Taskmato does not
+      use push notifications or send notification content over a network.
+    </li>
+  </ul>
+  <p>
+    You can change Reminders and notification permissions in System Settings. To change the folder
+    Taskmato can access, select a different Obsidian vault.
+  </p>
+
+  <h2>What it does not do</h2>
+  <p>Taskmato does not have any of the following:</p>
+  <ul>
+    <li>Network access, incoming or outgoing</li>
+    <li>Analytics, telemetry, or crash-reporting SDKs</li>
+    <li>Ads</li>
+    <li>Accounts</li>
+    <li>Third-party SDKs of any kind</li>
+    <li>Access to your camera, microphone, contacts, location, Bluetooth, or USB devices</li>
+  </ul>
+  <p>You can inspect the installed app's sandbox entitlements with:</p>
+  <pre><code>codesign -dvvv --entitlements :- /Applications/Taskmato.app</code></pre>
+
+  <h2>Crash reports</h2>
+  <p>
+    If you install Taskmato from the Mac App Store and choose to share analytics with developers,
+    Apple may provide crash and diagnostic information through App Store Connect. Apple controls
+    this sharing through your macOS settings. The Taskmato app does not collect or transmit crash
+    reports itself.
+  </p>
+
+  <h2>Deleting your data</h2>
+  <p>
+    Move Taskmato to the Trash, then delete its container directory at <code>{CONTAINER_PATH}</code>
+    to remove the data Taskmato stored. This does not remove your Reminders or Obsidian content. Changes
+    Taskmato already made there, such as completed reminders or edited task lines, remain.
+  </p>
+
+  <h2>Future changes</h2>
+  <p>
+    A paid Taskmato Pro tier, iCloud sync, and cloud-backed providers may be added in the future.
+    They are not part of the current build. This policy will be updated before a feature changes how
+    Taskmato handles your data.
+  </p>
+
+  <h2>Contact</h2>
+  <p>
+    Questions about this policy? Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. See
+    the <a href={withBase('/support')}>support page</a> for other support options.
+  </p>
+</Page>

@@ -15,4 +15,18 @@ extension Bundle {
       ?? object(forInfoDictionaryKey: "CFBundleName") as? String
       ?? ""
   }
+
+  /// The user-facing version number, read from `CFBundleShortVersionString`.
+  ///
+  /// Falls back to an empty string if the key is missing.
+  var appVersion: String {
+    object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+  }
+
+  /// The build number, read from `CFBundleVersion`.
+  ///
+  /// Falls back to an empty string if the key is missing.
+  var buildNumber: String {
+    object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+  }
 }

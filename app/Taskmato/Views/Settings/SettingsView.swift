@@ -7,8 +7,7 @@ import AppKit
 import SwiftUI
 import UserNotifications
 
-/// The settings view, usable both as a navigation destination inside the popover
-/// and as a standalone window opened via ⌘,.
+/// The settings view, presented as a standalone window opened via ⌘,.
 struct SettingsView: View {
 
   @Bindable var settings: AppSettings
@@ -106,6 +105,14 @@ struct SettingsView: View {
         )
         .font(.caption)
         .foregroundStyle(.secondary)
+      }
+
+      Section("About") {
+        Text("Version \(Bundle.main.appVersion) (\(Bundle.main.buildNumber))")
+          .textSelection(.enabled)
+          .foregroundStyle(.secondary)
+        Link("Privacy Policy", destination: AppLinks.privacyPolicy)
+        Link("Support", destination: AppLinks.support)
       }
     }
     .formStyle(.grouped)

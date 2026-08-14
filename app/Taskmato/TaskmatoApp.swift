@@ -134,6 +134,7 @@ struct TaskmatoCommands: Commands {
   @FocusedValue(\.timerToggleTitle) private var timerToggleTitle
   @FocusedValue(\.timerSkip) private var timerSkip
   @FocusedValue(\.timerStop) private var timerStop
+  @Environment(\.openURL) private var openURL
 
   /// The navigation model used to switch destinations from the View menu.
   var nav: MainNavigation
@@ -302,6 +303,12 @@ struct TaskmatoCommands: Commands {
       Button(AppLabels.Timer.stop.title) { timerStop?() }
         .keyboardShortcut(".", modifiers: .command)
         .disabled(timerStop == nil)
+    }
+    // Help menu — links to the public support and privacy pages (App Store Guideline
+    // 5.1.1(i) requires the privacy policy link both in ASC metadata and in the app).
+    CommandGroup(replacing: .help) {
+      Button(AppLabels.Help.support.title) { openURL(AppLinks.support) }
+      Button(AppLabels.Help.privacyPolicy.title) { openURL(AppLinks.privacyPolicy) }
     }
   }
 }
