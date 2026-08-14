@@ -1,0 +1,36 @@
+---
+import { type IconName, ICONS } from '@utils/icons'
+
+interface Props {
+  name: IconName
+  /** Rendered square size in pixels. */
+  size?: number
+  class?: string
+  /**
+   * Accessible name. Omit for decorative icons that sit beside their own text
+   * label — the default is `aria-hidden`, which is what almost every icon on
+   * this site wants.
+   */
+  label?: string
+}
+
+const { name, size = 24, class: className = '', label } = Astro.props
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.75"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  focusable="false"
+  aria-hidden={label ? undefined : 'true'}
+  role={label ? 'img' : undefined}
+  aria-label={label}
+  class:list={['inline-block shrink-0', className]}
+  set:html={ICONS[name]}
+/>

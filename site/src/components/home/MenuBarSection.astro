@@ -1,0 +1,28 @@
+---
+import Screenshot from '@components/Screenshot.astro'
+---
+
+<section class="mx-auto max-w-5xl px-6 py-16">
+  <div class="grid items-center gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <div class="flex flex-col gap-6">
+      <Screenshot
+        filename="menu-bar-timer.png"
+        alt="Taskmato menu bar timer with pause, skip, and stop controls beside the active task"
+        width={620}
+        height={522}
+      />
+      <div class="flex flex-col gap-3">
+        <h2 class="text-ink text-3xl font-bold">Focus from the menu bar.</h2>
+        <p class="text-ink-muted text-lg">
+          Start, pause, skip, and stop without leaving what you're doing.
+        </p>
+      </div>
+    </div>
+    <Screenshot
+      filename="task-providers.png"
+      alt="Taskmato task view with Local, Apple Reminders, and Obsidian sources"
+      width={1726}
+      height={1392}
+    />
+  </div>
+</section>

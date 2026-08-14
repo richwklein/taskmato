@@ -1,0 +1,20 @@
+---
+import Icon from '@components/Icon.astro'
+import type { IconName } from '@utils/icons'
+
+// An `h2` carrying a leading icon, for use inside the `.prose` reading column
+// on the utility routes. The icon is decorative — the heading text is the
+// accessible name, so screen readers hear the section title unchanged.
+interface Props {
+  icon: IconName
+  /** Icon tint. Brand red by default; the privacy summary uses leaf green. */
+  iconClass?: string
+}
+
+const { icon, iconClass = 'text-brand-ink' } = Astro.props
+---
+
+<h2 class="flex items-center gap-3">
+  <Icon name={icon} size={22} class:list={[iconClass]} />
+  <slot />
+</h2>

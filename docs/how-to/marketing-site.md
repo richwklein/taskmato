@@ -1,6 +1,6 @@
 # Marketing Site
 
-The Taskmato marketing site is an Astro 6 static site hosted on GitHub Pages. It lives in the `site/` directory at the repo root.
+The Taskmato marketing site is an Astro 7 static site hosted on GitHub Pages. It lives in the `site/` directory at the repo root.
 
 ## Local development
 
@@ -44,6 +44,7 @@ Or use the Makefile shortcuts from the repo root:
 - `make site-dev` — Alias for `cd site && pnpm install && pnpm run dev`
 - `make site-build` — Alias for `cd site && pnpm install && pnpm run build`
 - `make site-install` — Just install dependencies
+- `make site-verify` — Alias for `cd site && pnpm install && pnpm run verify` (lint → format → test → build; the CI check)
 
 ## Tests
 
@@ -74,8 +75,11 @@ The site is served at `https://taskmato.com`. The pieces that make that work:
 | Verification   | `_github-pages-challenge-richwklein` `TXT`, from github.com/settings/pages                             |
 | Repo setting   | Custom domain `taskmato.com` with **Enforce HTTPS** enabled                                          |
 | Astro          | `site: 'https://taskmato.com'`, no `base`                                                            |
+| Artifact       | [`site/public/CNAME`](../../site/public/CNAME) — copied verbatim to `dist/` and shipped in the Pages artifact |
 
-Because Pages publishes from a workflow rather than a branch, the custom domain lives in the repository's Pages settings; a `CNAME` file in the build artifact is not required.
+Because Pages publishes from a workflow rather than a branch, the custom domain is stored in the repository's Pages settings and a `CNAME` file is not strictly required. One is committed anyway so the domain is versioned with the site and reasserted on every deploy — if the Pages setting is ever cleared (disabling and re-enabling Pages will do it), the next deploy restores the domain instead of silently serving from `richwklein.github.io`.
+
+The tradeoff is two sources of truth. **To change the domain, update `site/public/CNAME` and the repository Pages setting together** — a stale file will overwrite the setting on the next deploy. Keep it in sync with `site: 'https://taskmato.com'` in `astro.config.ts` and `SITE_URL` in `src/utils/site.ts`, which feed canonical and Open Graph URLs.
 
 Domain verification is what stops another GitHub account from claiming `taskmato.com` if it is ever unassigned here — keep the TXT record in place.
 
@@ -94,4 +98,48 @@ Merging a change to any of these does **not** publish it — see [GitHub Pages d
 
 ## Content & design
 
-Landing page content is tracked in [#365](https://github.com/richwklein/taskmato/issues/365). The page layout uses Tailwind CSS 4 for styling.
+Landing page content is tracked in [#365](https://github.com/richwklein/taskmato/issues/365) and the launch redesign in [#287](https://github.com/richwklein/taskmato/issues/287). The page layout uses Tailwind CSS 4 for styling.
+
+### Design tokens
+
+Every color, radius, and font used on the site is a Tailwind `@theme` custom property defined in [`site/src/styles/global.css`](../../site/src/styles/global.css) — nothing hardcodes a stock Tailwind gray or red. Reach for the token utility (`bg-canvas`, `text-ink`, `text-ink-muted`, `border-line`, `rounded-card`, `rounded-shell`, `font-sans`, `bg-provider-local`, `bg-provider-reminders`, `bg-provider-obsidian`) instead of a raw Tailwind color when styling new markup. The provider accent tokens intentionally mirror the app's `ProviderTint` values (`LocalProvider` = green, `RemindersProvider` = orange, `ObsidianProvider` = purple).
+
+The brand red and leaf green each ship in two variants, and picking the wrong one silently fails WCAG AA:
+
+| Token | Contrast on canvas | Use for |
+| --- | --- | --- |
+| `brand` (`#E9342B`) | 3.9:1 — **fails AA for text** | focus ring, underline decoration, tints |
+| `brand-ink` (`#CE2E25`) | 4.9:1 (5.2:1 against white) | link text, filled CTA backgrounds |
+| `leaf` (`#2F8F46`) | 3.8:1 — **fails AA for text** | privacy band tints and borders |
+| `leaf-ink` (`#26773C`) | 5.2:1 | privacy headings and callout text |
+
+Anything a visitor reads uses the `-ink` variant. The design plan specifies the brand values as approximate, so these darkened pairs stay inside its direction while meeting the accessibility bar it also requires.
+
+The site is light-only by design — the dark app screenshots are the intended contrast event — so there is no dark-mode variant to maintain.
+
+### Screenshots
+
+`Screenshot.astro` looks up each capture by filename via `import.meta.glob('../assets/screenshots/*.png', { eager: true })`. Dropping a correctly named PNG into `site/src/assets/screenshots/` is the entire integration — no code change, no import to add. Until a file lands, the component renders a labeled placeholder so the build stays green.
+
+The lookup is by exact filename, so these cannot be renamed without editing the section component that requests them:
+
+| File | Capture |
+| --- | --- |
+| `hero-timer.png` | Timer screen, running session, sidebar visible |
+| `menu-bar-timer.png` | Popover open, selected task, active controls |
+| `task-providers.png` | Task view with all three sources in the sidebar |
+| `task-editing.png` | Edit sheet over the main window, seeded task |
+| `stats-today.png` | Today view, summary cards, task breakdown donut |
+
+Capture in dark mode at one display scale, from a seeded workspace only — never real task data. Stats is captured on **Today** and no other scope: the session store holds every session ever recorded, so 7 Days, This Month, and All Time would publish real task titles.
+
+Astro emits an optimized WebP derivative for each at build time, which is what visitors download; the committed PNG masters affect repository size only.
+
+### App Store flip
+
+`site/src/utils/site.ts` holds two intentionally `null` switches:
+
+- `APP_STORE_URL` — once the Mac App Store listing resolves publicly, set this to the listing URL. `DownloadActions.astro` then promotes the App Store badge to primary and demotes the direct DMG download to secondary automatically.
+- `SOCIAL_IMAGE` — once `site/public/og.png` (1200×630) is composed from the sanitized screenshot set, set this to `/og.png`. `Base.astro` then starts rendering `og:image`/`twitter:image` tags.
+
+Both are single-line changes; no other file needs editing.

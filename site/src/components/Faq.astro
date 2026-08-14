@@ -1,0 +1,29 @@
+---
+import Icon from '@components/Icon.astro'
+
+// A native `<details>` disclosure with the concept's plus marker, which
+// rotates into an x when the row opens. No JavaScript — the `open` attribute
+// drives the rotation through Tailwind's `group-open` variant, so it still
+// works with scripting disabled.
+interface Props {
+  question: string
+  /** Drops the bottom rule so the last row sits flush inside its container. */
+  last?: boolean
+}
+
+const { question, last = false } = Astro.props
+---
+
+<details class:list={['group', !last && 'border-line border-b']}>
+  <summary
+    class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-semibold [&::-webkit-details-marker]:hidden"
+  >
+    {question}
+    <Icon
+      name="plus"
+      size={18}
+      class="text-ink-muted transition-transform duration-150 group-open:rotate-45"
+    />
+  </summary>
+  <slot />
+</details>

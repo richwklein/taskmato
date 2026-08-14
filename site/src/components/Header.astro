@@ -1,0 +1,46 @@
+---
+import { withBase } from '@utils/site'
+
+interface Props {
+  /** The route this page renders, used to mark the active nav link. */
+  current?: 'home' | 'privacy' | 'support' | null
+}
+
+const { current = null } = Astro.props
+
+const iconHref = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.png`
+
+const navItems: Array<{ key: 'home' | 'privacy' | 'support'; label: string; href: string }> = [
+  { key: 'home', label: 'Home', href: withBase('/') },
+  { key: 'privacy', label: 'Privacy', href: withBase('/privacy') },
+  { key: 'support', label: 'Support', href: withBase('/support') },
+]
+---
+
+<header class="border-line border-b">
+  <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+    <a href={withBase('/')} class="text-ink flex items-center gap-2 text-lg font-semibold">
+      <img src={iconHref} alt="" width="36" height="36" />
+      <span>Taskmato</span>
+    </a>
+    <nav aria-label="Primary" class="flex flex-wrap gap-6 text-sm font-medium">
+      {
+        navItems.map((item) => {
+          const isActive = item.key === current
+          return (
+            <a
+              href={item.href}
+              aria-current={isActive ? 'page' : undefined}
+              class:list={[
+                'decoration-brand underline-offset-4',
+                isActive ? 'text-ink underline' : 'text-ink-muted hover:text-ink no-underline',
+              ]}
+            >
+              {item.label}
+            </a>
+          )
+        })
+      }
+    </nav>
+  </div>
+</header>

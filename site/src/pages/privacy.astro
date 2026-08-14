@@ -1,96 +1,126 @@
 ---
+import Icon from '@components/Icon.astro'
+import PolicySection from '@components/PolicySection.astro'
 import Page from '@layouts/Page.astro'
-import { CONTAINER_PATH, formatDate, POLICY_UPDATED, SUPPORT_EMAIL, withBase } from '@utils/site'
-
-const description =
-  "Taskmato's privacy policy: what the app stores, what it can access, and how it handles your data."
+import {
+  CONTAINER_PATH,
+  formatDate,
+  POLICY_UPDATED,
+  PRIVACY_DESCRIPTION,
+  PRIVACY_TITLE,
+  SUPPORT_EMAIL,
+  withBase,
+} from '@utils/site'
 ---
 
 <Page
-  title="Privacy Policy — Taskmato"
-  description={description}
+  title={PRIVACY_TITLE}
+  description={PRIVACY_DESCRIPTION}
   heading="Privacy Policy"
   updated={formatDate(POLICY_UPDATED)}
+  current="privacy"
 >
-  <h2>The short version</h2>
-  <p>
-    Taskmato runs entirely on your Mac. It has no servers, accounts, or analytics. The app does not
-    send your data anywhere, and its sandbox configuration blocks outgoing network connections.
-  </p>
+  <div class="border-line bg-surface rounded-card border p-6">
+    <div class="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-x-3">
+      <Icon name="shield-check" size={36} class="text-leaf-ink" />
+      <div>
+        <h2 class="mt-0 mb-2 text-xl font-semibold">The short version</h2>
+        <p class="mb-0">
+          Taskmato runs entirely on your Mac. It has no servers, accounts, or analytics. The app
+          does not send your data anywhere, and its sandbox configuration blocks outgoing network
+          connections.
+        </p>
+      </div>
+    </div>
+  </div>
 
-  <h2>What Taskmato stores on your Mac</h2>
-  <p>
-    Taskmato stores your focus sessions, local tasks, app settings, and information about active and
-    recent tasks. If you use the Obsidian provider, it also stores a bookmark to the vault folder
-    you selected. This data stays in the app's sandbox container at <code>{CONTAINER_PATH}</code>.
-  </p>
+  <PolicySection number={1} icon="folder" title="What Taskmato stores on your Mac">
+    <p>
+      Taskmato stores your focus sessions, local tasks, app settings, and information about active
+      and recent tasks. If you use the Obsidian provider, it also stores a bookmark to the vault
+      folder you selected. This data stays in the app's sandbox container at
+      <code class="inline-block max-w-full overflow-x-auto align-bottom whitespace-nowrap"
+        >{CONTAINER_PATH}</code
+      >.
+    </p>
+  </PolicySection>
 
-  <h2>Optional access</h2>
-  <p>
-    Taskmato does not request permissions when it launches. It asks for access only when you enable
-    a feature that needs it. The built-in Local provider does not require additional access.
-  </p>
-  <ul>
-    <li>
-      <strong>Apple Reminders</strong>: When you enable the Reminders provider, Taskmato requests
-      full Reminders access. It can read, create, update, complete, reopen, and delete reminders.
-      Taskmato may store a reminder's identifier and task details when it is active, recent, or
-      linked to a focus session.
-    </li>
-    <li>
-      <strong>Obsidian vault</strong>: When you set up the Obsidian provider, you select a vault
-      folder. Taskmato can read and update Markdown task files in that folder. It stores a
-      security-scoped bookmark so it can open the same folder later.
-    </li>
-    <li>
-      <strong>Notifications</strong>: When you turn on phase-end alerts, Taskmato requests
-      notification permission. It schedules notifications locally through macOS. Taskmato does not
-      use push notifications or send notification content over a network.
-    </li>
-  </ul>
-  <p>
-    You can change Reminders and notification permissions in System Settings. To change the folder
-    Taskmato can access, select a different Obsidian vault.
-  </p>
+  <PolicySection number={2} icon="key" title="Optional access">
+    <p>
+      Taskmato does not request permissions when it launches. It asks for access only when you
+      enable a feature that needs it. The built-in Local provider does not require additional
+      access.
+    </p>
+    <ul>
+      <li>
+        <strong>Apple Reminders</strong>: When you enable the Reminders provider, Taskmato requests
+        full Reminders access. It can read, create, update, complete, reopen, and delete reminders.
+        Taskmato may store a reminder's identifier and task details when it is active, recent, or
+        linked to a focus session.
+      </li>
+      <li>
+        <strong>Obsidian vault</strong>: When you set up the Obsidian provider, you select a vault
+        folder. Taskmato can read and update Markdown task files in that folder. It stores a
+        security-scoped bookmark so it can open the same folder later.
+      </li>
+      <li>
+        <strong>Notifications</strong>: When you turn on phase-end alerts, Taskmato requests
+        notification permission. It schedules notifications locally through macOS. Taskmato does not
+        use push notifications or send notification content over a network.
+      </li>
+    </ul>
+    <p>
+      You can change Reminders and notification permissions in System Settings. To change the folder
+      Taskmato can access, select a different Obsidian vault.
+    </p>
+  </PolicySection>
 
-  <h2>What it does not do</h2>
-  <p>Taskmato does not have any of the following:</p>
-  <ul>
-    <li>Network access, incoming or outgoing</li>
-    <li>Analytics, telemetry, or crash-reporting SDKs</li>
-    <li>Ads</li>
-    <li>Accounts</li>
-    <li>Third-party SDKs of any kind</li>
-    <li>Access to your camera, microphone, contacts, location, Bluetooth, or USB devices</li>
-  </ul>
-  <p>You can inspect the installed app's sandbox entitlements with:</p>
-  <pre><code>codesign -dvvv --entitlements :- /Applications/Taskmato.app</code></pre>
+  <PolicySection number={3} icon="eye-off" title="What it does not do">
+    <p>Taskmato does not have any of the following:</p>
+    <ul>
+      <li>Network access, incoming or outgoing</li>
+      <li>Analytics, telemetry, or crash-reporting SDKs</li>
+      <li>Ads</li>
+      <li>Accounts</li>
+      <li>Third-party SDKs of any kind</li>
+      <li>Access to your camera, microphone, contacts, location, Bluetooth, or USB devices</li>
+    </ul>
+    <p>You can inspect the installed app's sandbox entitlements with:</p>
+    <pre
+      class="bg-ink text-canvas rounded-card overflow-x-auto px-4 py-3"><code>codesign -dvvv --entitlements :- /Applications/Taskmato.app</code></pre>
+  </PolicySection>
 
-  <h2>Crash reports</h2>
-  <p>
-    If you install Taskmato from the Mac App Store and choose to share analytics with developers,
-    Apple may provide crash and diagnostic information through App Store Connect. Apple controls
-    this sharing through your macOS settings. The Taskmato app does not collect or transmit crash
-    reports itself.
-  </p>
+  <PolicySection number={4} icon="alert-triangle" title="Crash reports">
+    <p>
+      If you install Taskmato from the Mac App Store and choose to share analytics with developers,
+      Apple may provide crash and diagnostic information through App Store Connect. Apple controls
+      this sharing through your macOS settings. The Taskmato app does not collect or transmit crash
+      reports itself.
+    </p>
+  </PolicySection>
 
-  <h2>Deleting your data</h2>
-  <p>
-    Move Taskmato to the Trash, then delete its container directory at <code>{CONTAINER_PATH}</code>
-    to remove the data Taskmato stored. This does not remove your Reminders or Obsidian content. Changes
-    Taskmato already made there, such as completed reminders or edited task lines, remain.
-  </p>
+  <PolicySection number={5} icon="trash" title="Deleting your data">
+    <p>
+      Move Taskmato to the Trash, then delete its container directory at
+      <code class="inline-block max-w-full overflow-x-auto align-bottom whitespace-nowrap"
+        >{CONTAINER_PATH}</code
+      > to remove the data Taskmato stored. This does not remove your Reminders or Obsidian content. Changes
+      Taskmato already made there, such as completed reminders or edited task lines, remain.
+    </p>
+  </PolicySection>
 
-  <h2>Future changes</h2>
-  <p>
-    A paid Taskmato Pro tier, iCloud sync, and cloud-backed providers may be added in the future.
-    They are not part of the current build. This policy will be updated before a feature changes how
-    Taskmato handles your data.
-  </p>
+  <PolicySection number={6} icon="doc-text" title="Future changes">
+    <p>
+      A paid Taskmato Pro tier, iCloud sync, and cloud-backed providers may be added in the future.
+      They are not part of the current build. This policy will be updated before a feature changes
+      how Taskmato handles your data.
+    </p>
+  </PolicySection>
 
-  <h2>Contact</h2>
-  <p>
-    Questions about this policy? Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. See
-    the <a href={withBase('/support')}>support page</a> for other support options.
-  </p>
+  <PolicySection number={7} icon="question-circle" title="Contact">
+    <p>
+      Questions about this policy? Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+      See the <a href={withBase('/support')}>support page</a> for other support options.
+    </p>
+  </PolicySection>
 </Page>

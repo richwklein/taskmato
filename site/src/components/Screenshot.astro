@@ -1,0 +1,48 @@
+---
+import type { ImageMetadata } from 'astro'
+import { Image } from 'astro:assets'
+
+interface Props {
+  /** Exact filename under `src/assets/screenshots/`, e.g. `hero-timer.png`. */
+  filename: string
+  /** Accessible description; used as `alt` on the image and as the label on the placeholder. */
+  alt: string
+  width: number
+  height: number
+  class?: string
+}
+
+const { filename, alt, width, height, class: className = '' } = Astro.props
+
+// Keyed by filename so landing a capture is a pure file drop — no code
+// change. Resolves to `{}` today; the directory holds only a tracked README.
+const screenshots = import.meta.glob<{ default: ImageMetadata }>('../assets/screenshots/*.png', {
+  eager: true,
+})
+const entry = Object.entries(screenshots).find(([path]) => path.endsWith(`/${filename}`))
+const image = entry?.[1]?.default
+---
+
+{
+  image ? (
+    <Image
+      src={image}
+      alt={alt}
+      width={width}
+      height={height}
+      class:list={['rounded-shell border-line h-auto w-full border', className]}
+    />
+  ) : (
+    <div
+      class:list={[
+        'rounded-shell border-line bg-surface text-ink-muted flex items-center justify-center border text-sm',
+        className,
+      ]}
+      style={`aspect-ratio: ${width} / ${height};`}
+      role="img"
+      aria-label={alt}
+    >
+      Screenshot pending
+    </div>
+  )
+}

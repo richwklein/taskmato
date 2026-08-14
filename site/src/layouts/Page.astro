@@ -7,16 +7,18 @@ interface Props {
   description?: string
   heading: string
   updated?: string
+  /** The route this page renders, used to mark the active header nav link. */
+  current?: 'home' | 'privacy' | 'support' | null
 }
 
-const { title, description, heading, updated } = Astro.props
+const { title, description, heading, updated, current = null } = Astro.props
 ---
 
-<Base title={title} description={description}>
-  <main class="mx-auto max-w-3xl px-6 py-16">
-    <h1 class="text-3xl font-bold">{heading}</h1>
-    {updated && <p class="mt-2 text-sm text-gray-500">Last updated: {updated}</p>}
-    <div class="prose prose-gray mt-8 max-w-none">
+<Base title={title} description={description} current={current}>
+  <main class="mx-auto max-w-[740px] px-6 py-16">
+    <h1 class="text-ink text-3xl font-bold">{heading}</h1>
+    {updated && <p class="text-ink-muted mt-2 text-sm">Last updated: {updated}</p>}
+    <div class="prose mt-8 max-w-none">
       <slot />
     </div>
   </main>

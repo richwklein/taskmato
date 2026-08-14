@@ -1,25 +1,27 @@
 ---
 import Footer from '@components/Footer.astro'
+import FinalCta from '@components/home/FinalCta.astro'
+import Hero from '@components/home/Hero.astro'
+import MenuBarSection from '@components/home/MenuBarSection.astro'
+import PrivacyBand from '@components/home/PrivacyBand.astro'
+import ProviderStrip from '@components/home/ProviderStrip.astro'
+import StatsSection from '@components/home/StatsSection.astro'
+import TaskWorkflowSection from '@components/home/TaskWorkflowSection.astro'
+import UrlAutomationSection from '@components/home/UrlAutomationSection.astro'
 import Base from '@layouts/Base.astro'
-import { DOWNLOAD_URL, REPO_URL, TAGLINE } from '@utils/site'
-
-const iconSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.png`
+import { HOME_DESCRIPTION, HOME_TITLE } from '@utils/site'
 ---
 
-<Base title="Taskmato" description={TAGLINE}>
-  <main class="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
-    <img src={iconSrc} alt="Taskmato icon" width="128" height="128" />
-    <h1 class="text-4xl font-bold">Taskmato</h1>
-    <p class="max-w-md text-lg text-gray-600">{TAGLINE}</p>
-    <a
-      href={DOWNLOAD_URL}
-      download
-      class="rounded-full bg-red-600 px-6 py-3 font-semibold text-white transition hover:bg-red-700"
-    >
-      Download for macOS
-    </a>
-    <a href={REPO_URL} class="text-sm text-gray-500 underline hover:text-gray-700">View on GitHub</a
-    >
+<Base title={HOME_TITLE} description={HOME_DESCRIPTION} current="home">
+  <main>
+    <Hero />
+    <ProviderStrip />
+    <MenuBarSection />
+    <TaskWorkflowSection />
+    <UrlAutomationSection />
+    <StatsSection />
+    <PrivacyBand />
+    <FinalCta />
   </main>
   <Footer />
 </Base>

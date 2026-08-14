@@ -1,0 +1,48 @@
+---
+import Icon from '@components/Icon.astro'
+
+// One quiet horizontal band, not three oversized cards. No third-party logos —
+// each icon echoes the SF Symbol the app itself uses in the provider sidebar
+// (`tray` and `checklist`; see LocalProvider.swift and RemindersProvider.swift),
+// so the site and the product read as one thing. Color comes from the
+// provider-accent tokens, which mirror the app's ProviderTint values, but the
+// text label always carries the identity so nothing depends on color alone.
+const providers = [
+  {
+    name: 'Local',
+    description: 'Create and manage tasks on your Mac.',
+    icon: 'tray',
+    iconClass: 'text-provider-local',
+  },
+  {
+    name: 'Apple Reminders',
+    description: 'Work with the lists you already use.',
+    icon: 'checklist',
+    iconClass: 'text-provider-reminders',
+  },
+  {
+    name: 'Obsidian',
+    description: 'Focus from the Markdown tasks in your vault.',
+    icon: 'doc-text',
+    iconClass: 'text-provider-obsidian',
+  },
+] as const
+---
+
+<section class="mx-auto max-w-5xl px-6 py-12" aria-label="Supported task providers">
+  <div
+    class="border-line bg-surface rounded-card divide-line grid divide-y overflow-hidden border min-[700px]:grid-cols-3 min-[700px]:divide-x min-[700px]:divide-y-0"
+  >
+    {
+      providers.map((provider) => (
+        <div class="flex items-start gap-4 p-6">
+          <Icon name={provider.icon} size={34} class:list={[provider.iconClass]} />
+          <div>
+            <p class="text-ink font-semibold">{provider.name}</p>
+            <p class="text-ink-muted mt-1 text-sm">{provider.description}</p>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</section>

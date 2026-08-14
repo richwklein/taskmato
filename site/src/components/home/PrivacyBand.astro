@@ -1,0 +1,43 @@
+---
+import Icon from '@components/Icon.astro'
+import { DOWNLOAD_URL, RELEASES_URL } from '@utils/site'
+
+const assurances = [
+  { icon: 'lock', text: 'No account.' },
+  { icon: 'eye-off', text: 'No analytics SDKs.' },
+  { icon: 'shield-check', text: 'Your app data stays on your Mac.' },
+] as const
+---
+
+<section class="bg-leaf/10 border-leaf/20 border-y">
+  <div class="mx-auto max-w-4xl px-6 py-16 text-center">
+    <ul
+      class="text-leaf-ink flex flex-col items-center gap-4 text-lg font-semibold md:flex-row md:justify-center md:gap-10"
+    >
+      {
+        assurances.map((assurance) => (
+          <li class="flex items-center gap-2.5">
+            <Icon name={assurance.icon} size={22} />
+            {assurance.text}
+          </li>
+        ))
+      }
+    </ul>
+    <p class="text-ink-muted mx-auto mt-8 max-w-2xl text-base">
+      Taskmato ships as a signed and notarized <a
+        href={DOWNLOAD_URL}
+        download
+        class="text-brand-ink underline"
+      >
+        direct download
+      </a> from <a
+        href={RELEASES_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-brand-ink underline"
+        >GitHub Releases<span class="sr-only"> (opens in a new tab)</span></a
+      >. Every published build is listed there, so you can install or roll back any version
+      yourself.
+    </p>
+  </div>
+</section>

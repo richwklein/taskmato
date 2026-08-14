@@ -22,7 +22,7 @@ RELEASE_SIGN_FLAGS = CODE_SIGN_IDENTITY="Developer ID Application" \
                      CODE_SIGNING_ALLOWED=YES \
                      DEVELOPMENT_TEAM=43757RE978
 
-.PHONY: help sync-version build run open test test-failures lint format format-check clean archive notarize release site-install site-dev site-build
+.PHONY: help sync-version build run open test test-failures lint format format-check clean archive notarize release site-install site-dev site-build site-verify
 
 help: ## List the available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -117,3 +117,6 @@ site-dev: site-install ## Run the Astro dev server for the marketing site
 
 site-build: site-install ## Build the marketing site for production (site/dist)
 	cd site && pnpm run build
+
+site-verify: site-install ## Lint, format-check, test, and build the marketing site (the CI check)
+	cd site && pnpm run verify

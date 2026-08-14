@@ -1,0 +1,24 @@
+---
+import DownloadActions from '@components/DownloadActions.astro'
+import Screenshot from '@components/Screenshot.astro'
+---
+
+<section class="mx-auto max-w-5xl px-6 py-16 md:py-24">
+  <div class="grid items-center gap-12 md:grid-cols-2 lg:grid-cols-[minmax(0,5fr)_minmax(0,9fr)]">
+    <div class="flex flex-col items-center gap-6 text-center md:items-start md:text-left">
+      <h1 class="text-ink text-4xl font-bold text-balance md:text-5xl">
+        Focus where your tasks already live.
+      </h1>
+      <p class="text-ink-muted max-w-md text-lg">
+        A native Mac focus timer for Local, Apple Reminders, and Obsidian.
+      </p>
+      <DownloadActions />
+    </div>
+    <Screenshot
+      filename="hero-timer.png"
+      alt="Taskmato timer running beside Local, Reminders, Obsidian, and Stats navigation"
+      width={1440}
+      height={1158}
+    />
+  </div>
+</section>

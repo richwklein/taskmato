@@ -1,17 +1,21 @@
 ---
 import '@styles/global.css'
 
+import Header from '@components/Header.astro'
+import { HOME_DESCRIPTION, SITE_URL, SOCIAL_IMAGE } from '@utils/site'
+
 interface Props {
   title: string
   description?: string
+  /** The route this page renders, used to mark the active header nav link. */
+  current?: 'home' | 'privacy' | 'support' | null
 }
 
-const {
-  title,
-  description = 'A native macOS menu bar Pomodoro timer that meets you wherever your tasks already live.',
-} = Astro.props
+const { title, description = HOME_DESCRIPTION, current = null } = Astro.props
 
 const iconHref = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.png`
+const canonicalURL = new URL(Astro.url.pathname, SITE_URL).toString()
+const socialImageURL = SOCIAL_IMAGE ? new URL(SOCIAL_IMAGE, SITE_URL).toString() : null
 ---
 
 <!doctype html>
@@ -21,10 +25,26 @@ const iconHref = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.png`
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
+    <meta name="theme-color" content="#FBF7F0" />
+    <meta name="color-scheme" content="light" />
+    <link rel="canonical" href={canonicalURL} />
     <link rel="icon" type="image/png" href={iconHref} />
     <title>{title}</title>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Taskmato" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    {socialImageURL && <meta property="og:image" content={socialImageURL} />}
+
+    <meta name="twitter:card" content={socialImageURL ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {socialImageURL && <meta name="twitter:image" content={socialImageURL} />}
   </head>
   <body>
+    <Header current={current} />
     <slot />
   </body>
 </html>
