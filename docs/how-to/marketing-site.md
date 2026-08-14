@@ -45,6 +45,12 @@ Or use the Makefile shortcuts from the repo root:
 - `make site-build` — Alias for `cd site && pnpm install && pnpm run build`
 - `make site-install` — Just install dependencies
 
+## Tests
+
+Tests live in `site/test/`, mirroring the `src/` tree (`test/pages/`, `test/utils/`). This matches the sibling Astro projects and keeps test files out of `src/pages/`, where Astro would otherwise treat every `.ts` file as a route and try to build it as a page.
+
+Page tests render components through Astro's Container API and import the page under test by relative path (`../../src/pages/privacy.astro`); shared helpers use the `@utils/*` alias. Coverage is scoped to `src/**`, so the test tree is excluded automatically and no Vitest configuration is needed to pick it up.
+
 ## GitHub Pages deployment
 
 The site is published to GitHub Pages by [`.github/workflows/site-deploy.yaml`](../../.github/workflows/site-deploy.yaml) using the artifact-upload flow — there is no `gh-pages` branch. The workflow builds `site/` and uploads `site/dist/` as the Pages artifact.
@@ -74,6 +80,17 @@ Because Pages publishes from a workflow rather than a branch, the custom domain 
 Domain verification is what stops another GitHub account from claiming `taskmato.com` if it is ever unassigned here — keep the TXT record in place.
 
 GitHub redirects the default `richwklein.github.io/taskmato` URL to the custom domain automatically, so older links keep working.
+
+## Pages
+
+| Route       | Purpose                                                                 |
+| ----------- | ------------------------------------------------------------------------ |
+| `/`         | Landing page                                                             |
+| `/privacy`  | Privacy policy — the URL App Store Connect points at                    |
+| `/support`  | Support contact, common questions, downloads                             |
+| `/404`      | Not-found page; Astro emits `dist/404.html`, which GitHub Pages serves automatically for unknown paths on a custom domain — no extra config needed |
+
+Merging a change to any of these does **not** publish it — see [GitHub Pages deployment](#github-pages-deployment) above; a release or manual dispatch is required.
 
 ## Content & design
 
