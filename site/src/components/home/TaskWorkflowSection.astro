@@ -1,0 +1,30 @@
+---
+import Screenshot from '@components/Screenshot.astro'
+
+const bullets = [
+  'Create and organize tasks in Local.',
+  'Create, update, complete, reopen, and delete Apple Reminders.',
+  'Read and update supported Markdown tasks in Obsidian.',
+  // Not "attach a URL": `sourceURL` is a provider-generated deep link back to
+  // Reminders or Obsidian, and no create/edit field exists for it. See
+  // TaskItem.swift and TaskProviderLink.swift.
+  'Jump back to any Reminders or Obsidian task in its source app.',
+]
+---
+
+<section class="mx-auto max-w-5xl px-6 py-16">
+  <div class="grid items-center gap-12 md:grid-cols-2">
+    <Screenshot
+      filename="task-editing.png"
+      alt="Editing a task in Taskmato, over its list and provider sidebar"
+      width={1722}
+      height={1396}
+    />
+    <div class="flex flex-col gap-4 text-center md:text-left">
+      <h2 class="text-ink text-3xl font-bold">Edit tasks in place.</h2>
+      <ul class="text-ink-muted flex flex-col gap-2 text-lg">
+        {bullets.map((bullet) => <li>{bullet}</li>)}
+      </ul>
+    </div>
+  </div>
+</section>

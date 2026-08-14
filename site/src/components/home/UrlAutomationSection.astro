@@ -1,0 +1,23 @@
+---
+// Deliberately small — a single sanitized code sample, no screenshot. Any
+// visible web URL is the placeholder https://example.com/launch-notes.
+import Icon from '@components/Icon.astro'
+---
+
+<section class="mx-auto max-w-5xl px-6 py-12">
+  <div class="border-line bg-surface rounded-card flex flex-col gap-5 border p-8 sm:flex-row">
+    <span
+      class="bg-leaf/10 text-leaf-ink flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
+    >
+      <Icon name="link" size={26} />
+    </span>
+    <div class="min-w-0 flex-1">
+      <h2 class="text-ink text-xl font-bold">Automate with URLs.</h2>
+      <p class="text-ink-muted mt-2 text-base">
+        Launch a focus session from a script, shortcut, or link.
+      </p>
+      <pre
+        class="bg-ink text-canvas rounded-card mt-4 overflow-x-auto px-4 py-3 text-sm"><code>taskmato://start?title=Review%20product%20copy&amp;list=Product&amp;priority=high</code></pre>
+    </div>
+  </div>
+</section>

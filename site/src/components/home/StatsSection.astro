@@ -1,0 +1,22 @@
+---
+import Screenshot from '@components/Screenshot.astro'
+---
+
+<section class="mx-auto max-w-5xl px-6 py-16">
+  <div class="grid items-center gap-12 md:grid-cols-2">
+    <div class="flex flex-col gap-4 text-center md:order-2 md:text-left">
+      <h2 class="text-ink text-3xl font-bold">See where your focus goes.</h2>
+      <p class="text-ink-muted text-lg">
+        Sessions, focus time, breaks, and cycles—by day, week, month, or all time, stored locally on
+        your Mac.
+      </p>
+    </div>
+    <Screenshot
+      filename="stats-today.png"
+      alt="Taskmato Today statistics: sessions, focus time, breaks, cycles, and a task breakdown"
+      width={1720}
+      height={1392}
+      class="md:order-1"
+    />
+  </div>
+</section>
