@@ -20,9 +20,10 @@ describe('not found page', () => {
     expect(rendered).toContain('/support')
   })
 
-  it('renders the shared footer', async () => {
+  it('renders the shared header and footer', async () => {
     const rendered = await getHtml()
 
+    expect(rendered).toContain('<header')
     expect(rendered).toContain('<footer')
     expect(rendered).toContain('Richard Klein')
   })

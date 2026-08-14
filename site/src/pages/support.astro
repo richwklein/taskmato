@@ -1,94 +1,139 @@
 ---
+import Faq from '@components/Faq.astro'
+import Icon from '@components/Icon.astro'
+import SectionHeading from '@components/SectionHeading.astro'
+import SupportRow from '@components/SupportRow.astro'
 import Page from '@layouts/Page.astro'
 import {
   DOWNLOAD_URL,
   ISSUES_URL,
   MINIMUM_MACOS,
   RELEASES_URL,
+  SUPPORT_DESCRIPTION,
   SUPPORT_EMAIL,
+  SUPPORT_TITLE,
   withBase,
 } from '@utils/site'
 
-const description = 'Get help with Taskmato: contact support, report bugs, and find answers.'
+const requirements = [
+  MINIMUM_MACOS,
+  'Apple Reminders access — only if you enable that provider',
+  'An Obsidian vault — only if you enable that provider',
+]
+
+// The concept's third row is "Get help — browse guides and troubleshooting
+// articles". There is no knowledge base, and the design plan forbids promising
+// one, so Downloads takes that slot instead — it points at something real.
+const rows = [
+  {
+    icon: 'envelope',
+    title: 'Contact us',
+    description: 'Please allow a few days for a reply.',
+    href: `mailto:${SUPPORT_EMAIL}`,
+  },
+  {
+    icon: 'lightbulb',
+    title: 'Report an issue',
+    description: "Let us know what's not working as expected.",
+    href: ISSUES_URL,
+    external: true,
+  },
+  {
+    icon: 'download',
+    title: 'Downloads',
+    description: 'Get the latest build or browse every release.',
+    href: RELEASES_URL,
+    external: true,
+  },
+] as const
 ---
 
-<Page title="Support — Taskmato" description={description} heading="Support">
-  <h2>Contact</h2>
-  <p>
-    The fastest way to reach me is by email: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a
-    >. Taskmato is a one-person project, so please allow a few days for a reply.
-  </p>
-  <p>
-    You can also report bugs and request features on the <a href={ISSUES_URL}
-      >public GitHub issue tracker</a
-    >, where you can follow their progress.
-  </p>
+<Page title={SUPPORT_TITLE} description={SUPPORT_DESCRIPTION} heading="Support" current="support">
+  <h2 class="mt-0 mb-1 text-xl font-semibold">How can we help?</h2>
+  <p class="text-ink-muted mt-0">Choose a topic or get in touch.</p>
 
-  <h2>What to include in a report</h2>
+  <div class="border-line bg-surface rounded-card divide-line divide-y overflow-hidden border">
+    {rows.map((row) => <SupportRow {...row} />)}
+  </div>
+
+  <div class="border-leaf/30 bg-leaf/5 rounded-card mt-8 border p-6">
+    <h2 class="text-leaf-ink mt-0 flex items-center gap-3 text-xl font-semibold">
+      <Icon name="laptop" size={22} />
+      System requirements
+    </h2>
+    <ul class="mb-0 list-none pl-0">
+      {
+        requirements.map((requirement) => (
+          <li class="flex items-start gap-3 pl-0">
+            <Icon name="check" size={18} class="text-leaf-ink mt-1.5" />
+            <span>{requirement}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  <SectionHeading icon="lightbulb">What to include in a report</SectionHeading>
   <ul>
     <li>Your macOS version</li>
     <li>Your Taskmato version and build number, found in Settings → About</li>
     <li>Steps to reproduce the issue</li>
   </ul>
 
-  <h2>System requirements</h2>
-  <p>
-    Taskmato requires {MINIMUM_MACOS}. Apple Reminders access and an Obsidian vault are required
-    only if you enable those providers. You can use the built-in Local provider without either one.
-  </p>
+  <SectionHeading icon="question-circle">Common questions</SectionHeading>
+  <div class="border-line bg-surface rounded-card overflow-hidden border px-5">
+    <Faq question="My Reminders aren't showing up.">
+      <p class="mt-0">
+        Open System Settings → Privacy & Security → Reminders and make sure Taskmato has full
+        access. Without it, Taskmato cannot load your lists or mark a reminder complete when a focus
+        phase ends.
+      </p>
+    </Faq>
+    <Faq question="My Obsidian tasks are missing.">
+      <p class="mt-0">
+        Taskmato reads tasks written in <a
+          href="https://publish.obsidian.md/tasks/Introduction"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Obsidian Tasks<span class="sr-only"> (opens in a new tab)</span></a
+        > emoji syntax. If you moved or renamed your vault folder, select it again in the Obsidian provider
+        settings.
+      </p>
+    </Faq>
+    <Faq question="Notifications aren't appearing.">
+      <p class="mt-0">
+        Open System Settings → Notifications and make sure notifications are enabled for Taskmato.
+        Also check whether a Focus mode, such as Do Not Disturb, is silencing them.
+      </p>
+    </Faq>
+    <Faq question="Where does my data live?">
+      <p class="mt-0">
+        The <a href={withBase('/privacy')}>privacy policy</a> explains what Taskmato stores and where.
+      </p>
+    </Faq>
+    <Faq question="Can I create tasks from a script or shortcut?" last>
+      <p class="mt-0">
+        Yes. Use the <code>taskmato://start?title=...</code> URL to create an ad hoc task and start a
+        focus session.
+      </p>
+    </Faq>
+  </div>
 
-  <h2>Common questions</h2>
-  <details class="border-b border-gray-200">
-    <summary class="cursor-pointer py-3 font-semibold marker:text-gray-400">
-      My Reminders aren't showing up.
-    </summary>
-    <p class="mt-0">
-      Open System Settings → Privacy & Security → Reminders and make sure Taskmato has full access.
-      Without it, Taskmato cannot load your lists or mark a reminder complete when a focus phase
-      ends.
-    </p>
-  </details>
-  <details class="border-b border-gray-200">
-    <summary class="cursor-pointer py-3 font-semibold marker:text-gray-400">
-      My Obsidian tasks are missing.
-    </summary>
-    <p class="mt-0">
-      Taskmato reads tasks written in <a href="https://publish.obsidian.md/tasks/Introduction"
-        >Obsidian Tasks</a
-      > emoji syntax. If you moved or renamed your vault folder, select it again in the Obsidian provider
-      settings.
-    </p>
-  </details>
-  <details class="border-b border-gray-200">
-    <summary class="cursor-pointer py-3 font-semibold marker:text-gray-400">
-      Notifications aren't appearing.
-    </summary>
-    <p class="mt-0">
-      Open System Settings → Notifications and make sure notifications are enabled for Taskmato.
-      Also check whether a Focus mode, such as Do Not Disturb, is silencing them.
-    </p>
-  </details>
-  <details class="border-b border-gray-200">
-    <summary class="cursor-pointer py-3 font-semibold marker:text-gray-400">
-      Where does my data live?
-    </summary>
-    <p class="mt-0">
-      The <a href={withBase('/privacy')}>privacy policy</a> explains what Taskmato stores and where.
-    </p>
-  </details>
-  <details class="border-b border-gray-200">
-    <summary class="cursor-pointer py-3 font-semibold marker:text-gray-400">
-      Can I create tasks from a script or shortcut?
-    </summary>
-    <p class="mt-0">
-      Yes. Use the <code>taskmato://start?title=...</code> URL to create an ad hoc task and start a focus
-      session.
-    </p>
-  </details>
-
-  <h2>Downloads</h2>
-  <p>
-    <a href={DOWNLOAD_URL} download>Download the latest version for macOS</a>, or view all versions
-    on the <a href={RELEASES_URL}>Releases page</a>.
-  </p>
+  <div
+    class="border-line bg-surface rounded-card mt-8 flex flex-col items-center gap-4 border p-6 sm:flex-row"
+  >
+    <div class="min-w-0 flex-1">
+      <h2 class="mt-0 mb-1 text-lg font-semibold">Still need help?</h2>
+      <p class="text-ink-muted mt-0 mb-0 text-sm">
+        Send an email and I'll get back to you. Or
+        <a href={DOWNLOAD_URL} download>download the latest version</a> in case a fix already shipped.
+      </p>
+    </div>
+    <a
+      href={`mailto:${SUPPORT_EMAIL}`}
+      class="rounded-card border-brand-ink text-brand-ink hover:bg-brand-ink shrink-0 border px-5 py-2.5 font-semibold no-underline transition hover:text-white"
+    >
+      Contact us
+    </a>
+  </div>
 </Page>

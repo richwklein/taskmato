@@ -18,14 +18,29 @@ describe('privacy page', () => {
     expect(await getHtml()).toContain(SUPPORT_EMAIL)
   })
 
+  it('numbers every policy section', async () => {
+    const rendered = await getHtml()
+
+    // The concept numbers the sections so the page scans as a policy document.
+    expect(rendered).toContain('1. What Taskmato stores on your Mac')
+    expect(rendered).toContain('7. Contact')
+  })
+
   it('links to the support page', async () => {
     expect(await getHtml()).toContain('/support')
   })
 
-  it('renders the shared footer', async () => {
+  it('renders the shared header and footer', async () => {
     const rendered = await getHtml()
 
+    expect(rendered).toContain('<header')
     expect(rendered).toContain('<footer')
     expect(rendered).toContain('Richard Klein')
+  })
+
+  it('marks privacy as the active header route', async () => {
+    const rendered = await getHtml()
+
+    expect(rendered).toContain('aria-current="page"')
   })
 })

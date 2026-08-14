@@ -38,10 +38,57 @@ describe('support page', () => {
     expect(await getHtml()).toContain('Privacy & Security → Reminders')
   })
 
-  it('renders the shared footer', async () => {
+  it('leads with the topic rows from the concept', async () => {
     const rendered = await getHtml()
 
+    expect(rendered).toContain('How can we help?')
+    expect(rendered).toContain('Contact us')
+    expect(rendered).toContain('Report an issue')
+  })
+
+  it('opens off-site destinations in a new tab, safely and audibly', async () => {
+    const rendered = await getHtml()
+
+    // Every target="_blank" needs noopener/noreferrer, and a sighted-only cue
+    // would leave screen reader users with no warning that focus moved.
+    const blankLinks = rendered.match(/<a[^>]*target="_blank"[^>]*>/g) ?? []
+
+    expect(blankLinks.length).toBeGreaterThan(0)
+    for (const link of blankLinks) {
+      expect(link).toContain('rel="noopener noreferrer"')
+    }
+    expect(rendered).toContain('(opens in a new tab)')
+  })
+
+  it('keeps same-site links in the current tab', async () => {
+    const rendered = await getHtml()
+
+    const privacyLink = rendered.match(/<a[^>]*href="[^"]*\/privacy"[^>]*>/)?.[0]
+    const mailLink = rendered.match(/<a[^>]*href="mailto:[^"]*"[^>]*>/)?.[0]
+
+    expect(privacyLink).not.toContain('target')
+    expect(mailLink).not.toContain('target')
+  })
+
+  it('never offers a knowledge base it does not have', async () => {
+    // The concept's third row was "Get help — browse guides and troubleshooting
+    // articles". No such thing exists, and the design plan forbids implying one.
+    const rendered = await getHtml()
+
+    expect(rendered).not.toMatch(/knowledge base|troubleshooting articles|browse guides/i)
+  })
+
+  it('renders the shared header and footer', async () => {
+    const rendered = await getHtml()
+
+    expect(rendered).toContain('<header')
     expect(rendered).toContain('<footer')
     expect(rendered).toContain('Richard Klein')
+  })
+
+  it('marks support as the active header route', async () => {
+    const rendered = await getHtml()
+
+    expect(rendered).toContain('aria-current="page"')
   })
 })

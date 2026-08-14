@@ -1,20 +1,26 @@
 ---
 import Footer from '@components/Footer.astro'
 import Base from '@layouts/Base.astro'
-import { REPO_URL, withBase } from '@utils/site'
+import { NOT_FOUND_DESCRIPTION, NOT_FOUND_TITLE, withBase } from '@utils/site'
+
+const iconSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.png`
 ---
 
-<Base title="Page not found — Taskmato" description="This page doesn't exist.">
+<Base title={NOT_FOUND_TITLE} description={NOT_FOUND_DESCRIPTION}>
   <main class="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">
-    <h1 class="text-4xl font-bold">Page not found</h1>
-    <p class="max-w-md text-lg text-gray-600">
-      The page you're looking for doesn't exist or has moved.
-    </p>
-    <nav aria-label="Suggested pages" class="flex flex-wrap justify-center gap-4 text-sm">
-      <a href={withBase('/')} class="underline hover:text-gray-700">Home</a>
-      <a href={withBase('/privacy')} class="underline hover:text-gray-700">Privacy</a>
-      <a href={withBase('/support')} class="underline hover:text-gray-700">Support</a>
-      <a href={REPO_URL} class="underline hover:text-gray-700">GitHub</a>
+    <img src={iconSrc} alt="Taskmato icon" width="160" height="160" />
+    <h1 class="text-ink text-4xl font-bold">Page not found</h1>
+    <p class="text-ink-muted max-w-md text-lg">That focus session wandered off.</p>
+    <nav aria-label="Suggested pages" class="mt-2 flex flex-wrap items-center justify-center gap-4">
+      <a
+        href={withBase('/')}
+        class="rounded-card bg-brand-ink hover:bg-brand-hover px-6 py-3 font-semibold text-white transition"
+      >
+        Back to Taskmato
+      </a>
+      <a href={withBase('/support')} class="text-ink-muted hover:text-ink text-sm underline"
+        >Support</a
+      >
     </nav>
   </main>
   <Footer />

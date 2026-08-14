@@ -1,0 +1,27 @@
+---
+import Icon from '@components/Icon.astro'
+import type { IconName } from '@utils/icons'
+
+// A numbered policy section: a rule above, the icon hanging in a left gutter,
+// and the heading and body aligned together in the right column. The gutter is
+// what makes the page scan as a policy document rather than a wall of prose.
+//
+// The icon is decorative — the heading text is the accessible name.
+interface Props {
+  number: number
+  icon: IconName
+  title: string
+}
+
+const { number, icon, title } = Astro.props
+---
+
+<section class="border-line mt-10 border-t pt-8">
+  <div class="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
+    <Icon name={icon} size={24} class="text-brand-ink mt-1" />
+    <div>
+      <h2 class="mt-0 mb-3 text-xl font-semibold">{number}. {title}</h2>
+      <slot />
+    </div>
+  </div>
+</section>

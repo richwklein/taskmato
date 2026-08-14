@@ -1,0 +1,34 @@
+---
+import Icon from '@components/Icon.astro'
+import type { IconName } from '@utils/icons'
+
+// One row in the concept's "How can we help?" card: icon, title, subtitle, and
+// a trailing chevron. The whole row is the link, so the hit area matches what it
+// looks like.
+interface Props {
+  icon: IconName
+  title: string
+  description: string
+  href: string
+  /** Opens off-site, so it gets a new tab and an announced warning. */
+  external?: boolean
+}
+
+const { icon, title, description, href, external = false } = Astro.props
+---
+
+<a
+  href={href}
+  target={external ? '_blank' : undefined}
+  rel={external ? 'noopener noreferrer' : undefined}
+  class="hover:bg-canvas flex items-center gap-4 p-5 no-underline transition"
+>
+  <Icon name={icon} size={24} class="text-brand-ink" />
+  <span class="min-w-0 flex-1">
+    <span class="text-ink block font-semibold"
+      >{title}{external && <span class="sr-only"> (opens in a new tab)</span>}</span
+    >
+    <span class="text-ink-muted block text-sm">{description}</span>
+  </span>
+  <span class="text-ink-muted shrink-0" aria-hidden="true">&rsaquo;</span>
+</a>
