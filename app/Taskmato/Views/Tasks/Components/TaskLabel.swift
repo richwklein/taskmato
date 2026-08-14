@@ -159,6 +159,14 @@ enum AppLabels {
     static let stop = AppLabel("Stop", systemImage: "stop.fill")
   }
 
+  /// Labels for the Help menu's in-app links (App Store Guideline 5.1.1(i)).
+  enum Help {
+    /// Opens the public support page in the default browser.
+    static let support = AppLabel("Taskmato Support", systemImage: "questionmark.circle")
+    /// Opens the public privacy policy in the default browser.
+    static let privacyPolicy = AppLabel("Privacy Policy", systemImage: "hand.raised")
+  }
+
   /// Labels for the primary window destinations.
   enum Tab {
     static let tasks = AppLabel("Tasks", systemImage: "checklist")
