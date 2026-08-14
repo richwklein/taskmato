@@ -1,2 +1,74 @@
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
+
+@theme {
+  /* Page background. */
+  --color-canvas: #fbf7f0;
+  /* Cards and bands, set *into* the canvas rather than lifted off it. Slightly
+     warmer and darker than --color-canvas so surfaces recede, matching the
+     concept. A white card on this canvas pops forward and reads colder. */
+  --color-surface: #f3efe5;
+  /* Primary text. */
+  --color-ink: #171a1f;
+  /* Secondary text. */
+  --color-ink-muted: #616872;
+  /* Brand red — decorative use only (focus ring, underline decoration).
+     At 3.9:1 on the canvas it does not meet WCAG AA for text. */
+  --color-brand: #e9342b;
+  /* Brand red darkened for text and filled controls: 4.9:1 on the canvas,
+     5.2:1 against white. Use this, not --color-brand, for anything readable. */
+  --color-brand-ink: #ce2e25;
+  /* Hover state for --color-brand-ink filled controls. */
+  --color-brand-hover: #b4251e;
+  /* Privacy / success accents — decorative use only (tints, borders). */
+  --color-leaf: #2f8f46;
+  /* Leaf darkened for text: 5.2:1 on the canvas. */
+  --color-leaf-ink: #26773c;
+  /* Borders. */
+  --color-line: #e6ded2;
+  /* Local provider accent — mirrors LocalProvider.swift's .green tint. */
+  --color-provider-local: #16a34a;
+  /* Apple Reminders provider accent — mirrors RemindersProvider.swift's .orange tint. */
+  --color-provider-reminders: #ea580c;
+  /* Obsidian provider accent — mirrors ObsidianProvider.swift's .purple tint. */
+  --color-provider-obsidian: #9333ea;
+  /* Cards — mirrors the app's cardCornerRadius. */
+  --radius-card: 8px;
+  /* Large screenshot shells only. */
+  --radius-shell: 14px;
+  /* Apple system typography everywhere. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Retokenizes the typography plugin's default gray palette onto the
+     site's design tokens. Light-only — no `--tw-prose-invert-*` needed. */
+  .prose {
+    --tw-prose-body: var(--color-ink);
+    --tw-prose-headings: var(--color-ink);
+    --tw-prose-lead: var(--color-ink-muted);
+    --tw-prose-links: var(--color-brand-ink);
+    --tw-prose-bold: var(--color-ink);
+    --tw-prose-counters: var(--color-ink-muted);
+    --tw-prose-bullets: var(--color-line);
+    --tw-prose-hr: var(--color-line);
+    --tw-prose-quotes: var(--color-ink);
+    --tw-prose-quote-borders: var(--color-line);
+    --tw-prose-captions: var(--color-ink-muted);
+    --tw-prose-code: var(--color-ink);
+    --tw-prose-pre-code: var(--color-canvas);
+    --tw-prose-pre-bg: var(--color-ink);
+    --tw-prose-th-borders: var(--color-line);
+    --tw-prose-td-borders: var(--color-line);
+  }
+}

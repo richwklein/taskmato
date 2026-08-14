@@ -1,0 +1,43 @@
+---
+import Icon from '@components/Icon.astro'
+import { APP_STORE_URL, DOWNLOAD_URL, MINIMUM_MACOS } from '@utils/site'
+
+// Direct DMG download is primary until the App Store listing URL resolves —
+// flip `APP_STORE_URL` in `site.ts` to promote the badge and demote the DMG
+// link to secondary. No other change needed here.
+const dmgIsPrimary = APP_STORE_URL === null
+const dmgLabel = dmgIsPrimary ? 'Download for macOS' : 'Direct download (.dmg)'
+
+const primaryClasses = 'bg-brand-ink hover:bg-brand-hover text-white'
+const secondaryClasses = 'border-line text-ink hover:bg-surface border'
+---
+
+<div class="flex flex-col items-center gap-3">
+  <div class="flex flex-wrap items-center justify-center gap-3">
+    {
+      APP_STORE_URL && (
+        <a
+          href={APP_STORE_URL}
+          class:list={[
+            'rounded-card inline-flex px-6 py-3 font-semibold transition',
+            primaryClasses,
+          ]}
+        >
+          Download on the App Store
+        </a>
+      )
+    }
+    <a
+      href={DOWNLOAD_URL}
+      download
+      class:list={[
+        'rounded-card inline-flex items-center gap-2.5 px-6 py-3 font-semibold transition',
+        dmgIsPrimary ? primaryClasses : secondaryClasses,
+      ]}
+    >
+      <Icon name="download" size={20} />
+      {dmgLabel}
+    </a>
+  </div>
+  <p class="text-ink-muted text-sm">{MINIMUM_MACOS}</p>
+</div>
