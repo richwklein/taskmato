@@ -7,9 +7,10 @@ import SwiftUI
 
 /// A circular progress ring with the countdown readout centered inside.
 ///
-/// The readout is a ``FocusPresetReadout``, so while idle with more than one preset it doubles as
-/// the compact focus-duration menu. The ring carries the informational VoiceOver announcement as
-/// its own element, leaving the menu independently reachable.
+/// The readout is a ``FocusPresetReadout``, so while focus is the next phase to start and more
+/// than one preset exists it doubles as the compact focus-duration menu. The ring carries the
+/// informational VoiceOver announcement as its own element, leaving the menu independently
+/// reachable.
 struct CircularTimerView: View {
 
   /// The presenter supplying progress, the readout, and the ring's accessibility value.

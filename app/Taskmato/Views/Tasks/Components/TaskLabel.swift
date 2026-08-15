@@ -107,6 +107,9 @@ enum AppLabels {
     static let add = AppLabel("Add Duration", systemImage: "plus.circle")
     /// The task context-menu submenu offering a one-click "select + start" at a preset length.
     static let startFocus = AppLabel("Start Focus", systemImage: "bolt.fill")
+    /// The same submenu while a break is queued, where the length applies to the focus phase
+    /// after that break rather than starting one now (issue #580).
+    static let focusNext = AppLabel("Focus Next", systemImage: "bolt.badge.clock.fill")
   }
 
   /// Copy for the Obsidian file-pattern date-token help disclosure (issue #510).

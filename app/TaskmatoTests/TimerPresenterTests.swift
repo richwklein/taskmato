@@ -232,6 +232,123 @@ struct TimerPresenterTests {
     #expect(presenter.selectedFocusMinutes == 25)
   }
 
+  @Test(arguments: [SessionPhase.shortBreak, .longBreak])
+  func showsFocusPresetPickerIsFalseWithABreakQueued(queued: SessionPhase) {
+    let engine = SessionEngine()
+    let settings = makeSettings(focus: 25)
+    settings.focusPresets = [15, 25, 45, 60]
+    let presenter = TimerPresenter(engine: engine, settings: settings)
+    engine.enqueuePhase(queued)
+    #expect(!presenter.canSelectFocusPreset)
+    #expect(!presenter.showsFocusPresetPicker)
+  }
+
+  @Test func showsFocusPresetPickerIsTrueWhenFocusIsExplicitlyQueued() {
+    let engine = SessionEngine()
+    let settings = makeSettings(focus: 25)
+    settings.focusPresets = [15, 25, 45, 60]
+    let presenter = TimerPresenter(engine: engine, settings: settings)
+    engine.enqueuePhase(.focus)
+    #expect(presenter.canSelectFocusPreset)
+    #expect(presenter.showsFocusPresetPicker)
+  }
+
+  @Test func selectFocusPresetIsNoOpWithABreakQueued() {
+    let engine = SessionEngine()
+    let settings = makeSettings(focus: 25, short: 5)
+    settings.focusPresets = [15, 25, 45, 60]
+    let presenter = TimerPresenter(engine: engine, settings: settings)
+    engine.enqueuePhase(.shortBreak)
+    presenter.selectFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 25)
+    #expect(presenter.label == "05:00")
+  }
+
+  @Test func showsFocusPresetPickerReturnsAfterSkipConsumesQueuedBreak() {
+    let engine = SessionEngine()
+    let settings = makeSettings(focus: 25)
+    settings.focusPresets = [15, 25, 45, 60]
+    let presenter = TimerPresenter(engine: engine, settings: settings)
+    engine.enqueuePhase(.shortBreak)
+    #expect(!presenter.showsFocusPresetPicker)
+    presenter.skip()
+    #expect(presenter.showsFocusPresetPicker)
+    presenter.selectFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 45)
+  }
+
+  @Test func showsFocusPresetPickerIsFalseWhileRunning() {
+    let settings = makeSettings(focus: 25)
+    settings.focusPresets = [15, 25, 45, 60]
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    presenter.start()
+    #expect(!presenter.showsFocusPresetPicker)
+  }
+
+  @Test func showsFocusPresetPickerIsFalseWhilePaused() {
+    let settings = makeSettings(focus: 25)
+    settings.focusPresets = [15, 25, 45, 60]
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    presenter.start()
+    presenter.pause()
+    #expect(!presenter.showsFocusPresetPicker)
+  }
+
+  // MARK: - Staging the next focus
+
+  @Test(arguments: [SessionPhase.shortBreak, .longBreak])
+  func canStageNextFocusPresetOnlyWithABreakQueued(queued: SessionPhase) {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 25))
+    #expect(!presenter.canStageNextFocusPreset)
+    engine.enqueuePhase(queued)
+    #expect(presenter.canStageNextFocusPreset)
+    #expect(!presenter.canSelectFocusPreset)
+  }
+
+  @Test func stageNextFocusPresetSetsFocusLengthWithoutChangingTheBreakCountdown() {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 25, short: 5))
+    engine.enqueuePhase(.shortBreak)
+    presenter.stageNextFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 45)
+    #expect(presenter.label == "05:00")
+  }
+
+  @Test func stagedFocusLengthAppliesToTheFocusPhaseAfterTheBreak() {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 25, short: 5))
+    engine.enqueuePhase(.shortBreak)
+    presenter.stageNextFocusPreset(45)
+    presenter.skip()  // idle-skip consumes the queued break and queues focus
+    #expect(presenter.label == "45:00")
+    presenter.start()
+    #expect(engine.focusDuration == 45 * 60)
+  }
+
+  @Test func stageNextFocusPresetIsNoOpWhenFocusIsAlreadyNext() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    presenter.stageNextFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 25)
+  }
+
+  @Test func stageNextFocusPresetIsNoOpWhileRunning() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    presenter.start()
+    presenter.stageNextFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 25)
+    #expect(!presenter.canStageNextFocusPreset)
+  }
+
+  @Test func stageNextFocusPresetIsNoOpWhilePaused() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    presenter.start()
+    presenter.pause()
+    presenter.stageNextFocusPreset(45)
+    #expect(presenter.selectedFocusMinutes == 25)
+    #expect(!presenter.canStageNextFocusPreset)
+  }
+
   // MARK: - Enablement
 
   @Test func canSkipDisabledWhenIdleWithNothingQueued() {

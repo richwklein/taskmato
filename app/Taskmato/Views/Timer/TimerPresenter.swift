@@ -109,6 +109,20 @@ final class TimerPresenter {
 
   // MARK: - Focus presets
 
+  /// `true` while idle with focus as the next phase to start — the only state in which choosing a
+  /// focus length changes what the countdown is showing.
+  ///
+  /// Narrower than ``isIdle``: the engine also returns to idle *between* phases with a break
+  /// queued, and there the readout is counting down that break, not focus (issue #580).
+  var canSelectFocusPreset: Bool { isIdle && nextStartPhase == .focus }
+
+  /// `true` while idle with a break queued, where a chosen focus length applies to the focus phase
+  /// *after* that break rather than to the countdown on screen (issue #580).
+  ///
+  /// The two are mutually exclusive: idle is either "focus is next" (``canSelectFocusPreset``) or
+  /// "a break is next" (this).
+  var canStageNextFocusPreset: Bool { isIdle && nextStartPhase != .focus }
+
   /// Focus-length presets to offer, ascending, in minutes.
   ///
   /// Mirrors `settings.focusPresets`, but prepends the current `focusMinutes` when it holds a
@@ -122,17 +136,29 @@ final class TimerPresenter {
     return presets
   }
 
-  /// Whether to surface the quick-select picker — only when more than one preset exists, since a
-  /// single focus length offers nothing to choose between (design doc 0009).
-  var showsFocusPresetPicker: Bool { focusPresets.count > 1 }
+  /// Whether to surface the quick-select picker — only while focus is the next phase to start and
+  /// more than one preset exists, since a single focus length offers nothing to choose between
+  /// (design doc 0009).
+  var showsFocusPresetPicker: Bool { canSelectFocusPreset && focusPresets.count > 1 }
 
   /// The currently-selected focus length, in minutes — always `settings.focusMinutes`.
   var selectedFocusMinutes: Int { settings.focusMinutes }
 
-  /// Selects a focus preset for the next session. Idle-only; a no-op while running or paused,
-  /// since a mid-session duration change only takes effect at the next phase boundary anyway.
+  /// Selects a focus preset for the next session. A no-op while running, paused, or with a break
+  /// queued, since a mid-session duration change only takes effect at the next phase boundary
+  /// anyway.
   func selectFocusPreset(_ minutes: Int) {
-    guard isIdle else { return }
+    guard canSelectFocusPreset else { return }
+    settings.focusMinutes = minutes
+  }
+
+  /// Sets the focus length for the phase that follows a queued break, without starting anything.
+  ///
+  /// A no-op unless ``canStageNextFocusPreset``. The engine reads the value at the break's end via
+  /// ``SessionEngine/applyDurations(from:)``, so the staged length sizes that focus phase whether
+  /// the break is started manually or auto-advances.
+  func stageNextFocusPreset(_ minutes: Int) {
+    guard canStageNextFocusPreset else { return }
     settings.focusMinutes = minutes
   }
 
