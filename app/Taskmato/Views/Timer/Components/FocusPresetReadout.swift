@@ -5,13 +5,14 @@
 
 import SwiftUI
 
-/// The countdown readout, which becomes a compact focus-preset menu while idle.
+/// The countdown readout, which becomes a compact focus-preset menu ahead of a focus session.
 ///
-/// While the engine is idle and more than one preset exists, the ``TimerReadout`` is wrapped in a
-/// borderless menu of checkmarked presets (design doc 0009, D4) — the `25:00 ▾` affordance shared
-/// by the menu-bar popover and the window's Timer surface. Otherwise it renders the plain readout,
-/// so the countdown never shifts position as a session starts or stops. Selecting a preset routes
-/// through `presenter.selectFocusPreset(_:)`.
+/// While focus is the next phase to start and more than one preset exists, the ``TimerReadout`` is
+/// wrapped in a borderless menu of checkmarked presets (design doc 0009, D4) — the `25:00 ▾`
+/// affordance shared by the menu-bar popover and the window's Timer surface. Otherwise it renders
+/// the plain readout, so the countdown never shifts position as a session starts or stops, and a
+/// queued break renders exactly as mid-session (issue #580). Selecting a preset routes through
+/// `presenter.selectFocusPreset(_:)`.
 struct FocusPresetReadout: View {
 
   /// The presenter supplying the readout text, preset list, current selection, and selection intent.
@@ -22,7 +23,7 @@ struct FocusPresetReadout: View {
   var hidesPlainReadoutFromAccessibility: Bool = false
 
   var body: some View {
-    if presenter.isIdle && presenter.showsFocusPresetPicker {
+    if presenter.showsFocusPresetPicker {
       Menu {
         ForEach(presenter.focusPresets, id: \.self) { minutes in
           Button {

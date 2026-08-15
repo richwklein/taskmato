@@ -117,7 +117,9 @@ one I picked." One source of truth; matches the surveyed last-used behavior.
 The quick-select row renders **only when the engine is idle** (`presenter.isIdle`). Duration only
 takes effect at the next phase boundary anyway (`applyDurations`), so exposing it mid-run would
 imply a live effect it doesn't have. Placed directly under the ring and above `TimerControlsView`,
-it reads as "choose length → Start."
+it reads as "choose length → Start." "Idle" here means idle *with focus as the next phase to
+start* — the engine also idles between phases with a break queued, and that case is excluded
+(issue #580).
 
 The row is a set of pill buttons; the one equal to `focusMinutes` is filled/tinted, the rest
 bordered. Tapping selects (updates the idle label instantly); it does **not** auto-start — Start
@@ -166,10 +168,21 @@ Complete. Add a **Start Focus** submenu listing the presets. Choosing one select
 - A **primary click is unchanged** — it still only selects the task and shows the Timer.
 - **Long-press was declined:** it isn't a Mac idiom, offers no cursor affordance, and collides
   with tap-to-select. (Recorded so it isn't relitigated.)
-- **During an active session, Start Focus is disabled** for v1 — it sidesteps an ambiguous
-  mid-session restart. Restarting on a different task mid-session is a deliberate follow-on
-  exploration (Q5); it overlaps the existing *swap* affordance (`ActiveTaskView`), which today
-  pauses and preserves elapsed time rather than starting a fresh full-length interval.
+- **During an active session, Start Focus is omitted** — it sidesteps an ambiguous mid-session
+  restart. Restarting on a different task mid-session is a deliberate follow-on exploration (Q5);
+  it overlaps the existing *swap* affordance (`ActiveTaskView`), which today pauses and preserves
+  elapsed time rather than starting a fresh full-length interval. Originally this was a disabled
+  item, but macOS still lets the pointer open a disabled submenu, flashing it open and shut on
+  hover, so the item is now left out of the menu entirely. Revisiting it as a *staging* gesture
+  that works mid-session is tracked by
+  [#588](https://github.com/richwklein/taskmato/issues/588).
+- **While idle with a break queued, the submenu becomes "Focus Next"** (issue #580). Starting is
+  wrong there — it would start the break — but the length is not meaningless: `applyDurations`
+  re-reads `focusMinutes` at the break's end, so the choice sizes the focus phase that follows.
+  Choosing one selects the task, sets the length, and navigates, starting nothing. Leaving the
+  timer untouched during a break matches D10 of design doc 0010, where complete/swap/clear
+  likewise only mutate the selection. Surfacing the staged length on the timer as a "next up"
+  readout is a follow-up; today the choice is silent until the break ends.
 
 Plumbing note: `TaskDetailView` does not currently hold the `TimerPresenter`/`SessionEngine`. Wire
 a small "start focus at N minutes for this task" closure (or the presenter) into it. This is

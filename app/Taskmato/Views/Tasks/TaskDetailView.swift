@@ -548,13 +548,23 @@ extension TaskDetailView {
 
   /// Selects `task`, sets the focus length to `minutes`, and starts a session on it — the
   /// "Start Focus ▸" submenu's one-gesture action (design doc 0009, D7). Only reachable while
-  /// `presenter.isIdle` (the submenu is disabled otherwise), so this never interrupts a
-  /// running or paused session. Not `private`: called from `TaskDetailContextMenu.swift`'s
+  /// `presenter.canSelectFocusPreset`, so this never interrupts a running or paused session and
+  /// never starts a queued break. Not `private`: called from `TaskDetailContextMenu.swift`'s
   /// "Start Focus ▸" submenu.
   func startFocus(_ task: TaskItem, minutes: Int) {
     selectionStore.select(task)
     settings.focusMinutes = minutes
     presenter.start()
+    nav.showTimer()
+  }
+
+  /// Selects `task` and sizes the focus phase that follows a queued break, starting nothing — the
+  /// "Focus Next ▸" variant of the same submenu (issue #580). Leaving the timer untouched during a
+  /// break matches how complete/swap/clear already behave there (design doc 0010, D10). Not
+  /// `private`: called from `TaskDetailContextMenu.swift`.
+  func stageNextFocus(_ task: TaskItem, minutes: Int) {
+    selectionStore.select(task)
+    presenter.stageNextFocusPreset(minutes)
     nav.showTimer()
   }
 
