@@ -73,10 +73,7 @@ final class StatsViewModel {
   /// Summary stat cards for the current scope and period.
   var statCards: SessionSummary { SessionSummary(sessions: sessions, over: scopedInterval) }
 
-  /// Focus time by task within the current scope, sorted by duration descending.
-  var taskBreakdown: [SessionSummary.TaskSlice] { statCards.taskBreakdown }
-
-  /// Focus minutes per day, split by provider, within the current scope.
+  /// Focus seconds per day, split by provider, within the current scope.
   ///
   /// A time metric (D5 of design doc 0010): sums every focus segment regardless of the owning
   /// phase's completion, so a stopped or skipped phase's invested time still appears.
@@ -105,7 +102,7 @@ final class StatsViewModel {
         guard let entry = accumulated[key] else { return nil }
         return DayTotal(
           day: entry.day, providerID: entry.providerID,
-          tint: displayTint(for: entry.providerID, in: snapshots), minutes: Int(entry.seconds / 60)
+          tint: displayTint(for: entry.providerID, in: snapshots), seconds: entry.seconds
         )
       }
       .sorted { ($0.day, $0.providerID) < ($1.day, $1.providerID) }
@@ -134,12 +131,12 @@ final class StatsViewModel {
           providerID: providerID,
           label: displayLabel(for: providerID, in: snapshots),
           tint: displayTint(for: providerID, in: snapshots),
-          minutes: Int((accumulated[providerID] ?? 0) / 60))
+          seconds: accumulated[providerID] ?? 0)
       }
-      .sorted { $0.minutes > $1.minutes }
+      .sorted { $0.seconds > $1.seconds }
   }
 
-  /// Every task's all-time focus totals, ranked by total minutes descending.
+  /// Every task's all-time focus totals, ranked by total focus time descending.
   ///
   /// A time metric (D5): sums every focus segment regardless of the owning phase's completion.
   var allTaskRows: [AllTimeTaskRow] {
@@ -174,12 +171,14 @@ final class StatsViewModel {
           entry.taskRef.map { displayLabel(for: $0.providerID.rawValue, in: snapshots) } ?? "—"
         return AllTimeTaskRow(
           taskRef: entry.taskRef, title: entry.title, providerLabel: resolvedLabel,
-          totalMinutes: Int(entry.seconds / 60), lastSessionDate: entry.last)
+          totalSeconds: entry.seconds, lastSessionDate: entry.last)
       }
-      .sorted { $0.totalMinutes > $1.totalMinutes }
+      .sorted { $0.totalSeconds > $1.totalSeconds }
   }
 
-  /// Consecutive calendar days ending today (or yesterday, as a grace) with ≥1 focus session.
+  /// Consecutive calendar days ending today (or yesterday, as a grace) with ≥1 completed focus
+  /// session. A count metric (D5): the pomodoro is indivisible, so a stopped or skipped phase
+  /// does not extend the streak.
   var currentStreak: Int {
     let calendar = Calendar.current
     let activeDays = Set(
@@ -210,10 +209,10 @@ final class StatsViewModel {
   /// `wasCompleted` — the pomodoro is indivisible.
   var todayFocusCount: Int { todaysCompletedFocus.count }
 
-  /// Total whole minutes across focus segments recorded today, regardless of the owning
-  /// phase's completion. A time metric (D5): a stopped or skipped phase still contributes.
-  var todayFocusMinutes: Int {
-    Int(todaysFocus.flatMap(\.segments).reduce(0) { $0 + $1.seconds } / 60)
+  /// Total seconds across focus segments recorded today, regardless of the owning phase's
+  /// completion. A time metric (D5): a stopped or skipped phase still contributes.
+  var todayFocusSeconds: TimeInterval {
+    todaysFocus.flatMap(\.segments).reduce(0) { $0 + $1.seconds }
   }
 
   // MARK: - Private
@@ -370,6 +369,18 @@ final class StatsViewModel {
               endedAt: end, wasCompleted: true, segments: [segment]))
         }
       }
+
+      // A ~45s incomplete session on today, so the sub-minute path is visible in previews.
+      let shortStart = today.addingTimeInterval(8 * 3_600)
+      let shortEnd = shortStart.addingTimeInterval(45)
+      let shortSegment = FocusSegment(
+        id: UUID(), taskRef: TaskRef(providerID: ProviderID("local"), nativeID: "task-short"),
+        taskTitle: "Local task short", seconds: shortEnd.timeIntervalSince(shortStart))
+      sessions.append(
+        Session(
+          id: UUID(), phase: .focus, startedAt: shortStart,
+          endedAt: shortEnd, wasCompleted: false, segments: [shortSegment]))
+
       return seeded(sessions)
     }
 

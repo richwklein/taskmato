@@ -53,6 +53,10 @@ enum AppLabels {
     // Focus presets
     /// Shown on "Add Duration" once the Focus presets list already holds 5 entries.
     static let maxFocusPresetsReached = "Up to 5 focus presets"
+    // Stats
+    /// Shown on the Stats Focus Time card, explaining why its total can exceed what the
+    /// Sessions count alone would suggest.
+    static let focusTimeIncludesEarlyStops = "Includes time from sessions stopped early"
   }
 
   /// VoiceOver labels for controls whose visible content is not text.

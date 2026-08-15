@@ -69,8 +69,8 @@ struct TaskDonutChart: View {
             Text(ContentFormat.markdown.attributedString(for: slice.label))
               .lineLimit(1)
             Spacer()
-            let pct = totalSeconds > 0 ? Int(slice.seconds / totalSeconds * 100) : 0
-            Text("\(slice.minutes) min · \(pct)%")
+            let pct = totalSeconds > 0 ? Int((slice.seconds / totalSeconds * 100).rounded()) : 0
+            Text("\(FocusDuration.label(seconds: slice.seconds)) · \(pct)%")
               .foregroundStyle(.secondary)
               .font(.caption)
           }

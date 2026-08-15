@@ -82,7 +82,6 @@ struct SessionSummaryTests {
     let second = makeSession(duration: 900)
     let summary = SessionSummary(sessions: [first, second], over: Self.todayInterval)
     #expect(summary.focusSeconds == 2_400)
-    #expect(summary.focusMinutes == 40)
   }
 
   // MARK: - Count vs. time split (D5 of design doc 0010)

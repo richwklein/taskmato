@@ -7,7 +7,7 @@ import SwiftUI
 
 /// How ``SessionStatsView`` arranges its figures.
 enum SessionStatsLayout {
-  /// Timer destination: count leading, minutes trailing, spread across the row.
+  /// Timer destination: count leading, duration trailing, spread across the row.
   case spread
   /// Popover bottom bar: one dot-separated run.
   case inline
@@ -18,8 +18,8 @@ struct SessionStatsView: View {
 
   /// Number of completed focus sessions today.
   let count: Int
-  /// Total minutes of completed focus time today.
-  let minutes: Int
+  /// Total focus seconds recorded today, regardless of the owning phase's completion.
+  let seconds: TimeInterval
   /// Current consecutive-day focus streak; `0` hides the streak indicator.
   var streak: Int = 0
   /// How the summary figures are arranged.
@@ -45,7 +45,7 @@ struct SessionStatsView: View {
       HStack {
         Text(sessionLabel)
         Spacer()
-        Text(minuteLabel)
+        Text(durationLabel)
       }
       .font(.caption)
       .foregroundStyle(.secondary)
@@ -60,14 +60,15 @@ struct SessionStatsView: View {
     count == 1 ? "1 session today" : "\(count) sessions today"
   }
 
-  private var minuteLabel: String {
-    streak > 0 ? "\(minutes) min · 🔥\(streak)" : "\(minutes) min focused"
+  private var durationLabel: String {
+    let duration = FocusDuration.label(seconds: seconds)
+    return streak > 0 ? "\(duration) · 🔥\(streak)" : "\(duration) focused"
   }
 
-  /// A compact one-line summary for the popover: sessions · minutes · streak.
+  /// A compact one-line summary for the popover: sessions · duration · streak.
   private var inlineText: String {
     let sessions = count == 1 ? "1 session" : "\(count) sessions"
-    var text = "\(sessions) · \(minutes) min"
+    var text = "\(sessions) · \(FocusDuration.label(seconds: seconds))"
     if streak > 0 { text += " · 🔥\(streak)" }
     return text
   }

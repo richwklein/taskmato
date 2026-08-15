@@ -61,7 +61,7 @@ struct MenuBarPopoverView: View {
 
       HStack {
         SessionStatsView(
-          count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes,
+          count: statsViewModel.todayFocusCount, seconds: statsViewModel.todayFocusSeconds,
           streak: statsViewModel.currentStreak, layout: .inline,
           onSelect: { dismissPopover { nav.showStatsInMainWindow() } }
         )

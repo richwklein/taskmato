@@ -62,8 +62,8 @@ struct DayTotal: Identifiable {
   /// Semantic color of the owning provider, used for the stacked bar segment.
   let tint: ProviderTint
 
-  /// Focus minutes attributed to this provider on this day.
-  let minutes: Int
+  /// Focus seconds attributed to this provider on this day.
+  let seconds: TimeInterval
 
   /// Stable identity combining the day and provider.
   var id: String { "\(day.timeIntervalSinceReferenceDate):\(providerID)" }
@@ -81,8 +81,8 @@ struct ProviderSlice: Identifiable {
   /// Semantic color of the provider, used for the legend swatch and bar segments.
   let tint: ProviderTint
 
-  /// Focus minutes attributed to this provider.
-  let minutes: Int
+  /// Focus seconds attributed to this provider.
+  let seconds: TimeInterval
 
   /// Stable identity derived from the provider.
   var id: String { providerID }
@@ -100,8 +100,8 @@ nonisolated struct AllTimeTaskRow: Identifiable, Sendable {
   /// Human-readable provider name, or `"—"` for untracked focus time.
   let providerLabel: String
 
-  /// Total focus minutes across every session attributed to this task.
-  let totalMinutes: Int
+  /// Total focus seconds across every session attributed to this task.
+  let totalSeconds: TimeInterval
 
   /// When the most recent session for this task ended.
   let lastSessionDate: Date
