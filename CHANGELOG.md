@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.4.0](https://github.com/richwklein/taskmato/compare/v1.3.0...v1.4.0) (2026-08-15)
+
+
+### Features
+
+* add privacy, support, and 404 pages ([#576](https://github.com/richwklein/taskmato/issues/576)) ([3d05c5c](https://github.com/richwklein/taskmato/commit/3d05c5c18f85fd17c14054a7c805cd159bcec4af))
+* **site:** publish the launch marketing site ([#581](https://github.com/richwklein/taskmato/issues/581)) ([1c20916](https://github.com/richwklein/taskmato/commit/1c20916cf097c367643b942768cf3834c3570688))
+
+
+### Bug Fixes
+
+* **stats:** show focus durations under a minute in seconds ([#587](https://github.com/richwklein/taskmato/issues/587)) ([27414d9](https://github.com/richwklein/taskmato/commit/27414d96db265bfab6b5e18f0f67356b16d176d9))
+* **timer:** gate focus presets on the next phase being focus ([#589](https://github.com/richwklein/taskmato/issues/589)) ([eba1e08](https://github.com/richwklein/taskmato/commit/eba1e081597ce773edcc515c6f0fc400fb44283b))
+
+
+### Miscellaneous Chores
+
+* **site:** serve the marketing site from taskmato.com ([#573](https://github.com/richwklein/taskmato/issues/573)) ([195ad89](https://github.com/richwklein/taskmato/commit/195ad8900dcd29fb9051983085ef7e8aa6dab778))
+
 ## [1.3.0](https://github.com/richwklein/taskmato/compare/v1.2.0...v1.3.0) (2026-08-13)
 
 
