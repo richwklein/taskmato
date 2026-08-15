@@ -30,7 +30,7 @@
     "@typescript-eslint/parser": "^8.64.0",
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/eslint-plugin": "^1.6.25",
-    "astro": "^7.1.6",
+    "astro": "^7.2.0",
     "eslint": "^10.7.0",
     "eslint-plugin-astro": "^3.1.0",
     "eslint-plugin-jsx-a11y": "^6.10.0",
