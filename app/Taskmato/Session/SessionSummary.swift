@@ -14,7 +14,8 @@ struct SessionSummary {
   /// Number of naturally completed focus sessions within the interval.
   let focusCount: Int
 
-  /// Total elapsed time across completed focus sessions, in seconds.
+  /// Total elapsed time across every focus segment, regardless of the owning phase's
+  /// completion, in seconds.
   let focusSeconds: TimeInterval
 
   /// Number of naturally completed break sessions (short or long) within the interval.
@@ -30,9 +31,6 @@ struct SessionSummary {
   /// Focus time grouped by task, sorted by total duration descending.
   let taskBreakdown: [TaskSlice]
 
-  /// Total focus time expressed in whole minutes.
-  var focusMinutes: Int { Int(focusSeconds / 60) }
-
   /// A single task's share of focus time within the summary interval.
   struct TaskSlice: Identifiable {
 
@@ -44,9 +42,6 @@ struct SessionSummary {
 
     /// Total focus seconds attributed to this task.
     let seconds: TimeInterval
-
-    /// Focus time expressed in whole minutes.
-    var minutes: Int { Int(seconds / 60) }
   }
 
   /// Computes a summary from sessions whose `startedAt` falls within `interval`.

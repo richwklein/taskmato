@@ -15,7 +15,7 @@ struct AllTimeTaskTable: View {
   let rows: [AllTimeTaskRow]
 
   @State private var sortOrder = [
-    KeyPathComparator(\AllTimeTaskRow.totalMinutes, order: .reverse)
+    KeyPathComparator(\AllTimeTaskRow.totalSeconds, order: .reverse)
   ]
 
   var body: some View {
@@ -26,8 +26,8 @@ struct AllTimeTaskTable: View {
       TableColumn("Provider", value: \.providerLabel) { row in
         Text(row.providerLabel).foregroundStyle(.secondary)
       }
-      TableColumn("Total", value: \.totalMinutes) { row in
-        Text(FocusDuration.label(minutes: row.totalMinutes)).monospacedDigit()
+      TableColumn("Total", value: \.totalSeconds) { row in
+        Text(FocusDuration.label(seconds: row.totalSeconds)).monospacedDigit()
       }
       TableColumn("Last Session", value: \.lastSessionDate) { row in
         Text(row.lastSessionDate.formatted(date: .abbreviated, time: .omitted))

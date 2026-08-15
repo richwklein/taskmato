@@ -11,6 +11,8 @@ struct StatCardView: View {
   let icon: String
   let value: String
   let label: String
+  /// Optional tooltip explaining the metric; `nil` renders no tooltip.
+  var help: String?
 
   var body: some View {
     VStack(alignment: .leading, spacing: .rowVertical) {
@@ -27,5 +29,7 @@ struct StatCardView: View {
     .padding(.cardPadding)
     .background(Color.cardSurface)
     .clipShape(RoundedRectangle.card)
+    .help(help ?? "")
+    .accessibilityHint(help ?? "")
   }
 }

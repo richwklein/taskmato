@@ -147,7 +147,8 @@ struct StatsTabView: View {
       StatCardView(
         icon: "timer",
         value: FocusDuration.label(seconds: summary.focusSeconds),
-        label: "Focus Time"
+        label: "Focus Time",
+        help: AppLabels.Tooltip.focusTimeIncludesEarlyStops
       )
       StatCardView(icon: "cup.and.saucer", value: "\(summary.breakCount)", label: "Breaks")
       StatCardView(icon: "repeat", value: "\(summary.cycleCount)", label: "Cycles")

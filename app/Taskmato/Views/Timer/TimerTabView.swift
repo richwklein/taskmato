@@ -54,7 +54,7 @@ struct TimerTabView: View {
         .padding(.horizontal, .screenPadding)
 
       SessionStatsView(
-        count: statsViewModel.todayFocusCount, minutes: statsViewModel.todayFocusMinutes,
+        count: statsViewModel.todayFocusCount, seconds: statsViewModel.todayFocusSeconds,
         streak: statsViewModel.currentStreak, layout: .spread,
         onSelect: { nav.showStats() }
       )

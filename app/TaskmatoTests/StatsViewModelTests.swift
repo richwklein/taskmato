@@ -27,12 +27,11 @@ struct StatsViewModelTests {
   }
 
   private func focus(
-    start: Date, minutes: Int = 25, completed: Bool = true,
+    start: Date, seconds: TimeInterval = 1_500, completed: Bool = true,
     provider: ProviderID? = nil, nativeID: String = "t1", title: String? = nil,
     providerLabel: String? = nil, providerTint: ProviderTint? = nil
   ) -> Session {
     let ref = provider.map { TaskRef(providerID: $0, nativeID: nativeID) }
-    let seconds = TimeInterval(minutes * 60)
     let segment = FocusSegment(
       id: UUID(), taskRef: ref, taskTitle: title, seconds: seconds, providerLabel: providerLabel,
       providerTint: providerTint)
@@ -57,10 +56,10 @@ struct StatsViewModelTests {
     let viewModel = await makeViewModel([])
     #expect(viewModel.isEmpty)
     #expect(viewModel.todayFocusCount == 0)
-    #expect(viewModel.todayFocusMinutes == 0)
+    #expect(viewModel.todayFocusSeconds == 0)
     #expect(viewModel.currentStreak == 0)
     #expect(viewModel.statCards.focusCount == 0)
-    #expect(viewModel.taskBreakdown.isEmpty)
+    #expect(viewModel.statCards.taskBreakdown.isEmpty)
     #expect(viewModel.dailyFocusTotals.isEmpty)
     #expect(viewModel.providerBreakdown.isEmpty)
     #expect(viewModel.allTaskRows.isEmpty)
@@ -70,14 +69,14 @@ struct StatsViewModelTests {
 
   @Test func singleSessionToday() async {
     let start = Self.dayStart(daysAgo: 0).addingTimeInterval(9 * 3_600)
-    let viewModel = await makeViewModel([focus(start: start, minutes: 25, provider: "local")])
+    let viewModel = await makeViewModel([focus(start: start, seconds: 1_500, provider: "local")])
 
     #expect(!viewModel.isEmpty)
     #expect(viewModel.todayFocusCount == 1)
-    #expect(viewModel.todayFocusMinutes == 25)
+    #expect(viewModel.todayFocusSeconds == 1_500)
     #expect(viewModel.currentStreak == 1)
     #expect(viewModel.statCards.focusCount == 1)
-    #expect(viewModel.taskBreakdown.count == 1)
+    #expect(viewModel.statCards.taskBreakdown.count == 1)
     #expect(viewModel.allTaskRows.count == 1)
   }
 
@@ -96,30 +95,30 @@ struct StatsViewModelTests {
 
   // MARK: - Count vs. time split (D5 of design doc 0010)
 
-  @Test func incompleteFocusSessionStillCreditsTodayFocusMinutes() async {
+  @Test func incompleteFocusSessionStillCreditsTodayFocusSeconds() async {
     let start = Self.dayStart(daysAgo: 0).addingTimeInterval(9 * 3_600)
     let viewModel = await makeViewModel([
-      focus(start: start, minutes: 10, completed: false, provider: "local")
+      focus(start: start, seconds: 600, completed: false, provider: "local")
     ])
     #expect(viewModel.todayFocusCount == 0)
-    #expect(viewModel.todayFocusMinutes == 10)
+    #expect(viewModel.todayFocusSeconds == 600)
   }
 
   @Test func incompleteFocusSessionStillAppearsInBreakdowns() async {
     let day = Self.fixedNoon(day: 400)
     let viewModel = await makeViewModel([
       focus(
-        start: day, minutes: 12, completed: false, provider: "local", nativeID: "abc",
+        start: day, seconds: 720, completed: false, provider: "local", nativeID: "abc",
         title: "Draft")
     ])
     viewModel.scope = .allTime
 
     #expect(viewModel.statCards.focusCount == 0)
     #expect(viewModel.statCards.focusSeconds == 720)
-    #expect(viewModel.taskBreakdown.first?.seconds == 720.0)
-    #expect(viewModel.providerBreakdown.first?.minutes == 12)
-    #expect(viewModel.dailyFocusTotals.first?.minutes == 12)
-    #expect(viewModel.allTaskRows.first?.totalMinutes == 12)
+    #expect(viewModel.statCards.taskBreakdown.first?.seconds == 720.0)
+    #expect(viewModel.providerBreakdown.first?.seconds == 720)
+    #expect(viewModel.dailyFocusTotals.first?.seconds == 720)
+    #expect(viewModel.allTaskRows.first?.totalSeconds == 720)
   }
 
   // MARK: - Multi-day window scoping
@@ -230,15 +229,15 @@ struct StatsViewModelTests {
     let day = Self.fixedNoon(day: 100)
     let viewModel = await makeViewModel(
       [
-        focus(start: day, minutes: 50, provider: "reminders", nativeID: "a", title: "A"),
-        focus(start: day, minutes: 25, provider: "obsidian", nativeID: "b", title: "B"),
-        focus(start: day, minutes: 10, provider: nil, title: nil),
+        focus(start: day, seconds: 3_000, provider: "reminders", nativeID: "a", title: "A"),
+        focus(start: day, seconds: 1_500, provider: "obsidian", nativeID: "b", title: "B"),
+        focus(start: day, seconds: 600, provider: nil, title: nil),
       ],
       providerLabel: { ["reminders": "Reminders", "obsidian": "Obsidian"][$0] ?? $0 })
 
     viewModel.scope = .allTime
     let breakdown = viewModel.providerBreakdown
-    #expect(breakdown.map(\.minutes) == [50, 25, 10])
+    #expect(breakdown.map(\.seconds) == [3_000, 1_500, 600])
     #expect(breakdown.map(\.label) == ["Reminders", "Obsidian", "Untracked"])
   }
 
@@ -247,9 +246,10 @@ struct StatsViewModelTests {
     let later = Self.fixedNoon(day: 105)
     let viewModel = await makeViewModel(
       [
-        focus(start: earlier, minutes: 30, provider: "reminders", nativeID: "a", title: "Task A"),
-        focus(start: later, minutes: 20, provider: "reminders", nativeID: "a", title: "Task A"),
-        focus(start: earlier, minutes: 15, provider: nil, title: nil),
+        focus(
+          start: earlier, seconds: 1_800, provider: "reminders", nativeID: "a", title: "Task A"),
+        focus(start: later, seconds: 1_200, provider: "reminders", nativeID: "a", title: "Task A"),
+        focus(start: earlier, seconds: 900, provider: nil, title: nil),
       ],
       providerLabel: { ["reminders": "Reminders"][$0] ?? $0 })
 
@@ -260,7 +260,7 @@ struct StatsViewModelTests {
     let taskA = rows[0]
     #expect(taskA.title == "Task A")
     #expect(taskA.providerLabel == "Reminders")
-    #expect(taskA.totalMinutes == 50)
+    #expect(taskA.totalSeconds == 3_000)
     #expect(taskA.lastSessionDate == later.addingTimeInterval(20 * 60))
 
     let untracked = rows[1]
@@ -273,22 +273,22 @@ struct StatsViewModelTests {
     let dayOne = Self.fixedNoon(day: 200)
     let dayTwo = Self.fixedNoon(day: 201)
     let viewModel = await makeViewModel([
-      focus(start: dayOne, minutes: 25, provider: "local"),
-      focus(start: dayOne, minutes: 25, provider: "local"),
-      focus(start: dayTwo, minutes: 25, provider: "local"),
-      focus(start: dayTwo, minutes: 10, provider: nil),
+      focus(start: dayOne, seconds: 1_500, provider: "local"),
+      focus(start: dayOne, seconds: 1_500, provider: "local"),
+      focus(start: dayTwo, seconds: 1_500, provider: "local"),
+      focus(start: dayTwo, seconds: 600, provider: nil),
     ])
 
     viewModel.scope = .allTime
     let totals = viewModel.dailyFocusTotals
-    // day one: one local bucket (50); day two: local (25) + untracked (10)
+    // day one: one local bucket (3_000s); day two: local (1_500s) + untracked (600s)
     #expect(totals.count == 3)
     let localDayOne = totals.first { Self.calendar.isDate($0.day, inSameDayAs: dayOne) }
-    #expect(localDayOne?.minutes == 50)
+    #expect(localDayOne?.seconds == 3_000)
     let untrackedDayTwo = totals.first {
       $0.providerID == "__untracked__" && Self.calendar.isDate($0.day, inSameDayAs: dayTwo)
     }
-    #expect(untrackedDayTwo?.minutes == 10)
+    #expect(untrackedDayTwo?.seconds == 600)
   }
 
   // MARK: - Current interval (navigation label)
@@ -318,8 +318,8 @@ struct StatsViewModelTests {
     let day = Self.fixedNoon(day: 300)
     let viewModel = await makeViewModel(
       [
-        focus(start: day, minutes: 25, provider: "local"),
-        focus(start: day, minutes: 10, provider: nil),
+        focus(start: day, seconds: 1_500, provider: "local"),
+        focus(start: day, seconds: 600, provider: nil),
       ],
       providerTint: { ["local": ProviderTint.green][$0] ?? .gray })
     viewModel.scope = .allTime
@@ -339,7 +339,7 @@ struct StatsViewModelTests {
     let day = Self.fixedNoon(day: 500)
     let viewModel = await makeViewModel([
       focus(
-        start: day, minutes: 25, provider: "obsidian", nativeID: "a", title: "Task A",
+        start: day, seconds: 1_500, provider: "obsidian", nativeID: "a", title: "Task A",
         providerLabel: "Obsidian", providerTint: .purple)
     ])
     viewModel.scope = .allTime
@@ -360,7 +360,7 @@ struct StatsViewModelTests {
     let viewModel = await makeViewModel(
       [
         focus(
-          start: day, minutes: 25, provider: "obsidian", nativeID: "a", title: "Task A",
+          start: day, seconds: 1_500, provider: "obsidian", nativeID: "a", title: "Task A",
           providerLabel: "Obsidian", providerTint: .purple)
       ],
       providerLabel: { ["obsidian": "Obsidian"][$0] ?? $0 },
@@ -375,7 +375,7 @@ struct StatsViewModelTests {
   @Test func legacySnapshotlessSegmentsStillResolveThroughTheLiveRegistry() async {
     let day = Self.fixedNoon(day: 502)
     let viewModel = await makeViewModel(
-      [focus(start: day, minutes: 25, provider: "reminders", nativeID: "a", title: "Task A")],
+      [focus(start: day, seconds: 1_500, provider: "reminders", nativeID: "a", title: "Task A")],
       providerLabel: { ["reminders": "Reminders"][$0] ?? $0 },
       providerTint: { ["reminders": ProviderTint.orange][$0] ?? .gray })
     viewModel.scope = .allTime
@@ -390,10 +390,10 @@ struct StatsViewModelTests {
     let later = Self.fixedNoon(day: 504)
     let viewModel = await makeViewModel([
       focus(
-        start: earlier, minutes: 25, provider: "obsidian", nativeID: "a", title: "Task A",
+        start: earlier, seconds: 1_500, provider: "obsidian", nativeID: "a", title: "Task A",
         providerLabel: "Old Name", providerTint: .green),
       focus(
-        start: later, minutes: 25, provider: "obsidian", nativeID: "a", title: "Task A",
+        start: later, seconds: 1_500, provider: "obsidian", nativeID: "a", title: "Task A",
         providerLabel: "New Name", providerTint: .purple),
     ])
     viewModel.scope = .allTime
@@ -412,10 +412,44 @@ struct StatsViewModelTests {
     #expect(viewModel.todayFocusCount == 0)
 
     let start = Self.dayStart(daysAgo: 0).addingTimeInterval(9 * 3_600)
-    store.append(focus(start: start, minutes: 25, provider: "local"))
+    store.append(focus(start: start, seconds: 1_500, provider: "local"))
 
     #expect(viewModel.todayFocusCount == 1)
-    #expect(viewModel.todayFocusMinutes == 25)
+    #expect(viewModel.todayFocusSeconds == 1_500)
     #expect(viewModel.currentStreak == 1)
+  }
+
+  // MARK: - Sub-minute durations (issue #579)
+
+  @Test func subMinuteFocusSessionCreditsSecondsWithoutFlooring() async {
+    let start = Self.dayStart(daysAgo: 0).addingTimeInterval(9 * 3_600)
+    let viewModel = await makeViewModel([
+      focus(start: start, seconds: 45, completed: false, provider: "local")
+    ])
+    #expect(viewModel.todayFocusSeconds == 45)
+    #expect(viewModel.dailyFocusTotals.first?.seconds == 45)
+  }
+
+  @Test func subMinuteFocusSessionOutranksLongerFlooredZeroWouldHaveHidden() async {
+    let day = Self.fixedNoon(day: 600)
+    let viewModel = await makeViewModel(
+      [
+        focus(
+          start: day, seconds: 45, completed: false, provider: "local", nativeID: "short",
+          title: "Short"),
+        focus(
+          start: day, seconds: 20, completed: false, provider: "reminders", nativeID: "shorter",
+          title: "Shorter"),
+      ],
+      providerLabel: { ["local": "Local", "reminders": "Reminders"][$0] ?? $0 })
+    viewModel.scope = .allTime
+
+    let rows = viewModel.allTaskRows
+    #expect(rows.map(\.title) == ["Short", "Shorter"])
+    #expect(rows.map(\.totalSeconds) == [45, 20])
+
+    let breakdown = viewModel.providerBreakdown
+    #expect(breakdown.map(\.label) == ["Local", "Reminders"])
+    #expect(breakdown.map(\.seconds) == [45, 20])
   }
 }

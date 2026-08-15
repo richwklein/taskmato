@@ -7,7 +7,7 @@ import SwiftUI
 
 /// A ranked list of focus time by task, shown below the daily bar chart.
 ///
-/// Rows come from ``StatsViewModel/taskBreakdown`` (already ordered by duration descending).
+/// Rows come from ``SessionSummary/taskBreakdown`` (already ordered by duration descending).
 struct RankedTaskList: View {
 
   /// Task focus-time slices, ordered by duration descending.
