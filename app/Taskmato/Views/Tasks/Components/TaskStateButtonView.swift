@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The leading state control shared by ``TaskRowView`` and ``TaskCardView``.
+/// The leading state control used by ``TaskRowView``.
 ///
 /// Renders a filled restore circle for completed tasks, or a hover-toggling completion circle
 /// for active tasks whose provider supports completion. Renders nothing for a read-only active

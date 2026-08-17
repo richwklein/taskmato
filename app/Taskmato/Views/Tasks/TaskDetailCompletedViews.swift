@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// Completed-task row and card builders for `TaskDetailView`, plus the active-task list section
-/// builder — moved here to keep `TaskDetailView`'s own type body under the repo's length limit.
+/// Completed-task row builder for `TaskDetailView`, plus the active-task list section builder —
+/// moved here to keep `TaskDetailView`'s own type body under the repo's length limit.
 extension TaskDetailView {
 
   /// A ``TaskRowView``-backed section of `section`'s active tasks, wired to selection surface,
@@ -56,22 +56,5 @@ extension TaskDetailView {
         .contextMenu { completedTaskContextMenu(for: task) },
       for: task
     )
-  }
-
-  /// A ``TaskCardView`` wired to this view's restore and delete handlers.
-  func completedCard(_ task: TaskItem) -> some View {
-    TaskCardView(
-      task: task,
-      kind: completedKind(for: task),
-      lineage: lineage(for: task),
-      isSelected: selection == task.id,
-      isSelectionFocused: isTaskContentFocused
-    )
-    .contentShape(RoundedRectangle.card)
-    .onTapGesture {
-      selection = task.id
-      focusTaskContent()
-    }
-    .contextMenu { completedTaskContextMenu(for: task) }
   }
 }

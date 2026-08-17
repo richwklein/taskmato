@@ -138,10 +138,6 @@ enum AppLabels {
     static let showCompleted = AppLabel("Show Completed", systemImage: "eye")
     /// Hides the completed tasks section.
     static let hideCompleted = AppLabel("Hide Completed", systemImage: "eye.slash")
-    /// Switches the task picker to list layout.
-    static let listLayout = AppLabel("as List", systemImage: "list.bullet")
-    /// Switches the task picker to grid layout.
-    static let gridLayout = AppLabel("as Grid", systemImage: "square.grid.2x2")
     /// The sort toolbar menu.
     static let sort = AppLabel("Sort", systemImage: "arrow.up.arrow.down")
     /// Opens the task browser from the timer views.

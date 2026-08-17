@@ -9,8 +9,8 @@ import SwiftUI
 ///
 /// Renders the task priority's ``TaskPriority/icon`` tinted by its ``TaskPriority/accentColor``,
 /// or nothing for `.none`. `font` scales the glyph to match the host surface's title. Used as a
-/// hanging leading marker beside a task's text block (``TaskRowView``, ``TaskCardView``,
-/// ``ActiveTaskView``), so priority reads identically everywhere.
+/// hanging leading marker beside a task's text block (``TaskRowView``, ``ActiveTaskView``), so
+/// priority reads identically everywhere.
 struct PriorityGlyph: View {
 
   let priority: TaskPriority

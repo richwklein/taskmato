@@ -8,8 +8,8 @@ import SwiftUI
 
 /// The task detail surface for the Today and list destinations of the window-first shell.
 ///
-/// Renders the current task-scope selection (``SelectionStore``) as a grouped list or grid
-/// with live search, an add/show-completed/layout/sort toolbar, and per-task context menus.
+/// Renders the current task-scope selection (``SelectionStore``) as a grouped list with live
+/// search, an add/show-completed/sort toolbar, and per-task context menus.
 /// It is placed in the root ``NavigationSplitView``'s detail column by ``MainWindowView``; the
 /// universal sidebar and column visibility live in the shell, not here. When at least one
 /// enabled provider conforms to ``ClosableTaskProvider``, a "Show Completed" toolbar button
@@ -66,8 +66,8 @@ struct TaskDetailView: View {
   @State var activeDeleteCandidate: TaskItem?
 
   /// Maps between clipboard payloads/plain text and ``TaskDraft``, and answers cut/delete/paste
-  /// enablement (issue #546). Stateless, so a single instance is shared by both layouts. Not
-  /// `private`: `TaskDetailActions.swift`'s `copyToPasteboard(_:to:)` builds payloads with it.
+  /// enablement (issue #546). Not `private`: `TaskDetailActions.swift`'s
+  /// `copyToPasteboard(_:to:)` builds payloads with it.
   let clipboardService = TaskClipboardService()
 
   /// Returns the writable provider for the current sidebar selection using the shared resolver.
@@ -159,19 +159,6 @@ struct TaskDetailView: View {
         }
 
         ToolbarItemGroup(placement: .automatic) {
-          Picker("Layout", selection: $settings.taskPickerLayout) {
-            Label(
-              AppLabels.View.listLayout.title, systemImage: AppLabels.View.listLayout.systemImage
-            )
-            .tag(TaskPickerLayout.list)
-            Label(
-              AppLabels.View.gridLayout.title, systemImage: AppLabels.View.gridLayout.systemImage
-            )
-            .tag(TaskPickerLayout.grid)
-          }
-          .pickerStyle(.segmented)
-          .help("Toggle between list and grid view")
-
           sortMenu
         }
       }
@@ -308,8 +295,6 @@ struct TaskDetailView: View {
           description: Text("No tasks in this list.")
         )
       }
-    } else if settings.taskPickerLayout == .grid {
-      taskGrid
     } else {
       taskList
     }
@@ -336,66 +321,6 @@ struct TaskDetailView: View {
                       completedSectionHeader
                     }
                   }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { focusTaskContent() }
-            )
-        )
-    )
-  }
-
-  // MARK: - Grid layout
-
-  private var taskGrid: some View {
-    let columns = [GridItem(.adaptive(minimum: 180), spacing: .groupGap)]
-    return attachActiveDeleteConfirmation(
-      to:
-        attachClipboardModifiers(
-          to:
-            attachTaskKeyboardResponder(
-              to:
-                ScrollView {
-                  VStack(alignment: .leading, spacing: .sectionGap) {
-                    ForEach(sections) { section in
-                      VStack(alignment: .leading, spacing: .contentGap) {
-                        if shouldShowHeader(section) {
-                          Text(section.header)
-                            .font(.sectionHeader).padding(.horizontal, .stackTight)
-                        }
-
-                        LazyVGrid(columns: columns, spacing: .groupGap) {
-                          ForEach(section.tasks) { task in
-                            TaskCardView(
-                              task: task,
-                              kind: activeKind(for: task),
-                              lineage: lineage(for: task),
-                              isSelected: selection == task.id,
-                              isSelectionFocused: isTaskContentFocused
-                            )
-                            .contentShape(RoundedRectangle.card)
-                            .onTapGesture {
-                              selection = task.id
-                              focusTaskContent()
-                            }
-                            .simultaneousGesture(TapGesture(count: 2).onEnded { select(task) })
-                            .contextMenu { taskContextMenu(for: task) }
-                          }
-                        }
-
-                      }
-                    }
-
-                    if showCompleted && !completedTasks.isEmpty {
-                      VStack(alignment: .leading, spacing: .contentGap) {
-                        completedSectionHeader
-                          .padding(.horizontal, .stackTight)
-                        LazyVGrid(columns: columns, spacing: .groupGap) {
-                          ForEach(completedTasks) { task in completedCard(task) }
-                        }
-                      }
-                    }
-                  }
-                  .padding(.cardPadding)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { focusTaskContent() }

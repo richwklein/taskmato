@@ -8,7 +8,7 @@ import SwiftUI
 /// Renders a task title with inline-only markdown when `format` is `.markdown`, or as plain text.
 ///
 /// Used wherever a task title appears — paired with ``PriorityGlyph`` as a hanging leading
-/// marker (``TaskRowView``, ``TaskCardView``, ``ActiveTaskView``). Pass `isCompleted` to switch
+/// marker (``TaskRowView``, ``ActiveTaskView``). Pass `isCompleted` to switch
 /// to secondary foreground color, `lineLimit` to cap truncation, and `font` to match the
 /// surrounding surface (defaults to ``Font/taskTitle``).
 struct TaskMarkdownTitle: View {

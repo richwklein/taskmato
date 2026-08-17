@@ -188,7 +188,6 @@ extension SettingsStore {
 
     // MARK: Task views & sidebar
 
-    static let taskPickerLayout = SettingsKey("taskPickerLayout", default: TaskPickerLayout.grid)
     static let sidebarVisible = SettingsKey("taskRegistry.sidebarVisible", default: true)
     static let taskSortField = SettingsKey("taskSort.field", default: TaskSortField.dueDate)
     static let taskSortDirection = SettingsKey(

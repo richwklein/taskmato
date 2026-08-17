@@ -71,11 +71,10 @@ contrast/Increase Contrast — via `NSAppearance.paletteMatch` in `Palette.swift
 
 ## Selection
 
-Filled accent selection is the sidebar's — content selection (task rows and cards) never repaints
-with a saturated fill, because that fill would fail Dark Mode's contrast floor (4.5:1, 7:1 for
-custom colors) against the row's own semantic colors and force them to invert instead of holding
-their meaning. Content selection is a **neutral band** in the list and an **accent ring** on
-cards; content colors never change with selection.
+Filled accent selection is the sidebar's — content selection (task rows) never repaints with a
+saturated fill, because that fill would fail Dark Mode's contrast floor (4.5:1, 7:1 for custom
+colors) against the row's own semantic colors and force them to invert instead of holding their
+meaning. Content selection is a **neutral band**; content colors never change with selection.
 
 `SurfaceEmphasis` (`SurfaceEmphasis.swift`) is a plain, SwiftUI-free enum — `.normal`,
 `.unemphasizedSelection`, `.emphasizedSelection` — resolved from a surface's selection and focus
@@ -87,10 +86,11 @@ elsewhere. `SurfaceEmphasis+Style.swift` maps that to concrete values:
   `TaskDetailSelection.attachSelectionSurface(to:for:)` as a list row's background, full-bleed
   and square. `List` is never given a selection binding, so SwiftUI never marks a row selected
   and never draws or inverts anything of its own — this band is the row's only fill.
-- `cardStroke` / `cardStrokeWidth` — `.accentColor` at `selectionRing` width when shown, else
-  `cardBorder` at `cardHairline` width. Drawn by `cardBackground(_:)`.
 
 No environment value is published — content never needs to know what it sits on.
+
+`cardBackground()` paints the card surface (`cardSurface` fill, `cardBorder` at `cardHairline`)
+and takes no emphasis: the only remaining cards are the stat cards, which are not selectable.
 
 ## Spacing
 
@@ -105,7 +105,6 @@ No environment value is published — content never needs to know what it sits o
 | `cardPadding` | `10` | Interior padding of a card |
 | `groupGap` | `12` | Gap between grouped items or grid cells; one step looser than `contentGap` |
 | `sectionGap` | `16` | Gap between distinct sections of content |
-| `selectionRing` | `2` | Width of the accent ring around a selected card |
 | `cardHairline` | `1` | Width of a card's resting border |
 | `screenPadding` | `24` | Padding between content and a screen/sheet/popover edge |
 

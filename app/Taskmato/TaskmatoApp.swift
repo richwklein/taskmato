@@ -238,29 +238,6 @@ struct TaskmatoCommands: Commands {
       }
       .keyboardShortcut("3")
       Divider()
-      // Layout uses Toggles, not a Picker: a Toggle is an action item, so AppKit re-validates
-      // it on every menu open and `.disabled` greys it live off the task surface (a `Picker`
-      // container froze its state at build time — the root cause of #426). The Toggle also
-      // renders the on-state checkmark alongside the label glyph, matching the Reminders app.
-      Toggle(
-        isOn: Binding(
-          get: { settings.taskPickerLayout == .list },
-          set: { if $0 { settings.taskPickerLayout = .list } }
-        )
-      ) {
-        Label(AppLabels.View.listLayout.title, systemImage: AppLabels.View.listLayout.systemImage)
-      }
-      .disabled(!isTaskScope)
-      Toggle(
-        isOn: Binding(
-          get: { settings.taskPickerLayout == .grid },
-          set: { if $0 { settings.taskPickerLayout = .grid } }
-        )
-      ) {
-        Label(AppLabels.View.gridLayout.title, systemImage: AppLabels.View.gridLayout.systemImage)
-      }
-      .disabled(!isTaskScope)
-      Divider()
       Button {
         toggleCompleted?()
       } label: {

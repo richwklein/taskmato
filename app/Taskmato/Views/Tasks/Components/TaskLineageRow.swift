@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The provenance breadcrumb shared by ``TaskRowView`` and ``TaskCardView``.
+/// The provenance breadcrumb used by ``TaskRowView``.
 ///
 /// Shows the provider icon (when multiple providers are enabled) followed by the most specific
 /// context label, separated by a chevron. Host views gate visibility on
