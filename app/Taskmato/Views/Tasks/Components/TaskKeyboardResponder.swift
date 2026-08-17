@@ -61,6 +61,11 @@ struct TaskKeyboardResponder: NSViewRepresentable {
     }
   }
 
+  /// Cancels the pending focus reconciliation so it cannot outlive the view it reports for.
+  static func dismantleNSView(_ nsView: KeyboardView, coordinator: ()) {
+    nsView.cancelFocusReconciliation()
+  }
+
   /// First-responder view that forwards task-scope commands into SwiftUI state.
   final class KeyboardView: NSView, NSUserInterfaceValidations {
 
@@ -79,14 +84,56 @@ struct TaskKeyboardResponder: NSViewRepresentable {
 
     override var acceptsFirstResponder: Bool { true }
 
+    /// Pending reconciliation of a resign against where focus actually landed.
+    private var focusReconciliation: Task<Void, Never>?
+
     override func becomeFirstResponder() -> Bool {
+      cancelFocusReconciliation()
       onFocusChange(true)
       return true
     }
 
+    /// Defers the focus report rather than announcing a loss outright.
+    ///
+    /// A mouse click in the list hands first responder to the `List`'s backing table on
+    /// mouse-down and only returns it here on mouse-up, so reporting `false` immediately
+    /// flashes the selection through its unfocused styling for the length of the click. The
+    /// table is task content too, so this resolves on the next turn — once AppKit has installed
+    /// the new responder — and reports a loss only when focus genuinely left the task content.
     override func resignFirstResponder() -> Bool {
-      onFocusChange(false)
+      focusReconciliation?.cancel()
+      focusReconciliation = Task { @MainActor [weak self] in
+        await Task.yield()
+        guard let self, !Task.isCancelled else { return }
+        self.focusReconciliation = nil
+        self.onFocusChange(self.focusRemainsInTaskContent)
+      }
       return true
+    }
+
+    /// Drops any pending reconciliation, so a resolved or torn-down focus never reports late.
+    func cancelFocusReconciliation() {
+      focusReconciliation?.cancel()
+      focusReconciliation = nil
+    }
+
+    /// Whether the window's current first responder still sits inside the task content.
+    ///
+    /// Walks a bounded stretch of ancestors rather than testing one fixed container, because the
+    /// depth between this overlay and the sibling subtree holding the list is a SwiftUI
+    /// implementation detail. The walk stops short of the window's content view so that focus
+    /// moving to the sidebar — which shares only that top-level ancestor — still reads as a loss.
+    private var focusRemainsInTaskContent: Bool {
+      guard let responder = window?.firstResponder as? NSView else { return false }
+      guard responder !== self else { return true }
+      var ancestor = superview
+      var depth = 0
+      while let current = ancestor, depth < 4, current !== window?.contentView {
+        if responder.isDescendant(of: current) { return true }
+        ancestor = current.superview
+        depth += 1
+      }
+      return false
     }
 
     override func keyDown(with event: NSEvent) {

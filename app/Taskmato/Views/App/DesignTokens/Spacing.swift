@@ -30,4 +30,11 @@ extension CGFloat {
 
   /// Padding between content and the edge of a screen, sheet, or popover.
   static let screenPadding: CGFloat = 24
+
+  /// Width of the accent ring around a selected card. Reminders measures 1.5pt; 2pt fills the
+  /// slot ``TaskCardView`` already reserves, so selection does not shift layout.
+  static let selectionRing: CGFloat = 2
+
+  /// Width of a card's resting border.
+  static let cardHairline: CGFloat = 1
 }

@@ -29,6 +29,12 @@ struct TaskCardView: View {
     TaskItemPresenter(task: task, kind: kind, lineage: lineage)
   }
 
+  /// This card's own selection emphasis, derived from `isSelected`/`isSelectionFocused` and fed
+  /// to ``cardBackground(_:)`` to resolve the resting border versus the selection ring.
+  private var emphasis: SurfaceEmphasis {
+    SurfaceEmphasis(isSelected: isSelected, isSelectionFocused: isSelectionFocused)
+  }
+
   var body: some View {
     HStack(alignment: .top, spacing: .iconLabel) {
       TaskStateButtonView(presenter: presenter, isHovered: $completionHover)
@@ -52,14 +58,7 @@ struct TaskCardView: View {
     }
     .padding(.cardPadding)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    .background(
-      RoundedRectangle.card
-        .fill(cardBackground)
-    )
-    .overlay(
-      RoundedRectangle.card
-        .strokeBorder(Color.clear, lineWidth: 2)
-    )
+    .cardBackground(emphasis)
     .contentShape(RoundedRectangle.card)
     .onHover { cardHover = $0 }
     .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -69,11 +68,6 @@ struct TaskCardView: View {
       Button("Delete", role: .destructive) { presenter.onDelete?() }
       Button("Cancel", role: .cancel) {}
     }
-  }
-
-  private var cardBackground: Color {
-    guard isSelected else { return .cardSurface }
-    return isSelectionFocused ? .activeSelection : .inactiveSelection
   }
 
   /// The due date (active tasks) or completed-relative subtitle (completed tasks). The card's
@@ -88,7 +82,7 @@ struct TaskCardView: View {
           : .dateTime.month(.abbreviated).day().year()
       )
       .font(.taskMetadata)
-      .foregroundStyle(presenter.dueIsUrgent ? Color.dueUrgent : Color.secondary)
+      .foregroundStyle(presenter.dueIsUrgent ? Color.dueUrgent : .secondary)
     } else if presenter.isCompleted {
       Text(presenter.completedSubtitle)
         .font(.taskMetadata)

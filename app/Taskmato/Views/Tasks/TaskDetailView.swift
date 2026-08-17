@@ -324,7 +324,7 @@ struct TaskDetailView: View {
           to:
             attachTaskKeyboardResponder(
               to:
-                List(selection: $selection) {
+                List {
                   SwiftUI.ForEach(sections) { section in
                     listSection(for: section)
                   }
@@ -337,33 +337,11 @@ struct TaskDetailView: View {
                     }
                   }
                 }
-                .onTableDoubleClick { _ = activateSelection() }
                 .contentShape(Rectangle())
                 .onTapGesture { focusTaskContent() }
             )
         )
     )
-  }
-
-  @ViewBuilder
-  private func listSection(for section: TaskSection) -> some View {
-    SwiftUI.Section {
-      SwiftUI.ForEach(section.tasks) { task in
-        TaskRowView(
-          task: task,
-          kind: activeKind(for: task),
-          lineage: lineage(for: task)
-        )
-        .tag(task.id)
-        .listRowBackground(selectionBackground(for: task))
-        .accessibilityAddTraits(selection == task.id ? .isSelected : [])
-        .contextMenu { taskContextMenu(for: task) }
-      }
-    } header: {
-      if shouldShowHeader(section) {
-        Text(section.header).font(.sectionHeader)
-      }
-    }
   }
 
   // MARK: - Grid layout
@@ -520,8 +498,9 @@ extension TaskDetailView {
 
   /// The active-task kind wired to this view's complete and — for writable providers only —
   /// permanent-delete handlers. The trailing delete button reveals on hover (issue #546),
-  /// surfacing the same delete now reachable via the keyboard.
-  private func activeKind(for task: TaskItem) -> TaskItemKind {
+  /// surfacing the same delete now reachable via the keyboard. Not `private`:
+  /// `TaskDetailCompletedViews.swift`'s `listSection(for:)` also calls this.
+  func activeKind(for task: TaskItem) -> TaskItemKind {
     let canDelete = registry.writableProvider(for: task.id) != nil
     return .active(
       onComplete: onCompleteHandler(for: task),
@@ -529,7 +508,9 @@ extension TaskDetailView {
     )
   }
 
-  private func shouldShowHeader(_ section: TaskSection) -> Bool {
+  /// Whether `section`'s header should render. Not `private`:
+  /// `TaskDetailCompletedViews.swift`'s `listSection(for:)` also calls this.
+  func shouldShowHeader(_ section: TaskSection) -> Bool {
     section.displayStyle == .sectioned
       && !section.header.isEmpty
       && navigationContext?.label != section.header

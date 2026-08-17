@@ -20,10 +20,23 @@ extension TaskDetailView {
     taskContentFocusToken += 1
   }
 
-  /// Returns the active or inactive selection fill for `task`.
-  func selectionBackground(for task: TaskItem) -> Color {
-    guard selection == task.id else { return .clear }
-    return isTaskContentFocused ? .activeSelection : .inactiveSelection
+  /// The surface emphasis for `task`'s row, given the current selection and focus.
+  func surfaceEmphasis(for task: TaskItem) -> SurfaceEmphasis {
+    SurfaceEmphasis(isSelected: selection == task.id, isSelectionFocused: isTaskContentFocused)
+  }
+
+  /// Paints `task`'s selection band — a neutral fill drawn only while task content holds focus.
+  ///
+  /// The band has to be drawn here rather than left to the platform: `List` no longer receives a
+  /// selection binding (see ``TaskDetailView/taskList``), so SwiftUI never marks a row selected
+  /// and never draws or inverts anything on its own — this band is the row's only fill.
+  ///
+  /// It is full-bleed and square, matching Reminders' list selection, rather than inset or
+  /// rounded to a card shape.
+  @ViewBuilder
+  func attachSelectionSurface<Content: View>(to content: Content, for task: TaskItem) -> some View {
+    let emphasis = surfaceEmphasis(for: task)
+    content.listRowBackground(emphasis.bandFill)
   }
 
   /// The task currently identified by ``selection`` within active or completed tasks, or `nil`
