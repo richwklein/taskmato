@@ -20,6 +20,9 @@ struct AppComposition {
   let engine: SessionEngine
   let settings: AppSettings
   let timerPresenter: TimerPresenter
+  /// Supplies the staged "next focus" readout (design doc "stage the next focus", D-d). Handed
+  /// only to the main window's Timer tab, never to the menu-bar popover.
+  let nextUpPresenter: NextUpPresenter
   let store: SessionStore
   let statsViewModel: StatsViewModel
   let selectionStore: TaskSelectionStore
@@ -80,9 +83,12 @@ struct AppComposition {
     self.activeTaskLiveObserver = runtime.activeTaskReconciliation.liveObserver
     self.activeTaskReconciler = runtime.activeTaskReconciliation.reconciler
     self.focusAttribution = runtime.focusAttribution
+    let timerPresenter = TimerPresenter(engine: engine, settings: settings)
     self.engine = engine
     self.settings = settings
-    self.timerPresenter = TimerPresenter(engine: engine, settings: settings)
+    self.timerPresenter = timerPresenter
+    self.nextUpPresenter = NextUpPresenter(
+      presenter: timerPresenter, selectionStore: selectionStore, settings: settings)
     self.store = store
     self.statsViewModel = statsViewModel
     self.selectionStore = selectionStore

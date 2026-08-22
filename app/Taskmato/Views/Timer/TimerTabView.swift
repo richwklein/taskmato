@@ -9,6 +9,7 @@ import SwiftUI
 struct TimerTabView: View {
 
   var presenter: TimerPresenter
+  var nextUpPresenter: NextUpPresenter
   var engine: SessionEngine
   var statsViewModel: StatsViewModel
   var selectionStore: TaskSelectionStore
@@ -20,7 +21,7 @@ struct TimerTabView: View {
     VStack(spacing: 0) {
       Spacer()
 
-      CircularTimerView(presenter: presenter)
+      CircularTimerView(presenter: presenter, nextUpPresenter: nextUpPresenter)
 
       TimerControlsView(
         presenter: presenter,
@@ -36,10 +37,10 @@ struct TimerTabView: View {
       Divider()
         .padding(.horizontal, .screenPadding)
 
-      if selectionStore.activeTask != nil {
+      if selectionStore.activeTask != nil || nextUpPresenter.showsNextUp {
         ActiveTaskView(
           engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
-          errorPresenter: errorPresenter, style: .detail, onSelect: nil
+          errorPresenter: errorPresenter, style: .detail, nextUp: nextUpPresenter, onSelect: nil
         )
         .padding(.horizontal, .sectionGap)
         .padding(.vertical, .contentGap)
@@ -69,11 +70,15 @@ struct TimerTabView: View {
     let engine = SessionEngine()
     let settings = AppSettings()
     let registry = ProviderRegistry()
+    let selectionStore = TaskSelectionStore()
+    let timerPresenter = TimerPresenter(engine: engine, settings: settings)
     return TimerTabView(
-      presenter: TimerPresenter(engine: engine, settings: settings),
+      presenter: timerPresenter,
+      nextUpPresenter: NextUpPresenter(
+        presenter: timerPresenter, selectionStore: selectionStore, settings: settings),
       engine: engine,
       statsViewModel: .preview,
-      selectionStore: TaskSelectionStore(),
+      selectionStore: selectionStore,
       registry: registry,
       nav: MainNavigation(
         settings: settings, selectionStore: SelectionStore(registry: registry),

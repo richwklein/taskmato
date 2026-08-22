@@ -15,15 +15,17 @@ enum ActiveTaskStyle {
 
 /// A label row displaying the currently selected task with provider-conditional action buttons.
 ///
-/// Hidden when no task is selected. Completing, swapping, or clearing mid-session pauses the
-/// live focus phase, closes and credits the outgoing slice, and — on ``ActiveTaskStyle/detail``
-/// — routes to the task picker (D2/D3 of design doc 0010); no confirmation is shown, since the
-/// action is no longer destructive. During a break the same three actions only mutate the
-/// selection, with no pause, slice, or routing (D10). A staged task (design doc "stage the next
-/// focus") is always dropped by swap or clear, and promoted directly — skipping the picker — by
-/// complete (D-e/D-f). The same view backs the popover, the in-window strip, and the Timer
-/// destination; ``style`` drives which affordances render and whether completing/swapping/
-/// clearing navigates the window.
+/// Hidden when no task is selected and nothing is staged. Completing, swapping, or clearing
+/// mid-session pauses the live focus phase, closes and credits the outgoing slice, and — on
+/// ``ActiveTaskStyle/detail`` — routes to the task picker (D2/D3 of design doc 0010); no
+/// confirmation is shown, since the action is no longer destructive. During a break the same
+/// three actions only mutate the selection, with no pause, slice, or routing (D10). A staged
+/// task (design doc "stage the next focus") is always dropped by swap or clear, and promoted
+/// directly — skipping the picker — by complete (D-e/D-f). At ``ActiveTaskStyle/detail``, a
+/// staged task's title renders as a "Next:" line (D-d) — even with no active task at all, since
+/// swap/clear can leave the active slot empty while a staged plan survives. The same view backs
+/// the popover, the in-window strip, and the Timer destination; ``style`` drives which
+/// affordances render and whether completing/swapping/clearing navigates the window.
 @MainActor
 struct ActiveTaskView: View {
 
@@ -35,6 +37,9 @@ struct ActiveTaskView: View {
   /// The surface this instance renders for; drives title styling, secondary affordances, and
   /// post-commit navigation.
   var style: ActiveTaskStyle = .detail
+  /// Supplies the staged "next focus" task for the `.detail` "Next:" line. `nil` on `.compact`
+  /// surfaces (the popover, the in-window strip), which never show next-up (D-d).
+  var nextUp: NextUpPresenter?
   /// Invoked when the user clicks the title; `nil` renders the title as plain, non-interactive text.
   var onSelect: (() -> Void)?
 
@@ -60,6 +65,8 @@ struct ActiveTaskView: View {
   var body: some View {
     if let task = selectionStore.activeTask {
       taskRow(for: task)
+    } else if style == .detail, let staged = nextUp?.stagedTask {
+      nextUpLine(for: staged)
     }
   }
 
@@ -132,8 +139,23 @@ struct ActiveTaskView: View {
           if let url = task.sourceURL, let provider = registry.provider(for: task.id) {
             TaskSourceBadge(url: url, name: provider.displayName, icon: provider.icon)
           }
+
+          if let staged = nextUp?.stagedTask {
+            nextUpLine(for: staged)
+          }
         }
       }
+    }
+  }
+
+  /// The "Next: <title>" line shown at `.detail` while a task is staged (design doc "stage the
+  /// next focus", D-d) — pairs with ``NextUpReadout``'s length line on the ring.
+  private func nextUpLine(for task: TaskItem) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: .iconLabel) {
+      Text(AppLabels.NextUp.taskPrefix)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      TaskMarkdownTitle(task: task, lineLimit: 1, font: .caption)
     }
   }
 
@@ -241,29 +263,45 @@ struct ActiveTaskView: View {
       statsViewModel: .preview)
 
     @MainActor
+    func task(title: String, priority: TaskPriority) -> TaskItem {
+      TaskItem(
+        id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
+        title: title,
+        notes: "Some notes about the task.",
+        format: .plainText,
+        priority: priority,
+        dueDate: nil,
+        scheduledDate: nil,
+        startDate: nil,
+        list: nil,
+        section: nil,
+        sourceURL: nil,
+        completedAt: nil,
+        createdAt: Date()
+      )
+    }
+
+    @MainActor
     func store(priority: TaskPriority) -> TaskSelectionStore {
       let store = TaskSelectionStore()
-      store.select(
-        TaskItem(
-          id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
-          title: "Priority \(priority)",
-          notes: "Some notes about the task.",
-          format: .plainText,
-          priority: priority,
-          dueDate: nil,
-          scheduledDate: nil,
-          startDate: nil,
-          list: nil,
-          section: nil,
-          sourceURL: nil,
-          completedAt: nil,
-          createdAt: Date()
-        )
-      )
+      store.select(task(title: "Priority \(priority)", priority: priority))
       return store
     }
 
+    @MainActor
+    func nextUpPresenter(for store: TaskSelectionStore) -> NextUpPresenter {
+      NextUpPresenter(
+        presenter: TimerPresenter(engine: engine, settings: settings), selectionStore: store,
+        settings: settings)
+    }
+
     let priorities: [TaskPriority] = [.highest, .high, .medium, .low, .lowest]
+
+    let stagedActiveStore = store(priority: .high)
+    stagedActiveStore.stage(task(title: "Staged next focus task", priority: .medium))
+
+    let stagedOnlyStore = TaskSelectionStore()
+    stagedOnlyStore.stage(task(title: "Staged with no active task", priority: .low))
 
     return VStack(alignment: .leading, spacing: .sectionGap) {
       ForEach(priorities, id: \.self) { priority in
@@ -277,6 +315,16 @@ struct ActiveTaskView: View {
           engine: engine, selectionStore: store(priority: priority), registry: registry,
           nav: nav, errorPresenter: errorPresenter, style: .detail, onSelect: nil)
       }
+
+      ActiveTaskView(
+        engine: engine, selectionStore: stagedActiveStore, registry: registry, nav: nav,
+        errorPresenter: errorPresenter, style: .detail,
+        nextUp: nextUpPresenter(for: stagedActiveStore), onSelect: nil)
+
+      ActiveTaskView(
+        engine: engine, selectionStore: stagedOnlyStore, registry: registry, nav: nav,
+        errorPresenter: errorPresenter, style: .detail,
+        nextUp: nextUpPresenter(for: stagedOnlyStore), onSelect: nil)
     }
     .padding()
     .frame(width: 360)

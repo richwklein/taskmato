@@ -9,7 +9,8 @@ import SwiftUI
 ///
 /// Used standalone by the slim menu-bar popover and centered inside
 /// ``CircularTimerView`` on the window's Timer surface, so both render one countdown and
-/// phase typography.
+/// phase typography. The countdown line is ``TimerCountdownText``, shared with
+/// ``FocusPresetReadout``'s menu label.
 struct TimerReadout: View {
 
   /// The formatted time string, e.g. `"24:59"`.
@@ -17,14 +18,9 @@ struct TimerReadout: View {
   /// The phase name shown below the time, e.g. `"Focus"`.
   let phase: String
 
-  /// The countdown's base point size, scaled by Dynamic Type relative to `.largeTitle`.
-  @ScaledMetric(relativeTo: .largeTitle) private var countdownSize: CGFloat = 36
-
   var body: some View {
     VStack(spacing: .rowVertical) {
-      Text(label)
-        .font(.system(size: countdownSize, weight: .light, design: .monospaced))
-        .foregroundStyle(.primary)
+      TimerCountdownText(label: label)
       Text(phase)
         .font(.timerPhaseLabel)
         .foregroundStyle(.secondary)
