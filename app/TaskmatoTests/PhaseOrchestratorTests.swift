@@ -381,4 +381,60 @@ struct PhaseOrchestratorTests {
     ctx.continuation.finish()
     await runTask.value
   }
+
+  // MARK: - Staging (design doc "stage the next focus")
+
+  @Test func beganFocusPromotesTheStagedTaskAndSeedsAttributionOnIt() async {
+    let ctx = await makeContext()
+    let staged = Self.makeTask(providerID: "local", nativeID: "b", title: "Staged")
+    ctx.selectionStore.stage(staged)
+    let runTask = Task { await ctx.orchestrator.run() }
+
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let endedAt = startedAt.addingTimeInterval(1_500)
+    ctx.continuation.yield(.began(phase: .focus))
+    await drain()
+
+    #expect(ctx.selectionStore.activeTask == staged)
+    #expect(ctx.selectionStore.stagedTask == nil)
+
+    ctx.continuation.yield(
+      .ended(phase: .focus, startedAt: startedAt, endedAt: endedAt, wasCompleted: true))
+    await drain()
+
+    #expect(ctx.store.sessions.first?.segments.first?.taskRef == staged.id)
+
+    ctx.continuation.finish()
+    await runTask.value
+  }
+
+  @Test func beganShortBreakIgnoresAStagedTask() async {
+    let ctx = await makeContext()
+    let staged = Self.makeTask(providerID: "local", nativeID: "b", title: "Staged")
+    ctx.selectionStore.stage(staged)
+    let runTask = Task { await ctx.orchestrator.run() }
+
+    ctx.continuation.yield(.began(phase: .shortBreak))
+    await drain()
+
+    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.selectionStore.stagedTask == staged)
+
+    ctx.continuation.finish()
+    await runTask.value
+  }
+
+  @Test func skipFromPausedIntoFocusStaysPaused() {
+    // The contract `applyStagedTask()` relies on: `skip()` can reach `.began(.focus)` from a
+    // *paused* state, and must stay paused rather than silently resuming.
+    let engine = SessionEngine()
+    engine.start(phase: .shortBreak)
+    engine.pause()
+    engine.skip()
+    guard case .paused(let phase, _) = engine.state else {
+      Issue.record("Expected skip-from-paused to land paused, got \(engine.state)")
+      return
+    }
+    #expect(phase == .focus)
+  }
 }

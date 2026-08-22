@@ -558,13 +558,15 @@ extension TaskDetailView {
     nav.showTimer()
   }
 
-  /// Selects `task` and sizes the focus phase that follows a queued break, starting nothing — the
-  /// "Focus Next ▸" variant of the same submenu (issue #580). Leaving the timer untouched during a
-  /// break matches how complete/swap/clear already behave there (design doc 0010, D10). Not
-  /// `private`: called from `TaskDetailContextMenu.swift`.
+  /// Stages `task` to become active at the next focus phase and sizes that phase to `minutes` —
+  /// the "Focus Next ▸" variant of the same submenu, now reachable in every state except
+  /// idle-with-focus-next (design doc "stage the next focus", D-a). Writes
+  /// `settings.focusMinutes` directly and unconditionally, exactly as ``startFocus(_:minutes:)``
+  /// does, since there is no separate staged-length state (D-b). Not `private`: called from
+  /// `TaskDetailContextMenu.swift`.
   func stageNextFocus(_ task: TaskItem, minutes: Int) {
-    selectionStore.select(task)
-    presenter.stageNextFocusPreset(minutes)
+    selectionStore.stage(task)
+    settings.focusMinutes = minutes
     nav.showTimer()
   }
 

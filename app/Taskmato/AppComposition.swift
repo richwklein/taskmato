@@ -250,9 +250,11 @@ struct AppComposition {
       (reconciler: ActiveTaskReconciler, liveObserver: ActiveTaskLiveObserver)
   }
 
-  /// Wires the two focus-handoff callbacks onto `selectionStore` (D4/D9 of design doc 0010): a
-  /// task change appends a slice to the live focus phase's attribution log, and a genuine
-  /// handoff continuation auto-resumes when `autoStartNextPhase` is on.
+  /// Wires the three focus-handoff callbacks onto `selectionStore` (D4/D9 of design doc 0010,
+  /// D-f of "stage the next focus"): a task change appends a slice to the live focus phase's
+  /// attribution log, a genuine handoff continuation auto-resumes when `autoStartNextPhase` is
+  /// on, and a staged-task promotion (the complete gesture only) resumes the same way but
+  /// without navigating — the popover's two-line readout already shows the promoted task.
   private static func wireFocusHandoff(
     engine: SessionEngine, settings: AppSettings, nav: MainNavigation,
     selectionStore: TaskSelectionStore, attribution: FocusAttribution
@@ -265,6 +267,10 @@ struct AppComposition {
       guard settings.autoStartNextPhase else { return }
       engine?.resume()
       nav?.showTimerInMainWindow()
+    }
+    selectionStore.onStagedPromotion = { [weak engine] in
+      guard settings.autoStartNextPhase else { return }
+      engine?.resume()
     }
   }
 

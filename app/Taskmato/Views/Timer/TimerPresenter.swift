@@ -116,13 +116,6 @@ final class TimerPresenter {
   /// queued, and there the readout is counting down that break, not focus (issue #580).
   var canSelectFocusPreset: Bool { isIdle && nextStartPhase == .focus }
 
-  /// `true` while idle with a break queued, where a chosen focus length applies to the focus phase
-  /// *after* that break rather than to the countdown on screen (issue #580).
-  ///
-  /// The two are mutually exclusive: idle is either "focus is next" (``canSelectFocusPreset``) or
-  /// "a break is next" (this).
-  var canStageNextFocusPreset: Bool { isIdle && nextStartPhase != .focus }
-
   /// Focus-length presets to offer, ascending, in minutes.
   ///
   /// Mirrors `settings.focusPresets`, but prepends the current `focusMinutes` when it holds a
@@ -149,16 +142,6 @@ final class TimerPresenter {
   /// anyway.
   func selectFocusPreset(_ minutes: Int) {
     guard canSelectFocusPreset else { return }
-    settings.focusMinutes = minutes
-  }
-
-  /// Sets the focus length for the phase that follows a queued break, without starting anything.
-  ///
-  /// A no-op unless ``canStageNextFocusPreset``. The engine reads the value at the break's end via
-  /// ``SessionEngine/applyDurations(from:)``, so the staged length sizes that focus phase whether
-  /// the break is started manually or auto-advances.
-  func stageNextFocusPreset(_ minutes: Int) {
-    guard canStageNextFocusPreset else { return }
     settings.focusMinutes = minutes
   }
 

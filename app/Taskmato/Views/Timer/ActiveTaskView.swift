@@ -19,9 +19,11 @@ enum ActiveTaskStyle {
 /// live focus phase, closes and credits the outgoing slice, and — on ``ActiveTaskStyle/detail``
 /// — routes to the task picker (D2/D3 of design doc 0010); no confirmation is shown, since the
 /// action is no longer destructive. During a break the same three actions only mutate the
-/// selection, with no pause, slice, or routing (D10). The same view backs the popover, the
-/// in-window strip, and the Timer destination; ``style`` drives which affordances render and
-/// whether completing/swapping/clearing navigates the window.
+/// selection, with no pause, slice, or routing (D10). A staged task (design doc "stage the next
+/// focus") is always dropped by swap or clear, and promoted directly — skipping the picker — by
+/// complete (D-e/D-f). The same view backs the popover, the in-window strip, and the Timer
+/// destination; ``style`` drives which affordances render and whether completing/swapping/
+/// clearing navigates the window.
 @MainActor
 struct ActiveTaskView: View {
 
@@ -155,11 +157,14 @@ struct ActiveTaskView: View {
   /// Handles a tap on the completion circle.
   ///
   /// During a live focus phase, pauses first so provider-call latency doesn't leak into the
-  /// outgoing slice's credited time (D3 of design doc 0010); on success the slice closes
-  /// (`clearActiveTask()`) and the surface routes to Tasks, on failure the phase resumes and
+  /// outgoing slice's credited time (D3 of design doc 0010); on success a staged task promotes
+  /// directly — there is nothing left to pick — otherwise the slice closes
+  /// (`clearActiveTask()`) and the surface routes to Tasks; on failure the phase resumes and
   /// the error surfaces. While idle or mid-break, only mutates the selection — no pause,
-  /// slice, or routing (D10).
-  private func completeTapped(_ task: TaskItem) {
+  /// slice, or routing (D10) — but a staged task still promotes directly rather than just
+  /// clearing (D-f, "stage the next focus"). Not `private`, so tests can exercise the D-e/D-f
+  /// gesture matrix without rendering the view.
+  func completeTapped(_ task: TaskItem) {
     guard let provider = registry.closableProvider(for: task.id) else { return }
     let ref = task.id
     guard sessionIsActive, !isBreakPhase else {
@@ -167,7 +172,12 @@ struct ActiveTaskView: View {
         let succeeded = await errorPresenter.attempt(AppLabels.Error.completeFailed) {
           try await provider.complete(ref)
         }
-        if succeeded { selectionStore.clearActiveTask() }
+        guard succeeded else { return }
+        if selectionStore.stagedTask != nil {
+          selectionStore.promoteStaged()
+        } else {
+          selectionStore.clearActiveTask()
+        }
       }
       return
     }
@@ -175,9 +185,13 @@ struct ActiveTaskView: View {
     Task {
       do {
         try await provider.complete(ref)
-        selectionStore.clearActiveTask()
-        selectionStore.markPendingContinuation()
-        if style == .detail { nav.showTasks() }
+        if selectionStore.stagedTask != nil {
+          selectionStore.promoteStaged()
+        } else {
+          selectionStore.clearActiveTask()
+          selectionStore.markPendingContinuation()
+          if style == .detail { nav.showTasks() }
+        }
       } catch {
         engine.resume()
         errorPresenter.present(title: AppLabels.Error.completeFailed, error: error)
@@ -187,8 +201,11 @@ struct ActiveTaskView: View {
 
   /// Pauses the live focus phase and routes to the task picker so the user can choose a
   /// replacement; the outgoing slice closes once that selection lands (D2). During a break the
-  /// phase keeps running untouched — only the routing happens (D10).
-  private func swapTapped() {
+  /// phase keeps running untouched — only the routing happens (D10). Always drops a staged task
+  /// (D-e, "stage the next focus") — swapping the active task makes an earlier plan moot. Not
+  /// `private`, so tests can exercise the D-e/D-f gesture matrix without rendering the view.
+  func swapTapped() {
+    selectionStore.clearStagedTask()
     if !isBreakPhase {
       engine.pause()
       selectionStore.markPendingContinuation()
@@ -198,8 +215,10 @@ struct ActiveTaskView: View {
   }
 
   /// Pauses, closes the outgoing slice, and detaches the active task. While idle or mid-break,
-  /// only detaches — no pause, slice, or routing (D10).
-  private func clearTapped() {
+  /// only detaches — no pause, slice, or routing (D10). `clearActiveTask()` also drops a staged
+  /// task (D-e, "stage the next focus"). Not `private`, so tests can exercise the D-e/D-f
+  /// gesture matrix without rendering the view.
+  func clearTapped() {
     guard sessionIsActive, !isBreakPhase else {
       selectionStore.clearActiveTask()
       return

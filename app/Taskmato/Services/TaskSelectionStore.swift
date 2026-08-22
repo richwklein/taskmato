@@ -6,17 +6,25 @@
 import Foundation
 import Observation
 
-/// Tracks the currently selected task and a per-provider recents list.
+/// Tracks the currently selected task, a per-provider recents list, and a task staged for the
+/// next focus phase.
 ///
 /// The active task and recents are persisted to `UserDefaults` so selections
 /// survive app relaunch. Recents are capped at 10 entries per provider, with
-/// the most recently selected item always at the front.
+/// the most recently selected item always at the front. The staged task (design doc "stage the
+/// next focus") is not persisted — it is a within-run intent only.
 @Observable
 @MainActor
 final class TaskSelectionStore {
 
   /// The task currently selected for the active Pomodoro session, or `nil` if none.
   private(set) var activeTask: TaskItem?
+
+  /// The task queued to become active at the next focus phase's start, or `nil` if none — the
+  /// "Focus Next" gesture's promise (design doc "stage the next focus", D-a). Not persisted:
+  /// staging is a within-run intent, and surviving days to ambush a future session would be
+  /// worse than losing it on quit (D-c).
+  private(set) var stagedTask: TaskItem?
 
   /// Recent tasks keyed by provider ID, each capped at `recentsLimit` entries.
   private(set) var recentsByProvider: [String: [TaskItem]] = [:]
@@ -35,6 +43,11 @@ final class TaskSelectionStore {
   /// to resume the paused phase, gated on `autoStartNextPhase`.
   var onContinuationSelect: (() -> Void)?
 
+  /// Fired when ``promoteStaged()`` promotes ``stagedTask`` — the complete gesture's handoff
+  /// (design doc "stage the next focus", D-f), never the phase-boundary handoff. The caller
+  /// decides whether to resume the paused phase, gated on `autoStartNextPhase`.
+  var onStagedPromotion: (() -> Void)?
+
   private let store: SettingsStore
   static let recentsLimit = 10
 
@@ -49,9 +62,11 @@ final class TaskSelectionStore {
   /// Selects a task as the active task and prepends it to that provider's recents.
   ///
   /// Safe to call mid-session — does not interact with the timer state directly, though a
-  /// pending continuation (D9) may trigger ``onContinuationSelect``.
+  /// pending continuation (D9) may trigger ``onContinuationSelect``. An explicit selection wins
+  /// over a staged task, so ``stagedTask`` is cleared too (design doc "stage the next focus", D-e).
   /// - Parameter task: The task to make active.
   func select(_ task: TaskItem) {
+    stagedTask = nil
     activeTask = task
     addToRecents(task)
     persist()
@@ -62,11 +77,58 @@ final class TaskSelectionStore {
     }
   }
 
-  /// Clears the active task without affecting recents.
+  /// Clears the active task without affecting recents. Also drops a staged task (design doc
+  /// "stage the next focus", D-e) — an explicit clear wins.
   func clearActiveTask() {
+    stagedTask = nil
     activeTask = nil
     persist()
     onActiveTaskChanged?(nil)
+  }
+
+  // MARK: - Staging (design doc "stage the next focus")
+
+  /// Queues `task` to become active at the next focus phase's start, without disturbing the
+  /// task running now (D-a).
+  /// - Parameter task: The task to stage.
+  func stage(_ task: TaskItem) {
+    stagedTask = task
+  }
+
+  /// Drops the staged task without touching the active task. The staged length
+  /// (`settings.focusMinutes`) is left alone — under D-b it is a persisted default, not a
+  /// per-plan promise, so it legitimately survives (D-e).
+  func clearStagedTask() {
+    stagedTask = nil
+  }
+
+  /// Promotes ``stagedTask`` to ``activeTask`` at a focus phase's start, firing no resume
+  /// callback. Called from `PhaseOrchestrator.began(.focus)`, which `skip()` can reach from a
+  /// *paused* state — skip-from-paused must stay paused, so this never resumes anything. A
+  /// no-op when nothing is staged.
+  func applyStagedTask() {
+    guard let staged = stagedTask else { return }
+    stagedTask = nil
+    promote(staged)
+  }
+
+  /// Promotes ``stagedTask`` to ``activeTask`` and fires ``onStagedPromotion`` — the complete
+  /// gesture's handoff (D-f): with a task staged there is nothing left to pick, so completing
+  /// hands off directly instead of routing to the picker. A no-op when nothing is staged.
+  func promoteStaged() {
+    guard let staged = stagedTask else { return }
+    stagedTask = nil
+    promote(staged)
+    onStagedPromotion?()
+  }
+
+  /// Updates the staged task's cached fields from a freshly reloaded snapshot of the same
+  /// reference, mirroring ``refreshActiveTask(_:replacing:)`` for the staged slot — used by the
+  /// reconciler so external edits show up without disturbing the staged plan.
+  /// - Parameter task: The reloaded task.
+  func refreshStagedTask(_ task: TaskItem) {
+    guard let staged = stagedTask, task.id == staged.id else { return }
+    stagedTask = task
   }
 
   /// Updates the active task's cached fields (title, notes, priority, …) from a freshly
@@ -111,6 +173,17 @@ final class TaskSelectionStore {
   }
 
   // MARK: - Private
+
+  /// Applies `task` as the active task: sets ``activeTask``, adds it to recents, persists, and
+  /// fires ``onActiveTaskChanged``. The one core both ``applyStagedTask()`` and
+  /// ``promoteStaged()`` share; never touches ``isPendingContinuation`` — promotion is a
+  /// distinct handoff, not a continuation-select (design doc "stage the next focus", D-f).
+  private func promote(_ task: TaskItem) {
+    activeTask = task
+    addToRecents(task)
+    persist()
+    onActiveTaskChanged?(task)
+  }
 
   private func addToRecents(_ task: TaskItem) {
     let key = task.id.providerID.rawValue
