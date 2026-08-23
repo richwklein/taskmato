@@ -15,7 +15,8 @@ import SwiftUI
 /// the phase name, which made "Ready to focus" unreachable on screen before this split. Otherwise
 /// it renders the plain readout, so the countdown never shifts position as a session starts or
 /// stops, and a queued break renders exactly as mid-session (issue #580). Selecting a preset
-/// routes through `presenter.selectFocusPreset(_:)`.
+/// routes through `presenter.selectFocusPreset(_:)`, which self-guards, so a stale click after the
+/// phase has moved off idle-focus-next is a safe no-op (issue #592).
 struct FocusPresetReadout: View {
 
   /// The presenter supplying the readout text, preset list, current selection, and selection intent.
