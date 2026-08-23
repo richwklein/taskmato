@@ -15,11 +15,14 @@ struct TaskStateButtonView: View {
   let presenter: TaskItemPresenter
   @Binding var isHovered: Bool
 
+  /// Set by `List` on an emphasized selected row, where accent-on-accent would disappear.
+  @Environment(\.backgroundProminence) private var prominence
+
   var body: some View {
     if presenter.showsRestore, let onRestore = presenter.onRestore {
       Button(action: onRestore) {
         Image(systemName: "checkmark.circle.fill")
-          .foregroundStyle(Color.accentColor)
+          .foregroundStyle(prominence.accent(.accentColor))
       }
       .buttonStyle(.plain)
       .help(AppLabels.Tooltip.restore)

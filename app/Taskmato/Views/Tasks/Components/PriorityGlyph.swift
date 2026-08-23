@@ -16,10 +16,13 @@ struct PriorityGlyph: View {
   let priority: TaskPriority
   var font: Font = .taskTitle
 
+  /// Set by `List` on an emphasized selected row, where the accent tint stops reading.
+  @Environment(\.backgroundProminence) private var prominence
+
   var body: some View {
     if let icon = priority.icon {
       Image(systemName: icon)
-        .foregroundStyle(priority.accentColor)
+        .foregroundStyle(prominence.accent(priority.accentColor))
         .font(font)
     }
   }

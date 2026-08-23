@@ -22,10 +22,30 @@ struct TaskMarkdownTitle: View {
   /// element can sit snug against it, as the timer strip's inline countdown does.
   var fill: Bool = true
 
+  /// Set by `List` on an emphasized selected row, where an accent-tinted inline link would sit
+  /// blue on blue.
+  @Environment(\.backgroundProminence) private var prominence
+
+  /// The title with inline links underlined.
+  ///
+  /// Color alone cannot carry "this is a link": on a selected row the accent tint resolves to
+  /// plain foreground so the link would read as ordinary text. The underline is unconditional
+  /// so a link looks the same whether or not its row happens to be selected.
+  private var title: AttributedString {
+    var text = task.markdownTitle
+    for range in text.runs.filter({ $0.link != nil }).map(\.range) {
+      text[range].underlineStyle = .single
+    }
+    return text
+  }
+
   var body: some View {
-    Text(task.markdownTitle)
+    Text(title)
       .font(font)
       .foregroundStyle(isCompleted ? .secondary : .primary)
+      // Inline markdown links take the tint, not the foreground style, so they need their own
+      // pass to stay legible on the selection fill.
+      .tint(prominence.accent(.accentColor))
       .lineLimit(lineLimit)
       .frame(maxWidth: fill ? .infinity : nil, alignment: .leading)
       .help(task.title)

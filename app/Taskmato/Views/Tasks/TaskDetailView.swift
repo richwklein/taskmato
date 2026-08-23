@@ -125,8 +125,21 @@ struct TaskDetailView: View {
         }
       }
       .toolbar {
-        // New Task is the primary creation action, so it stays its own leading item — visually
-        // distinct from the view-state controls that follow.
+        // Track Task leads the toolbar: it is the primary action on a task the user has already
+        // picked, and the pointer-driven counterpart to Return and the context-menu item — the
+        // only activation affordances, since double-click no longer tracks.
+        ToolbarItem(placement: .automatic) {
+          Button {
+            trackSelectionAction()?()
+          } label: {
+            Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
+          }
+          .help(AppLabels.Tooltip.trackTask)
+          .disabled(trackSelectionAction() == nil)
+        }
+
+        // New Task is the primary creation action, so it keeps its own item — visually distinct
+        // from the view-state controls that follow.
         if writableProvider != nil {
           ToolbarItem(placement: .automatic) {
             Button {
@@ -136,18 +149,6 @@ struct TaskDetailView: View {
             }
             .help(AppLabels.Tooltip.addTask)
           }
-        }
-
-        // Track Task is the pointer-driven counterpart to Return and the context-menu item —
-        // the only activation affordances, since double-click no longer tracks.
-        ToolbarItem(placement: .automatic) {
-          Button {
-            trackSelectionAction()?()
-          } label: {
-            Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
-          }
-          .help(AppLabels.Tooltip.trackTask)
-          .disabled(trackSelectionAction() == nil)
         }
 
         // Show/Hide Completed stays adjacent to Sort — both are task-view controls.
