@@ -23,12 +23,33 @@ extension TaskDetailView {
     }
   }
 
-  /// The focus-preset submenu's label: "Focus Next" while a break is queued, where picking a length
-  /// sizes the focus phase after it rather than starting one, and "Start Focus" otherwise (#580).
-  /// Only read while idle, since the submenu is omitted entirely during a session.
-  private var focusPresetMenuLabel: AppLabel {
-    presenter.canStageNextFocusPreset
-      ? AppLabels.FocusPreset.focusNext : AppLabels.FocusPreset.startFocus
+  /// The focus-preset submenu: "Start Focus ▸" when picking a length starts a session right
+  /// now, "Focus Next ▸" otherwise, where it stages `task` for the next focus phase instead
+  /// (design doc "stage the next focus", D-a). `startsImmediately` is captured once at menu
+  /// build and re-checked live inside the action — never read again just for the label — so the
+  /// tick firing in `.common` mode can only de-escalate a "line this up" gesture, never turn it
+  /// into a surprise immediate start.
+  @ViewBuilder
+  private func focusPresetMenu(for task: TaskItem) -> some View {
+    let startsImmediately = presenter.canSelectFocusPreset
+    Menu {
+      ForEach(presenter.focusPresets, id: \.self) { minutes in
+        Button("\(minutes) min") {
+          if startsImmediately && presenter.canSelectFocusPreset {
+            startFocus(task, minutes: minutes)
+          } else {
+            stageNextFocus(task, minutes: minutes)
+          }
+        }
+      }
+    } label: {
+      Label(
+        startsImmediately
+          ? AppLabels.FocusPreset.startFocus.title : AppLabels.FocusPreset.focusNext.title,
+        systemImage: startsImmediately
+          ? AppLabels.FocusPreset.startFocus.systemImage
+          : AppLabels.FocusPreset.focusNext.systemImage)
+    }
   }
 
   /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.
@@ -39,23 +60,7 @@ extension TaskDetailView {
     } label: {
       Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
     }
-    // Omitted rather than disabled during a session: macOS still lets the pointer open a disabled
-    // submenu, which flashes it open and shut on hover. Revisit enabling it mid-session (#588).
-    if presenter.isIdle {
-      Menu {
-        ForEach(presenter.focusPresets, id: \.self) { minutes in
-          Button("\(minutes) min") {
-            if presenter.canSelectFocusPreset {
-              startFocus(task, minutes: minutes)
-            } else {
-              stageNextFocus(task, minutes: minutes)
-            }
-          }
-        }
-      } label: {
-        Label(focusPresetMenuLabel.title, systemImage: focusPresetMenuLabel.systemImage)
-      }
-    }
+    focusPresetMenu(for: task)
     if registry.writableProvider(for: task.id) != nil {
       Button {
         taskToEdit = task

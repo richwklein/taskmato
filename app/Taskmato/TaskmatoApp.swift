@@ -43,6 +43,7 @@ struct TaskmatoApp: App {
     Window(Bundle.main.appName, id: "main") {
       MainWindowView(
         presenter: composition.timerPresenter,
+        nextUpPresenter: composition.nextUpPresenter,
         engine: composition.engine,
         settings: composition.settings,
         statsViewModel: composition.statsViewModel,

@@ -20,6 +20,12 @@ private final class ReconcilerStubProvider: TaskProvider {
   var shouldThrow = false
   var isAuthorized = true
 
+  /// When `true`, `tasks(in:)` suspends until ``resumeFetch()`` is called — used to land another
+  /// mutation in the window between the fetch and this reconcile pass observing its result.
+  var suspendFetch = false
+  private(set) var isFetchSuspended = false
+  private var fetchContinuation: CheckedContinuation<Void, Never>?
+
   init(id: ProviderID, tasks: [TaskItem] = []) {
     self.id = id
     self.displayName = id.rawValue
@@ -30,9 +36,22 @@ private final class ReconcilerStubProvider: TaskProvider {
   func lists() async throws -> [TaskList] { [] }
   func tasks(in _: TaskList?) async throws -> [TaskItem] {
     if shouldThrow { throw StubReconcilerError() }
+    if suspendFetch {
+      isFetchSuspended = true
+      await withCheckedContinuation { continuation in
+        fetchContinuation = continuation
+      }
+      isFetchSuspended = false
+    }
     return stubbedTasks
   }
   func observe() -> AsyncStream<[TaskItem]>? { nil }
+
+  /// Resumes a fetch suspended by ``suspendFetch``.
+  func resumeFetch() {
+    fetchContinuation?.resume()
+    fetchContinuation = nil
+  }
 }
 
 private struct StubReconcilerError: Error {}
@@ -65,6 +84,14 @@ struct ActiveTaskReconcilerTests {
 
   private func makeSelectionStore() -> TaskSelectionStore {
     TaskSelectionStore(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
+  }
+
+  private func registerAndLoad(
+    _ provider: ReconcilerStubProvider, in registry: ProviderRegistry
+  ) {
+    registry.register(provider)
+    registry.enable(provider)
+    registry.setLists([], forProviderID: provider.id)
   }
 
   private func makeSUT(
@@ -373,5 +400,128 @@ struct ActiveTaskReconcilerTests {
     await sut.reconcile()
 
     #expect(selectionStore.activeTask == task)
+  }
+
+  // MARK: - Staged leg: own provider gate
+
+  @Test func stagedLegRunsWithNoActiveTaskAtAll() async {
+    let registry = makeRegistry()
+    let provider = ReconcilerStubProvider(id: "alpha", tasks: [])
+    registerAndLoad(provider, in: registry)
+    let selectionStore = makeSelectionStore()
+    selectionStore.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Gone"))
+
+    let sut = makeSUT(registry: registry, selectionStore: selectionStore)
+    await sut.reconcile()
+
+    #expect(selectionStore.stagedTask == nil)
+  }
+
+  @Test func stagedLegRunsWhenStagedProviderDiffersFromActiveProvider() async {
+    let registry = makeRegistry()
+    let activeProvider = ReconcilerStubProvider(
+      id: "local", tasks: [makeItem(providerID: "local", nativeID: "1", title: "Active")])
+    let stagedProvider = ReconcilerStubProvider(id: "reminders", tasks: [])
+    registerAndLoad(activeProvider, in: registry)
+    registerAndLoad(stagedProvider, in: registry)
+    let selectionStore = makeSelectionStore()
+    selectionStore.select(makeItem(providerID: "local", nativeID: "1", title: "Active"))
+    selectionStore.stage(makeItem(providerID: "reminders", nativeID: "1", title: "Gone"))
+
+    let sut = makeSUT(registry: registry, selectionStore: selectionStore)
+    // Simulate the reload that fired for the *staged* task's own provider. Today's bug keys the
+    // staged leg's gate off the active task's provider ("local"), so this call — which should
+    // reach the staged task — would incorrectly bail before ever looking at it.
+    await sut.reconcile(changedProviderID: "reminders")
+
+    #expect(selectionStore.stagedTask == nil)
+    #expect(selectionStore.activeTask?.title == "Active")
+  }
+
+  // MARK: - Staged leg: vanished (silent)
+
+  @Test func vanishedStagedTaskClearsSilently() async {
+    let registry = makeRegistry()
+    let provider = ReconcilerStubProvider(id: "alpha", tasks: [])
+    registerAndLoad(provider, in: registry)
+    let selectionStore = makeSelectionStore()
+    selectionStore.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Gone"))
+    let engine = SessionEngine()
+    engine.start(phase: .shortBreak)
+    let errorPresenter = ErrorPresenter()
+
+    let sut = makeSUT(
+      registry: registry, selectionStore: selectionStore, engine: engine,
+      errorPresenter: errorPresenter)
+    await sut.reconcile()
+
+    #expect(selectionStore.stagedTask == nil)
+    #expect(errorPresenter.current == nil)
+    guard case .running(let phase, _, _) = engine.state else {
+      Issue.record("Expected the break to keep running")
+      return
+    }
+    #expect(phase == .shortBreak)
+  }
+
+  // MARK: - Staged leg: renamed (refreshes in place)
+
+  @Test func renamedStagedTaskRefreshesInPlace() async {
+    let registry = makeRegistry()
+    let original = makeItem(providerID: "alpha", nativeID: "1", title: "Old title")
+    let updated = makeItem(providerID: "alpha", nativeID: "1", title: "New title")
+    let provider = ReconcilerStubProvider(id: "alpha", tasks: [updated])
+    registerAndLoad(provider, in: registry)
+    let selectionStore = makeSelectionStore()
+    selectionStore.stage(original)
+
+    let sut = makeSUT(registry: registry, selectionStore: selectionStore)
+    await sut.reconcile()
+
+    #expect(selectionStore.stagedTask?.title == "New title")
+  }
+
+  // MARK: - Staged leg: case 2, the promotion wins the race
+
+  @Test func promotionWinningTheRaceFallsThroughToActiveVanishedPath() async {
+    let registry = makeRegistry()
+    let provider = ReconcilerStubProvider(id: "alpha", tasks: [])
+    provider.suspendFetch = true
+    registerAndLoad(provider, in: registry)
+    let selectionStore = makeSelectionStore()
+    let task = makeItem(providerID: "alpha", nativeID: "1", title: "Vanished")
+    selectionStore.stage(task)
+    let engine = SessionEngine()
+    engine.start()
+    let attribution = FocusAttribution()
+    attribution.begin(task: task)
+    let errorPresenter = ErrorPresenter()
+
+    let sut = makeSUT(
+      registry: registry, selectionStore: selectionStore, engine: engine, attribution: attribution,
+      errorPresenter: errorPresenter)
+
+    // Start the reconcile pass; it suspends inside the staged leg's fetch.
+    let reconcileTask = Task { await sut.reconcile() }
+    while !provider.isFetchSuspended { await Task.yield() }
+
+    // The synchronous promotion at `PhaseOrchestrator.began(.focus)` wins the race: it lands
+    // while the fetch above is still in flight. The staged slot empties and the formerly staged
+    // task becomes active.
+    selectionStore.applyStagedTask()
+    #expect(selectionStore.stagedTask == nil)
+    #expect(selectionStore.activeTask == task)
+
+    provider.resumeFetch()
+    await reconcileTask.value
+
+    #expect(selectionStore.activeTask == nil)
+    #expect(errorPresenter.current?.severity == .warning)
+    #expect(errorPresenter.current?.title == "\u{201C}Vanished\u{201D} is not available")
+    guard case .paused(let phase, _) = engine.state else {
+      Issue.record("Expected running focus to pause when its task vanishes")
+      return
+    }
+    #expect(phase == .focus)
   }
 }

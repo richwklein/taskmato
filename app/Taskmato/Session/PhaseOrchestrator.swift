@@ -79,12 +79,19 @@ final class PhaseOrchestrator {
     }
   }
 
-  /// Assigns the phase's stable id, resets the draft, and — for focus only — seeds attribution
-  /// with the task active at that moment.
+  /// Assigns the phase's stable id, resets the draft, and — for focus only — promotes a staged
+  /// task before seeding attribution with the task active at that moment.
+  ///
+  /// Promotion happens via `applyStagedTask()`, not `promoteStaged()`, so no resume fires here:
+  /// `skip()` can reach `.began(.focus)` from a *paused* state, and skip-from-paused must stay
+  /// paused (design doc "stage the next focus"). The `onActiveTaskChanged` promotion fires is a
+  /// no-op regardless — `apply` calls `finish()` before `engine.start`/`enqueuePhase`, so
+  /// `attribution.isLive` is false on every entry path.
   private func began(phase: SessionPhase) {
     currentPhaseID = UUID()
     draftSegments = []
     guard phase == .focus else { return }
+    selectionStore.applyStagedTask()
     attribution.begin(task: selectionStore.activeTask)
   }
 

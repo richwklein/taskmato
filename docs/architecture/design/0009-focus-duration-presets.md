@@ -176,6 +176,7 @@ Complete. Add a **Start Focus** submenu listing the presets. Choosing one select
   hover, so the item is now left out of the menu entirely. Revisiting it as a *staging* gesture
   that works mid-session is tracked by
   [#588](https://github.com/richwklein/taskmato/issues/588).
+  **Superseded by D8** — the submenu now renders in every state and stages instead of starting.
 - **While idle with a break queued, the submenu becomes "Focus Next"** (issue #580). Starting is
   wrong there — it would start the break — but the length is not meaningless: `applyDurations`
   re-reads `focusMinutes` at the break's end, so the choice sizes the focus phase that follows.
@@ -183,10 +184,96 @@ Complete. Add a **Start Focus** submenu listing the presets. Choosing one select
   timer untouched during a break matches D10 of design doc 0010, where complete/swap/clear
   likewise only mutate the selection. Surfacing the staged length on the timer as a "next up"
   readout is a follow-up; today the choice is silent until the break ends.
+  **Amended by D8** — the task half is now deferred rather than selected immediately, and the
+  readout it describes as a follow-up has shipped.
 
 Plumbing note: `TaskDetailView` does not currently hold the `TimerPresenter`/`SessionEngine`. Wire
 a small "start focus at N minutes for this task" closure (or the presenter) into it. This is
 composition wiring, not an architectural change — no new engine capability.
+
+### D8 — "Focus Next ▸" stages the next focus task, and the Timer shows it
+
+Supersedes D7's idle-only rule and amends D3/D4. Resolves
+[#588](https://github.com/richwklein/taskmato/issues/588) and
+[#590](https://github.com/richwklein/taskmato/issues/590).
+
+**The submenu renders in every state.** Only idle-with-focus-next keeps the immediate
+**Start Focus ▸**; everywhere else — idle with a break queued, a live break, and a live or paused
+focus phase — it is **Focus Next ▸** and stages. One promise: *the next focus phase runs this task.*
+
+**The task swap is deferred.** #588 framed the blocker as attribution, on the grounds that
+`stageNextFocus` called `selectionStore.select(task)` and bypassed D2 of design doc 0010. That
+premise was wrong: `select(_:)` fires `onActiveTaskChanged`, wired to
+`FocusAttribution.taskChanged(to:consumedSeconds:)`, which already closes and credits the outgoing
+slice at the correct breakpoint. The real problem is *intent* — mid-focus an immediate select
+redirects the live phase's remaining time onto the new task, so an item labelled "Focus Next" would
+hijack the phase in progress. `TaskSelectionStore` therefore gains a `stagedTask` slot, promoted at
+`PhaseOrchestrator.began(.focus)` immediately before `attribution.begin(task:)`, so the new phase
+attributes to it from second zero.
+
+Promotion has **two callers over one private core, and the difference is structural, not a flag**:
+
+- `applyStagedTask()` — the phase-boundary caller. Fires **no** resume callback, because `skip()`
+  reaches `.began(.focus)` from a *paused* state and skip-from-paused must stay paused.
+- `promoteStaged()` — the complete gesture's caller. Fires `onStagedPromotion`, wired once in
+  `AppComposition` to an `autoStartNextPhase`-gated `resume()` with **no** navigation, which is
+  what keeps D10 of design doc 0010 true for the popover without branching on surface.
+
+Neither touches `isPendingContinuation`. `select(_:)` consumes that flag in the same call, so
+arming it in the promotion path is decorative — and with `autoStartNextPhase` off it would strand a
+paused ring with no picker and no way to resume.
+
+**Only the task is staged.** The gesture keeps writing `settings.focusMinutes` and the readout
+renders that same value live. A separate staged-length slot was designed and rejected: it can
+diverge from what the engine actually applies, because `focusPresets`'s setter re-snaps
+`focusMinutes` to the nearest preset behind a cached value's back, and because clearing only the
+visible half on swap would leave the persisted half to ambush a later session. Under D2 the length
+is a last-used default, not a per-plan promise, so it legitimately survives swap and clear.
+
+**Feedback splits by content, not by surface.** The ring shows the **length** (`Next focus: 45 min`);
+`ActiveTaskView` shows the **task**. D3's rejection of task names in the ring stands on its layout
+argument — titles are unbounded and the readout sits inside a 180 pt ring — while `ActiveTaskView`
+sits below it with room and already truncates. Both are Timer-tab-only: `NextUpPresenter` is
+constructed in `AppComposition` and handed only to that surface, so the popover *structurally*
+cannot show next-up (design doc 0008, D1). It depends on `TimerPresenter` and never the reverse, so
+`TimerPresenter` stays task-agnostic per D4 of design doc 0010 and there is only ever one definition
+of "focus is next".
+
+**Lifecycle.** The staged task is dropped by an explicit `select(_:)`, by `clearActiveTask()`, and
+by swap; it survives `stop()`. It is **not persisted** — staging is a within-run intent, and one
+surviving days to ambush a future session is worse than losing it on quit. Because it survives
+`stop()`, it can outlive the session and leave the engine idle with focus next, where the countdown
+already reads the staged length; the length line collapses there, per D3's "no line" resolution,
+while the task line stays.
+
+**Complete promotes.** With a task staged there is nothing to pick, so completing the active task
+hands off directly instead of routing to the picker.
+
+**Reconciliation.** A staged snapshot can sit for a whole break while the task is completed,
+deleted, or renamed elsewhere, so `ActiveTaskReconciler` splits into two independently gated legs.
+The staged leg needs its own gate: both existing ones key off the *active* task's provider, so with
+nothing active it returned early and a staged task in a different provider was never reached. A
+vanished staged task clears silently — no banner, no pause, since it carries no focus time. But the
+boundary promotion is synchronous while the reconcile pass is not, so when the promotion wins the
+race the verdict is about the *active* task by the time the fetch returns; that case falls through
+to the ordinary clear-pause-banner path rather than waiting for a later reload.
+
+**Rejected alternatives.** Immediate mid-focus swap (hijacks the live phase). Pause-then-swap
+(stops the session as a side effect of a menu item that reads as "line up the next one", and
+duplicates the swap gesture from a surface that does not say it swaps). Duration-only staging
+mid-focus (honest, but gives up the task half that makes the gesture worth reaching for).
+
+**Accepted deviations from #590's acceptance criteria.** The line is conditional on something being
+staged, not shown after every focus phase. The countdown shifts by one line when it appears; a
+permanently reserved blank line is a larger, always-visible cost. And #590's "length changed in
+Settings while a break sits queued" case is dropped: its detector compared `settings.focusDuration`
+against `engine.focusDuration`, which cannot work, since `applyDurations` resyncs the two *before*
+the break starts and at cold idle `engine.focusDuration` is still its 25-minute init default.
+
+**Race note.** The submenu's start-vs-stage branch is captured once at menu-build time and drives
+both the label and the action, and the action may only *de-escalate*. The tick timer runs in
+`.common` mode so it keeps firing while a menu is open — without the capture, a break expiring
+mid-menu would flip the branch and turn a "line this up" gesture into a surprise immediate start.
 
 ## Target architecture
 
@@ -253,7 +340,7 @@ Per the test charter (logic over pixels):
   Start runs a 45-minute focus; reopen the app → 45 still selected.
 - Popover menu mirrors the choice; Settings' presets editor round-trips with normalization.
 - Right-click a task → **Start Focus ▸ 45** starts a 45-minute focus on that task and shows the
-  Timer; the submenu is disabled while a session is active.
+  Timer. During a session the same submenu reads **Focus Next ▸** and stages instead (D8).
 
 ## Resolved questions
 
@@ -263,7 +350,7 @@ Per the test charter (logic over pixels):
 | Q2 | Allow one-off ad-hoc numeric length on the timer? | **Defer** — presets editor covers it |
 | Q3 | Matching break-length quick-select? | **No** — breaks stay single steppers for now |
 | Q4 | Settings/label naming | **"Focus presets"** |
-| Q5 | Restart with a different task mid-session | **Disabled in v1**; explore next (see D7) |
+| Q5 | Restart with a different task mid-session | **Resolved by D8** — it stages rather than restarts |
 
 ## Consequences
 
@@ -274,4 +361,5 @@ Per the test charter (logic over pixels):
 - **Follow-up ADR:** record the "duration is a session preference, not task metadata" boundary (the
   Be Focused fork we declined) as a short ADR so it isn't relitigated.
 - **Follow-up exploration:** the Q5 "restart with a different task" flow, and its relationship to
-  the existing swap affordance.
+  the existing swap affordance. **Resolved by D8** — the gesture stages the next focus task rather
+  than restarting the current phase, so it never competes with swap.
