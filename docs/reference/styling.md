@@ -37,7 +37,6 @@ are used directly — they are not re-exported as tokens.
 | `timerRingTrack` | `.secondary.opacity(.muted)` | Unfilled portion of the circular timer ring |
 | `cardSurface` | appearance-adaptive (see below) | Fill behind a card to lift it off the background |
 | `cardBorder` | appearance-adaptive (see below) | Border drawn around a card surface |
-| `selectionBand` | `.unemphasizedSelectedContentBackgroundColor` | Neutral band behind a selected, focused list row |
 | `favoriteStar` | `.yellow` | Marker on a provider's default (favorite) list |
 | `statusError` | `.red` | Error or warning indicator (permission failure, validation) |
 | `statusSuccess` | `.green` | Success or authorized-state indicator |
@@ -71,23 +70,47 @@ contrast/Increase Contrast — via `NSAppearance.paletteMatch` in `Palette.swift
 
 ## Selection
 
-Filled accent selection is the sidebar's — content selection (task rows) never repaints with a
-saturated fill, because that fill would fail Dark Mode's contrast floor (4.5:1, 7:1 for custom
-colors) against the row's own semantic colors and force them to invert instead of holding their
-meaning. Content selection is a **neutral band**; content colors never change with selection.
+The platform draws it. Task rows are plain `List` rows, and `List(selection:)` with
+`.listStyle(.inset)` owns the highlight shape and accent, context-menu targeting, arrow-key
+movement, and the focused-versus-unfocused appearance. Nothing is layered on top — no
+`listRowBackground`, no `listRowInsets`, no app-drawn ring.
 
-`SurfaceEmphasis` (`SurfaceEmphasis.swift`) is a plain, SwiftUI-free enum — `.normal`,
-`.unemphasizedSelection`, `.emphasizedSelection` — resolved from a surface's selection and focus
-state. Only `.emphasizedSelection` (selected *and* focused) shows an indicator; an unfocused
-selection shows none, matching Reminders, because its commands are unreachable while focus sits
-elsewhere. `SurfaceEmphasis+Style.swift` maps that to concrete values:
+An app-drawn selection surface cannot stay aligned with that system: selection, context-menu
+targeting, hover, focus, accent color, list style, and window activation move together, and a
+separately drawn fill or ring can only approximate them. Letting the platform own it also avoids
+the width mismatch — `NSTableView.style` resolves to `.inset`, which insets the row, while
+`listRowBackground` lays out inside the row's *content* rect.
 
-- `bandFill` — `selectionBand` when shown, else `.clear`. Drawn by
-  `TaskDetailSelection.attachSelectionSurface(to:for:)` as a list row's background, full-bleed
-  and square. `List` is never given a selection binding, so SwiftUI never marks a row selected
-  and never draws or inverts anything of its own — this band is the row's only fill.
+### Content on the selection fill
 
-No environment value is published — content never needs to know what it sits on.
+An emphasized (focused) selected row is the system's saturated accent fill, and AppKit inverts
+row content to match. Semantic colors — `.primary`, `.secondary`, `.tertiary` — invert
+automatically. **Explicit colors do not**, and four leaves would otherwise sit illegibly on it:
+
+| Leaf | Explicit color | Failure on the fill |
+| --- | --- | --- |
+| `TaskMetadataLabel` | `dueUrgent` | red on blue |
+| `PriorityGlyph` | `priority.accentColor` | orange/red on blue |
+| `TaskStateButtonView` | `.accentColor` | accent on accent |
+| `TaskMarkdownTitle` | link tint | blue on blue |
+
+Each adapts through `\.backgroundProminence`, which `List` publishes as `.increased` on the
+selected row. `BackgroundProminence.accent(_:)` returns the given color normally and `.primary`
+when prominence is increased — letting the platform pick the color that contrasts with its own
+selection background rather than hardcoding white.
+
+> **The value only resolves in a child view** that declares its own
+> `@Environment(\.backgroundProminence)`. Read on a parent and branched inline in a
+> `@ViewBuilder` property, it silently yields `.standard` and nothing adapts. Anything that must
+> react to selection gets its own view — this is why the due date lives in `TaskMetadataLabel`
+> rather than in a slot on `TaskRowView`.
+
+Inline markdown links take the **tint**, not the foreground style, so `.foregroundStyle` never
+reaches them and they need their own pass.
+
+Meaning never rests on hue alone: priority carries a distinct glyph per level, urgency stays a
+brightness step (an urgent date renders `.primary` beside a normal date's `.secondary`), and
+inline links are underlined unconditionally so the affordance survives losing its tint.
 
 `cardBackground()` paints the card surface (`cardSurface` fill, `cardBorder` at `cardHairline`)
 and takes no emphasis: the only remaining cards are the stat cards, which are not selectable.
@@ -99,9 +122,9 @@ and takes no emphasis: the only remaining cards are the stat cards, which are no
 | Token | Value | Where it's appropriate |
 | --- | --- | --- |
 | `stackTight` | `2` | Gap between a title and the metadata directly under it |
-| `rowVertical` | `4` | Vertical padding around a task row in a list |
+| `rowVertical` | `4` | Tight vertical gap between stacked readout lines |
 | `iconLabel` | `6` | Gap between an icon and its adjacent label |
-| `contentGap` | `8` | Standard gap between sibling elements in a group |
+| `contentGap` | `8` | Standard gap between sibling elements in a group; also a task row's padding |
 | `cardPadding` | `10` | Interior padding of a card |
 | `groupGap` | `12` | Gap between grouped items or grid cells; one step looser than `contentGap` |
 | `sectionGap` | `16` | Gap between distinct sections of content |
