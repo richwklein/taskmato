@@ -71,6 +71,8 @@ enum AppLabels {
     static let dailyFocusChart = "Daily focus chart"
     /// Announced for the Stats task breakdown donut chart.
     static let taskBreakdownChart = "Task breakdown chart"
+    /// Announced for the staged focus-length line beneath the countdown ring.
+    static let nextFocusLength = "Next focus length"
   }
 
   /// Labels for task CRUD and lifecycle actions.
@@ -112,6 +114,17 @@ enum AppLabels {
     /// The same submenu while a break is queued, where the length applies to the focus phase
     /// after that break rather than starting one now (issue #580).
     static let focusNext = AppLabel("Focus Next", systemImage: "bolt.badge.clock.fill")
+  }
+
+  /// Copy for the staged "next focus" readout (design doc "stage the next focus", D-d).
+  enum NextUp {
+    /// The ring's staged focus-length line, e.g. `"Next focus: 45 min"` — never "Next: Focus",
+    /// since mid-focus the next phase is a break, and naming it there would be false.
+    static func focusLength(minutes: Int) -> String {
+      "Next focus: \(minutes) min"
+    }
+    /// Prefix for the staged task's title line in ``ActiveTaskView``.
+    static let taskPrefix = "Next:"
   }
 
   /// Copy for the Obsidian file-pattern date-token help disclosure (issue #510).

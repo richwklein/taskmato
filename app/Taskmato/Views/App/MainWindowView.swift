@@ -15,6 +15,7 @@ import SwiftUI
 struct MainWindowView: View {
 
   var presenter: TimerPresenter
+  var nextUpPresenter: NextUpPresenter
   var engine: SessionEngine
   var settings: AppSettings
   var statsViewModel: StatsViewModel
@@ -92,6 +93,7 @@ struct MainWindowView: View {
     case .timer:
       TimerTabView(
         presenter: presenter,
+        nextUpPresenter: nextUpPresenter,
         engine: engine,
         statsViewModel: statsViewModel,
         selectionStore: selectionStore,
@@ -139,8 +141,11 @@ struct MainWindowView: View {
     let settings = AppSettings()
     let registry = ProviderRegistry()
     let selectionStore = SelectionStore(registry: registry)
+    let timerPresenter = TimerPresenter(engine: engine, settings: settings)
     MainWindowView(
-      presenter: TimerPresenter(engine: engine, settings: settings),
+      presenter: timerPresenter,
+      nextUpPresenter: NextUpPresenter(
+        presenter: timerPresenter, selectionStore: TaskSelectionStore(), settings: settings),
       engine: engine,
       settings: settings,
       statsViewModel: .preview,

@@ -288,4 +288,128 @@ struct TaskSelectionStoreTests {
     store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Task"))
     #expect(fired == false)
   }
+
+  // MARK: - Staging (design doc "stage the next focus")
+
+  @Test func stageLeavesActiveTaskUntouched() {
+    let store = makeStore()
+    let active = makeItem(providerID: "alpha", nativeID: "1", title: "Active")
+    let staged = makeItem(providerID: "alpha", nativeID: "2", title: "Staged")
+    store.select(active)
+    store.stage(staged)
+    #expect(store.activeTask == active)
+    #expect(store.stagedTask == staged)
+  }
+
+  @Test func stageLeavesRecentsUntouched() {
+    let store = makeStore()
+    let active = makeItem(providerID: "alpha", nativeID: "1", title: "Active")
+    let staged = makeItem(providerID: "alpha", nativeID: "2", title: "Staged")
+    store.select(active)
+    store.stage(staged)
+    #expect(store.recents(for: "alpha") == [active])
+  }
+
+  @Test func stageFiresNoOnActiveTaskChanged() {
+    let store = makeStore()
+    var fired = false
+    store.onActiveTaskChanged = { _ in fired = true }
+    store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
+    #expect(fired == false)
+  }
+
+  @Test func applyStagedTaskPromotesTheStagedTaskToActive() {
+    let store = makeStore()
+    let staged = makeItem(providerID: "alpha", nativeID: "1", title: "Staged")
+    store.stage(staged)
+    store.applyStagedTask()
+    #expect(store.activeTask == staged)
+    #expect(store.stagedTask == nil)
+    #expect(store.recents(for: "alpha") == [staged])
+  }
+
+  @Test func applyStagedTaskIsANoOpWithNothingStaged() {
+    let store = makeStore()
+    let active = makeItem(providerID: "alpha", nativeID: "1", title: "Active")
+    store.select(active)
+    store.applyStagedTask()
+    #expect(store.activeTask == active)
+  }
+
+  @Test func applyStagedTaskFiresNoOnStagedPromotion() {
+    let store = makeStore()
+    var fired = false
+    store.onStagedPromotion = { fired = true }
+    store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
+    store.applyStagedTask()
+    #expect(fired == false)
+  }
+
+  @Test func promoteStagedFiresOnStagedPromotion() {
+    let store = makeStore()
+    var fired = false
+    store.onStagedPromotion = { fired = true }
+    store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
+    store.promoteStaged()
+    #expect(fired)
+  }
+
+  @Test func promoteStagedPromotesTheStagedTaskToActive() {
+    let store = makeStore()
+    let staged = makeItem(providerID: "alpha", nativeID: "1", title: "Staged")
+    store.stage(staged)
+    store.promoteStaged()
+    #expect(store.activeTask == staged)
+    #expect(store.stagedTask == nil)
+  }
+
+  @Test func promoteStagedIsANoOpWithNothingStaged() {
+    let store = makeStore()
+    var fired = false
+    store.onStagedPromotion = { fired = true }
+    store.promoteStaged()
+    #expect(fired == false)
+    #expect(store.activeTask == nil)
+  }
+
+  @Test func applyStagedTaskDoesNotConsumeAPendingContinuation() {
+    let store = makeStore()
+    store.markPendingContinuation()
+    store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
+    store.applyStagedTask()
+    #expect(store.isPendingContinuation)
+  }
+
+  @Test func promoteStagedDoesNotConsumeAPendingContinuation() {
+    let store = makeStore()
+    store.markPendingContinuation()
+    store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
+    store.promoteStaged()
+    #expect(store.isPendingContinuation)
+  }
+
+  @Test func selectClearsAStagedTask() {
+    let store = makeStore()
+    store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
+    store.select(makeItem(providerID: "alpha", nativeID: "2", title: "Explicit pick"))
+    #expect(store.stagedTask == nil)
+  }
+
+  @Test func clearActiveTaskClearsAStagedTask() {
+    let store = makeStore()
+    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Active"))
+    store.stage(makeItem(providerID: "alpha", nativeID: "2", title: "Staged"))
+    store.clearActiveTask()
+    #expect(store.stagedTask == nil)
+  }
+
+  @Test func clearStagedTaskLeavesActiveTaskUntouched() {
+    let store = makeStore()
+    let active = makeItem(providerID: "alpha", nativeID: "1", title: "Active")
+    store.select(active)
+    store.stage(makeItem(providerID: "alpha", nativeID: "2", title: "Staged"))
+    store.clearStagedTask()
+    #expect(store.stagedTask == nil)
+    #expect(store.activeTask == active)
+  }
 }

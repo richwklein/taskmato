@@ -296,57 +296,41 @@ struct TimerPresenterTests {
 
   // MARK: - Staging the next focus
 
-  @Test(arguments: [SessionPhase.shortBreak, .longBreak])
-  func canStageNextFocusPresetOnlyWithABreakQueued(queued: SessionPhase) {
-    let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 25))
-    #expect(!presenter.canStageNextFocusPreset)
-    engine.enqueuePhase(queued)
-    #expect(presenter.canStageNextFocusPreset)
-    #expect(!presenter.canSelectFocusPreset)
-  }
+  // There is no staged-length state: the "Focus Next ▸" gesture writes `settings.focusMinutes`
+  // and the engine picks it up at the next boundary via `applyDurations(from:)` (design doc
+  // "stage the next focus", D-b). These cover that path end to end, standing in for the gesture.
 
-  @Test func stageNextFocusPresetSetsFocusLengthWithoutChangingTheBreakCountdown() {
+  @Test func stagedFocusLengthLeavesTheBreakCountdownAlone() {
     let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 25, short: 5))
+    let settings = makeSettings(focus: 25, short: 5)
+    let presenter = TimerPresenter(engine: engine, settings: settings)
     engine.enqueuePhase(.shortBreak)
-    presenter.stageNextFocusPreset(45)
+    settings.focusMinutes = 45
     #expect(presenter.selectedFocusMinutes == 45)
     #expect(presenter.label == "05:00")
   }
 
   @Test func stagedFocusLengthAppliesToTheFocusPhaseAfterTheBreak() {
     let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 25, short: 5))
+    let settings = makeSettings(focus: 25, short: 5)
+    let presenter = TimerPresenter(engine: engine, settings: settings)
     engine.enqueuePhase(.shortBreak)
-    presenter.stageNextFocusPreset(45)
+    settings.focusMinutes = 45
     presenter.skip()  // idle-skip consumes the queued break and queues focus
     #expect(presenter.label == "45:00")
     presenter.start()
     #expect(engine.focusDuration == 45 * 60)
   }
 
-  @Test func stageNextFocusPresetIsNoOpWhenFocusIsAlreadyNext() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
-    presenter.stageNextFocusPreset(45)
-    #expect(presenter.selectedFocusMinutes == 25)
-  }
-
-  @Test func stageNextFocusPresetIsNoOpWhileRunning() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+  @Test func stagedFocusLengthAppliesAfterAPhaseStagedMidSession() {
+    let engine = SessionEngine()
+    let settings = makeSettings(focus: 25, short: 5)
+    let presenter = TimerPresenter(engine: engine, settings: settings)
     presenter.start()
-    presenter.stageNextFocusPreset(45)
-    #expect(presenter.selectedFocusMinutes == 25)
-    #expect(!presenter.canStageNextFocusPreset)
-  }
-
-  @Test func stageNextFocusPresetIsNoOpWhilePaused() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
-    presenter.start()
-    presenter.pause()
-    presenter.stageNextFocusPreset(45)
-    #expect(presenter.selectedFocusMinutes == 25)
-    #expect(!presenter.canStageNextFocusPreset)
+    settings.focusMinutes = 45  // staged while focus is live; must not resize the running phase
+    #expect(engine.focusDuration == 25 * 60)
+    presenter.skip()
+    #expect(engine.focusDuration == 45 * 60)
   }
 
   // MARK: - Enablement
