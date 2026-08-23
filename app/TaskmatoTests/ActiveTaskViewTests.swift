@@ -61,7 +61,7 @@ private func makeItem(providerID: ProviderID, nativeID: String, title: String) -
 @MainActor
 private struct ViewContext {
   let engine: SessionEngine
-  let selectionStore: TaskSelectionStore
+  let activeTaskStore: ActiveTaskStore
   let registry: ProviderRegistry
   let provider: FakeClosableProvider
   let nav: MainNavigation
@@ -69,7 +69,7 @@ private struct ViewContext {
 
   func view(style: ActiveTaskStyle = .detail) -> ActiveTaskView {
     ActiveTaskView(
-      engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
+      engine: engine, activeTaskStore: activeTaskStore, registry: registry, nav: nav,
       errorPresenter: errorPresenter, style: style, onSelect: nil)
   }
 }
@@ -78,7 +78,7 @@ private struct ViewContext {
 private func makeContext() -> ViewContext {
   let settingsStore = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
   let engine = SessionEngine()
-  let selectionStore = TaskSelectionStore(store: settingsStore)
+  let activeTaskStore = ActiveTaskStore(store: settingsStore)
   let registry = ProviderRegistry(store: settingsStore)
   let provider = FakeClosableProvider()
   registry.register(provider)
@@ -88,7 +88,7 @@ private func makeContext() -> ViewContext {
     settings: settings, selectionStore: sidebarSelection, statsViewModel: .preview,
     store: settingsStore)
   return ViewContext(
-    engine: engine, selectionStore: selectionStore, registry: registry, provider: provider,
+    engine: engine, activeTaskStore: activeTaskStore, registry: registry, provider: provider,
     nav: nav, errorPresenter: ErrorPresenter())
 }
 
@@ -118,39 +118,39 @@ struct ActiveTaskViewTests {
   @Test func swapDuringFocusPausesAndMarksAContinuation() {
     let ctx = makeContext()
     let task = makeItem(providerID: "fake-closable", nativeID: "1", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
     ctx.engine.start(phase: .focus)
 
     ctx.view().swapTapped()
 
     #expect(isPaused(ctx.engine.state))
-    #expect(ctx.selectionStore.isPendingContinuation)
+    #expect(ctx.activeTaskStore.isPendingContinuation)
   }
 
   @Test func swapDuringBreakDoesNotPauseOrMarkAContinuation() {
     let ctx = makeContext()
     let task = makeItem(providerID: "fake-closable", nativeID: "1", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
     ctx.engine.start(phase: .shortBreak)
 
     ctx.view().swapTapped()
 
     #expect(ctx.engine.isRunning)
-    #expect(!ctx.selectionStore.isPendingContinuation)
+    #expect(!ctx.activeTaskStore.isPendingContinuation)
   }
 
   @Test func swapAlwaysDropsAStagedTask() {
     let ctx = makeContext()
     let active = makeItem(providerID: "fake-closable", nativeID: "1", title: "Active")
     let staged = makeItem(providerID: "fake-closable", nativeID: "2", title: "Staged")
-    ctx.selectionStore.select(active)
-    ctx.selectionStore.stage(staged)
+    ctx.activeTaskStore.track(active)
+    ctx.activeTaskStore.stage(staged)
     ctx.engine.start(phase: .shortBreak)  // the no-pause branch still drops staging
 
     ctx.view().swapTapped()
 
-    #expect(ctx.selectionStore.stagedTask == nil)
-    #expect(ctx.selectionStore.activeTask == active)  // swap itself never changes the active task
+    #expect(ctx.activeTaskStore.stagedTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == active)  // swap itself never changes the active task
   }
 
   // MARK: - Clear
@@ -158,38 +158,38 @@ struct ActiveTaskViewTests {
   @Test func clearDuringFocusPausesAndClosesTheSlice() {
     let ctx = makeContext()
     let task = makeItem(providerID: "fake-closable", nativeID: "1", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
     ctx.engine.start(phase: .focus)
 
     ctx.view().clearTapped()
 
     #expect(isPaused(ctx.engine.state))
-    #expect(ctx.selectionStore.activeTask == nil)
-    #expect(ctx.selectionStore.isPendingContinuation)
+    #expect(ctx.activeTaskStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.isPendingContinuation)
   }
 
   @Test func clearWhileIdleOnlyDetaches() {
     let ctx = makeContext()
     let task = makeItem(providerID: "fake-closable", nativeID: "1", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
 
     ctx.view().clearTapped()
 
     #expect(ctx.engine.state == .idle)
-    #expect(ctx.selectionStore.activeTask == nil)
-    #expect(!ctx.selectionStore.isPendingContinuation)
+    #expect(ctx.activeTaskStore.activeTask == nil)
+    #expect(!ctx.activeTaskStore.isPendingContinuation)
   }
 
   @Test func clearAlwaysDropsAStagedTask() {
     let ctx = makeContext()
     let active = makeItem(providerID: "fake-closable", nativeID: "1", title: "Active")
     let staged = makeItem(providerID: "fake-closable", nativeID: "2", title: "Staged")
-    ctx.selectionStore.select(active)
-    ctx.selectionStore.stage(staged)
+    ctx.activeTaskStore.track(active)
+    ctx.activeTaskStore.stage(staged)
 
     ctx.view().clearTapped()
 
-    #expect(ctx.selectionStore.stagedTask == nil)
+    #expect(ctx.activeTaskStore.stagedTask == nil)
   }
 
   // MARK: - Complete, no staged task (unchanged D2/D3/D10 behavior)
@@ -197,7 +197,7 @@ struct ActiveTaskViewTests {
   @Test func completeDuringFocusPausesThenClearsOnSuccess() async {
     let ctx = makeContext()
     let task = makeItem(providerID: "fake-closable", nativeID: "1", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
     ctx.engine.start(phase: .focus)
     ctx.nav.destination = .timer
 
@@ -206,15 +206,15 @@ struct ActiveTaskViewTests {
     await drain()
 
     #expect(ctx.provider.completedRefs == [task.id])
-    #expect(ctx.selectionStore.activeTask == nil)
-    #expect(ctx.selectionStore.isPendingContinuation)
+    #expect(ctx.activeTaskStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.isPendingContinuation)
     #expect(ctx.nav.destination != .timer)  // routed to Tasks
   }
 
   @Test func completeDuringFocusResumesAndSurfacesTheErrorOnFailure() async {
     let ctx = makeContext()
     let task = makeItem(providerID: "fake-closable", nativeID: "1", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
     ctx.engine.start(phase: .focus)
     ctx.provider.completeError = StubError()
 
@@ -222,22 +222,22 @@ struct ActiveTaskViewTests {
     await drain()
 
     #expect(ctx.engine.isRunning)
-    #expect(ctx.selectionStore.activeTask == task)
+    #expect(ctx.activeTaskStore.activeTask == task)
     #expect(ctx.errorPresenter.current != nil)
   }
 
   @Test func completeDuringBreakOnlyMutatesSelection() async {
     let ctx = makeContext()
     let task = makeItem(providerID: "fake-closable", nativeID: "1", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
     ctx.engine.start(phase: .shortBreak)
 
     ctx.view().completeTapped(task)
     await drain()
 
     #expect(ctx.engine.isRunning)
-    #expect(ctx.selectionStore.activeTask == nil)
-    #expect(!ctx.selectionStore.isPendingContinuation)
+    #expect(ctx.activeTaskStore.activeTask == nil)
+    #expect(!ctx.activeTaskStore.isPendingContinuation)
   }
 
   // MARK: - Complete with a staged task (D-f)
@@ -246,27 +246,27 @@ struct ActiveTaskViewTests {
     let ctx = makeContext()
     let active = makeItem(providerID: "fake-closable", nativeID: "1", title: "Active")
     let staged = makeItem(providerID: "fake-closable", nativeID: "2", title: "Staged")
-    ctx.selectionStore.select(active)
-    ctx.selectionStore.stage(staged)
+    ctx.activeTaskStore.track(active)
+    ctx.activeTaskStore.stage(staged)
     ctx.engine.start(phase: .focus)
     var promoted = false
-    ctx.selectionStore.onStagedPromotion = { promoted = true }
+    ctx.activeTaskStore.onStagedPromotion = { promoted = true }
 
     ctx.view().completeTapped(active)
     await drain()
 
-    #expect(ctx.selectionStore.activeTask == staged)
-    #expect(ctx.selectionStore.stagedTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == staged)
+    #expect(ctx.activeTaskStore.stagedTask == nil)
     #expect(promoted)
-    #expect(!ctx.selectionStore.isPendingContinuation)
+    #expect(!ctx.activeTaskStore.isPendingContinuation)
   }
 
   @Test func completeDuringFocusWithAStagedTaskSkipsRoutingToTasks() async {
     let ctx = makeContext()
     let active = makeItem(providerID: "fake-closable", nativeID: "1", title: "Active")
     let staged = makeItem(providerID: "fake-closable", nativeID: "2", title: "Staged")
-    ctx.selectionStore.select(active)
-    ctx.selectionStore.stage(staged)
+    ctx.activeTaskStore.track(active)
+    ctx.activeTaskStore.stage(staged)
     ctx.engine.start(phase: .focus)
     ctx.nav.destination = .timer
 
@@ -280,28 +280,28 @@ struct ActiveTaskViewTests {
     let ctx = makeContext()
     let active = makeItem(providerID: "fake-closable", nativeID: "1", title: "Active")
     let staged = makeItem(providerID: "fake-closable", nativeID: "2", title: "Staged")
-    ctx.selectionStore.select(active)
-    ctx.selectionStore.stage(staged)
+    ctx.activeTaskStore.track(active)
+    ctx.activeTaskStore.stage(staged)
     ctx.engine.start(phase: .shortBreak)
 
     ctx.view().completeTapped(active)
     await drain()
 
-    #expect(ctx.selectionStore.activeTask == staged)
-    #expect(ctx.selectionStore.stagedTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == staged)
+    #expect(ctx.activeTaskStore.stagedTask == nil)
   }
 
   @Test func completeWhileIdleWithAStagedTaskPromotesDirectly() async {
     let ctx = makeContext()
     let active = makeItem(providerID: "fake-closable", nativeID: "1", title: "Active")
     let staged = makeItem(providerID: "fake-closable", nativeID: "2", title: "Staged")
-    ctx.selectionStore.select(active)
-    ctx.selectionStore.stage(staged)
+    ctx.activeTaskStore.track(active)
+    ctx.activeTaskStore.stage(staged)
 
     ctx.view().completeTapped(active)
     await drain()
 
-    #expect(ctx.selectionStore.activeTask == staged)
-    #expect(ctx.selectionStore.stagedTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == staged)
+    #expect(ctx.activeTaskStore.stagedTask == nil)
   }
 }

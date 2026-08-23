@@ -47,11 +47,11 @@ extension TaskDetailView {
         }
       }
       if didDelete {
-        if selectionStore.activeTask?.id == task.id {
-          selectionStore.clearActiveTask()
+        if activeTaskStore.activeTask?.id == task.id {
+          activeTaskStore.clearActiveTask()
         }
-        if selection == task.id {
-          selection = nil
+        if selectedTaskID == task.id {
+          selectedTaskID = nil
         }
       }
       await refresh()

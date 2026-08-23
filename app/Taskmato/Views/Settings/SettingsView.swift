@@ -11,7 +11,7 @@ import UserNotifications
 struct SettingsView: View {
 
   @Bindable var settings: AppSettings
-  var selectionStore: TaskSelectionStore
+  var activeTaskStore: ActiveTaskStore
   var registry: ProviderRegistry
   var notifications: NotificationService
 
@@ -393,7 +393,7 @@ private struct FocusPresetsEditor: View {
   #Preview {
     SettingsView(
       settings: AppSettings(),
-      selectionStore: TaskSelectionStore(),
+      activeTaskStore: ActiveTaskStore(),
       registry: ProviderRegistry(),
       notifications: NotificationService(settings: AppSettings())
     )

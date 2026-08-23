@@ -1,5 +1,5 @@
 //
-//  TaskSelectionStoreTests.swift
+//  ActiveTaskStoreTests.swift
 //  TaskmatoTests
 //
 
@@ -24,12 +24,12 @@ private func makeItem(providerID: ProviderID, nativeID: String, title: String) -
   )
 }
 
-@Suite("TaskSelectionStore")
+@Suite("ActiveTaskStore")
 @MainActor
-struct TaskSelectionStoreTests {
+struct ActiveTaskStoreTests {
 
-  private func makeStore() -> TaskSelectionStore {
-    TaskSelectionStore(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
+  private func makeStore() -> ActiveTaskStore {
+    ActiveTaskStore(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
   }
 
   // MARK: - Active task
@@ -37,13 +37,13 @@ struct TaskSelectionStoreTests {
   @Test func selectSetsActiveTask() {
     let store = makeStore()
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Write tests")
-    store.select(task)
+    store.track(task)
     #expect(store.activeTask == task)
   }
 
   @Test func clearActiveTaskNilsActiveTask() {
     let store = makeStore()
-    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Write tests"))
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Write tests"))
     store.clearActiveTask()
     #expect(store.activeTask == nil)
   }
@@ -57,8 +57,8 @@ struct TaskSelectionStoreTests {
     let store = makeStore()
     let first = makeItem(providerID: "alpha", nativeID: "1", title: "First")
     let second = makeItem(providerID: "alpha", nativeID: "2", title: "Second")
-    store.select(first)
-    store.select(second)
+    store.track(first)
+    store.track(second)
     #expect(store.activeTask == second)
   }
 
@@ -67,7 +67,7 @@ struct TaskSelectionStoreTests {
   @Test func refreshActiveTaskUpdatesFieldsForMatchingRef() {
     let store = makeStore()
     let original = makeItem(providerID: "alpha", nativeID: "1", title: "Old title")
-    store.select(original)
+    store.track(original)
     let updated = makeItem(providerID: "alpha", nativeID: "1", title: "New title")
     store.refreshActiveTask(updated)
     #expect(store.activeTask?.title == "New title")
@@ -76,7 +76,7 @@ struct TaskSelectionStoreTests {
   @Test func refreshActiveTaskIgnoresMismatchedRef() {
     let store = makeStore()
     let original = makeItem(providerID: "alpha", nativeID: "1", title: "Original")
-    store.select(original)
+    store.track(original)
     let other = makeItem(providerID: "alpha", nativeID: "2", title: "Different task")
     store.refreshActiveTask(other)
     #expect(store.activeTask == original)
@@ -85,7 +85,7 @@ struct TaskSelectionStoreTests {
   @Test func refreshActiveTaskDoesNotFireOnActiveTaskChanged() {
     let store = makeStore()
     let original = makeItem(providerID: "alpha", nativeID: "1", title: "Original")
-    store.select(original)
+    store.track(original)
     var fired = false
     store.onActiveTaskChanged = { _ in fired = true }
     store.refreshActiveTask(makeItem(providerID: "alpha", nativeID: "1", title: "Updated"))
@@ -95,7 +95,7 @@ struct TaskSelectionStoreTests {
   @Test func refreshActiveTaskDoesNotAffectRecents() {
     let store = makeStore()
     let original = makeItem(providerID: "alpha", nativeID: "1", title: "Original")
-    store.select(original)
+    store.track(original)
     let updated = makeItem(providerID: "alpha", nativeID: "1", title: "Updated")
     store.refreshActiveTask(updated)
     #expect(store.recents(for: "alpha") == [original])
@@ -106,7 +106,7 @@ struct TaskSelectionStoreTests {
     let old = makeItem(providerID: "alpha", nativeID: "tasks.md:1", title: "Original")
     let current = makeItem(
       providerID: "alpha", nativeID: "tasks.md#fp=abc#line=1", title: "Updated")
-    store.select(old)
+    store.track(old)
     store.refreshActiveTask(current, replacing: old.id)
     #expect(store.activeTask == current)
     #expect(store.recents(for: "alpha").first == current)
@@ -117,7 +117,7 @@ struct TaskSelectionStoreTests {
   @Test func selectAddsToRecents() {
     let store = makeStore()
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Write tests")
-    store.select(task)
+    store.track(task)
     #expect(store.recents(for: "alpha") == [task])
   }
 
@@ -125,8 +125,8 @@ struct TaskSelectionStoreTests {
     let store = makeStore()
     let first = makeItem(providerID: "alpha", nativeID: "1", title: "First")
     let second = makeItem(providerID: "alpha", nativeID: "2", title: "Second")
-    store.select(first)
-    store.select(second)
+    store.track(first)
+    store.track(second)
     #expect(store.recents(for: "alpha").map(\.title) == ["Second", "First"])
   }
 
@@ -134,18 +134,18 @@ struct TaskSelectionStoreTests {
     let store = makeStore()
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Write tests")
     let other = makeItem(providerID: "alpha", nativeID: "2", title: "Other")
-    store.select(task)
-    store.select(other)
-    store.select(task)
+    store.track(task)
+    store.track(other)
+    store.track(task)
     #expect(store.recents(for: "alpha").map(\.title) == ["Write tests", "Other"])
   }
 
   @Test func recentsCapAt10() {
     let store = makeStore()
     for index in 1...11 {
-      store.select(makeItem(providerID: "alpha", nativeID: "\(index)", title: "Task \(index)"))
+      store.track(makeItem(providerID: "alpha", nativeID: "\(index)", title: "Task \(index)"))
     }
-    #expect(store.recents(for: "alpha").count == TaskSelectionStore.recentsLimit)
+    #expect(store.recents(for: "alpha").count == ActiveTaskStore.recentsLimit)
     #expect(store.recents(for: "alpha").first?.title == "Task 11")
   }
 
@@ -153,8 +153,8 @@ struct TaskSelectionStoreTests {
     let store = makeStore()
     let alphaTask = makeItem(providerID: "alpha", nativeID: "1", title: "Alpha task")
     let betaTask = makeItem(providerID: "beta", nativeID: "1", title: "Beta task")
-    store.select(alphaTask)
-    store.select(betaTask)
+    store.track(alphaTask)
+    store.track(betaTask)
     #expect(store.recents(for: "alpha") == [alphaTask])
     #expect(store.recents(for: "beta") == [betaTask])
   }
@@ -167,7 +167,7 @@ struct TaskSelectionStoreTests {
   @Test func clearActiveTaskPreservesRecents() {
     let store = makeStore()
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Write tests")
-    store.select(task)
+    store.track(task)
     store.clearActiveTask()
     #expect(store.recents(for: "alpha") == [task])
   }
@@ -179,10 +179,10 @@ struct TaskSelectionStoreTests {
     let defaults = UserDefaults(suiteName: suiteName)!
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Persisted task")
 
-    let store = TaskSelectionStore(store: SettingsStore(defaults: defaults))
-    store.select(task)
+    let store = ActiveTaskStore(store: SettingsStore(defaults: defaults))
+    store.track(task)
 
-    let reloaded = TaskSelectionStore(store: SettingsStore(defaults: defaults))
+    let reloaded = ActiveTaskStore(store: SettingsStore(defaults: defaults))
     #expect(reloaded.activeTask == task)
   }
 
@@ -191,10 +191,10 @@ struct TaskSelectionStoreTests {
     let defaults = UserDefaults(suiteName: suiteName)!
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Persisted task")
 
-    let store = TaskSelectionStore(store: SettingsStore(defaults: defaults))
-    store.select(task)
+    let store = ActiveTaskStore(store: SettingsStore(defaults: defaults))
+    store.track(task)
 
-    let reloaded = TaskSelectionStore(store: SettingsStore(defaults: defaults))
+    let reloaded = ActiveTaskStore(store: SettingsStore(defaults: defaults))
     #expect(reloaded.recents(for: "alpha") == [task])
   }
 
@@ -203,11 +203,11 @@ struct TaskSelectionStoreTests {
     let defaults = UserDefaults(suiteName: suiteName)!
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Temp task")
 
-    let store = TaskSelectionStore(store: SettingsStore(defaults: defaults))
-    store.select(task)
+    let store = ActiveTaskStore(store: SettingsStore(defaults: defaults))
+    store.track(task)
     store.clearActiveTask()
 
-    let reloaded = TaskSelectionStore(store: SettingsStore(defaults: defaults))
+    let reloaded = ActiveTaskStore(store: SettingsStore(defaults: defaults))
     #expect(reloaded.activeTask == nil)
   }
 
@@ -218,13 +218,13 @@ struct TaskSelectionStoreTests {
     let task = makeItem(providerID: "alpha", nativeID: "1", title: "Write tests")
     var observed: TaskItem?
     store.onActiveTaskChanged = { observed = $0 }
-    store.select(task)
+    store.track(task)
     #expect(observed == task)
   }
 
   @Test func clearActiveTaskFiresOnActiveTaskChangedWithNil() {
     let store = makeStore()
-    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Write tests"))
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Write tests"))
     var fired = false
     var observed: TaskItem?
     store.onActiveTaskChanged = {
@@ -249,14 +249,14 @@ struct TaskSelectionStoreTests {
     var fired = false
     store.onContinuationSelect = { fired = true }
     store.markPendingContinuation()
-    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Next task"))
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Next task"))
     #expect(fired)
   }
 
   @Test func selectAfterPendingContinuationClearsTheFlag() {
     let store = makeStore()
     store.markPendingContinuation()
-    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Next task"))
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Next task"))
     #expect(store.isPendingContinuation == false)
   }
 
@@ -265,7 +265,7 @@ struct TaskSelectionStoreTests {
     let store = makeStore()
     var fired = false
     store.onContinuationSelect = { fired = true }
-    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Any task"))
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Any task"))
     #expect(fired == false)
   }
 
@@ -274,8 +274,8 @@ struct TaskSelectionStoreTests {
     var fireCount = 0
     store.onContinuationSelect = { fireCount += 1 }
     store.markPendingContinuation()
-    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "First"))
-    store.select(makeItem(providerID: "alpha", nativeID: "2", title: "Second"))
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "First"))
+    store.track(makeItem(providerID: "alpha", nativeID: "2", title: "Second"))
     #expect(fireCount == 1)
   }
 
@@ -285,7 +285,7 @@ struct TaskSelectionStoreTests {
     store.onContinuationSelect = { fired = true }
     store.markPendingContinuation()
     store.clearPendingContinuation()
-    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Task"))
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Task"))
     #expect(fired == false)
   }
 
@@ -295,7 +295,7 @@ struct TaskSelectionStoreTests {
     let store = makeStore()
     let active = makeItem(providerID: "alpha", nativeID: "1", title: "Active")
     let staged = makeItem(providerID: "alpha", nativeID: "2", title: "Staged")
-    store.select(active)
+    store.track(active)
     store.stage(staged)
     #expect(store.activeTask == active)
     #expect(store.stagedTask == staged)
@@ -305,7 +305,7 @@ struct TaskSelectionStoreTests {
     let store = makeStore()
     let active = makeItem(providerID: "alpha", nativeID: "1", title: "Active")
     let staged = makeItem(providerID: "alpha", nativeID: "2", title: "Staged")
-    store.select(active)
+    store.track(active)
     store.stage(staged)
     #expect(store.recents(for: "alpha") == [active])
   }
@@ -331,7 +331,7 @@ struct TaskSelectionStoreTests {
   @Test func applyStagedTaskIsANoOpWithNothingStaged() {
     let store = makeStore()
     let active = makeItem(providerID: "alpha", nativeID: "1", title: "Active")
-    store.select(active)
+    store.track(active)
     store.applyStagedTask()
     #expect(store.activeTask == active)
   }
@@ -391,13 +391,13 @@ struct TaskSelectionStoreTests {
   @Test func selectClearsAStagedTask() {
     let store = makeStore()
     store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
-    store.select(makeItem(providerID: "alpha", nativeID: "2", title: "Explicit pick"))
+    store.track(makeItem(providerID: "alpha", nativeID: "2", title: "Explicit pick"))
     #expect(store.stagedTask == nil)
   }
 
   @Test func clearActiveTaskClearsAStagedTask() {
     let store = makeStore()
-    store.select(makeItem(providerID: "alpha", nativeID: "1", title: "Active"))
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Active"))
     store.stage(makeItem(providerID: "alpha", nativeID: "2", title: "Staged"))
     store.clearActiveTask()
     #expect(store.stagedTask == nil)
@@ -406,7 +406,7 @@ struct TaskSelectionStoreTests {
   @Test func clearStagedTaskLeavesActiveTaskUntouched() {
     let store = makeStore()
     let active = makeItem(providerID: "alpha", nativeID: "1", title: "Active")
-    store.select(active)
+    store.track(active)
     store.stage(makeItem(providerID: "alpha", nativeID: "2", title: "Staged"))
     store.clearStagedTask()
     #expect(store.stagedTask == nil)

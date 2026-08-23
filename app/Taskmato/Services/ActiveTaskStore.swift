@@ -1,23 +1,27 @@
 //
-//  TaskSelectionStore.swift
+//  ActiveTaskStore.swift
 //  Taskmato
 //
 
 import Foundation
 import Observation
 
-/// Tracks the currently selected task, a per-provider recents list, and a task staged for the
+/// Owns the currently tracked task, a per-provider recents list, and a task staged for the
 /// next focus phase.
 ///
-/// The active task and recents are persisted to `UserDefaults` so selections
-/// survive app relaunch. Recents are capped at 10 entries per provider, with
-/// the most recently selected item always at the front. The staged task (design doc "stage the
-/// next focus") is not persisted — it is a within-run intent only.
+/// "Tracked" is the task focus time is credited to — distinct from the task list's highlighted
+/// row (`TaskDetailView.selectedTaskID`), which is ephemeral and credits nothing, and from the
+/// sidebar's scope (``SelectionStore``).
+///
+/// The tracked task and recents are persisted to `UserDefaults` so they survive app relaunch.
+/// Recents are capped at 10 entries per provider, with the most recently tracked item always at
+/// the front. The staged task (design doc "stage the next focus") is not persisted — it is a
+/// within-run intent only.
 @Observable
 @MainActor
-final class TaskSelectionStore {
+final class ActiveTaskStore {
 
-  /// The task currently selected for the active Pomodoro session, or `nil` if none.
+  /// The task currently tracked for the active Pomodoro session, or `nil` if none.
   private(set) var activeTask: TaskItem?
 
   /// The task queued to become active at the next focus phase's start, or `nil` if none — the
@@ -30,8 +34,8 @@ final class TaskSelectionStore {
   private(set) var recentsByProvider: [String: [TaskItem]] = [:]
 
   /// `true` after a complete/swap/clear pause routes to the task picker (D9 of design doc
-  /// 0010) — a one-shot signal that the next ``select(_:)`` is a genuine handoff continuation,
-  /// not an idle pick. Cleared as soon as the next selection consumes it.
+  /// 0010) — a one-shot signal that the next ``track(_:)`` is a genuine handoff continuation,
+  /// not an idle pick. Cleared as soon as the next tracked task consumes it.
   private(set) var isPendingContinuation = false
 
   /// Fired on every active-task change — select or clear — with the new value. Mirrors the
@@ -39,7 +43,7 @@ final class TaskSelectionStore {
   /// ``FocusAttribution/taskChanged(to:consumedSeconds:)``.
   var onActiveTaskChanged: ((TaskItem?) -> Void)?
 
-  /// Fired when ``select(_:)`` consumes a pending continuation (D9); the caller decides whether
+  /// Fired when ``track(_:)`` consumes a pending continuation (D9); the caller decides whether
   /// to resume the paused phase, gated on `autoStartNextPhase`.
   var onContinuationSelect: (() -> Void)?
 
@@ -57,15 +61,15 @@ final class TaskSelectionStore {
     load()
   }
 
-  // MARK: - Selection
+  // MARK: - Tracking
 
-  /// Selects a task as the active task and prepends it to that provider's recents.
+  /// Makes `task` the tracked task and prepends it to that provider's recents.
   ///
   /// Safe to call mid-session — does not interact with the timer state directly, though a
-  /// pending continuation (D9) may trigger ``onContinuationSelect``. An explicit selection wins
+  /// pending continuation (D9) may trigger ``onContinuationSelect``. Tracking explicitly wins
   /// over a staged task, so ``stagedTask`` is cleared too (design doc "stage the next focus", D-e).
-  /// - Parameter task: The task to make active.
-  func select(_ task: TaskItem) {
+  /// - Parameter task: The task to track.
+  func track(_ task: TaskItem) {
     stagedTask = nil
     activeTask = task
     addToRecents(task)
@@ -132,9 +136,9 @@ final class TaskSelectionStore {
   }
 
   /// Updates the active task's cached fields (title, notes, priority, …) from a freshly
-  /// reloaded snapshot of the same reference, so external edits show up without a new selection.
+  /// reloaded snapshot of the same reference, so external edits show up without re-tracking.
   ///
-  /// Unlike ``select(_:)`` this does not touch recents or the pending-continuation flag, and does
+  /// Unlike ``track(_:)`` this does not touch recents or the pending-continuation flag, and does
   /// not fire ``onActiveTaskChanged`` — the reference is unchanged, so no new attribution slice
   /// should open (`ActiveTaskReconciler`, issue #547). One accepted consequence: a focus segment
   /// already open against this task keeps the pre-refresh `taskTitle` when it closes, since that
@@ -152,14 +156,14 @@ final class TaskSelectionStore {
     persist()
   }
 
-  /// Marks the next ``select(_:)`` as a genuine handoff continuation (D9) — call after a
+  /// Marks the next ``track(_:)`` as a genuine handoff continuation (D9) — call after a
   /// complete/swap/clear pauses the phase and routes to the picker.
   func markPendingContinuation() {
     isPendingContinuation = true
   }
 
-  /// Clears a pending continuation without selecting, so a stale flag never triggers a later,
-  /// unrelated selection.
+  /// Clears a pending continuation without tracking, so a stale flag never triggers a later,
+  /// unrelated handoff.
   func clearPendingContinuation() {
     isPendingContinuation = false
   }

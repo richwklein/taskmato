@@ -494,10 +494,10 @@ private struct SidebarTimerRow: View {
   #Preview {
     let registry = ProviderRegistry()
     let settings = AppSettings()
-    let selectionStore = SelectionStore(registry: registry)
+    let sidebarSelectionStore = SelectionStore(registry: registry)
     AppSidebarView(
       nav: MainNavigation(
-        settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+        settings: settings, selectionStore: sidebarSelectionStore, statsViewModel: .preview),
       presenter: TimerPresenter(engine: SessionEngine(), settings: settings),
       registry: registry,
       destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),

@@ -30,7 +30,7 @@ enum ActiveTaskStyle {
 struct ActiveTaskView: View {
 
   var engine: SessionEngine
-  var selectionStore: TaskSelectionStore
+  var activeTaskStore: ActiveTaskStore
   var registry: ProviderRegistry
   var nav: MainNavigation
   var errorPresenter: ErrorPresenter
@@ -63,7 +63,7 @@ struct ActiveTaskView: View {
   }
 
   var body: some View {
-    if let task = selectionStore.activeTask {
+    if let task = activeTaskStore.activeTask {
       taskRow(for: task)
     } else if style == .detail, let staged = nextUp?.stagedTask {
       nextUpLine(for: staged)
@@ -195,10 +195,10 @@ struct ActiveTaskView: View {
           try await provider.complete(ref)
         }
         guard succeeded else { return }
-        if selectionStore.stagedTask != nil {
-          selectionStore.promoteStaged()
+        if activeTaskStore.stagedTask != nil {
+          activeTaskStore.promoteStaged()
         } else {
-          selectionStore.clearActiveTask()
+          activeTaskStore.clearActiveTask()
         }
       }
       return
@@ -207,11 +207,11 @@ struct ActiveTaskView: View {
     Task {
       do {
         try await provider.complete(ref)
-        if selectionStore.stagedTask != nil {
-          selectionStore.promoteStaged()
+        if activeTaskStore.stagedTask != nil {
+          activeTaskStore.promoteStaged()
         } else {
-          selectionStore.clearActiveTask()
-          selectionStore.markPendingContinuation()
+          activeTaskStore.clearActiveTask()
+          activeTaskStore.markPendingContinuation()
           if style == .detail { nav.showTasks() }
         }
       } catch {
@@ -227,10 +227,10 @@ struct ActiveTaskView: View {
   /// (D-e, "stage the next focus") — swapping the active task makes an earlier plan moot. Not
   /// `private`, so tests can exercise the D-e/D-f gesture matrix without rendering the view.
   func swapTapped() {
-    selectionStore.clearStagedTask()
+    activeTaskStore.clearStagedTask()
     if !isBreakPhase {
       engine.pause()
-      selectionStore.markPendingContinuation()
+      activeTaskStore.markPendingContinuation()
     }
     nav.openMainWindow()
     nav.showTasks()
@@ -242,12 +242,12 @@ struct ActiveTaskView: View {
   /// gesture matrix without rendering the view.
   func clearTapped() {
     guard sessionIsActive, !isBreakPhase else {
-      selectionStore.clearActiveTask()
+      activeTaskStore.clearActiveTask()
       return
     }
     engine.pause()
-    selectionStore.clearActiveTask()
-    selectionStore.markPendingContinuation()
+    activeTaskStore.clearActiveTask()
+    activeTaskStore.markPendingContinuation()
     if style == .detail { nav.showTasks() }
   }
 }
@@ -282,16 +282,16 @@ struct ActiveTaskView: View {
     }
 
     @MainActor
-    func store(priority: TaskPriority) -> TaskSelectionStore {
-      let store = TaskSelectionStore()
-      store.select(task(title: "Priority \(priority)", priority: priority))
+    func store(priority: TaskPriority) -> ActiveTaskStore {
+      let store = ActiveTaskStore()
+      store.track(task(title: "Priority \(priority)", priority: priority))
       return store
     }
 
     @MainActor
-    func nextUpPresenter(for store: TaskSelectionStore) -> NextUpPresenter {
+    func nextUpPresenter(for store: ActiveTaskStore) -> NextUpPresenter {
       NextUpPresenter(
-        presenter: TimerPresenter(engine: engine, settings: settings), selectionStore: store,
+        presenter: TimerPresenter(engine: engine, settings: settings), activeTaskStore: store,
         settings: settings)
     }
 
@@ -300,29 +300,29 @@ struct ActiveTaskView: View {
     let stagedActiveStore = store(priority: .high)
     stagedActiveStore.stage(task(title: "Staged next focus task", priority: .medium))
 
-    let stagedOnlyStore = TaskSelectionStore()
+    let stagedOnlyStore = ActiveTaskStore()
     stagedOnlyStore.stage(task(title: "Staged with no active task", priority: .low))
 
     return VStack(alignment: .leading, spacing: .sectionGap) {
       ForEach(priorities, id: \.self) { priority in
         ActiveTaskView(
-          engine: engine, selectionStore: store(priority: priority), registry: registry,
+          engine: engine, activeTaskStore: store(priority: priority), registry: registry,
           nav: nav, errorPresenter: errorPresenter, style: .compact, onSelect: {})
       }
 
       ForEach(priorities, id: \.self) { priority in
         ActiveTaskView(
-          engine: engine, selectionStore: store(priority: priority), registry: registry,
+          engine: engine, activeTaskStore: store(priority: priority), registry: registry,
           nav: nav, errorPresenter: errorPresenter, style: .detail, onSelect: nil)
       }
 
       ActiveTaskView(
-        engine: engine, selectionStore: stagedActiveStore, registry: registry, nav: nav,
+        engine: engine, activeTaskStore: stagedActiveStore, registry: registry, nav: nav,
         errorPresenter: errorPresenter, style: .detail,
         nextUp: nextUpPresenter(for: stagedActiveStore), onSelect: nil)
 
       ActiveTaskView(
-        engine: engine, selectionStore: stagedOnlyStore, registry: registry, nav: nav,
+        engine: engine, activeTaskStore: stagedOnlyStore, registry: registry, nav: nav,
         errorPresenter: errorPresenter, style: .detail,
         nextUp: nextUpPresenter(for: stagedOnlyStore), onSelect: nil)
     }

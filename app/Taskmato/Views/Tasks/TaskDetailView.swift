@@ -16,7 +16,7 @@ import SwiftUI
 /// becomes available.
 struct TaskDetailView: View {
 
-  var selectionStore: TaskSelectionStore
+  var activeTaskStore: ActiveTaskStore
   var registry: ProviderRegistry
   var queryService: TaskQueryService
   var destinationResolver: TaskDestinationResolver
@@ -35,7 +35,7 @@ struct TaskDetailView: View {
   @Environment(\.openURL) var openURL
 
   @State private var query: String = ""
-  /// Not `private`: `TaskDetailSelection.swift` resolves ``selection`` against this.
+  /// Not `private`: `TaskDetailSelection.swift` resolves ``selectedTaskID`` against this.
   @State var sections: [TaskSection] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
@@ -53,10 +53,10 @@ struct TaskDetailView: View {
   @State private var isLoadingCompleted = false
   @FocusState private var isSearchFocused: Bool
   /// The single selected task (issue #546) — ephemeral, view-local, and independent of
-  /// ``TaskSelectionStore``'s active/tracked task. Drives the clipboard and `.onDeleteCommand`;
+  /// ``ActiveTaskStore``'s active/tracked task. Drives the clipboard and `.onDeleteCommand`;
   /// cleared whenever the sidebar selection changes. Not `private`: `handleDelete(_:)` in
   /// `TaskDetailActions.swift` clears it when the selected task is removed.
-  @State var selection: TaskRef?
+  @State var selectedTaskID: TaskRef?
   /// The selected task pending permanent deletion via `.onDeleteCommand`, driving the confirmation
   /// dialog. Not `private`: managed from `TaskDetailSelection.swift`.
   @State var activeDeleteCandidate: TaskItem?
@@ -227,7 +227,7 @@ struct TaskDetailView: View {
       .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
       .onChange(of: sidebarSelection.selection) { _, _ in
         query = ""
-        selection = nil
+        selectedTaskID = nil
         Task { await refresh() }
       }
       .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
@@ -308,7 +308,7 @@ struct TaskDetailView: View {
           to:
             attachTaskCommands(
               to:
-                List(selection: $selection) {
+                List(selection: $selectedTaskID) {
                   SwiftUI.ForEach(sections) { section in
                     listSection(for: section)
                   }
@@ -444,11 +444,11 @@ extension TaskDetailView {
   /// Activates `task`: makes it the active/tracked task and switches to the Timer tab.
   ///
   /// This is the "activate" gesture (issue #546) — double-click, Return with a selection, or
-  /// the context-menu "Track Task" item — kept distinct from ``selection``, which only
+  /// the context-menu "Track Task" item — kept distinct from ``selectedTaskID``, which only
   /// highlights a row for the clipboard and never navigates. Not `private`:
   /// `TaskDetailSelection.swift`'s `activateSelection()` calls this for Return.
-  func select(_ task: TaskItem) {
-    selectionStore.select(task)
+  func track(_ task: TaskItem) {
+    activeTaskStore.track(task)
     nav.showTimer()
   }
 
@@ -458,7 +458,7 @@ extension TaskDetailView {
   /// never starts a queued break. Not `private`: called from `TaskDetailContextMenu.swift`'s
   /// "Start Focus ▸" submenu.
   func startFocus(_ task: TaskItem, minutes: Int) {
-    selectionStore.select(task)
+    activeTaskStore.track(task)
     settings.focusMinutes = minutes
     presenter.start()
     nav.showTimer()
@@ -471,7 +471,7 @@ extension TaskDetailView {
   /// does, since there is no separate staged-length state (D-b). Not `private`: called from
   /// `TaskDetailContextMenu.swift`.
   func stageNextFocus(_ task: TaskItem, minutes: Int) {
-    selectionStore.stage(task)
+    activeTaskStore.stage(task)
     settings.focusMinutes = minutes
     nav.showTimer()
   }
@@ -486,15 +486,15 @@ extension TaskDetailView {
   #Preview {
     let registry = ProviderRegistry()
     let settings = AppSettings()
-    let selectionStore = SelectionStore(registry: registry)
+    let sidebarSelectionStore = SelectionStore(registry: registry)
     TaskDetailView(
-      selectionStore: TaskSelectionStore(),
+      activeTaskStore: ActiveTaskStore(),
       registry: registry,
       queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
       destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),
-      sidebarSelection: selectionStore,
+      sidebarSelection: sidebarSelectionStore,
       nav: MainNavigation(
-        settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+        settings: settings, selectionStore: sidebarSelectionStore, statsViewModel: .preview),
       settings: settings,
       errorPresenter: ErrorPresenter(),
       presenter: TimerPresenter(engine: SessionEngine(), settings: settings)

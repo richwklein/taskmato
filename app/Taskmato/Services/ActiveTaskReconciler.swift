@@ -8,12 +8,12 @@ import Foundation
 /// Reconciles the persisted active-task and staged-task snapshots against their owning providers
 /// (issue #547, design doc "stage the next focus").
 ///
-/// `TaskSelectionStore.activeTask` and `stagedTask` are `Codable` snapshots, not live references —
+/// `ActiveTaskStore.activeTask` and `stagedTask` are `Codable` snapshots, not live references —
 /// nothing else notices when the source provider deletes or completes one of those tasks out from
 /// under it. This type closes that gap on the existing `registry.onProviderStateChanged` reload
 /// seam (the same one `SelectionStore.validateSelection()` uses for the sidebar list selection):
 /// when an enabled, already-loaded provider no longer contains a tracked task, the stale snapshot
-/// is cleared. For the active task that is the ordinary ``TaskSelectionStore/clearActiveTask()``
+/// is cleared. For the active task that is the ordinary ``ActiveTaskStore/clearActiveTask()``
 /// path — no picker routing. If a focus session is actively running, the timer is paused
 /// immediately after the stale task is cleared so it does not keep counting unassigned focus time.
 /// Already-invested focus time is preserved for free by the pre-existing snapshot-segment
@@ -27,23 +27,23 @@ import Foundation
 final class ActiveTaskReconciler {
 
   private let registry: ProviderRegistry
-  private let selectionStore: TaskSelectionStore
+  private let activeTaskStore: ActiveTaskStore
   private let engine: SessionEngine
   private let attribution: FocusAttribution
   private let errorPresenter: ErrorPresenter
 
   /// - Parameters:
   ///   - registry: Resolves the active task's owning provider and its enabled/loaded state.
-  ///   - selectionStore: Holds the snapshot being reconciled.
+  ///   - activeTaskStore: Holds the snapshot being reconciled.
   ///   - engine: Pauses a running focus phase after the vanished task is cleared.
   ///   - attribution: Consulted only to gate the banner on a live/paused focus phase.
   ///   - errorPresenter: Surfaces the mid-focus removal banner.
   init(
-    registry: ProviderRegistry, selectionStore: TaskSelectionStore, engine: SessionEngine,
+    registry: ProviderRegistry, activeTaskStore: ActiveTaskStore, engine: SessionEngine,
     attribution: FocusAttribution, errorPresenter: ErrorPresenter
   ) {
     self.registry = registry
-    self.selectionStore = selectionStore
+    self.activeTaskStore = activeTaskStore
     self.engine = engine
     self.attribution = attribution
     self.errorPresenter = errorPresenter
@@ -63,7 +63,7 @@ final class ActiveTaskReconciler {
     await reconcileActive(changedProviderID: changedProviderID)
   }
 
-  /// Checks ``TaskSelectionStore/stagedTask`` against its owning provider.
+  /// Checks ``ActiveTaskStore/stagedTask`` against its owning provider.
   ///
   /// Gated on the *staged* task's own provider — deliberately separate from
   /// ``reconcileActive(changedProviderID:)``'s gate, since a staged task can sit in a different
@@ -74,7 +74,7 @@ final class ActiveTaskReconciler {
   /// the verdict is about the active task now, so this falls through to the active-vanished path
   /// instead of waiting for a later reload.
   private func reconcileStaged(changedProviderID: ProviderID?) async {
-    guard let staged = selectionStore.stagedTask else { return }
+    guard let staged = activeTaskStore.stagedTask else { return }
     guard let provider = eligibleProvider(for: staged.id, changedProviderID: changedProviderID)
     else { return }
 
@@ -86,26 +86,26 @@ final class ActiveTaskReconciler {
     }
 
     if let match = provider.resolve(staged.id, among: open) {
-      if match != staged { selectionStore.refreshStagedTask(match) }
+      if match != staged { activeTaskStore.refreshStagedTask(match) }
       return
     }
 
     // Re-check after the await above: staging or promotion may have landed while this fetch was
     // in flight.
-    if selectionStore.stagedTask?.id == staged.id {
-      selectionStore.clearStagedTask()
+    if activeTaskStore.stagedTask?.id == staged.id {
+      activeTaskStore.clearStagedTask()
       return
     }
-    guard selectionStore.activeTask?.id == staged.id,
+    guard activeTaskStore.activeTask?.id == staged.id,
       registry.isEnabled(staged.id.providerID)
     else { return }
     clearVanishedActiveTask(staged)
   }
 
-  /// Checks ``TaskSelectionStore/activeTask`` against its owning provider, refreshing or clearing
+  /// Checks ``ActiveTaskStore/activeTask`` against its owning provider, refreshing or clearing
   /// the snapshot as needed.
   private func reconcileActive(changedProviderID: ProviderID?) async {
-    guard let active = selectionStore.activeTask else { return }
+    guard let active = activeTaskStore.activeTask else { return }
     guard let provider = eligibleProvider(for: active.id, changedProviderID: changedProviderID)
     else { return }
 
@@ -117,13 +117,13 @@ final class ActiveTaskReconciler {
     }
 
     if let match = provider.resolve(active.id, among: open) {
-      if match != active { selectionStore.refreshActiveTask(match, replacing: active.id) }
+      if match != active { activeTaskStore.refreshActiveTask(match, replacing: active.id) }
       return
     }
 
     // Re-check after the await above: the task may have been re-selected, or its provider
     // disabled, while this fetch was in flight.
-    guard selectionStore.activeTask?.id == active.id, registry.isEnabled(active.id.providerID)
+    guard activeTaskStore.activeTask?.id == active.id, registry.isEnabled(active.id.providerID)
     else { return }
 
     clearVanishedActiveTask(active)
@@ -149,7 +149,7 @@ final class ActiveTaskReconciler {
   private func clearVanishedActiveTask(_ task: TaskItem) {
     let wasMidFocus = attribution.isLive || engine.hasActiveFocusPhase
     let shouldPauseFocus = engine.isRunningFocus
-    selectionStore.clearActiveTask()
+    activeTaskStore.clearActiveTask()
     if shouldPauseFocus { engine.pause() }
     guard wasMidFocus else { return }  // Idle/startup removals are silent — nothing to report.
     errorPresenter.present(

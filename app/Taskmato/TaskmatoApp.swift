@@ -26,7 +26,7 @@ struct TaskmatoApp: App {
       MenuBarPopoverView(
         presenter: composition.timerPresenter,
         statsViewModel: composition.statsViewModel,
-        selectionStore: composition.selectionStore,
+        activeTaskStore: composition.activeTaskStore,
         nav: composition.nav,
         engine: composition.engine,
         registry: composition.registry,
@@ -47,7 +47,7 @@ struct TaskmatoApp: App {
         engine: composition.engine,
         settings: composition.settings,
         statsViewModel: composition.statsViewModel,
-        selectionStore: composition.selectionStore,
+        activeTaskStore: composition.activeTaskStore,
         registry: composition.registry,
         queryService: composition.queryService,
         destinationResolver: composition.destinationResolver,
@@ -69,7 +69,7 @@ struct TaskmatoApp: App {
       ) { matches in
         ForEach(matches.prefix(4)) { task in
           Button(task.title) {
-            composition.selectionStore.select(task)
+            composition.activeTaskStore.track(task)
             composition.urlHandler.pendingDisambiguation = nil
             composition.nav.showTimerInMainWindow()
           }
@@ -82,7 +82,7 @@ struct TaskmatoApp: App {
               // On failure the handler surfaces the error on the banner and returns nil,
               // so no session is started on an unsaved task.
               if let task = await composition.urlHandler.makeAdHocTask(from: params) {
-                composition.selectionStore.select(task)
+                composition.activeTaskStore.track(task)
                 composition.nav.showTimerInMainWindow()
               }
             }
@@ -108,7 +108,7 @@ struct TaskmatoApp: App {
     Settings {
       SettingsView(
         settings: composition.settings,
-        selectionStore: composition.selectionStore,
+        activeTaskStore: composition.activeTaskStore,
         registry: composition.registry,
         notifications: composition.notifications
       )

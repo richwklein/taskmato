@@ -16,7 +16,7 @@ typealias ProviderCosmeticsResolver = (ProviderID) -> (label: String, tint: Prov
 /// focus time. ``PhaseOrchestrator`` seeds it on `began(.focus)`, drains its closed-slice
 /// notifications to upsert a durable draft (D7), and finalizes it on `.ended`.
 ///
-/// Mutated from two paths — synchronously from `TaskSelectionStore.onActiveTaskChanged` (task
+/// Mutated from two paths — synchronously from `ActiveTaskStore.onActiveTaskChanged` (task
 /// changes) and from `PhaseOrchestrator` draining the engine's event stream (phase boundaries) —
 /// both on the main actor, so there is no data race. The remaining hazard is a task change
 /// firing after a phase has already ended but before `PhaseOrchestrator` has drained that

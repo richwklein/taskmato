@@ -15,29 +15,29 @@ import UniformTypeIdentifiers
 /// limit, mirroring the existing `TaskDetailActions.swift` split for mutating handlers.
 extension TaskDetailView {
 
-  /// The task currently identified by ``selection`` within active or completed tasks, or `nil`
+  /// The task currently identified by ``selectedTaskID`` within active or completed tasks, or `nil`
   /// when there is no selection or the selected ref fell out of the loaded content.
   private func selectedTask() -> TaskItem? {
-    guard let selection else { return nil }
-    return sections.lazy.flatMap(\.tasks).first { $0.id == selection }
-      ?? completedTasks.first { $0.id == selection }
+    guard let selectedTaskID else { return nil }
+    return sections.lazy.flatMap(\.tasks).first { $0.id == selectedTaskID }
+      ?? completedTasks.first { $0.id == selectedTaskID }
   }
 
-  /// The active task currently identified by ``selection``, or `nil` when the selected task is
+  /// The active task currently identified by ``selectedTaskID``, or `nil` when the selected task is
   /// completed or no longer loaded.
   private func selectedActiveTask() -> TaskItem? {
-    guard let selection else { return nil }
-    return sections.lazy.flatMap(\.tasks).first { $0.id == selection }
+    guard let selectedTaskID else { return nil }
+    return sections.lazy.flatMap(\.tasks).first { $0.id == selectedTaskID }
   }
 
-  /// The payload for ``selection``, or an empty array when there is nothing selected —
+  /// The payload for ``selectedTaskID``, or an empty array when there is nothing selected —
   /// SwiftUI disables Edit ▸ Copy when `.copyable` returns no items.
   private func copyPayloads() -> [TaskClipboardPayload] {
     guard let task = selectedTask() else { return [] }
     return [clipboardService.payload(for: task)]
   }
 
-  /// Deletes ``selection`` and returns its payload for `.cuttable` to place on the pasteboard,
+  /// Deletes ``selectedTaskID`` and returns its payload for `.cuttable` to place on the pasteboard,
   /// or an empty array when there is nothing selected or it is not writable.
   private func cutPayloads() -> [TaskClipboardPayload] {
     guard let task = selectedTask(),
@@ -47,11 +47,11 @@ extension TaskDetailView {
     return [clipboardService.payload(for: task)]
   }
 
-  /// Tracks an active ``selection``, or ignores the key when nothing active is selected so
+  /// Tracks an active ``selectedTaskID``, or ignores the key when nothing active is selected so
   /// Return keeps its default behavior elsewhere.
   func activateSelection() -> KeyPress.Result {
     guard let task = selectedActiveTask() else { return .ignored }
-    select(task)
+    track(task)
     return .handled
   }
 
@@ -60,10 +60,10 @@ extension TaskDetailView {
   /// the pointer-driven counterparts to Return, which activates the same way.
   func trackSelectionAction() -> (() -> Void)? {
     guard let task = selectedActiveTask() else { return nil }
-    return { select(task) }
+    return { track(task) }
   }
 
-  /// Requests confirmation to permanently delete ``selection``, or beeps when it is not writable.
+  /// Requests confirmation to permanently delete ``selectedTaskID``, or beeps when it is not writable.
   /// No-ops silently when there is no selection.
   func requestDeleteSelection() {
     guard let task = selectedTask() else { return }

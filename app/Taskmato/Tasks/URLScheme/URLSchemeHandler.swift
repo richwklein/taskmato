@@ -60,7 +60,7 @@ final class URLSchemeHandler {
 
   private let registry: ProviderRegistry
   private let queryService: TaskQueryService
-  private let selectionStore: TaskSelectionStore
+  private let activeTaskStore: ActiveTaskStore
   private let engine: SessionEngine
   private let settings: AppSettings
   private let nav: MainNavigation
@@ -70,7 +70,7 @@ final class URLSchemeHandler {
   init(
     registry: ProviderRegistry,
     queryService: TaskQueryService,
-    selectionStore: TaskSelectionStore,
+    activeTaskStore: ActiveTaskStore,
     engine: SessionEngine,
     settings: AppSettings,
     nav: MainNavigation,
@@ -79,7 +79,7 @@ final class URLSchemeHandler {
   ) {
     self.registry = registry
     self.queryService = queryService
-    self.selectionStore = selectionStore
+    self.activeTaskStore = activeTaskStore
     self.engine = engine
     self.settings = settings
     self.nav = nav
@@ -109,7 +109,7 @@ final class URLSchemeHandler {
     }
 
     logger.log("handle() resolved task; selecting and routing to Timer")
-    selectionStore.select(task)
+    activeTaskStore.track(task)
     nav.showTimerInMainWindow()
     let engineIdle = engine.state == .idle
     let autoStart = settings.autoStartNextPhase

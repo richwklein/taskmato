@@ -12,7 +12,7 @@ struct TimerTabView: View {
   var nextUpPresenter: NextUpPresenter
   var engine: SessionEngine
   var statsViewModel: StatsViewModel
-  var selectionStore: TaskSelectionStore
+  var activeTaskStore: ActiveTaskStore
   var registry: ProviderRegistry
   var nav: MainNavigation
   var errorPresenter: ErrorPresenter
@@ -26,7 +26,7 @@ struct TimerTabView: View {
       TimerControlsView(
         presenter: presenter,
         size: .regular,
-        startDisabled: selectionStore.activeTask == nil,
+        startDisabled: activeTaskStore.activeTask == nil,
         startDisabledHelp: AppLabels.Tooltip.selectTaskFirst
       )
       .padding(.top, 20)
@@ -37,9 +37,9 @@ struct TimerTabView: View {
       Divider()
         .padding(.horizontal, .screenPadding)
 
-      if selectionStore.activeTask != nil || nextUpPresenter.showsNextUp {
+      if activeTaskStore.activeTask != nil || nextUpPresenter.showsNextUp {
         ActiveTaskView(
-          engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
+          engine: engine, activeTaskStore: activeTaskStore, registry: registry, nav: nav,
           errorPresenter: errorPresenter, style: .detail, nextUp: nextUpPresenter, onSelect: nil
         )
         .padding(.horizontal, .sectionGap)
@@ -70,15 +70,15 @@ struct TimerTabView: View {
     let engine = SessionEngine()
     let settings = AppSettings()
     let registry = ProviderRegistry()
-    let selectionStore = TaskSelectionStore()
+    let activeTaskStore = ActiveTaskStore()
     let timerPresenter = TimerPresenter(engine: engine, settings: settings)
     return TimerTabView(
       presenter: timerPresenter,
       nextUpPresenter: NextUpPresenter(
-        presenter: timerPresenter, selectionStore: selectionStore, settings: settings),
+        presenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings),
       engine: engine,
       statsViewModel: .preview,
-      selectionStore: selectionStore,
+      activeTaskStore: activeTaskStore,
       registry: registry,
       nav: MainNavigation(
         settings: settings, selectionStore: SelectionStore(registry: registry),

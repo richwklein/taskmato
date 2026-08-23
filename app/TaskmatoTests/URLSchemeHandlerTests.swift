@@ -13,7 +13,7 @@ import Testing
 private struct HandlerContext {
   let handler: URLSchemeHandler
   let registry: ProviderRegistry
-  let selectionStore: TaskSelectionStore
+  let activeTaskStore: ActiveTaskStore
   let localProvider: LocalProvider
   let settings: AppSettings
   let errorPresenter: ErrorPresenter
@@ -111,7 +111,7 @@ struct URLSchemeHandlerTests {
   ) -> HandlerContext {
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let settingsStore = SettingsStore(defaults: defaults)
-    let selectionStore = TaskSelectionStore(store: settingsStore)
+    let activeTaskStore = ActiveTaskStore(store: settingsStore)
     let engine = SessionEngine()
     let registry = ProviderRegistry(store: settingsStore)
     let localProvider = LocalProvider(fileURL: makeTempURL())
@@ -134,7 +134,7 @@ struct URLSchemeHandlerTests {
     let handler = URLSchemeHandler(
       registry: registry,
       queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
-      selectionStore: selectionStore,
+      activeTaskStore: activeTaskStore,
       engine: engine,
       settings: settings,
       nav: MainNavigation(
@@ -147,7 +147,7 @@ struct URLSchemeHandlerTests {
     return HandlerContext(
       handler: handler,
       registry: registry,
-      selectionStore: selectionStore,
+      activeTaskStore: activeTaskStore,
       localProvider: localProvider,
       settings: settings,
       errorPresenter: errorPresenter
@@ -175,8 +175,8 @@ struct URLSchemeHandlerTests {
   @Test func adHocTaskWrittenToLocalProviderWhenEnabled() async throws {
     let ctx = makeHandler(enableLocalProvider: true)
     await ctx.handler.handle(URL(string: "taskmato://start?title=Buy%20groceries")!)
-    #expect(ctx.selectionStore.activeTask?.title == "Buy groceries")
-    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
+    #expect(ctx.activeTaskStore.activeTask?.title == "Buy groceries")
+    #expect(ctx.activeTaskStore.activeTask?.id.providerID == LocalProvider.providerID)
     let items = try await ctx.localProvider.tasks(in: nil)
     #expect(items.first?.title == "Buy groceries")
   }
@@ -202,34 +202,34 @@ struct URLSchemeHandlerTests {
     let ctx = makeHandler(enableLocalProvider: false)
     await ctx.handler.handle(URL(string: "taskmato://start?title=Transient+Task")!)
     // No enabled writable provider → no session starts and the failure is surfaced.
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
     #expect(ctx.errorPresenter.current != nil)
   }
 
   @Test func adHocTaskWithHighPriority() async {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=Urgent&priority=high")!)
-    #expect(ctx.selectionStore.activeTask?.priority == .high)
+    #expect(ctx.activeTaskStore.activeTask?.priority == .high)
   }
 
   @Test func adHocTaskWithDueDate() async throws {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=Due+Task&due=2026-12-01")!)
-    let dueDate = try #require(ctx.selectionStore.activeTask?.dueDate)
+    let dueDate = try #require(ctx.activeTaskStore.activeTask?.dueDate)
     let comps = Calendar.current.dateComponents([.year, .month, .day], from: dueDate)
     // Regression: --due must parse as local midnight, not UTC midnight — ISO8601DateFormatter's
     // UTC parsing landed on the previous local day west of UTC.
     #expect(comps.year == 2026)
     #expect(comps.month == 12)
     #expect(comps.day == 1)
-    #expect(ctx.selectionStore.activeTask?.dueDateIncludesTime == false)
+    #expect(ctx.activeTaskStore.activeTask?.dueDateIncludesTime == false)
   }
 
   @Test func adHocTaskWithDueTimeSetsDueDateIncludesTime() async throws {
     let ctx = makeHandler()
     await ctx.handler.handle(
       URL(string: "taskmato://start?title=Due+Task+With+Time&due=2026-12-01+14:30")!)
-    let dueDate = try #require(ctx.selectionStore.activeTask?.dueDate)
+    let dueDate = try #require(ctx.activeTaskStore.activeTask?.dueDate)
     let comps = Calendar.current.dateComponents(
       [.year, .month, .day, .hour, .minute], from: dueDate)
     #expect(comps.year == 2026)
@@ -237,14 +237,14 @@ struct URLSchemeHandlerTests {
     #expect(comps.day == 1)
     #expect(comps.hour == 14)
     #expect(comps.minute == 30)
-    #expect(ctx.selectionStore.activeTask?.dueDateIncludesTime == true)
+    #expect(ctx.activeTaskStore.activeTask?.dueDateIncludesTime == true)
   }
 
   @Test func adHocTaskWithMalformedDueTimeYieldsNoDueDate() async {
     let ctx = makeHandler()
     await ctx.handler.handle(
       URL(string: "taskmato://start?title=Bad+Due+Time&due=2026-12-01+not-a-time")!)
-    #expect(ctx.selectionStore.activeTask?.dueDate == nil)
+    #expect(ctx.activeTaskStore.activeTask?.dueDate == nil)
   }
 
   @Test func adHocTaskWithSectionPassesSectionThroughToDraft() async throws {
@@ -256,7 +256,7 @@ struct URLSchemeHandlerTests {
     ctx.registry.enable(stub)
     await ctx.handler.handle(
       URL(string: "taskmato://start?title=Sectioned&provider=sectioned&section=Backlog")!)
-    #expect(ctx.selectionStore.activeTask?.section == "Backlog")
+    #expect(ctx.activeTaskStore.activeTask?.section == "Backlog")
   }
 
   @Test func adHocTaskWithoutSectionLeavesDraftSectionNil() async throws {
@@ -266,7 +266,7 @@ struct URLSchemeHandlerTests {
     ctx.registry.enable(stub)
     await ctx.handler.handle(
       URL(string: "taskmato://start?title=Unsectioned&provider=sectioned")!)
-    #expect(ctx.selectionStore.activeTask?.section == nil)
+    #expect(ctx.activeTaskStore.activeTask?.section == nil)
   }
 
   // MARK: - Ad-hoc: URL param provider override
@@ -275,7 +275,7 @@ struct URLSchemeHandlerTests {
     let ctx = makeHandler(enableLocalProvider: true)
     await ctx.handler.handle(
       URL(string: "taskmato://start?title=Override&provider=\(LocalProvider.providerID)")!)
-    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
+    #expect(ctx.activeTaskStore.activeTask?.id.providerID == LocalProvider.providerID)
     let items = try await ctx.localProvider.tasks(in: nil)
     #expect(items.map(\.title).contains("Override"))
   }
@@ -286,7 +286,7 @@ struct URLSchemeHandlerTests {
     ctx.registry.disable(providerID: LocalProvider.providerID)
     await ctx.handler.handle(
       URL(string: "taskmato://start?title=Fallback&provider=\(LocalProvider.providerID)")!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
     #expect(ctx.errorPresenter.current != nil)
   }
 
@@ -304,7 +304,7 @@ struct URLSchemeHandlerTests {
     await ctx.handler.handle(
       URL(string: "taskmato://start?title=Fallback&provider=target-disabled")!)
 
-    #expect(ctx.selectionStore.activeTask?.id.providerID == "zzz-default")
+    #expect(ctx.activeTaskStore.activeTask?.id.providerID == "zzz-default")
   }
 
   // MARK: - Ad-hoc: settings default writable provider
@@ -315,7 +315,7 @@ struct URLSchemeHandlerTests {
       defaultWritableProviderID: LocalProvider.providerID
     )
     await ctx.handler.handle(URL(string: "taskmato://start?title=Settings+Task")!)
-    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
+    #expect(ctx.activeTaskStore.activeTask?.id.providerID == LocalProvider.providerID)
     let items = try await ctx.localProvider.tasks(in: nil)
     #expect(items.map(\.title).contains("Settings Task"))
   }
@@ -327,7 +327,7 @@ struct URLSchemeHandlerTests {
     )
     await ctx.handler.handle(URL(string: "taskmato://start?title=No+Provider")!)
     // Settings points at a disabled provider and none is enabled → error, no session.
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
     #expect(ctx.errorPresenter.current != nil)
   }
 
@@ -338,13 +338,13 @@ struct URLSchemeHandlerTests {
     let ctx = makeHandler(stubProviderTasks: [existing])
     let urlString = "taskmato://start?provider=stub&id=\(existing.id.nativeID)"
     await ctx.handler.handle(URL(string: urlString)!)
-    #expect(ctx.selectionStore.activeTask?.id == existing.id)
+    #expect(ctx.activeTaskStore.activeTask?.id == existing.id)
   }
 
   @Test func lookupByIDUnknownProviderIsIgnored() async {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?provider=unknown&id=abc123")!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
   }
 
   @Test func lookupByIDIgnoresDisabledProvider() async {
@@ -354,7 +354,7 @@ struct URLSchemeHandlerTests {
     ctx.registry.disable(providerID: "stub")
     let urlString = "taskmato://start?provider=stub&id=\(existing.id.nativeID)"
     await ctx.handler.handle(URL(string: urlString)!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
   }
 
   // MARK: - Step 2: ID-only cross-provider fan-out
@@ -364,13 +364,13 @@ struct URLSchemeHandlerTests {
     let ctx = makeHandler(stubProviderTasks: [existing])
     let urlString = "taskmato://start?id=\(existing.id.nativeID)"
     await ctx.handler.handle(URL(string: urlString)!)
-    #expect(ctx.selectionStore.activeTask?.id == existing.id)
+    #expect(ctx.activeTaskStore.activeTask?.id == existing.id)
   }
 
   @Test func idOnlyFanOutUnknownIDIsIgnored() async {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?id=nonexistent-id")!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
   }
 
   // MARK: - Step 3: Lookup by title in named provider
@@ -379,14 +379,14 @@ struct URLSchemeHandlerTests {
     let existing = makeTask(title: "Write tests")
     let ctx = makeHandler(stubProviderTasks: [existing])
     await ctx.handler.handle(URL(string: "taskmato://start?provider=stub&title=Write%20tests")!)
-    #expect(ctx.selectionStore.activeTask?.id == existing.id)
+    #expect(ctx.activeTaskStore.activeTask?.id == existing.id)
   }
 
   @Test func lookupByTitleIsCaseInsensitive() async {
     let existing = makeTask(title: "Write Tests")
     let ctx = makeHandler(stubProviderTasks: [existing])
     await ctx.handler.handle(URL(string: "taskmato://start?provider=stub&title=write%20tests")!)
-    #expect(ctx.selectionStore.activeTask?.id == existing.id)
+    #expect(ctx.activeTaskStore.activeTask?.id == existing.id)
   }
 
   @Test func lookupByTitleIgnoresDisabledProvider() async {
@@ -395,8 +395,8 @@ struct URLSchemeHandlerTests {
     ctx.registry.disable(providerID: "stub")
     await ctx.handler.handle(
       URL(string: "taskmato://start?provider=stub&title=Disabled%20Title")!)
-    #expect(ctx.selectionStore.activeTask?.id.providerID == LocalProvider.providerID)
-    #expect(ctx.selectionStore.activeTask?.title == "Disabled Title")
+    #expect(ctx.activeTaskStore.activeTask?.id.providerID == LocalProvider.providerID)
+    #expect(ctx.activeTaskStore.activeTask?.title == "Disabled Title")
   }
 
   // MARK: - Step 4: Cross-provider title search
@@ -405,7 +405,7 @@ struct URLSchemeHandlerTests {
     let existing = makeTask(title: "Design API")
     let ctx = makeHandler(stubProviderTasks: [existing])
     await ctx.handler.handle(URL(string: "taskmato://start?title=Design%20API")!)
-    #expect(ctx.selectionStore.activeTask?.id.providerID == "stub")
+    #expect(ctx.activeTaskStore.activeTask?.id.providerID == "stub")
   }
 
   @Test func disambiguationSetWhenMultipleMatches() async {
@@ -413,7 +413,7 @@ struct URLSchemeHandlerTests {
     let task2 = makeTask(title: "Write docs")
     let ctx = makeHandler(stubProviderTasks: [task1, task2])
     await ctx.handler.handle(URL(string: "taskmato://start?title=Write%20docs")!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
     #expect(ctx.handler.pendingDisambiguation?.count == 2)
   }
 
@@ -447,7 +447,7 @@ struct URLSchemeHandlerTests {
     let existing = makeTask(title: "Global Task", providerID: "stub")
     let ctx = makeHandler(stubProviderTasks: [existing])
     await ctx.handler.handle(URL(string: "taskmato://start?title=Global%20Task")!)
-    #expect(ctx.selectionStore.activeTask?.id == existing.id)
+    #expect(ctx.activeTaskStore.activeTask?.id == existing.id)
   }
 
   // MARK: - Invalid / noop cases
@@ -455,24 +455,24 @@ struct URLSchemeHandlerTests {
   @Test func wrongSchemeIsIgnored() async {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "https://example.com/start?title=Task")!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
   }
 
   @Test func wrongHostIsIgnored() async {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://open?title=Task")!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
   }
 
   @Test func missingTitleAndIDIsIgnored() async {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?priority=high")!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
   }
 
   @Test func emptyTitleIsIgnored() async {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=")!)
-    #expect(ctx.selectionStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == nil)
   }
 }

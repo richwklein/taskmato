@@ -240,18 +240,18 @@ struct FocusAttributionTests {
   // MARK: - Staging does not affect attribution (design doc "stage the next focus", D-b/D-e)
 
   @Test func stagingATaskDuringFocusDoesNotAffectAttribution() {
-    // `TaskSelectionStore.stage(_:)` fires no `onActiveTaskChanged`, so wiring it exactly as
+    // `ActiveTaskStore.stage(_:)` fires no `onActiveTaskChanged`, so wiring it exactly as
     // `AppComposition.wireFocusHandoff` does, a staged task should never reach `taskChanged(to:)`.
-    let selectionStore = TaskSelectionStore(
+    let activeTaskStore = ActiveTaskStore(
       store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
     let attribution = FocusAttribution()
-    selectionStore.onActiveTaskChanged = { task in
+    activeTaskStore.onActiveTaskChanged = { task in
       attribution.taskChanged(to: task, consumedSeconds: 0)
     }
-    selectionStore.select(taskA)
-    attribution.begin(task: selectionStore.activeTask)
+    activeTaskStore.track(taskA)
+    attribution.begin(task: activeTaskStore.activeTask)
 
-    selectionStore.stage(taskB)
+    activeTaskStore.stage(taskB)
 
     let segments = attribution.finish(consumedSeconds: 900)
     #expect(segments.count == 1)

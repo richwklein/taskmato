@@ -42,7 +42,7 @@ private struct OrchestratorContext {
   let engine: SessionEngine
   let store: SessionStore
   let settings: AppSettings
-  let selectionStore: TaskSelectionStore
+  let activeTaskStore: ActiveTaskStore
   let attribution: FocusAttribution
   let center: FakeNotificationCenter
 }
@@ -54,18 +54,18 @@ private func makeContext(now: @escaping () -> Date = Date.init) async -> Orchest
   let store = SessionStore(repository: FakeSessionRepository())
   let settingsStore = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
   let settings = AppSettings(store: settingsStore)
-  let selectionStore = TaskSelectionStore(store: settingsStore)
+  let activeTaskStore = ActiveTaskStore(store: settingsStore)
   let attribution = FocusAttribution()
   let center = FakeNotificationCenter(status: .authorized)
   let notifications = NotificationService(settings: settings, center: center)
   await notifications.refreshAuthStatus()
   let orchestrator = PhaseOrchestrator(
     events: stream, engine: engine, store: store, settings: settings,
-    selectionStore: selectionStore, notifications: notifications, attribution: attribution,
+    activeTaskStore: activeTaskStore, notifications: notifications, attribution: attribution,
     now: now)
   return OrchestratorContext(
     orchestrator: orchestrator, continuation: continuation, engine: engine, store: store,
-    settings: settings, selectionStore: selectionStore, attribution: attribution, center: center)
+    settings: settings, activeTaskStore: activeTaskStore, attribution: attribution, center: center)
 }
 
 /// Yields the main-actor executor repeatedly, giving a concurrently running `Task` a chance to
@@ -173,7 +173,7 @@ struct PhaseOrchestratorTests {
   @Test func completedFocusRecordsOneSegmentForTheActiveTask() async {
     let ctx = await makeContext()
     let task = Self.makeTask(providerID: "local", nativeID: "abc", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
     let runTask = Task { await ctx.orchestrator.run() }
 
     let startedAt = Date(timeIntervalSinceReferenceDate: 0)
@@ -195,7 +195,7 @@ struct PhaseOrchestratorTests {
   @Test func breakPhaseRecordsNoSegments() async {
     let ctx = await makeContext()
     let task = Self.makeTask(providerID: "local", nativeID: "abc", title: "Write plan")
-    ctx.selectionStore.select(task)
+    ctx.activeTaskStore.track(task)
     let runTask = Task { await ctx.orchestrator.run() }
 
     let startedAt = Date(timeIntervalSinceReferenceDate: 0)
@@ -289,7 +289,7 @@ struct PhaseOrchestratorTests {
     let ctx = await makeContext(now: { currentTime })
     let taskA = Self.makeTask(providerID: "local", nativeID: "a", title: "Task A")
     let taskB = Self.makeTask(providerID: "local", nativeID: "b", title: "Task B")
-    ctx.selectionStore.select(taskA)
+    ctx.activeTaskStore.track(taskA)
     let runTask = Task { await ctx.orchestrator.run() }
 
     ctx.continuation.yield(.began(phase: .focus))
@@ -313,7 +313,7 @@ struct PhaseOrchestratorTests {
     let ctx = await makeContext()
     let taskA = Self.makeTask(providerID: "local", nativeID: "a", title: "Task A")
     let taskB = Self.makeTask(providerID: "local", nativeID: "b", title: "Task B")
-    ctx.selectionStore.select(taskA)
+    ctx.activeTaskStore.track(taskA)
     let runTask = Task { await ctx.orchestrator.run() }
 
     ctx.continuation.yield(.began(phase: .focus))
@@ -332,7 +332,7 @@ struct PhaseOrchestratorTests {
     let taskA = Self.makeTask(providerID: "local", nativeID: "a", title: "Task A")
     let taskB = Self.makeTask(providerID: "local", nativeID: "b", title: "Task B")
     let taskC = Self.makeTask(providerID: "local", nativeID: "c", title: "Task C")
-    ctx.selectionStore.select(taskA)
+    ctx.activeTaskStore.track(taskA)
     let runTask = Task { await ctx.orchestrator.run() }
 
     ctx.continuation.yield(.began(phase: .focus))
@@ -357,7 +357,7 @@ struct PhaseOrchestratorTests {
     let ctx = await makeContext()
     let taskA = Self.makeTask(providerID: "local", nativeID: "a", title: "Task A")
     let taskB = Self.makeTask(providerID: "local", nativeID: "b", title: "Task B")
-    ctx.selectionStore.select(taskA)
+    ctx.activeTaskStore.track(taskA)
     let runTask = Task { await ctx.orchestrator.run() }
 
     ctx.continuation.yield(.began(phase: .focus))
@@ -387,7 +387,7 @@ struct PhaseOrchestratorTests {
   @Test func beganFocusPromotesTheStagedTaskAndSeedsAttributionOnIt() async {
     let ctx = await makeContext()
     let staged = Self.makeTask(providerID: "local", nativeID: "b", title: "Staged")
-    ctx.selectionStore.stage(staged)
+    ctx.activeTaskStore.stage(staged)
     let runTask = Task { await ctx.orchestrator.run() }
 
     let startedAt = Date(timeIntervalSinceReferenceDate: 0)
@@ -395,8 +395,8 @@ struct PhaseOrchestratorTests {
     ctx.continuation.yield(.began(phase: .focus))
     await drain()
 
-    #expect(ctx.selectionStore.activeTask == staged)
-    #expect(ctx.selectionStore.stagedTask == nil)
+    #expect(ctx.activeTaskStore.activeTask == staged)
+    #expect(ctx.activeTaskStore.stagedTask == nil)
 
     ctx.continuation.yield(
       .ended(phase: .focus, startedAt: startedAt, endedAt: endedAt, wasCompleted: true))
@@ -411,14 +411,14 @@ struct PhaseOrchestratorTests {
   @Test func beganShortBreakIgnoresAStagedTask() async {
     let ctx = await makeContext()
     let staged = Self.makeTask(providerID: "local", nativeID: "b", title: "Staged")
-    ctx.selectionStore.stage(staged)
+    ctx.activeTaskStore.stage(staged)
     let runTask = Task { await ctx.orchestrator.run() }
 
     ctx.continuation.yield(.began(phase: .shortBreak))
     await drain()
 
-    #expect(ctx.selectionStore.activeTask == nil)
-    #expect(ctx.selectionStore.stagedTask == staged)
+    #expect(ctx.activeTaskStore.activeTask == nil)
+    #expect(ctx.activeTaskStore.stagedTask == staged)
 
     ctx.continuation.finish()
     await runTask.value
