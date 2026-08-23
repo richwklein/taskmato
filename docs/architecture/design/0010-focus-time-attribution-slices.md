@@ -137,6 +137,10 @@ but matches Taskmato's existing swap behavior — the point is that complete and
 > pause, and **detach** the active task (a later resume continues the remainder as *untracked*
 > focus). Its confirm is dropped too (D3).
 
+**Amended by D8 of design doc 0009.** When a task is *staged*, complete has no picker step to route
+to, so it hands off directly: the outgoing slice still closes and is credited at the frozen pause
+mark, and the staged task becomes active in the same gesture. Same three effects, minus (3).
+
 ### D3 — Completion is no longer destructive; the stop-confirm is removed
 
 Because complete now preserves the phase (pause + credited slice) instead of stopping it, the
@@ -268,6 +272,12 @@ The flag scopes this to a genuine handoff: selecting a task while idle, or while
 paused (pause-button) session sits, never auto-resumes. It clears on the next selection, resume, or
 stop. Reusing the existing setting keeps "does the app advance the timer for me" a single
 preference.
+
+**Amended by D8 of design doc 0009.** Promoting a staged task deliberately sits *outside* this
+mechanism. `select(_:)` consumes the flag in the same call, so arming it for a gesture that also
+performs the selection would be decorative — and with `autoStartNextPhase` off it would strand a
+paused phase with no picker to return from. Promotion uses its own `onStagedPromotion` callback,
+gated on the same setting, so the resume policy still lives in one place.
 
 ### D10 — Behavior varies by surface and by phase
 
