@@ -17,17 +17,17 @@ import Observation
 final class NextUpPresenter {
 
   private let presenter: TimerPresenter
-  private let selectionStore: TaskSelectionStore
+  private let activeTaskStore: ActiveTaskStore
   private let settings: AppSettings
 
   /// - Parameters:
   ///   - presenter: Supplies the timer's phase state; the single source of "focus is next"
   ///     rather than re-deriving it here.
-  ///   - selectionStore: Supplies the staged task.
+  ///   - activeTaskStore: Supplies the staged task.
   ///   - settings: Supplies the live focus length.
-  init(presenter: TimerPresenter, selectionStore: TaskSelectionStore, settings: AppSettings) {
+  init(presenter: TimerPresenter, activeTaskStore: ActiveTaskStore, settings: AppSettings) {
     self.presenter = presenter
-    self.selectionStore = selectionStore
+    self.activeTaskStore = activeTaskStore
     self.settings = settings
   }
 
@@ -38,10 +38,10 @@ final class NextUpPresenter {
   /// "Next focus: 45 min" beneath it would only restate it. Design doc 0009 resolved that state
   /// as "no line", so it collapses. The staged *task* still shows in ``ActiveTaskView``, since
   /// which task runs next is not restated anywhere.
-  var showsNextUp: Bool { selectionStore.stagedTask != nil && !presenter.canSelectFocusPreset }
+  var showsNextUp: Bool { activeTaskStore.stagedTask != nil && !presenter.canSelectFocusPreset }
 
   /// The task staged for the next focus phase, or `nil` when nothing is staged.
-  var stagedTask: TaskItem? { selectionStore.stagedTask }
+  var stagedTask: TaskItem? { activeTaskStore.stagedTask }
 
   /// The length the next focus phase will run, in minutes — always `settings.focusMinutes`, read
   /// live. There is no separate staged-length state (D-b): a persisted slot could diverge from

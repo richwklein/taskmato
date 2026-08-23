@@ -27,8 +27,7 @@ struct StatCardView: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.cardPadding)
-    .background(Color.cardSurface)
-    .clipShape(RoundedRectangle.card)
+    .cardBackground()
     .help(help ?? "")
     .accessibilityHint(help ?? "")
   }

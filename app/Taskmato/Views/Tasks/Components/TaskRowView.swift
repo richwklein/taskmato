@@ -11,6 +11,9 @@ import SwiftUI
 /// Use ``TaskItemKind`` to distinguish active and completed tasks. Pass `lineage` when the
 /// picker is in cross-provider flat mode (Today or search) to show the task's origin. All
 /// non-layout logic lives in ``TaskItemPresenter``; this view only arranges the slots.
+///
+/// The row draws no surface of its own: `List` owns selection, so the platform paints the
+/// selected and unfocused-selected appearances and inverts row content to match.
 struct TaskRowView: View {
 
   let task: TaskItem
@@ -35,7 +38,7 @@ struct TaskRowView: View {
           if let notes = task.notes {
             TaskNoteView(notes: notes, format: task.format)
           }
-          metadata
+          TaskMetadataLabel(presenter: presenter)
           if let lineage = presenter.displayLineage {
             TaskLineageRow(lineage: lineage)
           }
@@ -44,7 +47,8 @@ struct TaskRowView: View {
       TaskDeleteButtonView(
         presenter: presenter, isHovered: rowHover, showConfirmation: $showDeleteConfirmation)
     }
-    .padding(.vertical, .rowVertical)
+    .padding(.vertical, .contentGap)
+    .padding(.horizontal, .contentGap)
     .contentShape(Rectangle())
     .onHover { rowHover = $0 }
     .confirmationDialog(
@@ -55,22 +59,4 @@ struct TaskRowView: View {
     }
   }
 
-  /// The due date (active tasks) or completed-relative subtitle (completed tasks).
-  @ViewBuilder
-  private var metadata: some View {
-    if let due = presenter.dueDate {
-      Text(
-        due,
-        format: presenter.dueDateIncludesTime
-          ? .dateTime.month(.abbreviated).day().hour().minute()
-          : .dateTime.month(.abbreviated).day()
-      )
-      .font(.taskMetadata)
-      .foregroundStyle(presenter.dueIsUrgent ? Color.dueUrgent : Color.secondary)
-    } else if presenter.isCompleted {
-      Text(presenter.completedSubtitle)
-        .font(.taskMetadata)
-        .foregroundStyle(.tertiary)
-    }
-  }
 }

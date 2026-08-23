@@ -25,7 +25,7 @@ struct TimerStripView: View {
   /// The session engine backing the active-task radio's complete/clear actions.
   var engine: SessionEngine
   /// The store naming the active task shown beneath the countdown.
-  var selectionStore: TaskSelectionStore
+  var activeTaskStore: ActiveTaskStore
   /// The registry used to resolve the active task's completion affordance.
   var registry: ProviderRegistry
   /// The navigation model the active task's title and swap action route through.
@@ -37,16 +37,16 @@ struct TimerStripView: View {
 
   var body: some View {
     HStack(spacing: .contentGap) {
-      if selectionStore.activeTask != nil {
+      if activeTaskStore.activeTask != nil {
         ActiveTaskView(
-          engine: engine, selectionStore: selectionStore, registry: registry, nav: nav,
+          engine: engine, activeTaskStore: activeTaskStore, registry: registry, nav: nav,
           errorPresenter: errorPresenter, style: .compact, onSelect: onSelectTimer
         )
       }
 
       Spacer()
 
-      if selectionStore.activeTask != nil {
+      if activeTaskStore.activeTask != nil {
         Divider()
           .frame(height: 22)
           .padding(.horizontal, .contentGap)
@@ -59,7 +59,7 @@ struct TimerStripView: View {
       .help(AppLabels.Tab.timer.title)
       .accessibilityLabel(AppLabels.Tab.timer.title)
 
-      countdown(secondary: selectionStore.activeTask != nil)
+      countdown(secondary: activeTaskStore.activeTask != nil)
 
       TimerControlsView(presenter: presenter, size: .compact)
     }
@@ -87,8 +87,8 @@ struct TimerStripView: View {
     let engine = SessionEngine()
     let settings = AppSettings()
     let registry = ProviderRegistry()
-    let selectionStore = TaskSelectionStore()
-    selectionStore.select(
+    let activeTaskStore = ActiveTaskStore()
+    activeTaskStore.track(
       TaskItem(
         id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
         title: "Draft window-first design doc",
@@ -108,7 +108,7 @@ struct TimerStripView: View {
     return TimerStripView(
       presenter: TimerPresenter(engine: engine, settings: settings),
       engine: engine,
-      selectionStore: selectionStore,
+      activeTaskStore: activeTaskStore,
       registry: registry,
       nav: MainNavigation(
         settings: settings, selectionStore: SelectionStore(registry: registry),

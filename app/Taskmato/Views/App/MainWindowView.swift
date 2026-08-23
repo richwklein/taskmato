@@ -19,7 +19,7 @@ struct MainWindowView: View {
   var engine: SessionEngine
   var settings: AppSettings
   var statsViewModel: StatsViewModel
-  var selectionStore: TaskSelectionStore
+  var activeTaskStore: ActiveTaskStore
   var registry: ProviderRegistry
   var queryService: TaskQueryService
   var destinationResolver: TaskDestinationResolver
@@ -61,7 +61,7 @@ struct MainWindowView: View {
         if indicators.showStrip {
           Divider()
           TimerStripView(
-            presenter: presenter, engine: engine, selectionStore: selectionStore,
+            presenter: presenter, engine: engine, activeTaskStore: activeTaskStore,
             registry: registry, nav: nav, errorPresenter: errorPresenter
           ) {
             nav.destination = .timer
@@ -96,14 +96,14 @@ struct MainWindowView: View {
         nextUpPresenter: nextUpPresenter,
         engine: engine,
         statsViewModel: statsViewModel,
-        selectionStore: selectionStore,
+        activeTaskStore: activeTaskStore,
         registry: registry,
         nav: nav,
         errorPresenter: errorPresenter
       )
     case .today, .list:
       TaskDetailView(
-        selectionStore: selectionStore,
+        activeTaskStore: activeTaskStore,
         registry: registry,
         queryService: queryService,
         destinationResolver: destinationResolver,
@@ -124,7 +124,7 @@ struct MainWindowView: View {
   private var timerToggleAction: (() -> Void)? {
     if presenter.isRunning { return { presenter.pause() } }
     if presenter.isPaused { return { presenter.resume() } }
-    guard selectionStore.activeTask != nil else { return nil }
+    guard activeTaskStore.activeTask != nil else { return nil }
     return { presenter.start() }
   }
 
@@ -140,22 +140,22 @@ struct MainWindowView: View {
     let engine = SessionEngine()
     let settings = AppSettings()
     let registry = ProviderRegistry()
-    let selectionStore = SelectionStore(registry: registry)
+    let sidebarSelectionStore = SelectionStore(registry: registry)
     let timerPresenter = TimerPresenter(engine: engine, settings: settings)
     MainWindowView(
       presenter: timerPresenter,
       nextUpPresenter: NextUpPresenter(
-        presenter: timerPresenter, selectionStore: TaskSelectionStore(), settings: settings),
+        presenter: timerPresenter, activeTaskStore: ActiveTaskStore(), settings: settings),
       engine: engine,
       settings: settings,
       statsViewModel: .preview,
-      selectionStore: TaskSelectionStore(),
+      activeTaskStore: ActiveTaskStore(),
       registry: registry,
       queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
       destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),
-      sidebarSelection: selectionStore,
+      sidebarSelection: sidebarSelectionStore,
       nav: MainNavigation(
-        settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+        settings: settings, selectionStore: sidebarSelectionStore, statsViewModel: .preview),
       errorPresenter: ErrorPresenter()
     )
   }

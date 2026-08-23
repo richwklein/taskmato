@@ -25,11 +25,14 @@ struct TaskCompletionButton: View {
   /// Tracks pointer hover so the glyph can preview the checkmark.
   @Binding var isHovered: Bool
 
+  /// Set by `List` on an emphasized selected row, where the hover green stops reading.
+  @Environment(\.backgroundProminence) private var prominence
+
   var body: some View {
     Button(action: action) {
       Image(systemName: isHovered ? "checkmark.circle" : "circle")
         .font(font)
-        .foregroundStyle(isHovered ? Color.statusSuccess : Color.secondary)
+        .foregroundStyle(isHovered ? prominence.accent(.statusSuccess) : Color.secondary)
     }
     .buttonStyle(.plain)
     .onHover { isHovered = $0 }

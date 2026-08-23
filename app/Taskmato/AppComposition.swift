@@ -25,7 +25,7 @@ struct AppComposition {
   let nextUpPresenter: NextUpPresenter
   let store: SessionStore
   let statsViewModel: StatsViewModel
-  let selectionStore: TaskSelectionStore
+  let activeTaskStore: ActiveTaskStore
   let registry: ProviderRegistry
   let queryService: TaskQueryService
   let destinationResolver: TaskDestinationResolver
@@ -49,7 +49,7 @@ struct AppComposition {
     let settings = AppSettings(store: settingsStore)
     let sessionRepository = Self.makeSessionRepository()
     let store = SessionStore(repository: sessionRepository)
-    let selectionStore = TaskSelectionStore(store: settingsStore)
+    let activeTaskStore = ActiveTaskStore(store: settingsStore)
     let registry = ProviderRegistry(store: settingsStore)
     let notifications = NotificationService(settings: settings)
     let obsidianProvider = ObsidianProvider(store: settingsStore)
@@ -71,13 +71,13 @@ struct AppComposition {
     notifications.onNotificationTapped = { nav.showTimerInMainWindow() }
     let errorPresenter = ErrorPresenter()
     let urlHandler = URLSchemeHandler(
-      registry: registry, queryService: queryService, selectionStore: selectionStore,
+      registry: registry, queryService: queryService, activeTaskStore: activeTaskStore,
       engine: engine, settings: settings,
       nav: nav, errorPresenter: errorPresenter, destinationResolver: destinationResolver
     )
     let runtime = Self.makeRuntime(
       RuntimeInputs(
-        engine: engine, store: store, settings: settings, selectionStore: selectionStore,
+        engine: engine, store: store, settings: settings, activeTaskStore: activeTaskStore,
         registry: registry, sidebarSelection: sidebarSelection, nav: nav,
         notifications: notifications, errorPresenter: errorPresenter))
     self.activeTaskLiveObserver = runtime.activeTaskReconciliation.liveObserver
@@ -88,10 +88,10 @@ struct AppComposition {
     self.settings = settings
     self.timerPresenter = timerPresenter
     self.nextUpPresenter = NextUpPresenter(
-      presenter: timerPresenter, selectionStore: selectionStore, settings: settings)
+      presenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings)
     self.store = store
     self.statsViewModel = statsViewModel
-    self.selectionStore = selectionStore
+    self.activeTaskStore = activeTaskStore
     self.registry = registry
     self.queryService = queryService
     self.destinationResolver = destinationResolver
@@ -173,13 +173,13 @@ struct AppComposition {
 
   /// Builds and wires active-task reconciliation on registry reloads and provider live pushes.
   private static func wireActiveTaskReconciliation(
-    registry: ProviderRegistry, selectionStore: TaskSelectionStore,
+    registry: ProviderRegistry, activeTaskStore: ActiveTaskStore,
     runtime: (engine: SessionEngine, attribution: FocusAttribution),
     navigation: (sidebarSelection: SelectionStore, nav: MainNavigation),
     errorPresenter: ErrorPresenter
   ) -> (reconciler: ActiveTaskReconciler, liveObserver: ActiveTaskLiveObserver) {
     let reconciler = ActiveTaskReconciler(
-      registry: registry, selectionStore: selectionStore, engine: runtime.engine,
+      registry: registry, activeTaskStore: activeTaskStore, engine: runtime.engine,
       attribution: runtime.attribution, errorPresenter: errorPresenter)
     let liveObserver = ActiveTaskLiveObserver(registry: registry, reconciler: reconciler)
     Self.wireProviderRegistry(
@@ -214,7 +214,7 @@ struct AppComposition {
     })
     let orchestrator = PhaseOrchestrator(
       events: inputs.engine.phaseEvents, engine: inputs.engine, store: inputs.store,
-      settings: inputs.settings, selectionStore: inputs.selectionStore,
+      settings: inputs.settings, activeTaskStore: inputs.activeTaskStore,
       notifications: inputs.notifications, attribution: attribution)
     Task { await orchestrator.run() }
     return (orchestrator, attribution)
@@ -225,10 +225,10 @@ struct AppComposition {
     let (phaseOrchestrator, focusAttribution) = Self.makePhaseOrchestrator(inputs)
     Self.wireFocusHandoff(
       engine: inputs.engine, settings: inputs.settings, nav: inputs.nav,
-      selectionStore: inputs.selectionStore,
+      activeTaskStore: inputs.activeTaskStore,
       attribution: focusAttribution)
     let activeTaskReconciliation = Self.wireActiveTaskReconciliation(
-      registry: inputs.registry, selectionStore: inputs.selectionStore,
+      registry: inputs.registry, activeTaskStore: inputs.activeTaskStore,
       runtime: (engine: inputs.engine, attribution: focusAttribution),
       navigation: (sidebarSelection: inputs.sidebarSelection, nav: inputs.nav),
       errorPresenter: inputs.errorPresenter)
@@ -241,7 +241,7 @@ struct AppComposition {
     let engine: SessionEngine
     let store: SessionStore
     let settings: AppSettings
-    let selectionStore: TaskSelectionStore
+    let activeTaskStore: ActiveTaskStore
     let registry: ProviderRegistry
     let sidebarSelection: SelectionStore
     let nav: MainNavigation
@@ -256,25 +256,25 @@ struct AppComposition {
       (reconciler: ActiveTaskReconciler, liveObserver: ActiveTaskLiveObserver)
   }
 
-  /// Wires the three focus-handoff callbacks onto `selectionStore` (D4/D9 of design doc 0010,
+  /// Wires the three focus-handoff callbacks onto `activeTaskStore` (D4/D9 of design doc 0010,
   /// D-f of "stage the next focus"): a task change appends a slice to the live focus phase's
   /// attribution log, a genuine handoff continuation auto-resumes when `autoStartNextPhase` is
   /// on, and a staged-task promotion (the complete gesture only) resumes the same way but
   /// without navigating — the popover's two-line readout already shows the promoted task.
   private static func wireFocusHandoff(
     engine: SessionEngine, settings: AppSettings, nav: MainNavigation,
-    selectionStore: TaskSelectionStore, attribution: FocusAttribution
+    activeTaskStore: ActiveTaskStore, attribution: FocusAttribution
   ) {
-    selectionStore.onActiveTaskChanged = { [weak engine] task in
+    activeTaskStore.onActiveTaskChanged = { [weak engine] task in
       guard let engine else { return }
       attribution.taskChanged(to: task, consumedSeconds: engine.consumedFocusSeconds)
     }
-    selectionStore.onContinuationSelect = { [weak engine, weak nav] in
+    activeTaskStore.onContinuationSelect = { [weak engine, weak nav] in
       guard settings.autoStartNextPhase else { return }
       engine?.resume()
       nav?.showTimerInMainWindow()
     }
-    selectionStore.onStagedPromotion = { [weak engine] in
+    activeTaskStore.onStagedPromotion = { [weak engine] in
       guard settings.autoStartNextPhase else { return }
       engine?.resume()
     }

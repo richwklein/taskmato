@@ -56,7 +56,7 @@ extension TaskDetailView {
   @ViewBuilder
   func taskContextMenu(for task: TaskItem) -> some View {
     Button {
-      select(task)
+      track(task)
     } label: {
       Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
     }

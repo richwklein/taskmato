@@ -37,8 +37,8 @@ struct NextUpReadout: View {
   #Preview {
     let engine = SessionEngine()
     let settings = AppSettings()
-    let selectionStore = TaskSelectionStore()
-    selectionStore.stage(
+    let activeTaskStore = ActiveTaskStore()
+    activeTaskStore.stage(
       TaskItem(
         id: TaskRef(providerID: "adhoc", nativeID: UUID().uuidString),
         title: "Draft the proposal",
@@ -57,7 +57,7 @@ struct NextUpReadout: View {
     return NextUpReadout(
       nextUpPresenter: NextUpPresenter(
         presenter: TimerPresenter(engine: engine, settings: settings),
-        selectionStore: selectionStore, settings: settings)
+        activeTaskStore: activeTaskStore, settings: settings)
     )
     .padding()
   }

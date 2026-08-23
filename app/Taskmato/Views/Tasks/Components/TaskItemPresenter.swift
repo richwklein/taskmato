@@ -5,12 +5,12 @@
 
 import Foundation
 
-/// Derives the display values and action affordances shared by ``TaskRowView`` and
-/// ``TaskCardView`` from a task, its ``TaskItemKind``, and optional ``TaskLineage``.
+/// Derives the display values and action affordances ``TaskRowView`` needs from a task, its
+/// ``TaskItemKind``, and optional ``TaskLineage``.
 ///
-/// The presenter holds the logic both views would otherwise duplicate — completed-state
-/// detection, due-date urgency, the completed subtitle, the lineage-visibility gate, and the
-/// kind-derived complete/restore/delete affordances — leaving the views as layout-only shells.
+/// The presenter holds the row's display logic — completed-state detection, due-date urgency,
+/// the completed subtitle, the lineage-visibility gate, and the kind-derived
+/// complete/restore/delete affordances — leaving the view as a layout-only shell.
 /// It exposes plain values (no SwiftUI `View` types), so its rules are unit-testable directly.
 struct TaskItemPresenter {
 

@@ -53,7 +53,7 @@ Built-in providers:
 - **`MenuBarExtra`** popover — compact timer with quick controls, queued-phase preview, "Open Taskmato" button.
 - **Main window** — three-tab interface:
   - **Timer** — large circular timer with full transport controls and the active task label.
-  - **Tasks** — `NavigationSplitView` with a provider sidebar (provider enable/disable, list visibility, default list, list CRUD where supported) and a picker pane with list/grid view toggle and an inline completed-tasks section. See [ADR-0003](../architecture/decisions/0003-navigation-split-view-sidebar.md).
+  - **Tasks** — `NavigationSplitView` with a provider sidebar (provider enable/disable, list visibility, default list, list CRUD where supported) and a picker pane holding a natively selectable task list and an inline completed-tasks section. See [ADR-0003](../architecture/decisions/0003-navigation-split-view-sidebar.md).
   - **Stats** — Swift Charts visualisations driven by `SessionStore` aggregations.
 - **Settings** — app preferences, provider configuration, list management.
 

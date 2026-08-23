@@ -69,13 +69,6 @@ final class AppSettings {
     didSet { store[SettingsStore.Keys.autoStartNextPhase] = autoStartNextPhase }
   }
 
-  /// The display mode for the task picker (list rows or card grid).
-  ///
-  /// Defaults to `.grid`.
-  var taskPickerLayout: TaskPickerLayout {
-    didSet { store[SettingsStore.Keys.taskPickerLayout] = taskPickerLayout }
-  }
-
   /// Whether the provider/list sidebar column is visible in the window-first shell.
   ///
   /// Defaults to `true` — the sidebar is the app's primary navigation (design doc 0008, D9;
@@ -142,7 +135,6 @@ final class AppSettings {
     soundName = store[SettingsStore.Keys.soundName]
     notificationsEnabled = store[SettingsStore.Keys.notificationsEnabled]
     autoStartNextPhase = store[SettingsStore.Keys.autoStartNextPhase]
-    taskPickerLayout = store[SettingsStore.Keys.taskPickerLayout]
     sidebarVisible = store[SettingsStore.Keys.sidebarVisible]
     taskSortField = store[SettingsStore.Keys.taskSortField]
     taskSortDirection = store[SettingsStore.Keys.taskSortDirection]

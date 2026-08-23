@@ -24,13 +24,33 @@ extension Color {
   static let timerRingTrack: Color = .secondary.opacity(.muted)
 
   /// Fill behind a card surface to lift it off the background.
-  static let cardSurface: Color = .secondary.opacity(.subtle)
+  ///
+  /// Appearance-split: dark carries the boundary with the fill alone, light needs a heavier fill
+  /// plus ``cardBorder`` because a faint dark wash on a near-white background is imperceptible.
+  /// Increase Contrast deepens both.
+  static let cardSurface = Color(
+    nsColor: NSColor(name: "cardSurface") { appearance in
+      switch appearance.paletteMatch {
+      case .light: return NSColor.black.withAlphaComponent(0.08)
+      case .lightHighContrast: return NSColor.black.withAlphaComponent(0.12)
+      case .dark: return NSColor.white.withAlphaComponent(0.055)
+      case .darkHighContrast: return NSColor.white.withAlphaComponent(0.10)
+      }
+    })
 
-  /// Native inactive-selection fill, matching a selected list row when the table is not focused.
-  static let inactiveSelection: Color = Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
-
-  /// Native active-selection fill, matching a selected list row when the table is focused.
-  static let activeSelection: Color = Color(nsColor: .selectedContentBackgroundColor)
+  /// Border drawn around a card surface, carrying the boundary where the fill cannot.
+  ///
+  /// Absent in dark at standard contrast, where the fill alone suffices. Increase Contrast raises
+  /// both appearances past WCAG 1.4.11's 3:1 bar, which the standard values sit under by design.
+  static let cardBorder = Color(
+    nsColor: NSColor(name: "cardBorder") { appearance in
+      switch appearance.paletteMatch {
+      case .light: return .tertiaryLabelColor
+      case .lightHighContrast: return NSColor.black.withAlphaComponent(0.45)
+      case .dark: return .clear
+      case .darkHighContrast: return NSColor.white.withAlphaComponent(0.35)
+      }
+    })
 
   /// Marker on the provider's default (favorite) list.
   static let favoriteStar: Color = .yellow
@@ -48,4 +68,35 @@ extension Color {
   static let chartPalette: [Color] = [
     .blue, .green, .orange, .purple, .red, .teal, .indigo, .pink,
   ]
+}
+
+/// The quadrant a palette color resolves against: light or dark, at standard or Increase Contrast.
+private enum PaletteMatch {
+
+  /// Standard-contrast light appearance, including the vibrant variant.
+  case light
+
+  /// Light appearance with Increase Contrast enabled.
+  case lightHighContrast
+
+  /// Standard-contrast dark appearance, including the vibrant variant.
+  case dark
+
+  /// Dark appearance with Increase Contrast enabled.
+  case darkHighContrast
+}
+
+extension NSAppearance {
+
+  /// Resolves this appearance to the quadrant its palette values are defined for.
+  fileprivate var paletteMatch: PaletteMatch {
+    switch bestMatch(from: [
+      .aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua,
+    ]) {
+    case .darkAqua: return .dark
+    case .accessibilityHighContrastAqua: return .lightHighContrast
+    case .accessibilityHighContrastDarkAqua: return .darkHighContrast
+    default: return .light
+    }
+  }
 }

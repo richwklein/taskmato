@@ -15,40 +15,29 @@ import UniformTypeIdentifiers
 /// limit, mirroring the existing `TaskDetailActions.swift` split for mutating handlers.
 extension TaskDetailView {
 
-  /// Requests task-content focus through the invisible AppKit responder.
-  func focusTaskContent() {
-    taskContentFocusToken += 1
-  }
-
-  /// Returns the active or inactive selection fill for `task`.
-  func selectionBackground(for task: TaskItem) -> Color {
-    guard selection == task.id else { return .clear }
-    return isTaskContentFocused ? .activeSelection : .inactiveSelection
-  }
-
-  /// The task currently identified by ``selection`` within active or completed tasks, or `nil`
+  /// The task currently identified by ``selectedTaskID`` within active or completed tasks, or `nil`
   /// when there is no selection or the selected ref fell out of the loaded content.
   private func selectedTask() -> TaskItem? {
-    guard let selection else { return nil }
-    return sections.lazy.flatMap(\.tasks).first { $0.id == selection }
-      ?? completedTasks.first { $0.id == selection }
+    guard let selectedTaskID else { return nil }
+    return sections.lazy.flatMap(\.tasks).first { $0.id == selectedTaskID }
+      ?? completedTasks.first { $0.id == selectedTaskID }
   }
 
-  /// The active task currently identified by ``selection``, or `nil` when the selected task is
+  /// The active task currently identified by ``selectedTaskID``, or `nil` when the selected task is
   /// completed or no longer loaded.
   private func selectedActiveTask() -> TaskItem? {
-    guard let selection else { return nil }
-    return sections.lazy.flatMap(\.tasks).first { $0.id == selection }
+    guard let selectedTaskID else { return nil }
+    return sections.lazy.flatMap(\.tasks).first { $0.id == selectedTaskID }
   }
 
-  /// The payload for ``selection``, or an empty array when there is nothing selected —
+  /// The payload for ``selectedTaskID``, or an empty array when there is nothing selected —
   /// SwiftUI disables Edit ▸ Copy when `.copyable` returns no items.
   private func copyPayloads() -> [TaskClipboardPayload] {
     guard let task = selectedTask() else { return [] }
     return [clipboardService.payload(for: task)]
   }
 
-  /// Deletes ``selection`` and returns its payload for `.cuttable` to place on the pasteboard,
+  /// Deletes ``selectedTaskID`` and returns its payload for `.cuttable` to place on the pasteboard,
   /// or an empty array when there is nothing selected or it is not writable.
   private func cutPayloads() -> [TaskClipboardPayload] {
     guard let task = selectedTask(),
@@ -58,33 +47,23 @@ extension TaskDetailView {
     return [clipboardService.payload(for: task)]
   }
 
-  /// Moves ``selection`` to the previous/next selectable task in display order. Clamps at the
-  /// ends; with no selection, next selects the first task and previous selects the last.
-  func moveSelection(_ direction: MoveCommandDirection) {
-    let ids =
-      sections.flatMap(\.tasks).map(\.id)
-      + (showCompleted ? completedTasks.map(\.id) : [])
-    guard !ids.isEmpty else { return }
-    let current = selection.flatMap { ids.firstIndex(of: $0) }
-    switch direction {
-    case .left, .up:
-      selection = current.map { ids[max(0, $0 - 1)] } ?? ids.last
-    case .right, .down:
-      selection = current.map { ids[min(ids.count - 1, $0 + 1)] } ?? ids.first
-    default:
-      break
-    }
-  }
-
-  /// Activates an active ``selection`` (mirrors double-click), or ignores the key when nothing
-  /// active is selected so Return keeps its default behavior elsewhere.
+  /// Tracks an active ``selectedTaskID``, or ignores the key when nothing active is selected so
+  /// Return keeps its default behavior elsewhere.
   func activateSelection() -> KeyPress.Result {
     guard let task = selectedActiveTask() else { return .ignored }
-    select(task)
+    track(task)
     return .handled
   }
 
-  /// Requests confirmation to permanently delete ``selection``, or beeps when it is not writable.
+  /// The action that tracks the current selection and switches to Timer, or `nil` when no
+  /// active task is selected. Feeds the toolbar button and the Task ▸ Track Task menu item —
+  /// the pointer-driven counterparts to Return, which activates the same way.
+  func trackSelectionAction() -> (() -> Void)? {
+    guard let task = selectedActiveTask() else { return nil }
+    return { track(task) }
+  }
+
+  /// Requests confirmation to permanently delete ``selectedTaskID``, or beeps when it is not writable.
   /// No-ops silently when there is no selection.
   func requestDeleteSelection() {
     guard let task = selectedTask() else { return }
@@ -127,6 +106,7 @@ extension TaskDetailView {
   @ViewBuilder
   func attachOpenInProviderFocusedValues<Content: View>(to content: Content) -> some View {
     content
+      .focusedSceneValue(\.trackTask, trackSelectionAction())
       .focusedSceneValue(\.openInProvider, openInProviderAction())
       .focusedSceneValue(\.openInProviderTitle, selectedProviderLink()?.title)
       .focusedSceneValue(\.openInProviderIcon, selectedProviderLink()?.icon)
@@ -253,25 +233,14 @@ extension TaskDetailView {
     }
   }
 
-  /// Attaches the invisible task-content keyboard responder to `content`.
-  func attachTaskKeyboardResponder<Content: View>(to content: Content) -> some View {
-    content.overlay(alignment: .topLeading) {
-      TaskKeyboardResponder(
-        focusToken: taskContentFocusToken,
-        onReturn: { _ = activateSelection() },
-        onDelete: { requestDeleteSelection() },
-        onMove: { moveSelection($0) },
-        onCopy: { copySelectionToPasteboard() },
-        onCut: { cutSelectionToPasteboard() },
-        onPaste: { pasteSelectionFromPasteboard() },
-        canCopy: { canCopySelection() },
-        canCut: { canCutSelection() },
-        canPaste: { canPasteSelection() },
-        canDelete: { canDeleteSelection() },
-        onFocusChange: { isTaskContentFocused = $0 }
-      )
-      .frame(width: 0, height: 0)
-    }
+  /// Attaches Return-to-track and Delete to `content`, leaving the `List` as first responder.
+  ///
+  /// Arrow-key movement is not handled here — `List(selection:)` moves the selection natively.
+  @ViewBuilder
+  func attachTaskCommands<Content: View>(to content: Content) -> some View {
+    content
+      .onKeyPress(.return) { activateSelection() }
+      .onDeleteCommand { requestDeleteSelection() }
   }
 
   /// Handles an inbound rich Taskmato payload from `.pasteDestination(for: TaskClipboardPayload.self)`.

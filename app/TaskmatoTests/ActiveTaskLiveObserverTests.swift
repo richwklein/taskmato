@@ -59,10 +59,10 @@ struct ActiveTaskLiveObserverTests {
       [TaskList(id: "default", providerID: provider.id, name: "Default")],
       forProviderID: provider.id
     )
-    let selectionStore = TaskSelectionStore(store: settingsStore)
-    selectionStore.select(makeLiveTask(providerID: provider.id))
+    let activeTaskStore = ActiveTaskStore(store: settingsStore)
+    activeTaskStore.track(makeLiveTask(providerID: provider.id))
     let reconciler = ActiveTaskReconciler(
-      registry: registry, selectionStore: selectionStore, engine: SessionEngine(),
+      registry: registry, activeTaskStore: activeTaskStore, engine: SessionEngine(),
       attribution: FocusAttribution(), errorPresenter: ErrorPresenter())
     let observer = ActiveTaskLiveObserver(registry: registry, reconciler: reconciler)
     observer.start()
@@ -71,7 +71,7 @@ struct ActiveTaskLiveObserverTests {
     provider.emit()
     for _ in 0..<20 { await Task.yield() }
 
-    #expect(selectionStore.activeTask == nil)
+    #expect(activeTaskStore.activeTask == nil)
     observer.stop()
   }
 }

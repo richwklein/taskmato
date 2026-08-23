@@ -26,7 +26,7 @@ struct TaskmatoApp: App {
       MenuBarPopoverView(
         presenter: composition.timerPresenter,
         statsViewModel: composition.statsViewModel,
-        selectionStore: composition.selectionStore,
+        activeTaskStore: composition.activeTaskStore,
         nav: composition.nav,
         engine: composition.engine,
         registry: composition.registry,
@@ -47,7 +47,7 @@ struct TaskmatoApp: App {
         engine: composition.engine,
         settings: composition.settings,
         statsViewModel: composition.statsViewModel,
-        selectionStore: composition.selectionStore,
+        activeTaskStore: composition.activeTaskStore,
         registry: composition.registry,
         queryService: composition.queryService,
         destinationResolver: composition.destinationResolver,
@@ -69,7 +69,7 @@ struct TaskmatoApp: App {
       ) { matches in
         ForEach(matches.prefix(4)) { task in
           Button(task.title) {
-            composition.selectionStore.select(task)
+            composition.activeTaskStore.track(task)
             composition.urlHandler.pendingDisambiguation = nil
             composition.nav.showTimerInMainWindow()
           }
@@ -82,7 +82,7 @@ struct TaskmatoApp: App {
               // On failure the handler surfaces the error on the banner and returns nil,
               // so no session is started on an unsaved task.
               if let task = await composition.urlHandler.makeAdHocTask(from: params) {
-                composition.selectionStore.select(task)
+                composition.activeTaskStore.track(task)
                 composition.nav.showTimerInMainWindow()
               }
             }
@@ -108,7 +108,7 @@ struct TaskmatoApp: App {
     Settings {
       SettingsView(
         settings: composition.settings,
-        selectionStore: composition.selectionStore,
+        activeTaskStore: composition.activeTaskStore,
         registry: composition.registry,
         notifications: composition.notifications
       )
@@ -128,6 +128,7 @@ struct TaskmatoCommands: Commands {
   @FocusedValue(\.toggleCompleted) private var toggleCompleted
   @FocusedValue(\.toggleCompletedTitle) private var toggleCompletedTitle
   @FocusedValue(\.toggleCompletedIcon) private var toggleCompletedIcon
+  @FocusedValue(\.trackTask) private var trackTask
   @FocusedValue(\.openInProvider) private var openInProvider
   @FocusedValue(\.openInProviderTitle) private var openInProviderTitle
   @FocusedValue(\.openInProviderIcon) private var openInProviderIcon
@@ -191,6 +192,15 @@ struct TaskmatoCommands: Commands {
         }
       }
       Divider()
+      // Track Task mirrors the Tasks-tab toolbar button and the row context menu. Return does
+      // the same thing while the list has focus; ⌘T is the menu-reachable equivalent.
+      Button {
+        trackTask?()
+      } label: {
+        Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
+      }
+      .keyboardShortcut("t")
+      .disabled(trackTask == nil)
       // Title and glyph both come from the selected task's provider, so the item reads
       // "Open in Obsidian" beside Obsidian's own icon — matching its context-menu twin. Falls
       // back to the generic label when nothing resolvable is selected and the item is disabled.
@@ -238,29 +248,6 @@ struct TaskmatoCommands: Commands {
         Label(AppLabels.Tab.stats.title, systemImage: isStatsDestination ? "checkmark" : "")
       }
       .keyboardShortcut("3")
-      Divider()
-      // Layout uses Toggles, not a Picker: a Toggle is an action item, so AppKit re-validates
-      // it on every menu open and `.disabled` greys it live off the task surface (a `Picker`
-      // container froze its state at build time — the root cause of #426). The Toggle also
-      // renders the on-state checkmark alongside the label glyph, matching the Reminders app.
-      Toggle(
-        isOn: Binding(
-          get: { settings.taskPickerLayout == .list },
-          set: { if $0 { settings.taskPickerLayout = .list } }
-        )
-      ) {
-        Label(AppLabels.View.listLayout.title, systemImage: AppLabels.View.listLayout.systemImage)
-      }
-      .disabled(!isTaskScope)
-      Toggle(
-        isOn: Binding(
-          get: { settings.taskPickerLayout == .grid },
-          set: { if $0 { settings.taskPickerLayout = .grid } }
-        )
-      ) {
-        Label(AppLabels.View.gridLayout.title, systemImage: AppLabels.View.gridLayout.systemImage)
-      }
-      .disabled(!isTaskScope)
       Divider()
       Button {
         toggleCompleted?()

@@ -18,7 +18,7 @@ final class PhaseOrchestrator {
   private let engine: SessionEngine
   private let store: SessionStore
   private let settings: AppSettings
-  private let selectionStore: TaskSelectionStore
+  private let activeTaskStore: ActiveTaskStore
   private let notifications: NotificationService
   private let attribution: FocusAttribution
   private let now: () -> Date
@@ -40,7 +40,7 @@ final class PhaseOrchestrator {
   ///   - engine: The session engine, used to re-sync durations and advance/queue the next phase.
   ///   - store: Where completed sessions are recorded.
   ///   - settings: User preferences consulted for durations and auto-start behavior.
-  ///   - selectionStore: Supplies the active task used to seed attribution on `began(.focus)`.
+  ///   - activeTaskStore: Supplies the active task used to seed attribution on `began(.focus)`.
   ///   - notifications: Delivers the phase-end banner and sound.
   ///   - attribution: Resolves a focus phase's per-task slices (D4 of design doc 0010).
   ///   - now: Clock used to timestamp mid-phase draft upserts. Override in tests.
@@ -49,7 +49,7 @@ final class PhaseOrchestrator {
     engine: SessionEngine,
     store: SessionStore,
     settings: AppSettings,
-    selectionStore: TaskSelectionStore,
+    activeTaskStore: ActiveTaskStore,
     notifications: NotificationService,
     attribution: FocusAttribution,
     now: @escaping () -> Date = Date.init
@@ -58,7 +58,7 @@ final class PhaseOrchestrator {
     self.engine = engine
     self.store = store
     self.settings = settings
-    self.selectionStore = selectionStore
+    self.activeTaskStore = activeTaskStore
     self.notifications = notifications
     self.attribution = attribution
     self.now = now
@@ -91,8 +91,8 @@ final class PhaseOrchestrator {
     currentPhaseID = UUID()
     draftSegments = []
     guard phase == .focus else { return }
-    selectionStore.applyStagedTask()
-    attribution.begin(task: selectionStore.activeTask)
+    activeTaskStore.applyStagedTask()
+    attribution.begin(task: activeTaskStore.activeTask)
   }
 
   /// Accumulates a newly closed slice and, once the phase's cumulative consumed time crosses

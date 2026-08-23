@@ -8,15 +8,15 @@ import SwiftUI
 
 /// The task detail surface for the Today and list destinations of the window-first shell.
 ///
-/// Renders the current task-scope selection (``SelectionStore``) as a grouped list or grid
-/// with live search, an add/show-completed/layout/sort toolbar, and per-task context menus.
+/// Renders the current task-scope selection (``SelectionStore``) as a grouped list with live
+/// search, an add/show-completed/sort toolbar, and per-task context menus.
 /// It is placed in the root ``NavigationSplitView``'s detail column by ``MainWindowView``; the
 /// universal sidebar and column visibility live in the shell, not here. When at least one
 /// enabled provider conforms to ``ClosableTaskProvider``, a "Show Completed" toolbar button
 /// becomes available.
 struct TaskDetailView: View {
 
-  var selectionStore: TaskSelectionStore
+  var activeTaskStore: ActiveTaskStore
   var registry: ProviderRegistry
   var queryService: TaskQueryService
   var destinationResolver: TaskDestinationResolver
@@ -35,7 +35,7 @@ struct TaskDetailView: View {
   @Environment(\.openURL) var openURL
 
   @State private var query: String = ""
-  /// Not `private`: `TaskDetailSelection.swift` resolves ``selection`` against this.
+  /// Not `private`: `TaskDetailSelection.swift` resolves ``selectedTaskID`` against this.
   @State var sections: [TaskSection] = []
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
@@ -52,22 +52,18 @@ struct TaskDetailView: View {
   @State var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
   @FocusState private var isSearchFocused: Bool
-  /// Incremented to ask the AppKit task-content responder to reclaim first-responder status.
-  @State var taskContentFocusToken = 0
-  /// Whether task content owns keyboard focus, driving active versus inactive selection color.
-  @State var isTaskContentFocused = false
   /// The single selected task (issue #546) — ephemeral, view-local, and independent of
-  /// ``TaskSelectionStore``'s active/tracked task. Drives the clipboard and `.onDeleteCommand`;
+  /// ``ActiveTaskStore``'s active/tracked task. Drives the clipboard and `.onDeleteCommand`;
   /// cleared whenever the sidebar selection changes. Not `private`: `handleDelete(_:)` in
   /// `TaskDetailActions.swift` clears it when the selected task is removed.
-  @State var selection: TaskRef?
+  @State var selectedTaskID: TaskRef?
   /// The selected task pending permanent deletion via `.onDeleteCommand`, driving the confirmation
   /// dialog. Not `private`: managed from `TaskDetailSelection.swift`.
   @State var activeDeleteCandidate: TaskItem?
 
   /// Maps between clipboard payloads/plain text and ``TaskDraft``, and answers cut/delete/paste
-  /// enablement (issue #546). Stateless, so a single instance is shared by both layouts. Not
-  /// `private`: `TaskDetailActions.swift`'s `copyToPasteboard(_:to:)` builds payloads with it.
+  /// enablement (issue #546). Not `private`: `TaskDetailActions.swift`'s
+  /// `copyToPasteboard(_:to:)` builds payloads with it.
   let clipboardService = TaskClipboardService()
 
   /// Returns the writable provider for the current sidebar selection using the shared resolver.
@@ -129,8 +125,21 @@ struct TaskDetailView: View {
         }
       }
       .toolbar {
-        // New Task is the primary creation action, so it stays its own leading item — visually
-        // distinct from the view-state controls that follow.
+        // Track Task leads the toolbar: it is the primary action on a task the user has already
+        // picked, and the pointer-driven counterpart to Return and the context-menu item — the
+        // only activation affordances, since double-click no longer tracks.
+        ToolbarItem(placement: .automatic) {
+          Button {
+            trackSelectionAction()?()
+          } label: {
+            Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
+          }
+          .help(AppLabels.Tooltip.trackTask)
+          .disabled(trackSelectionAction() == nil)
+        }
+
+        // New Task is the primary creation action, so it keeps its own item — visually distinct
+        // from the view-state controls that follow.
         if writableProvider != nil {
           ToolbarItem(placement: .automatic) {
             Button {
@@ -142,9 +151,7 @@ struct TaskDetailView: View {
           }
         }
 
-        // Show/Hide Completed stays adjacent to Layout and Sort — all three are task-view
-        // controls — while Layout and Sort are grouped together as one toolbar unit since both
-        // alter task-list presentation.
+        // Show/Hide Completed stays adjacent to Sort — both are task-view controls.
         if hasClosableProvider {
           ToolbarItem(placement: .automatic) {
             Button {
@@ -159,21 +166,9 @@ struct TaskDetailView: View {
         }
 
         ToolbarItemGroup(placement: .automatic) {
-          Picker("Layout", selection: $settings.taskPickerLayout) {
-            Label(
-              AppLabels.View.listLayout.title, systemImage: AppLabels.View.listLayout.systemImage
-            )
-            .tag(TaskPickerLayout.list)
-            Label(
-              AppLabels.View.gridLayout.title, systemImage: AppLabels.View.gridLayout.systemImage
-            )
-            .tag(TaskPickerLayout.grid)
-          }
-          .pickerStyle(.segmented)
-          .help("Toggle between list and grid view")
-
           sortMenu
         }
+
       }
       .focusedSceneValue(\.taskViewActive, true)
       .focusedSceneValue(\.focusSearch, { isSearchFocused = true })
@@ -232,17 +227,8 @@ struct TaskDetailView: View {
       .onChange(of: registry.enabledIDs) { _, _ in Task { await refresh() } }
       .onChange(of: sidebarSelection.selection) { _, _ in
         query = ""
-        selection = nil
-        isTaskContentFocused = false
+        selectedTaskID = nil
         Task { await refresh() }
-      }
-      .onChange(of: selection) { _, newSelection in
-        // Native List selection changes after the table handles the click. Reclaim first
-        // responder status after that handoff so Return and task commands keep working.
-        if newSelection != nil { focusTaskContent() }
-      }
-      .onChange(of: isSearchFocused) { _, focused in
-        if focused { isTaskContentFocused = false }
       }
       .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
       .onChange(of: settings.taskSortField) { _, _ in Task { await refresh() } }
@@ -308,8 +294,6 @@ struct TaskDetailView: View {
           description: Text("No tasks in this list.")
         )
       }
-    } else if settings.taskPickerLayout == .grid {
-      taskGrid
     } else {
       taskList
     }
@@ -322,9 +306,9 @@ struct TaskDetailView: View {
       to:
         attachClipboardModifiers(
           to:
-            attachTaskKeyboardResponder(
+            attachTaskCommands(
               to:
-                List(selection: $selection) {
+                List(selection: $selectedTaskID) {
                   SwiftUI.ForEach(sections) { section in
                     listSection(for: section)
                   }
@@ -337,90 +321,9 @@ struct TaskDetailView: View {
                     }
                   }
                 }
-                .onTableDoubleClick { _ = activateSelection() }
-                .contentShape(Rectangle())
-                .onTapGesture { focusTaskContent() }
-            )
-        )
-    )
-  }
-
-  @ViewBuilder
-  private func listSection(for section: TaskSection) -> some View {
-    SwiftUI.Section {
-      SwiftUI.ForEach(section.tasks) { task in
-        TaskRowView(
-          task: task,
-          kind: activeKind(for: task),
-          lineage: lineage(for: task)
-        )
-        .tag(task.id)
-        .listRowBackground(selectionBackground(for: task))
-        .accessibilityAddTraits(selection == task.id ? .isSelected : [])
-        .contextMenu { taskContextMenu(for: task) }
-      }
-    } header: {
-      if shouldShowHeader(section) {
-        Text(section.header).font(.sectionHeader)
-      }
-    }
-  }
-
-  // MARK: - Grid layout
-
-  private var taskGrid: some View {
-    let columns = [GridItem(.adaptive(minimum: 180), spacing: .groupGap)]
-    return attachActiveDeleteConfirmation(
-      to:
-        attachClipboardModifiers(
-          to:
-            attachTaskKeyboardResponder(
-              to:
-                ScrollView {
-                  VStack(alignment: .leading, spacing: .sectionGap) {
-                    ForEach(sections) { section in
-                      VStack(alignment: .leading, spacing: .contentGap) {
-                        if shouldShowHeader(section) {
-                          Text(section.header)
-                            .font(.sectionHeader).padding(.horizontal, .stackTight)
-                        }
-
-                        LazyVGrid(columns: columns, spacing: .groupGap) {
-                          ForEach(section.tasks) { task in
-                            TaskCardView(
-                              task: task,
-                              kind: activeKind(for: task),
-                              lineage: lineage(for: task),
-                              isSelected: selection == task.id,
-                              isSelectionFocused: isTaskContentFocused
-                            )
-                            .contentShape(RoundedRectangle.card)
-                            .onTapGesture {
-                              selection = task.id
-                              focusTaskContent()
-                            }
-                            .simultaneousGesture(TapGesture(count: 2).onEnded { select(task) })
-                            .contextMenu { taskContextMenu(for: task) }
-                          }
-                        }
-
-                      }
-                    }
-
-                    if showCompleted && !completedTasks.isEmpty {
-                      VStack(alignment: .leading, spacing: .contentGap) {
-                        completedSectionHeader
-                          .padding(.horizontal, .stackTight)
-                        LazyVGrid(columns: columns, spacing: .groupGap) {
-                          ForEach(completedTasks) { task in completedCard(task) }
-                        }
-                      }
-                    }
-                  }
-                  .padding(.cardPadding)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { focusTaskContent() }
+                // Inset style owns selection shape and accent, context-menu targeting,
+                // focused/unfocused appearance, and row geometry. Nothing is layered on top.
+                .listStyle(.inset)
             )
         )
     )
@@ -520,8 +423,9 @@ extension TaskDetailView {
 
   /// The active-task kind wired to this view's complete and — for writable providers only —
   /// permanent-delete handlers. The trailing delete button reveals on hover (issue #546),
-  /// surfacing the same delete now reachable via the keyboard.
-  private func activeKind(for task: TaskItem) -> TaskItemKind {
+  /// surfacing the same delete now reachable via the keyboard. Not `private`:
+  /// `TaskDetailCompletedViews.swift`'s `listSection(for:)` also calls this.
+  func activeKind(for task: TaskItem) -> TaskItemKind {
     let canDelete = registry.writableProvider(for: task.id) != nil
     return .active(
       onComplete: onCompleteHandler(for: task),
@@ -529,7 +433,9 @@ extension TaskDetailView {
     )
   }
 
-  private func shouldShowHeader(_ section: TaskSection) -> Bool {
+  /// Whether `section`'s header should render. Not `private`:
+  /// `TaskDetailCompletedViews.swift`'s `listSection(for:)` also calls this.
+  func shouldShowHeader(_ section: TaskSection) -> Bool {
     section.displayStyle == .sectioned
       && !section.header.isEmpty
       && navigationContext?.label != section.header
@@ -538,11 +444,11 @@ extension TaskDetailView {
   /// Activates `task`: makes it the active/tracked task and switches to the Timer tab.
   ///
   /// This is the "activate" gesture (issue #546) — double-click, Return with a selection, or
-  /// the context-menu "Track Task" item — kept distinct from ``selection``, which only
+  /// the context-menu "Track Task" item — kept distinct from ``selectedTaskID``, which only
   /// highlights a row for the clipboard and never navigates. Not `private`:
   /// `TaskDetailSelection.swift`'s `activateSelection()` calls this for Return.
-  func select(_ task: TaskItem) {
-    selectionStore.select(task)
+  func track(_ task: TaskItem) {
+    activeTaskStore.track(task)
     nav.showTimer()
   }
 
@@ -552,7 +458,7 @@ extension TaskDetailView {
   /// never starts a queued break. Not `private`: called from `TaskDetailContextMenu.swift`'s
   /// "Start Focus ▸" submenu.
   func startFocus(_ task: TaskItem, minutes: Int) {
-    selectionStore.select(task)
+    activeTaskStore.track(task)
     settings.focusMinutes = minutes
     presenter.start()
     nav.showTimer()
@@ -565,7 +471,7 @@ extension TaskDetailView {
   /// does, since there is no separate staged-length state (D-b). Not `private`: called from
   /// `TaskDetailContextMenu.swift`.
   func stageNextFocus(_ task: TaskItem, minutes: Int) {
-    selectionStore.stage(task)
+    activeTaskStore.stage(task)
     settings.focusMinutes = minutes
     nav.showTimer()
   }
@@ -580,15 +486,15 @@ extension TaskDetailView {
   #Preview {
     let registry = ProviderRegistry()
     let settings = AppSettings()
-    let selectionStore = SelectionStore(registry: registry)
+    let sidebarSelectionStore = SelectionStore(registry: registry)
     TaskDetailView(
-      selectionStore: TaskSelectionStore(),
+      activeTaskStore: ActiveTaskStore(),
       registry: registry,
       queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
       destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),
-      sidebarSelection: selectionStore,
+      sidebarSelection: sidebarSelectionStore,
       nav: MainNavigation(
-        settings: settings, selectionStore: selectionStore, statsViewModel: .preview),
+        settings: settings, selectionStore: sidebarSelectionStore, statsViewModel: .preview),
       settings: settings,
       errorPresenter: ErrorPresenter(),
       presenter: TimerPresenter(engine: SessionEngine(), settings: settings)
