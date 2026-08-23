@@ -11,6 +11,9 @@ import SwiftUI
 /// Use ``TaskItemKind`` to distinguish active and completed tasks. Pass `lineage` when the
 /// picker is in cross-provider flat mode (Today or search) to show the task's origin. All
 /// non-layout logic lives in ``TaskItemPresenter``; this view only arranges the slots.
+///
+/// The row draws no surface of its own: `List` owns selection, so the platform paints the
+/// selected and unfocused-selected appearances and inverts row content to match.
 struct TaskRowView: View {
 
   let task: TaskItem

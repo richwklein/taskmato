@@ -127,6 +127,7 @@ struct TaskmatoCommands: Commands {
   @FocusedValue(\.toggleCompleted) private var toggleCompleted
   @FocusedValue(\.toggleCompletedTitle) private var toggleCompletedTitle
   @FocusedValue(\.toggleCompletedIcon) private var toggleCompletedIcon
+  @FocusedValue(\.trackTask) private var trackTask
   @FocusedValue(\.openInProvider) private var openInProvider
   @FocusedValue(\.openInProviderTitle) private var openInProviderTitle
   @FocusedValue(\.openInProviderIcon) private var openInProviderIcon
@@ -190,6 +191,15 @@ struct TaskmatoCommands: Commands {
         }
       }
       Divider()
+      // Track Task mirrors the Tasks-tab toolbar button and the row context menu. Return does
+      // the same thing while the list has focus; ⌘T is the menu-reachable equivalent.
+      Button {
+        trackTask?()
+      } label: {
+        Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
+      }
+      .keyboardShortcut("t")
+      .disabled(trackTask == nil)
       // Title and glyph both come from the selected task's provider, so the item reads
       // "Open in Obsidian" beside Obsidian's own icon — matching its context-menu twin. Falls
       // back to the generic label when nothing resolvable is selected and the item is disabled.

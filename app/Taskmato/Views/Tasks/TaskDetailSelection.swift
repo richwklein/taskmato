@@ -15,30 +15,6 @@ import UniformTypeIdentifiers
 /// limit, mirroring the existing `TaskDetailActions.swift` split for mutating handlers.
 extension TaskDetailView {
 
-  /// Requests task-content focus through the invisible AppKit responder.
-  func focusTaskContent() {
-    taskContentFocusToken += 1
-  }
-
-  /// The surface emphasis for `task`'s row, given the current selection and focus.
-  func surfaceEmphasis(for task: TaskItem) -> SurfaceEmphasis {
-    SurfaceEmphasis(isSelected: selection == task.id, isSelectionFocused: isTaskContentFocused)
-  }
-
-  /// Paints `task`'s selection band — a neutral fill drawn only while task content holds focus.
-  ///
-  /// The band has to be drawn here rather than left to the platform: `List` no longer receives a
-  /// selection binding (see ``TaskDetailView/taskList``), so SwiftUI never marks a row selected
-  /// and never draws or inverts anything on its own — this band is the row's only fill.
-  ///
-  /// It is full-bleed and square, matching Reminders' list selection, rather than inset or
-  /// rounded to a card shape.
-  @ViewBuilder
-  func attachSelectionSurface<Content: View>(to content: Content, for task: TaskItem) -> some View {
-    let emphasis = surfaceEmphasis(for: task)
-    content.listRowBackground(emphasis.bandFill)
-  }
-
   /// The task currently identified by ``selection`` within active or completed tasks, or `nil`
   /// when there is no selection or the selected ref fell out of the loaded content.
   private func selectedTask() -> TaskItem? {
@@ -71,30 +47,20 @@ extension TaskDetailView {
     return [clipboardService.payload(for: task)]
   }
 
-  /// Moves ``selection`` to the previous/next selectable task in display order. Clamps at the
-  /// ends; with no selection, next selects the first task and previous selects the last.
-  func moveSelection(_ direction: MoveCommandDirection) {
-    let ids =
-      sections.flatMap(\.tasks).map(\.id)
-      + (showCompleted ? completedTasks.map(\.id) : [])
-    guard !ids.isEmpty else { return }
-    let current = selection.flatMap { ids.firstIndex(of: $0) }
-    switch direction {
-    case .left, .up:
-      selection = current.map { ids[max(0, $0 - 1)] } ?? ids.last
-    case .right, .down:
-      selection = current.map { ids[min(ids.count - 1, $0 + 1)] } ?? ids.first
-    default:
-      break
-    }
-  }
-
-  /// Activates an active ``selection`` (mirrors double-click), or ignores the key when nothing
-  /// active is selected so Return keeps its default behavior elsewhere.
+  /// Tracks an active ``selection``, or ignores the key when nothing active is selected so
+  /// Return keeps its default behavior elsewhere.
   func activateSelection() -> KeyPress.Result {
     guard let task = selectedActiveTask() else { return .ignored }
     select(task)
     return .handled
+  }
+
+  /// The action that tracks the current selection and switches to Timer, or `nil` when no
+  /// active task is selected. Feeds the toolbar button and the Task ▸ Track Task menu item —
+  /// the pointer-driven counterparts to Return, which activates the same way.
+  func trackSelectionAction() -> (() -> Void)? {
+    guard let task = selectedActiveTask() else { return nil }
+    return { select(task) }
   }
 
   /// Requests confirmation to permanently delete ``selection``, or beeps when it is not writable.
@@ -140,6 +106,7 @@ extension TaskDetailView {
   @ViewBuilder
   func attachOpenInProviderFocusedValues<Content: View>(to content: Content) -> some View {
     content
+      .focusedSceneValue(\.trackTask, trackSelectionAction())
       .focusedSceneValue(\.openInProvider, openInProviderAction())
       .focusedSceneValue(\.openInProviderTitle, selectedProviderLink()?.title)
       .focusedSceneValue(\.openInProviderIcon, selectedProviderLink()?.icon)
@@ -266,25 +233,14 @@ extension TaskDetailView {
     }
   }
 
-  /// Attaches the invisible task-content keyboard responder to `content`.
-  func attachTaskKeyboardResponder<Content: View>(to content: Content) -> some View {
-    content.overlay(alignment: .topLeading) {
-      TaskKeyboardResponder(
-        focusToken: taskContentFocusToken,
-        onReturn: { _ = activateSelection() },
-        onDelete: { requestDeleteSelection() },
-        onMove: { moveSelection($0) },
-        onCopy: { copySelectionToPasteboard() },
-        onCut: { cutSelectionToPasteboard() },
-        onPaste: { pasteSelectionFromPasteboard() },
-        canCopy: { canCopySelection() },
-        canCut: { canCutSelection() },
-        canPaste: { canPasteSelection() },
-        canDelete: { canDeleteSelection() },
-        onFocusChange: { isTaskContentFocused = $0 }
-      )
-      .frame(width: 0, height: 0)
-    }
+  /// Attaches Return-to-track and Delete to `content`, leaving the `List` as first responder.
+  ///
+  /// Arrow-key movement is not handled here — `List(selection:)` moves the selection natively.
+  @ViewBuilder
+  func attachTaskCommands<Content: View>(to content: Content) -> some View {
+    content
+      .onKeyPress(.return) { activateSelection() }
+      .onDeleteCommand { requestDeleteSelection() }
   }
 
   /// Handles an inbound rich Taskmato payload from `.pasteDestination(for: TaskClipboardPayload.self)`.

@@ -52,12 +52,6 @@ extension Color {
       }
     })
 
-  /// Neutral band behind a selected row, quiet enough that row content keeps its own colors.
-  ///
-  /// The unemphasized system selection background — semantically a selection fill, and the
-  /// quieter of the two the platform defines. Adapts across appearance and Increase Contrast.
-  static let selectionBand = Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
-
   /// Marker on the provider's default (favorite) list.
   static let favoriteStar: Color = .yellow
 

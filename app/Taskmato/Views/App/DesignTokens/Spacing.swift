@@ -31,6 +31,6 @@ extension CGFloat {
   /// Padding between content and the edge of a screen, sheet, or popover.
   static let screenPadding: CGFloat = 24
 
-  /// Width of a card's resting border.
+  /// Width of a card's border.
   static let cardHairline: CGFloat = 1
 }

@@ -52,10 +52,6 @@ struct TaskDetailView: View {
   @State var completedTasks: [TaskItem] = []
   @State private var isLoadingCompleted = false
   @FocusState private var isSearchFocused: Bool
-  /// Incremented to ask the AppKit task-content responder to reclaim first-responder status.
-  @State var taskContentFocusToken = 0
-  /// Whether task content owns keyboard focus, driving active versus inactive selection color.
-  @State var isTaskContentFocused = false
   /// The single selected task (issue #546) — ephemeral, view-local, and independent of
   /// ``TaskSelectionStore``'s active/tracked task. Drives the clipboard and `.onDeleteCommand`;
   /// cleared whenever the sidebar selection changes. Not `private`: `handleDelete(_:)` in
@@ -142,9 +138,19 @@ struct TaskDetailView: View {
           }
         }
 
-        // Show/Hide Completed stays adjacent to Layout and Sort — all three are task-view
-        // controls — while Layout and Sort are grouped together as one toolbar unit since both
-        // alter task-list presentation.
+        // Track Task is the pointer-driven counterpart to Return and the context-menu item —
+        // the only activation affordances, since double-click no longer tracks.
+        ToolbarItem(placement: .automatic) {
+          Button {
+            trackSelectionAction()?()
+          } label: {
+            Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
+          }
+          .help(AppLabels.Tooltip.trackTask)
+          .disabled(trackSelectionAction() == nil)
+        }
+
+        // Show/Hide Completed stays adjacent to Sort — both are task-view controls.
         if hasClosableProvider {
           ToolbarItem(placement: .automatic) {
             Button {
@@ -161,6 +167,7 @@ struct TaskDetailView: View {
         ToolbarItemGroup(placement: .automatic) {
           sortMenu
         }
+
       }
       .focusedSceneValue(\.taskViewActive, true)
       .focusedSceneValue(\.focusSearch, { isSearchFocused = true })
@@ -220,16 +227,7 @@ struct TaskDetailView: View {
       .onChange(of: sidebarSelection.selection) { _, _ in
         query = ""
         selection = nil
-        isTaskContentFocused = false
         Task { await refresh() }
-      }
-      .onChange(of: selection) { _, newSelection in
-        // Native List selection changes after the table handles the click. Reclaim first
-        // responder status after that handoff so Return and task commands keep working.
-        if newSelection != nil { focusTaskContent() }
-      }
-      .onChange(of: isSearchFocused) { _, focused in
-        if focused { isTaskContentFocused = false }
       }
       .onChange(of: registry.providerLists) { _, _ in Task { await refresh() } }
       .onChange(of: settings.taskSortField) { _, _ in Task { await refresh() } }
@@ -307,9 +305,9 @@ struct TaskDetailView: View {
       to:
         attachClipboardModifiers(
           to:
-            attachTaskKeyboardResponder(
+            attachTaskCommands(
               to:
-                List {
+                List(selection: $selection) {
                   SwiftUI.ForEach(sections) { section in
                     listSection(for: section)
                   }
@@ -322,8 +320,9 @@ struct TaskDetailView: View {
                     }
                   }
                 }
-                .contentShape(Rectangle())
-                .onTapGesture { focusTaskContent() }
+                // Inset style owns selection shape and accent, context-menu targeting,
+                // focused/unfocused appearance, and row geometry. Nothing is layered on top.
+                .listStyle(.inset)
             )
         )
     )

@@ -47,6 +47,10 @@ private struct TaskViewActiveKey: FocusedValueKey {
   typealias Value = Bool
 }
 
+private struct TrackTaskKey: FocusedValueKey {
+  typealias Value = () -> Void
+}
+
 private struct OpenInProviderKey: FocusedValueKey {
   typealias Value = () -> Void
 }
@@ -125,6 +129,13 @@ extension FocusedValues {
   var taskViewActive: Bool? {
     get { self[TaskViewActiveKey.self] }
     set { self[TaskViewActiveKey.self] = newValue }
+  }
+
+  /// Tracks the selected task and switches to the Timer tab. Published by ``TaskDetailView``
+  /// when an active task is selected; `nil` disables the command, matching the toolbar button.
+  var trackTask: (() -> Void)? {
+    get { self[TrackTaskKey.self] }
+    set { self[TrackTaskKey.self] = newValue }
   }
 
   /// Opens the selected task's provider deep link. Published by ``TaskDetailView`` when the

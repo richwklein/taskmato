@@ -46,6 +46,8 @@ enum AppLabels {
     // Tasks toolbar
     /// Shown on the Add Task toolbar button.
     static let addTask = "Add a task"
+    /// Shown on the Track Task toolbar button.
+    static let trackTask = "Track the selected task"
     /// Shown on the Show Completed toolbar button when the section is hidden.
     static let showCompleted = "Show completed tasks"
     /// Shown on the Show Completed toolbar button when the section is visible.
