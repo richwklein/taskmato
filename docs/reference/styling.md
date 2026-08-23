@@ -85,7 +85,7 @@ the width mismatch — `NSTableView.style` resolves to `.inset`, which insets th
 
 An emphasized (focused) selected row is the system's saturated accent fill, and AppKit inverts
 row content to match. Semantic colors — `.primary`, `.secondary`, `.tertiary` — invert
-automatically. **Explicit colors do not**, and four leaves would otherwise sit illegibly on it:
+automatically. **Explicit colors do not**, and five leaves would otherwise sit illegibly on it:
 
 | Leaf | Explicit color | Failure on the fill |
 | --- | --- | --- |
@@ -93,11 +93,14 @@ automatically. **Explicit colors do not**, and four leaves would otherwise sit i
 | `PriorityGlyph` | `priority.accentColor` | orange/red on blue |
 | `TaskStateButtonView` | `.accentColor` | accent on accent |
 | `TaskMarkdownTitle` | link tint | blue on blue |
+| `TaskNoteView` | link tint | blue on blue |
 
 Each adapts through `\.backgroundProminence`, which `List` publishes as `.increased` on the
-selected row. `BackgroundProminence.accent(_:)` returns the given color normally and `.primary`
-when prominence is increased — letting the platform pick the color that contrasts with its own
-selection background rather than hardcoding white.
+selected row. `BackgroundProminence.accent(_:increasedColor:)` returns the given color normally
+and a semantic fallback when prominence is increased — letting the platform pick the color that
+contrasts with its own selection background rather than hardcoding white. The fallback defaults
+to `.primary`; `TaskNoteView` passes `.secondary` so a selected link matches the rest of the note,
+with its underline carrying the link affordance.
 
 > **The value only resolves in a child view** that declares its own
 > `@Environment(\.backgroundProminence)`. Read on a parent and branched inline in a
