@@ -58,40 +58,41 @@ struct TaskmatoApp: App {
       // Task-disambiguation for `taskmato://` deep links presents on the main window, the
       // app's primary surface (design doc 0008, D5). `URLSchemeHandler` opens the window
       // when a match is ambiguous so this dialog has a surface to appear on.
-      .confirmationDialog(
-        "Multiple tasks match — which one?",
+      .sheet(
         isPresented: Binding(
           get: { composition.urlHandler.pendingDisambiguation != nil },
-          set: { if !$0 { composition.urlHandler.pendingDisambiguation = nil } }
-        ),
-        titleVisibility: .visible,
-        presenting: composition.urlHandler.pendingDisambiguation
-      ) { matches in
-        ForEach(matches.prefix(4)) { task in
-          Button(task.title) {
-            composition.activeTaskStore.track(task)
-            composition.urlHandler.pendingDisambiguation = nil
-            composition.nav.showTimerInMainWindow()
-          }
-        }
-        if let params = composition.urlHandler.pendingAdHocParams {
-          Button("Create new \"\(params.title)\"") {
+          // Every dismissal path — Cancel, a selection, and a swipe-down/Esc dismiss — must
+          // clear both pending properties, or stale ad-hoc params leak into the next invocation.
+          set: { if !$0 { clearPendingDisambiguation() } }
+        )
+      ) {
+        TaskDisambiguationSheet(
+          matches: (composition.urlHandler.pendingDisambiguation ?? []).map {
+            DisambiguationMatch(task: $0, registry: composition.registry)
+          },
+          adHocTitle: composition.urlHandler.pendingAdHocParams?.title,
+          onSelect: { task in
+            // Must route through activate(_:) — never open-code track + showTimerInMainWindow
+            // here, or a running session's active task gets clobbered again (#595).
+            composition.urlHandler.activate(task)
+            clearPendingDisambiguation()
+          },
+          onCreateNew: {
+            let params = composition.urlHandler.pendingAdHocParams
+            clearPendingDisambiguation()
             Task {
-              composition.urlHandler.pendingDisambiguation = nil
-              composition.urlHandler.pendingAdHocParams = nil
+              guard let params else { return }
               // On failure the handler surfaces the error on the banner and returns nil,
               // so no session is started on an unsaved task.
+              // Must route through activate(_:) — never open-code track + showTimerInMainWindow
+              // here, or a running session's active task gets clobbered again (#595).
               if let task = await composition.urlHandler.makeAdHocTask(from: params) {
-                composition.activeTaskStore.track(task)
-                composition.nav.showTimerInMainWindow()
+                composition.urlHandler.activate(task)
               }
             }
-          }
-        }
-        Button("Cancel", role: .cancel) {
-          composition.urlHandler.pendingDisambiguation = nil
-          composition.urlHandler.pendingAdHocParams = nil
-        }
+          },
+          onCancel: { clearPendingDisambiguation() }
+        )
       }
     }
     .defaultSize(width: 480, height: 520)
@@ -114,6 +115,14 @@ struct TaskmatoApp: App {
       )
     }
     .windowResizability(.contentSize)
+  }
+
+  /// Clears both pending deep-link-disambiguation properties, keeping every dismissal path
+  /// (a selection, "Create new", Cancel, and a swipe-down/Esc dismiss) consistent so stale
+  /// ad-hoc params never leak into the next `taskmato://` invocation.
+  private func clearPendingDisambiguation() {
+    composition.urlHandler.pendingDisambiguation = nil
+    composition.urlHandler.pendingAdHocParams = nil
   }
 }
 
