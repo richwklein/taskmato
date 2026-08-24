@@ -12,6 +12,9 @@ struct ProviderDefaultListSettings: View {
 
   @State private var lists: [TaskList] = []
   @State private var selectedListID = ""
+  /// The selection ``loadLists()`` last applied itself; a change to this value is programmatic,
+  /// not a user pick, and must not overwrite the stored default.
+  @State private var appliedSelection = ""
   @State private var isLoading = true
   @State private var errorMessage: String?
 
@@ -52,28 +55,36 @@ struct ProviderDefaultListSettings: View {
           .padding(.leading, 92 + .contentGap)
       }
     }
-    .task { await loadLists() }
+    // Reloads on configuration changes (patterns/vault) only — deliberately not subscribed to
+    // observe(); external data changes refresh on next open and fail safe via setDefaultList.
+    .task(id: provider.listConfiguration) { await loadLists() }
     .onChange(of: selectedListID) { _, newValue in
-      guard !isLoading, !newValue.isEmpty else { return }
+      // Persist only a user-driven pick. A value loadLists() applied itself equals
+      // appliedSelection and must not overwrite the stored default — the isLoading flag can't
+      // gate this, because onChange fires on a later update pass after loadLists() has already
+      // reset it.
+      guard !newValue.isEmpty, newValue != appliedSelection else { return }
+      appliedSelection = newValue
       Task { await saveDefaultList(newValue) }
     }
   }
 
   private func loadLists() async {
-    defer { isLoading = false }
+    let token = provider.listConfiguration
     do {
-      lists = try await provider.lists()
-      if let defaultListID = provider.defaultListID {
-        if lists.contains(where: { $0.id == defaultListID }) {
-          selectedListID = defaultListID
-        } else {
-          selectedListID = lists.first?.id ?? ""
-        }
-      } else {
-        selectedListID = lists.first?.id ?? ""
-      }
+      let loaded = try await provider.lists()
+      guard token == provider.listConfiguration else { return }
+      lists = loaded
+      errorMessage = nil
+      let resolved =
+        DefaultListResolver.resolve(among: loaded, storedDefault: provider.defaultListID) ?? ""
+      appliedSelection = resolved
+      selectedListID = resolved
+      isLoading = false
     } catch {
+      guard token == provider.listConfiguration else { return }
       errorMessage = error.localizedDescription
+      isLoading = false
     }
   }
 

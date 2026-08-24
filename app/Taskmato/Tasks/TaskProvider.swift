@@ -115,6 +115,9 @@ extension ClosableTaskProvider {
 
 extension WritableTaskProvider {
   var supportsDueTime: Bool { true }
+
+  /// Providers without list-affecting configuration use the empty token, which never changes.
+  var listConfiguration: ListConfigurationToken { ListConfigurationToken() }
 }
 
 /// A `ClosableTaskProvider` that also supports creating and updating tasks, and choosing a
@@ -136,6 +139,11 @@ protocol WritableTaskProvider: ClosableTaskProvider {
   /// Obsidian's `📅 YYYY-MM-DD`, which always writes date-only) override this to `false` so the
   /// Add Task dialog doesn't offer a "due time" affordance that would silently be dropped.
   var supportsDueTime: Bool { get }
+
+  /// A value that changes whenever the configuration determining ``lists()`` membership changes
+  /// (an edited pattern filter or a switched source), letting views know when to reload cached
+  /// lists.
+  var listConfiguration: ListConfigurationToken { get }
 
   /// Creates a new task from `draft` and returns the resulting item.
   ///
