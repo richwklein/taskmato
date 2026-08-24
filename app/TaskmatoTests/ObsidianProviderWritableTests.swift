@@ -117,14 +117,36 @@ struct ObsidianProviderWritableTests {
     #expect(item.list?.id == "tasks.md")
   }
 
+  @Test func addTaskFallsBackToFirstListWhenStoredDefaultMissing() async throws {
+    let vault = try makeVault()
+    defer { try? FileManager.default.removeItem(at: vault) }
+    try write("- [ ] Existing", at: "tasks.md", in: vault)
+    // A single-file vault keeps "first" unambiguous, since Obsidian's `lists()` order comes
+    // from `FileManager.enumerator` and isn't contractually sorted.
+    let provider = makeProvider(vaultURL: vault, defaultListID: "ghost.md")
+    var draft = TaskDraft()
+    draft.title = "Buy milk"
+    let item = try await provider.addTask(draft)
+    #expect(item.list?.id == "tasks.md")
+  }
+
+  // Case-level (not just type-level) because this refactor authors `.noListAvailable` as a new
+  // hardcoded literal in the collapsed default/first tail; a typo would slip past
+  // `#expect(throws: ObsidianProviderError.self)`. `ObsidianProviderError` is not `Equatable`,
+  // so the closure form is used instead of adding conformance just for this test. (Reminders'
+  // equivalent empty-list test is deliberately left type-level — see
+  // `RemindersProviderWritableTests`.)
   @Test func addTaskThrowsWhenNoListResolves() async throws {
     let vault = try makeVault()
     defer { try? FileManager.default.removeItem(at: vault) }
     let provider = makeProvider(vaultURL: vault)
     var draft = TaskDraft()
     draft.title = "Buy milk"
-    await #expect(throws: ObsidianProviderError.self) {
+    await #expect {
       try await provider.addTask(draft)
+    } throws: { error in
+      if case ObsidianProviderError.noListAvailable = error { return true }
+      return false
     }
   }
 

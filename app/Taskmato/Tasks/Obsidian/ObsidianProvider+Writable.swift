@@ -89,18 +89,14 @@ extension ObsidianProvider {
         throw ObsidianProviderError.listNotFound(explicitListID)
       }
       relPath = explicitListID
-    } else if let defaultListID {
-      if availableLists.contains(where: { $0.id == defaultListID }) {
-        relPath = defaultListID
-      } else if let firstList = availableLists.first {
-        relPath = firstList.id
-      } else {
+    } else {
+      guard
+        let resolved = DefaultListResolver.resolve(
+          among: availableLists, storedDefault: defaultListID)
+      else {
         throw ObsidianProviderError.noListAvailable
       }
-    } else if let firstList = availableLists.first {
-      relPath = firstList.id
-    } else {
-      throw ObsidianProviderError.noListAvailable
+      relPath = resolved
     }
     let fileURL = vaultURL.appending(path: relPath)
 
