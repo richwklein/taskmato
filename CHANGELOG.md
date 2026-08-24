@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.4.0](https://github.com/richwklein/taskmato/compare/v1.3.0...v1.4.0) (2026-08-24)
+
+
+### Features
+
+* add privacy, support, and 404 pages ([#576](https://github.com/richwklein/taskmato/issues/576)) ([3d05c5c](https://github.com/richwklein/taskmato/commit/3d05c5c18f85fd17c14054a7c805cd159bcec4af))
+* **site:** publish the launch marketing site ([#581](https://github.com/richwklein/taskmato/issues/581)) ([1c20916](https://github.com/richwklein/taskmato/commit/1c20916cf097c367643b942768cf3834c3570688))
+* **tasks:** return task selection to the native inset list ([#594](https://github.com/richwklein/taskmato/issues/594)) ([67ce87c](https://github.com/richwklein/taskmato/commit/67ce87c05ba1714632429995474914db991f29d5))
+* **url:** stage instead of clobbering the active task on taskmato://start ([#595](https://github.com/richwklein/taskmato/issues/595)) ([#601](https://github.com/richwklein/taskmato/issues/601)) ([818b2c1](https://github.com/richwklein/taskmato/commit/818b2c1b1460bc2384d915d7b2255174f0bdbe62))
+
+
+### Bug Fixes
+
+* **settings:** refresh the default-list picker when a provider's pattern changes ([#597](https://github.com/richwklein/taskmato/issues/597)) ([82d0689](https://github.com/richwklein/taskmato/commit/82d0689cfe0e3aa598244c15fad8a403d17fed7f))
+* **stats:** show focus durations under a minute in seconds ([#587](https://github.com/richwklein/taskmato/issues/587)) ([27414d9](https://github.com/richwklein/taskmato/commit/27414d96db265bfab6b5e18f0f67356b16d176d9))
+* **timer:** gate focus presets on the next phase being focus ([#589](https://github.com/richwklein/taskmato/issues/589)) ([eba1e08](https://github.com/richwklein/taskmato/commit/eba1e081597ce773edcc515c6f0fc400fb44283b))
+* **timer:** make startFocus atomic on canSelectFocusPreset ([#592](https://github.com/richwklein/taskmato/issues/592)) ([#596](https://github.com/richwklein/taskmato/issues/596)) ([b7ae32e](https://github.com/richwklein/taskmato/commit/b7ae32e5c5693d8c19536b9965668b585cb14a5a))
+
+
+### Code Refactoring
+
+* **tasks:** consolidate default-list selection onto DefaultListResolver ([#602](https://github.com/richwklein/taskmato/issues/602)) ([b3b4e9c](https://github.com/richwklein/taskmato/commit/b3b4e9c12e173262c9c2b7e3134a1068346bf331))
+
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump @typescript-eslint/parser from 8.65.0 to 8.67.0 in /site in the other-dependencies group across 1 directory ([#585](https://github.com/richwklein/taskmato/issues/585)) ([9d73140](https://github.com/richwklein/taskmato/commit/9d731400a2d9c78ae435851a2974b80be1262e6c))
+* **deps-dev:** bump the vitest group across 1 directory with 3 updates ([#598](https://github.com/richwklein/taskmato/issues/598)) ([cb77724](https://github.com/richwklein/taskmato/commit/cb7772473d3d8cb2c1bb88d1bac2082622c75158))
+* **deps:** bump github/codeql-action from 4.37.5 to 4.37.7 in the third-party-actions group across 1 directory ([#586](https://github.com/richwklein/taskmato/issues/586)) ([49c61d9](https://github.com/richwklein/taskmato/commit/49c61d991eb13602a00fe425af4f471129a689ba))
+* **site:** serve the marketing site from taskmato.com ([#573](https://github.com/richwklein/taskmato/issues/573)) ([195ad89](https://github.com/richwklein/taskmato/commit/195ad8900dcd29fb9051983085ef7e8aa6dab778))
+
 ## [1.3.0](https://github.com/richwklein/taskmato/compare/v1.2.0...v1.3.0) (2026-08-13)
 
 
