@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Synchronization
 import Testing
 
 @testable import Taskmato
@@ -443,5 +444,59 @@ struct ObsidianProviderConfigurableTests {
     defer { try? FileManager.default.removeItem(at: vault) }
     let provider = makeProvider(vaultURL: vault)
     #expect(!provider.needsConfiguration)
+  }
+}
+
+// MARK: - listConfiguration
+
+@Suite("ObsidianProvider — listConfiguration")
+@MainActor
+struct ObsidianProviderListConfigurationTests {
+
+  private func makeProvider(vaultURL: URL?, patterns: [String]) -> ObsidianProvider {
+    ObsidianProvider(
+      store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+      vaultURL: vaultURL,
+      filePatterns: patterns
+    )
+  }
+
+  @Test func changingFilePatternsFiresObservationThroughExistential() {
+    let provider = makeProvider(vaultURL: URL(fileURLWithPath: "/tmp/vault-a"), patterns: ["a.md"])
+    let existential: any WritableTaskProvider = provider
+    let fired = Mutex(false)
+
+    withObservationTracking {
+      _ = existential.listConfiguration
+    } onChange: {
+      fired.withLock { $0 = true }
+    }
+
+    provider.setFilePatterns(["b.md"])
+
+    #expect(fired.withLock { $0 })
+  }
+
+  @Test func reorderedFilePatterns_tokenIsEqual() {
+    let provider = makeProvider(
+      vaultURL: URL(fileURLWithPath: "/tmp/vault-a"), patterns: ["a.md", "b.md"])
+    let before = provider.listConfiguration
+    provider.setFilePatterns(["b.md", "a.md"])
+    #expect(before == provider.listConfiguration)
+  }
+
+  @Test func differentFilePatterns_tokenIsNotEqual() {
+    let provider = makeProvider(vaultURL: URL(fileURLWithPath: "/tmp/vault-a"), patterns: ["a.md"])
+    let before = provider.listConfiguration
+    provider.setFilePatterns(["b.md"])
+    #expect(before != provider.listConfiguration)
+  }
+
+  @Test func differentVaultURLsWithSamePatterns_tokenIsNotEqual() {
+    let providerA = makeProvider(
+      vaultURL: URL(fileURLWithPath: "/tmp/vault-a"), patterns: ["a.md"])
+    let providerB = makeProvider(
+      vaultURL: URL(fileURLWithPath: "/tmp/vault-b"), patterns: ["a.md"])
+    #expect(providerA.listConfiguration != providerB.listConfiguration)
   }
 }

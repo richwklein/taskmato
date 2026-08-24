@@ -37,6 +37,9 @@ final class RemindersProvider: WritableTaskProvider {
   /// The `ContentFormat` new and edited reminders use — Reminders notes are plain text.
   let contentFormat: ContentFormat = .plainText
 
+  // RemindersProvider — source is always nil; Reminders has no switchable source, only patterns.
+  var listConfiguration: ListConfigurationToken { .init(patterns: Set(listPatterns)) }
+
   /// User-selected default calendar identifier, or `nil` to fall back to the system default.
   private var defaultListOverride: String? {
     didSet { settings[SettingsStore.Keys.remindersDefaultListOverride] = defaultListOverride }

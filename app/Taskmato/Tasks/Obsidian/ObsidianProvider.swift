@@ -63,6 +63,11 @@ final class ObsidianProvider: WritableTaskProvider {
   /// Whether the user has selected a vault directory.
   var isConfigured: Bool { vaultURL != nil }
 
+  // ObsidianProvider — source is the vault path, or nil when no vault is configured.
+  var listConfiguration: ListConfigurationToken {
+    .init(source: vaultURL?.path, patterns: Set(filePatterns))
+  }
+
   private let store: SettingsStore
   private let parser = ObsidianTaskParser()
   private let updates = MulticastAsyncStream<[TaskItem]>()
