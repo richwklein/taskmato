@@ -32,8 +32,8 @@ struct AdHocTaskParams {
   let providerID: String?
 }
 
-/// Parses and dispatches `taskmato://` deep links to select a task and, when auto-start is
-/// enabled, start a focus session.
+/// Parses and dispatches `taskmato://` deep links to select a task, starting a focus session on
+/// it when the engine is idle with focus next, or staging it for the next focus phase otherwise.
 ///
 /// Resolution precedence for `taskmato://start`:
 /// 1. `provider` + `id` — exact native-ID lookup within the named provider
@@ -87,8 +87,9 @@ final class URLSchemeHandler {
     self.destinationResolver = destinationResolver
   }
 
-  /// Handles the given URL, selecting the resolved task and starting a focus session if
-  /// the engine is idle and auto-start is enabled.
+  /// Handles the given URL, resolving the target task and delegating to ``activate(_:)`` to
+  /// start a focus session on it (idle, focus next) or stage it for the next focus phase
+  /// otherwise — never clobbering a running session's active task.
   func handle(_ url: URL) async {
     guard url.scheme?.lowercased() == "taskmato",
       url.host?.lowercased() == "start",
@@ -108,20 +109,31 @@ final class URLSchemeHandler {
       return
     }
 
-    logger.log("handle() resolved task; selecting and routing to Timer")
-    activeTaskStore.track(task)
-    nav.showTimerInMainWindow()
-    let engineIdle = engine.state == .idle
-    let autoStart = settings.autoStartNextPhase
-    if engineIdle, autoStart {
+    logger.log("handle() resolved task; delegating to activate(_:)")
+    activate(task)
+  }
+
+  /// Selects `task` and either starts a focus session on it or stages it for the next focus
+  /// phase — the single entry point shared by `handle()` and the disambiguation dialog so the
+  /// start-vs-stage decision lives in one tested place.
+  ///
+  /// Mirrors `TimerPresenter.canSelectFocusPreset` (`isIdle && nextStartPhase == .focus`); the
+  /// handler has no presenter, so the predicate is reconstructed from the engine. When focus is
+  /// not the next phase (a session is running/paused, or idle with a break queued — issue #580),
+  /// the task is *staged*, never tracked, so an in-flight session's active task is never
+  /// clobbered (issue #595) and a queued break is never overrun.
+  func activate(_ task: TaskItem) {
+    let canStartFocusNow = engine.state == .idle && (engine.queuedPhase ?? .focus) == .focus
+    if canStartFocusNow {
+      activeTaskStore.track(task)
       engine.applyDurations(from: settings)
       engine.start(phase: .focus)
-      logger.log("handle() started focus session")
+      logger.log("activate() started focus session on resolved task")
     } else {
-      logger.log(
-        "handle() no session: engineIdle=\(engineIdle, privacy: .public) autoStart=\(autoStart, privacy: .public)"
-      )
+      activeTaskStore.stage(task)
+      logger.log("activate() staged resolved task for next focus phase")
     }
+    nav.showTimerInMainWindow()
   }
 
   /// Creates an ad-hoc task from the given params.

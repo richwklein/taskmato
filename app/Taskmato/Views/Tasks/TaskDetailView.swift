@@ -454,12 +454,17 @@ extension TaskDetailView {
 
   /// Selects `task`, sets the focus length to `minutes`, and starts a session on it — the
   /// "Start Focus ▸" submenu's one-gesture action (design doc 0009, D7). Guarded on
-  /// `presenter.canSelectFocusPreset` so the four effects are all-or-nothing: if the phase has
-  /// moved off idle-focus-next since the submenu opened, this is a clean no-op rather than a
-  /// partial commit (issue #592). Not `private`: called from `TaskDetailContextMenu.swift`'s
-  /// "Start Focus ▸" submenu.
+  /// `presenter.canSelectFocusPreset` so the four start effects are all-or-nothing (issue #592).
+  /// If the phase has moved off idle-focus-next since the submenu opened — e.g. a `taskmato://`
+  /// URL raced ahead and started a session between the submenu opening and this click landing
+  /// (issue #595) — this de-escalates to ``stageNextFocus(_:minutes:)`` so the click stages the
+  /// task instead of being silently dropped. Not `private`: called from
+  /// `TaskDetailContextMenu.swift`'s "Start Focus ▸" submenu.
   func startFocus(_ task: TaskItem, minutes: Int) {
-    guard presenter.canSelectFocusPreset else { return }
+    guard presenter.canSelectFocusPreset else {
+      stageNextFocus(task, minutes: minutes)
+      return
+    }
     activeTaskStore.track(task)
     settings.focusMinutes = minutes
     presenter.start()
