@@ -17,6 +17,7 @@ private struct HandlerContext {
   let localProvider: LocalProvider
   let settings: AppSettings
   let errorPresenter: ErrorPresenter
+  let engine: SessionEngine
 }
 
 // MARK: - Fakes
@@ -90,18 +91,40 @@ private final class StubWritableProvider: WritableTaskProvider {
   func deleteTask(_: TaskRef) async throws {}
 }
 
+/// `true` while `state` is `.running`, regardless of phase, start time, or duration.
+private func isRunning(_ state: SessionState) -> Bool {
+  if case .running = state { return true }
+  return false
+}
+
+private func makeTempURL() -> URL {
+  FileManager.default.temporaryDirectory
+    .appendingPathComponent(UUID().uuidString)
+    .appendingPathExtension("json")
+}
+
+private func makeTask(title: String, providerID: ProviderID = "stub") -> TaskItem {
+  TaskItem(
+    id: TaskRef(providerID: providerID, nativeID: UUID().uuidString),
+    title: title,
+    notes: nil,
+    format: .plainText,
+    priority: .none,
+    dueDate: nil,
+    scheduledDate: nil,
+    startDate: nil,
+    list: nil,
+    section: nil,
+    sourceURL: nil
+  )
+}
+
 // MARK: - Tests
 
 @MainActor
 struct URLSchemeHandlerTests {
 
   // MARK: - Helpers
-
-  private func makeTempURL() -> URL {
-    FileManager.default.temporaryDirectory
-      .appendingPathComponent(UUID().uuidString)
-      .appendingPathExtension("json")
-  }
 
   /// Builds a fully wired handler. Pass `enableLocalProvider: false` to test the transient path.
   private func makeHandler(
@@ -150,23 +173,8 @@ struct URLSchemeHandlerTests {
       activeTaskStore: activeTaskStore,
       localProvider: localProvider,
       settings: settings,
-      errorPresenter: errorPresenter
-    )
-  }
-
-  private func makeTask(title: String, providerID: ProviderID = "stub") -> TaskItem {
-    TaskItem(
-      id: TaskRef(providerID: providerID, nativeID: UUID().uuidString),
-      title: title,
-      notes: nil,
-      format: .plainText,
-      priority: .none,
-      dueDate: nil,
-      scheduledDate: nil,
-      startDate: nil,
-      list: nil,
-      section: nil,
-      sourceURL: nil
+      errorPresenter: errorPresenter,
+      engine: engine
     )
   }
 
@@ -474,5 +482,64 @@ struct URLSchemeHandlerTests {
     let ctx = makeHandler()
     await ctx.handler.handle(URL(string: "taskmato://start?title=")!)
     #expect(ctx.activeTaskStore.activeTask == nil)
+  }
+
+  // MARK: - Issue #595: start-vs-stage delegation to activate(_:)
+
+  @Test func runningSessionStagesResolvedTaskWithoutClobberingActiveTask() async {
+    let initialTask = makeTask(title: "Already Running", providerID: "stub")
+    let ctx = makeHandler(stubProviderTasks: [initialTask])
+    ctx.activeTaskStore.track(initialTask)
+    ctx.engine.applyDurations(from: ctx.settings)
+    ctx.engine.start(phase: .focus)
+
+    await ctx.handler.handle(URL(string: "taskmato://start?title=New+Ad+Hoc")!)
+
+    #expect(ctx.activeTaskStore.activeTask?.id == initialTask.id)
+    #expect(ctx.activeTaskStore.stagedTask?.title == "New Ad Hoc")
+    #expect(isRunning(ctx.engine.state))
+  }
+
+  @Test func idleWithFocusNextStartsSession() async {
+    let ctx = makeHandler()
+    await ctx.handler.handle(URL(string: "taskmato://start?title=Idle+Start")!)
+    #expect(ctx.activeTaskStore.activeTask?.title == "Idle Start")
+    #expect(ctx.activeTaskStore.stagedTask == nil)
+    #expect(isRunning(ctx.engine.state))
+  }
+
+  @Test func alwaysStartsWhenIdleEvenWithAutoStartDisabled() async {
+    let ctx = makeHandler()
+    ctx.settings.autoStartNextPhase = false
+    await ctx.handler.handle(URL(string: "taskmato://start?title=No+AutoStart+Gate")!)
+    #expect(isRunning(ctx.engine.state))
+  }
+
+  @Test func idleWithBreakQueuedStagesResolvedTaskWithoutStartingFocus() async {
+    let ctx = makeHandler()
+    ctx.engine.enqueuePhase(.shortBreak)
+    #expect(ctx.engine.state == .idle)
+    #expect(ctx.engine.queuedPhase == .shortBreak)
+
+    await ctx.handler.handle(URL(string: "taskmato://start?title=Queued+Break")!)
+
+    #expect(ctx.activeTaskStore.stagedTask?.title == "Queued Break")
+    #expect(ctx.activeTaskStore.activeTask == nil)
+    #expect(ctx.engine.state == .idle)
+    #expect(ctx.engine.queuedPhase == .shortBreak)
+  }
+
+  @Test func disambiguationActivateDuringRunningSessionDoesNotClobber() async {
+    let initialTask = makeTask(title: "Initial", providerID: "stub")
+    let otherTask = makeTask(title: "Other", providerID: "stub")
+    let ctx = makeHandler(stubProviderTasks: [initialTask, otherTask])
+    ctx.activeTaskStore.track(initialTask)
+    ctx.engine.applyDurations(from: ctx.settings)
+    ctx.engine.start(phase: .focus)
+
+    ctx.handler.activate(otherTask)
+
+    #expect(ctx.activeTaskStore.activeTask?.id == initialTask.id)
+    #expect(ctx.activeTaskStore.stagedTask?.id == otherTask.id)
   }
 }
