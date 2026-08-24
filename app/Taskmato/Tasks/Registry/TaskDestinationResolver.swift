@@ -109,17 +109,14 @@ final class TaskDestinationResolver {
       }
     }
 
-    if let defaultListID = provider.defaultListID {
-      if lists.contains(where: { $0.id == defaultListID }) {
-        return TaskDestination(provider: provider, listID: defaultListID)
-      }
-    }
-
-    guard let firstList = lists.first else {
+    guard
+      let resolvedListID = DefaultListResolver.resolve(
+        among: lists, storedDefault: provider.defaultListID)
+    else {
       throw TaskDestinationResolutionError.noAvailableList(
         providerID: provider.id, providerName: provider.displayName)
     }
-    return TaskDestination(provider: provider, listID: firstList.id)
+    return TaskDestination(provider: provider, listID: resolvedListID)
   }
 
   private func resolveProvider(

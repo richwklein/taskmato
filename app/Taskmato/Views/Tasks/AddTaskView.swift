@@ -175,16 +175,15 @@ struct AddTaskView: View {
     }
     .task {
       taskLists = (try? await provider.lists()) ?? []
-      if taskToEdit == nil, selectedListID.isEmpty, let first = taskLists.first {
-        if let defaultID = provider.defaultListID {
-          if taskLists.contains(where: { $0.id == defaultID }) {
-            selectedListID = defaultID
-          } else {
-            selectedListID = first.id
-          }
-        } else {
-          selectedListID = first.id
-        }
+      // `provider.defaultListID` is now read eagerly as a call argument, so it's evaluated even
+      // when `taskLists` is empty (previously gated behind a non-empty list). Safe: all three
+      // providers' getters are inert, and Reminders' EventKit read is synchronous, non-prompting,
+      // and already called unconditionally elsewhere (SelectionStore, AppSidebarView). If a future
+      // getter becomes side-effecting, revisit this order.
+      let resolvedID = DefaultListResolver.resolve(
+        among: taskLists, storedDefault: provider.defaultListID)
+      if taskToEdit == nil, selectedListID.isEmpty, let id = resolvedID {
+        selectedListID = id
       }
     }
     .task(id: selectedListID) {

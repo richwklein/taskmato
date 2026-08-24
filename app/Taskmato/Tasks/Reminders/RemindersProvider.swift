@@ -235,14 +235,8 @@ final class RemindersProvider: WritableTaskProvider {
     let calendarID: String?
     if let explicitListID = draft.listID {
       calendarID = explicitListID
-    } else if let defaultListID {
-      if availableLists.contains(where: { $0.id == defaultListID }) {
-        calendarID = defaultListID
-      } else {
-        calendarID = availableLists.first?.id
-      }
     } else {
-      calendarID = availableLists.first?.id
+      calendarID = DefaultListResolver.resolve(among: availableLists, storedDefault: defaultListID)
     }
     guard let calendarID,
       let calendar = store.calendars(for: .reminder)
