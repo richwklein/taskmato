@@ -116,6 +116,10 @@ final class TimerPresenter {
   /// queued, and there the readout is counting down that break, not focus (issue #580).
   var canSelectFocusPreset: Bool { isIdle && nextStartPhase == .focus }
 
+  /// `true` when Start would begin a focus phase, which attributes time to a task and so
+  /// requires one selected. Breaks (`.shortBreak` / `.longBreak`) run with no task.
+  var startRequiresTask: Bool { nextStartPhase == .focus }
+
   /// Focus-length presets to offer, ascending, in minutes.
   ///
   /// Mirrors `settings.focusPresets`, but prepends the current `focusMinutes` when it holds a

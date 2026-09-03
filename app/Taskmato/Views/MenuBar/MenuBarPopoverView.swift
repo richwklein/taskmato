@@ -31,7 +31,7 @@ struct MenuBarPopoverView: View {
       TimerControlsView(
         presenter: presenter,
         size: .compact,
-        startDisabled: activeTaskStore.activeTask == nil,
+        startDisabled: presenter.startRequiresTask && activeTaskStore.activeTask == nil,
         startDisabledHelp: AppLabels.Tooltip.selectTaskFirst
       )
       .padding(.top, .sectionGap)

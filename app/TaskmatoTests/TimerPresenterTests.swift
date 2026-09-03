@@ -391,4 +391,25 @@ struct TimerPresenterTests {
     #expect(!presenter.canStop)
     #expect(!presenter.canSkip)
   }
+
+  @Test func startRequiresTaskIsTrueWhenIdleWithNothingQueued() {
+    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    #expect(presenter.isIdle)
+    #expect(presenter.startRequiresTask)
+  }
+
+  @Test func startRequiresTaskIsTrueWhenFocusIsQueued() {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    engine.enqueuePhase(.focus)
+    #expect(presenter.startRequiresTask)
+  }
+
+  @Test(arguments: [SessionPhase.shortBreak, .longBreak])
+  func startRequiresTaskIsFalseWhenABreakIsQueued(queued: SessionPhase) {
+    let engine = SessionEngine()
+    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    engine.enqueuePhase(queued)
+    #expect(!presenter.startRequiresTask)
+  }
 }

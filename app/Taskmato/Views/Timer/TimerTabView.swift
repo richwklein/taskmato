@@ -26,7 +26,7 @@ struct TimerTabView: View {
       TimerControlsView(
         presenter: presenter,
         size: .regular,
-        startDisabled: activeTaskStore.activeTask == nil,
+        startDisabled: presenter.startRequiresTask && activeTaskStore.activeTask == nil,
         startDisabledHelp: AppLabels.Tooltip.selectTaskFirst
       )
       .padding(.top, 20)
