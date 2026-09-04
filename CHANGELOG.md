@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/richwklein/taskmato/compare/v1.4.0...v1.5.0) (2026-09-04)
+
+
+### Features
+
+* **session:** add session history import and export ([#607](https://github.com/richwklein/taskmato/issues/607)) ([0c7c567](https://github.com/richwklein/taskmato/commit/0c7c567a4d284aea986bb0ba4963c9f972d5864e))
+
+
+### Bug Fixes
+
+* **timer:** allow starting a break with no task selected ([#606](https://github.com/richwklein/taskmato/issues/606)) ([fb3dfe0](https://github.com/richwklein/taskmato/commit/fb3dfe0405ac2c336e02892ac90a22ab50631bb5))
+
 ## [1.4.0](https://github.com/richwklein/taskmato/compare/v1.3.0...v1.4.0) (2026-08-24)
 
 
