@@ -48,8 +48,8 @@ about — "how much did I focus, and on what" — is nearly free.
 
 - **Pro launches with real, shipped value from the first slice** that does not depend on any cloud provider.
 - **The single SKU is unchanged** — one `com.taskmato.provider.pro`, one purchase, restorable.
-- **Export is free; import and sync are Pro.** A user's own data is never held hostage; the paid
-  value is moving it *onto* other machines, and doing so automatically.
+- **Manual export and import are free; automatic sync and cloud providers are Pro.** A user's own
+  data is never held hostage; the paid value is automatic cross-device portability and providers.
 - **No server.** Sync uses Apple-hosted iCloud (CloudKit), consistent with ADR-0004's "no server, no
   expiry, no lapsed-user UX" principle.
 - Ported/synced Stats **render provider names and colors correctly** even when that provider is not
@@ -94,12 +94,12 @@ var isPro: Bool { … }
 `Transaction.updates` to observe). This is the seam that lets **import, sync, and providers** all
 gate on the same purchase without three separate checks.
 
-### D2 — Export is free; import and iCloud sync are Pro
+### D2 — Manual export/import are free; iCloud sync is Pro
 
 | Capability | Tier | Rationale |
 |------------|------|-----------|
 | **Export** the session log (JSON) | **Free** | Data is never hostage; App Review 3.1.1-clean; goodwill. |
-| **Import / merge** a log from another machine | **Pro** (Slice 1) | Moving data *onto* a machine is the paid convenience. |
+| **Import / merge** a log from another machine | **Free** (Slice 1) | Manual portability is available in every distribution. |
 | **Automatic iCloud sync** | **Pro** (Slice 2) | The hero feature — "everywhere, automatically." |
 | **Cloud providers** | **Pro** (Slice 3) | Unchanged from ADR-0004; joins the same unlock. |
 
@@ -110,9 +110,8 @@ The value story is "your data, everywhere" — not "pay to get your own data out
 The slices are a strict order, not a schedule. Each is a shippable increment that stands on its own;
 which milestone each lands in is a GitHub concern, not recorded here.
 
-1. **Slice 1 — Export/import.** File-based portability, and the foundation for the rest. Makes Pro
-   *buyable and useful* with zero cloud providers. Ships the entitlement generalization (D1), the free
-   JSON export, the Pro-gated import/merge (D5), and the provider-cosmetics snapshot (D4).
+1. **Slice 1 — Export/import.** Free file-based portability, and the foundation for the rest. Ships
+   the free JSON export and import/merge (D5), plus the provider-cosmetics snapshot (D4).
 2. **Slice 2 — iCloud sync.** Automatic portability via CloudKit (D6). The headline Pro feature.
    Depends on Slice 1's merge model and must land with App Store distribution (which is what makes
    StoreKit real). Does **not** depend on any provider.
@@ -217,7 +216,7 @@ and can land after the session log syncs. Tracked as its own issue, not a gate o
 | `app/Taskmato/Views/Stats/StatsViewModel.swift` | Prefer the snapshot; fall back to the live closure then raw-id/gray (D4) | 1 |
 | `app/Taskmato/Monetization/ProviderEntitlementStore.swift` (from #272) | Expose `isPro`; keep `isUnlocked(providerID)` as a convenience (D1) | 1 |
 | `app/Taskmato/Session/SessionPortability.swift` | **New** — versioned JSON export/import document + id-keyed merge (D5) | 1 |
-| `app/Taskmato/Views/Settings/…` | Export button (free); import button (Pro-gated) in Stats or Settings | 1 |
+| `app/Taskmato/Views/Settings/…` | Free export and import buttons in Settings | 1 |
 | `app/Taskmato/Session/Storage/SwiftDataSessionRepository.swift` | Drop `@Attribute(.unique)`; add the CloudKit `ModelConfiguration` for the App Store build (D6) | 2 |
 | `app/Taskmato/Session/Storage/SessionEntity.swift` | Confirm every property is CloudKit-legal (optional/defaulted) | 2 |
 | Entitlements / `Signing & Capabilities` | iCloud (CloudKit) container on the App Store build (crosses an AGENTS.md boundary — this doc is the proposal gate) | 2 |
@@ -235,11 +234,11 @@ left to GitHub; this table fixes only what each slice contains and in what order
 
 | Issue | Action |
 |-------|--------|
-| #272 ProviderEntitlement / StoreKit store | **Rework** — generalize to `isPro` capability gate (D1), not provider-only |
-| #273 Settings unlock card | **Rework** — card sells "Pro" framed around portability + sync + providers, not a provider list |
+| #272 ProviderEntitlement / StoreKit store | Keep provider gating for future cloud-provider value |
+| #273 Settings unlock card | Rework around automatic sync + providers, not manual portability |
 | #274 ASC product docs | Keep — single SKU setup unchanged |
 | #484 StoreKit/sandbox research | **Expand** — add CloudKit entitlement + iCloud container provisioning to the research scope |
-| **NEW — Export/import of the session log (JSON)** | Slice 1 feature: free export, Pro import/merge (D5) |
+| **NEW — Export/import of the session log (JSON)** | Slice 1 feature: free manual portability (D5) |
 | **NEW — Snapshot provider label + tint into the record** | Portability polish (D4); small, additive |
 
 ### Slice 2 — iCloud sync + App Store distribution
@@ -282,7 +281,7 @@ data, everywhere."** Concretely:
 | # | Question | Leaning |
 |---|----------|---------|
 | Q1 | Does Todoist (#275) ship with Slice 2's distribution launch, or does all of Slice 3 follow after? | Ship Todoist alongside Slice 2 to prove the provider path; defer the other five. |
-| Q2 | Import merge on `Session.id` collision — replace, or skip? | Replace via last-writer-wins by `endedAt` (D5), matching the sync rule. |
+| Q2 | Import merge on `Session.id` collision — replace, or skip? | Resolved: replace only when incoming `endedAt` is later; equal-time divergence is retained locally. |
 | Q3 | Snapshot label/tint per **segment**, or once per **session**? | Per segment — a phase can span providers after a swap (ADR-0009). |
 | Q4 | Dropping `@Attribute(.unique)` — any read path that assumes DB-level uniqueness? | None found; `upsert` fetches-by-id. Confirm in Slice 2 with a dupe-insert test. |
 | Q5 | Should settings sync (D8) be Pro-gated or free? | Open — leans free (it is not portability of the *data*, just preferences). |
@@ -297,9 +296,9 @@ data, everywhere."** Concretely:
   to gain CloudKit (mitigated — the upsert never relied on it). iCloud sync introduces the CloudKit
   dependency and an entitlement change — both AGENTS.md "stop and ask" boundaries, gated by this doc
   and ADR-0010.
-- **ADR.** [ADR-0010](../decisions/0010-pro-portability-capability-gate.md) records the reframe —
-  "Taskmato Pro is a portability capability gate; export is free, import and iCloud sync are Pro; the
-  single SKU unlocks a capability set delivered in three slices" — amending ADR-0004 (which keeps its
-  single-SKU decision intact).
+- **Amendment.** The approved Session History Import/Export implementation plan supersedes this
+  document's older Slice 1 import-paywall and domain-model-wire-format statements: manual export and
+  import are free, and V1 uses frozen portability DTOs. Automatic iCloud sync and cloud providers
+  remain future Pro value.
 </content>
 </invoke>

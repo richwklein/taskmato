@@ -52,7 +52,7 @@ nonisolated struct FocusSegment: Codable, Sendable, Identifiable, Equatable {
 }
 
 /// An immutable record of a single Pomodoro phase.
-nonisolated struct Session: Codable, Identifiable, Sendable {
+nonisolated struct Session: Codable, Identifiable, Sendable, Equatable {
 
   /// Stable unique identifier for this session record.
   let id: UUID

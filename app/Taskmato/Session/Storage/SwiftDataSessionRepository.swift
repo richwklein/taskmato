@@ -13,6 +13,14 @@ import SwiftData
 @ModelActor
 actor SwiftDataSessionRepository: SessionRepository {
 
+  private var preSaveHook: (@Sendable () throws -> Void)?
+
+  /// Installs a test-only hook that runs immediately before the next repository save.
+  /// - Parameter hook: A synchronous hook, or `nil` to restore normal saving.
+  func setPreSaveHook(_ hook: (@Sendable () throws -> Void)?) {
+    preSaveHook = hook
+  }
+
   func sessions(over interval: DateInterval) throws -> [Session] {
     let start = interval.start
     let end = interval.end
@@ -36,6 +44,43 @@ actor SwiftDataSessionRepository: SessionRepository {
       modelContext.insert(SessionEntity(session: session))
     }
     try modelContext.save()
+  }
+
+  func mergeImportedAtomically(_ sessions: [Session]) throws -> SessionMergeResult {
+    let descriptor = FetchDescriptor<SessionEntity>()
+    let existing = try modelContext.fetch(descriptor)
+    var localByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+    var result = SessionMergeResult()
+
+    do {
+      for session in sessions {
+        guard let local = localByID[session.id] else {
+          let entity = SessionEntity(session: session)
+          modelContext.insert(entity)
+          localByID[session.id] = entity
+          result.inserted += 1
+          continue
+        }
+
+        let localSession = Session(entity: local)
+        if session.endedAt > localSession.endedAt {
+          local.update(from: session)
+          result.updated += 1
+        } else if session.endedAt < localSession.endedAt {
+          result.skipped += 1
+        } else if session == localSession {
+          result.skipped += 1
+        } else {
+          result.conflicts += 1
+        }
+      }
+      try preSaveHook?()
+      try modelContext.save()
+      return result
+    } catch {
+      modelContext.rollback()
+      throw error
+    }
   }
 }
 

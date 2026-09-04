@@ -192,6 +192,50 @@ struct SwiftDataSessionRepositoryTests {
     #expect(session?.segments.isEmpty == true)
   }
 
+  @Test func zeroDurationLegacyFocusEntityDecodesToEmptySegments() async throws {
+    let container = try SwiftDataSessionRepository.makeInMemoryContainer()
+    let repository = SwiftDataSessionRepository(modelContainer: container)
+    let id = UUID()
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let legacyEntity = SessionEntity(
+      id: id, phase: .focus, startedAt: startedAt, endedAt: startedAt, wasCompleted: false,
+      segments: [], taskProviderID: "local", taskNativeID: "abc", taskTitle: "Zero duration")
+    let context = ModelContext(container)
+    context.insert(legacyEntity)
+    try context.save()
+
+    let session = try await repository.sessions(over: Self.allTime).first
+    #expect(session?.id == id)
+    #expect(session?.phase == .focus)
+    #expect(session?.startedAt == startedAt)
+    #expect(session?.endedAt == startedAt)
+    #expect(session?.wasCompleted == false)
+    #expect(session?.segments.isEmpty == true)
+  }
+
+  @Test func zeroDurationLegacyFocusEntityExportsWithEmptySegments() async throws {
+    let container = try SwiftDataSessionRepository.makeInMemoryContainer()
+    let repository = SwiftDataSessionRepository(modelContainer: container)
+    let id = UUID()
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let legacyEntity = SessionEntity(
+      id: id, phase: .focus, startedAt: startedAt, endedAt: startedAt, wasCompleted: false,
+      segments: [], taskProviderID: "local", taskNativeID: "abc", taskTitle: "Zero duration")
+    let context = ModelContext(container)
+    context.insert(legacyEntity)
+    try context.save()
+
+    let sessions = try await repository.sessions(over: Self.allTime)
+    let document = try SessionPortability.makeDocument(
+      sessions: sessions, exportedAt: Date(timeIntervalSinceReferenceDate: 1))
+    let encoded = try SessionPortability.encode(document)
+
+    #expect(encoded.isEmpty == false)
+    #expect(document.sessions.count == 1)
+    #expect(document.sessions.first?.id == id)
+    #expect(document.sessions.first?.segments.isEmpty == true)
+  }
+
   @Test func legacyBreakEntityWithStrayFlatFieldsDecodesToEmptySegments() async throws {
     let container = try SwiftDataSessionRepository.makeInMemoryContainer()
     let repository = SwiftDataSessionRepository(modelContainer: container)

@@ -25,4 +25,9 @@ protocol SessionRepository: Sendable {
   /// in-progress record, and the final write at phase end upserts over it.
   /// - Parameter session: The session to insert or update.
   func upsert(_ session: Session) async throws
+
+  /// Merges imported history in one storage transaction without deleting local records.
+  /// - Parameter sessions: Fully decoded and validated incoming sessions.
+  /// - Returns: The outcome counts for the completed merge.
+  func mergeImportedAtomically(_ sessions: [Session]) async throws -> SessionMergeResult
 }
