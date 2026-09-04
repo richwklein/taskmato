@@ -1,4 +1,4 @@
-# ADR-0010: Taskmato Pro is a portability capability gate — export free, import and sync Pro
+# ADR-0010: Taskmato Pro is a portability capability gate — manual portability free, sync Pro
 
 ## Status
 
@@ -38,15 +38,14 @@ level up.
    returning `isPro` for paid providers. Import, sync, and cloud providers all gate on the same
    purchase.
 
-2. **Export is free; import and iCloud sync are Pro.** Any user can export their own session log
-   (JSON) at any time — data is never hostage. Importing/merging a log from another machine, and
-   automatic iCloud sync, require Pro. The value is moving data *onto* machines, not extracting it.
+2. **Manual export and import are free; iCloud sync is Pro.** Any user can export or merge their own
+   session log (JSON) at any time — data is never hostage. Automatic iCloud sync and cloud providers
+   remain the paid convenience.
 
-3. **Pro ships in three value-ordered slices**, each independently shippable, in strict order:
-   **Slice 1** export/import, **Slice 2** iCloud sync, **Slice 3** cloud providers. (Slice 3 depends
-   only on Slice 1's entitlement gate, not on sync.) Pro is buyable and useful at Slice 1 with zero
-   providers; the provider roadmap no longer gates the launch. Milestone assignment is tracked in
-   GitHub, not here.
+3. **Pro ships in two remaining value-ordered slices**, each independently shippable, in strict order:
+   manual export/import, then **Slice 2** iCloud sync and **Slice 3** cloud providers. The manual
+   feature is free; Pro value begins with automatic sync and providers. Milestone assignment is
+   tracked in GitHub, not here.
 
 4. **Portability carries a provider-cosmetics snapshot.** `FocusSegment` gains optional
    `providerLabel` and `providerTint`, captured at slice close, so ported/synced Stats render real
@@ -80,6 +79,13 @@ level up.
   unchanged.
 
 ## More Information
+
+## Amendment — 2026-09-04
+
+The approved Session History Import/Export implementation plan supersedes the older Slice 1 boundary:
+both manual operations are free in every distribution, and the V1 JSON payload uses frozen portability
+DTOs instead of directly encoding the domain model. This does not alter the future Pro boundary for
+automatic CloudKit sync or cloud providers.
 
 - [Design doc 0011 — Taskmato Pro as a portability layer](../design/0011-taskmato-pro-portability.md)
   — full decision set (D1–D8), slice/issue plan, open questions.

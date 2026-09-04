@@ -4,7 +4,9 @@
 
 Accepted — 2026-05-29 (#339).
 
-Amended by [ADR-0010](0010-pro-portability-capability-gate.md) (2026-08-05): the single SKU is unchanged, but what it unlocks broadens from cloud providers to a portability capability set (export free; import and iCloud sync Pro).
+Amended by [ADR-0010](0010-pro-portability-capability-gate.md) (2026-08-05), then clarified by the
+approved Session History Import/Export plan (2026-09-04): the single SKU is unchanged, but manual
+session-history export and import are free. Automatic iCloud sync and cloud providers remain Pro value.
 
 ## Context
 

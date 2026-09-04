@@ -111,7 +111,8 @@ struct TaskmatoApp: App {
         settings: composition.settings,
         activeTaskStore: composition.activeTaskStore,
         registry: composition.registry,
-        notifications: composition.notifications
+        notifications: composition.notifications,
+        sessionPortabilityController: composition.sessionPortabilityController
       )
     }
     .windowResizability(.contentSize)

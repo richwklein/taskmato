@@ -24,6 +24,7 @@ struct AppComposition {
   /// only to the main window's Timer tab, never to the menu-bar popover.
   let nextUpPresenter: NextUpPresenter
   let store: SessionStore
+  let sessionPortabilityController: SessionPortabilityController
   let statsViewModel: StatsViewModel
   let activeTaskStore: ActiveTaskStore
   let registry: ProviderRegistry
@@ -90,6 +91,7 @@ struct AppComposition {
     self.nextUpPresenter = NextUpPresenter(
       presenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings)
     self.store = store
+    self.sessionPortabilityController = SessionPortabilityController(store: store)
     self.statsViewModel = statsViewModel
     self.activeTaskStore = activeTaskStore
     self.registry = registry

@@ -14,6 +14,7 @@ struct SettingsView: View {
   var activeTaskStore: ActiveTaskStore
   var registry: ProviderRegistry
   var notifications: NotificationService
+  var sessionPortabilityController: SessionPortabilityController
 
   var body: some View {
     Form {
@@ -106,6 +107,8 @@ struct SettingsView: View {
         .font(.caption)
         .foregroundStyle(.secondary)
       }
+
+      SessionDataSettingsSection(controller: sessionPortabilityController)
 
       Section("About") {
         Text("Version \(Bundle.main.appVersion) (\(Bundle.main.buildNumber))")
@@ -395,7 +398,8 @@ private struct FocusPresetsEditor: View {
       settings: AppSettings(),
       activeTaskStore: ActiveTaskStore(),
       registry: ProviderRegistry(),
-      notifications: NotificationService(settings: AppSettings())
+      notifications: NotificationService(settings: AppSettings()),
+      sessionPortabilityController: SessionPortabilityController(store: .seeded([]))
     )
   }
 #endif

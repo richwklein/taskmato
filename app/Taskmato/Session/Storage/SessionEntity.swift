@@ -126,10 +126,12 @@ extension Session {
   /// Otherwise synthesizes a single slice from the legacy flat fields spanning the whole
   /// duration (D6), scoped to focus phases only so a legacy break row's incidental flat fields
   /// never violate the "breaks carry no segments" invariant. A legacy row with no task recorded
-  /// resolves to `[]`.
+  /// or a non-positive duration resolves to `[]`.
   private nonisolated static func resolvedSegments(from entity: SessionEntity) -> [FocusSegment] {
     guard entity.segments.isEmpty else { return entity.segments }
     guard entity.phase == .focus else { return [] }
+    let seconds = entity.endedAt.timeIntervalSince(entity.startedAt)
+    guard seconds.isFinite, seconds > 0 else { return [] }
     guard let providerID = entity.taskProviderID, let nativeID = entity.taskNativeID else {
       return []
     }
@@ -137,7 +139,7 @@ extension Session {
     return [
       FocusSegment(
         id: UUID(), taskRef: ref, taskTitle: entity.taskTitle,
-        seconds: entity.endedAt.timeIntervalSince(entity.startedAt))
+        seconds: seconds)
     ]
   }
 }

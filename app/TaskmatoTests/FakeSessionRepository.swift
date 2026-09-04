@@ -28,4 +28,27 @@ final class FakeSessionRepository: SessionRepository {
       stored.append(session)
     }
   }
+
+  func mergeImportedAtomically(_ sessions: [Session]) async throws -> SessionMergeResult {
+    var proposed = stored
+    var result = SessionMergeResult()
+    for session in sessions {
+      if let index = proposed.firstIndex(where: { $0.id == session.id }) {
+        let local = proposed[index]
+        if session.endedAt > local.endedAt {
+          proposed[index] = session
+          result.updated += 1
+        } else if session.endedAt < local.endedAt || session == local {
+          result.skipped += 1
+        } else {
+          result.conflicts += 1
+        }
+      } else {
+        proposed.append(session)
+        result.inserted += 1
+      }
+    }
+    stored = proposed
+    return result
+  }
 }
