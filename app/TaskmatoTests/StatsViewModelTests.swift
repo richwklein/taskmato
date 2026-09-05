@@ -62,7 +62,7 @@ struct StatsViewModelTests {
     #expect(viewModel.statCards.taskBreakdown.isEmpty)
     #expect(viewModel.dailyFocusTotals.isEmpty)
     #expect(viewModel.providerBreakdown.isEmpty)
-    #expect(viewModel.allTaskRows.isEmpty)
+    #expect(viewModel.taskRows.isEmpty)
   }
 
   // MARK: - Single session
@@ -77,7 +77,7 @@ struct StatsViewModelTests {
     #expect(viewModel.currentStreak == 1)
     #expect(viewModel.statCards.focusCount == 1)
     #expect(viewModel.statCards.taskBreakdown.count == 1)
-    #expect(viewModel.allTaskRows.count == 1)
+    #expect(viewModel.taskRows.count == 1)
   }
 
   @Test func incompleteAndBreakSessionsIgnoredForFocus() async {
@@ -118,7 +118,7 @@ struct StatsViewModelTests {
     #expect(viewModel.statCards.taskBreakdown.first?.seconds == 720.0)
     #expect(viewModel.providerBreakdown.first?.seconds == 720)
     #expect(viewModel.dailyFocusTotals.first?.seconds == 720)
-    #expect(viewModel.allTaskRows.first?.totalSeconds == 720)
+    #expect(viewModel.taskRows.first?.totalSeconds == 720)
   }
 
   // MARK: - Multi-day window scoping
@@ -241,34 +241,6 @@ struct StatsViewModelTests {
     #expect(breakdown.map(\.label) == ["Reminders", "Obsidian", "Untracked"])
   }
 
-  @Test func allTaskRowsRankAndResolveProviderLabel() async {
-    let earlier = Self.fixedNoon(day: 100)
-    let later = Self.fixedNoon(day: 105)
-    let viewModel = await makeViewModel(
-      [
-        focus(
-          start: earlier, seconds: 1_800, provider: "reminders", nativeID: "a", title: "Task A"),
-        focus(start: later, seconds: 1_200, provider: "reminders", nativeID: "a", title: "Task A"),
-        focus(start: earlier, seconds: 900, provider: nil, title: nil),
-      ],
-      providerLabel: { ["reminders": "Reminders"][$0] ?? $0 })
-
-    viewModel.scope = .allTime
-    let rows = viewModel.allTaskRows
-    #expect(rows.count == 2)
-
-    let taskA = rows[0]
-    #expect(taskA.title == "Task A")
-    #expect(taskA.providerLabel == "Reminders")
-    #expect(taskA.totalSeconds == 3_000)
-    #expect(taskA.lastSessionDate == later.addingTimeInterval(20 * 60))
-
-    let untracked = rows[1]
-    #expect(untracked.title == "Untracked")
-    #expect(untracked.providerLabel == "—")
-    #expect(untracked.taskRef == nil)
-  }
-
   @Test func dailyFocusTotalsGroupByDayAndProvider() async {
     let dayOne = Self.fixedNoon(day: 200)
     let dayTwo = Self.fixedNoon(day: 201)
@@ -351,7 +323,7 @@ struct StatsViewModelTests {
     let totals = viewModel.dailyFocusTotals
     #expect(totals.first?.tint == .purple)
 
-    let rows = viewModel.allTaskRows
+    let rows = viewModel.taskRows
     #expect(rows.first?.providerLabel == "Obsidian")
   }
 
@@ -444,7 +416,7 @@ struct StatsViewModelTests {
       providerLabel: { ["local": "Local", "reminders": "Reminders"][$0] ?? $0 })
     viewModel.scope = .allTime
 
-    let rows = viewModel.allTaskRows
+    let rows = viewModel.taskRows
     #expect(rows.map(\.title) == ["Short", "Shorter"])
     #expect(rows.map(\.totalSeconds) == [45, 20])
 

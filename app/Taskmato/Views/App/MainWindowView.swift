@@ -115,7 +115,7 @@ struct MainWindowView: View {
         refreshToken: taskAddedToken
       )
     case .stats:
-      StatsTabView(statsViewModel: statsViewModel)
+      StatsTabView(statsViewModel: statsViewModel, settings: settings)
     }
   }
 

@@ -197,6 +197,11 @@ extension SettingsStore {
     static let collapsedSidebarSections = SettingsKey(
       "sidebar.collapsedSections", default: Set<String>())
 
+    // MARK: Stats
+
+    static let statsHistoryFooterDismissed = SettingsKey(
+      "stats.historyFooterDismissed", default: false)
+
     // MARK: Provider registry
 
     static let enabledProviderIDs = SettingsKey(
