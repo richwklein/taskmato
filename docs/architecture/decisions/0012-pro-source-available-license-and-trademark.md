@@ -2,7 +2,20 @@
 
 ## Status
 
-Accepted — 2026-09-05 (#575).
+Accepted — 2026-09-05 (#575). The MIT core, the FSL `app/Taskmato/Pro/` subtree, the one-way
+dependency rule, and the trademark reservation all stand.
+
+**Amended 2026-09-05 by [ADR-0013](0013-plan-capabilities-independently-of-releases.md):** this
+record's premise that *import/portability gating is the capability Pro launches with* is superseded.
+Manual session-history export and import/merge are free in every distribution and stay in the MIT
+core; there is no import gate to protect. The paid capabilities that motivate the FSL subtree are the
+entitlement itself, automatic session sync, and future cloud providers. Read the Context section's
+import-gating argument and the "any import-gating logic follows the same rule" consequence as
+historical framing; the license, subtree boundary, SPDX-header, and trademark decisions are unchanged.
+Likewise, "sync and cloud providers only function in the App Store build" describes Taskmato's
+distribution policy, not a technical limit on iCloud in Developer ID software; #542 owns testing both
+signed artifacts. The Apple-channel half of the moat is a policy choice, so the FSL subtree carries
+correspondingly more of the protection.
 
 Amends neither [ADR-0004](0004-single-pro-iap.md) nor [ADR-0010](0010-pro-portability-capability-gate.md) —
 both keep their SKU and capability decisions intact. This ADR settles a question neither covered: how the
@@ -151,5 +164,3 @@ Options considered:
 - [Debian–Mozilla trademark dispute](https://en.wikipedia.org/wiki/Mozilla_software_rebranded_by_Debian) —
   the Firefox/Iceweasel precedent for trademark-as-moat over an open code license.
 - `docs/how-to/sandbox-entitlements.md` — current StoreKit stub status; #272 scope.
-</content>
-</invoke>

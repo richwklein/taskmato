@@ -2,7 +2,12 @@
 
 ## Status
 
-Proposed 2026-07-19. Targeted at the 0.9.0 milestone.
+Proposed 2026-07-19; implemented. Distilled into [ADR-0007](../decisions/0007-window-first-shell.md).
+
+**Archival note (2026-09-05):** milestone and release numbers in this document are the historical
+schedule; the work described here has shipped. Read them as a record, not as instructions. Planning
+follows [ADR-0013](../decisions/0013-plan-capabilities-independently-of-releases.md): capabilities,
+dependencies, and readiness criteria, with scheduling in GitHub.
 
 - Supersedes decisions 1, 4, and 5 of [design doc 0003](0003-main-window-navigation.md).
 - Amends D6 of [design doc 0006](0006-stats-view-model.md) (stats sidebar deferral).
@@ -194,7 +199,7 @@ line covers the behavior flip.
 > launch: with a single pre-1.0 install, orphaned keys are harmless and the cleanup code is
 > not worth carrying.
 
-### D10 — Sequencing: 0.9.0, five slices
+### D10 — Sequencing: five slices
 
 The shell lands in 0.9.0 alongside its already-slated companions (the #403–#416
 architecture pass, #404, #405). Tracking issues #442–#446 were filed for the slices

@@ -2,7 +2,16 @@
 
 ## Status
 
-Proposed — 2026-07-19. Targeted at the 0.9.0 milestone. Distills [design doc 0008](../design/0008-window-first-shell.md), which carries the full decision set and implementation plan. Generalizes (does not supersede) [ADR-0003](0003-navigation-split-view-sidebar.md). Supersedes the two-surface model explored in [#293](https://github.com/richwklein/taskmato/issues/293).
+Proposed — 2026-07-19. Distills [design doc 0008](../design/0008-window-first-shell.md), which carries the full decision set and implementation plan. Generalizes (does not supersede) [ADR-0003](0003-navigation-split-view-sidebar.md). Supersedes the two-surface model explored in [#293](https://github.com/richwklein/taskmato/issues/293).
+
+**Implementation status (2026-09-05, not a status change):** the window-first shell shipped — the
+window is the primary surface, the menu bar extra is a slim companion, and the primacy-management
+code named in Consequences is gone. Two deviations are recorded for readers: the optional
+"Hide Dock icon" setting in the Decision was **not** implemented and was dropped (activation-policy
+switching caused open/focus defects), and the five-slice sequencing note is historical scheduling.
+This record stays `Proposed` until its acceptance is decided explicitly; per
+[ADR-0013](0013-plan-capabilities-independently-of-releases.md), acceptance is not inferred from an
+implementation, and active planning text carries no release numbers.
 
 ## Context
 
@@ -30,4 +39,4 @@ Selection is modeled by a view-layer `AppDestination` enum owned by `MainNavigat
 - The popover loses its full feature set by design; users who lived popover-only lose capability there and gain it in the window one click away.
 - Persisted navigation state starts clean (new keys, new defaults, no migration) — acceptable pre-1.0.
 - Design docs 0003 (decisions 1, 4, 5) and 0006 (D6) are superseded/amended as recorded in design doc 0008; future work that reintroduces a second primary surface or a second navigation root must supersede this ADR.
-- Implementation lands in five slices in 0.9.0 per design doc 0008 D10, with `TimerPresenter` (#405) as a hard prerequisite.
+- Implementation lands in five slices per design doc 0008 D10, with `TimerPresenter` (#405) as a hard prerequisite. (Historical sequencing; the slices have shipped.)

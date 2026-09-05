@@ -36,6 +36,31 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: access
+    attributes:
+      label: Access
+      description: >-
+        Is this capability free, part of Taskmato Pro, or not yet decided? See
+        ADR-0013 (docs/architecture/decisions/0013-plan-capabilities-independently-of-releases.md).
+      options:
+        - Free
+        - Pro
+        - Undecided
+        - Not applicable
+      default: 2
+    validations:
+      required: true
+
+  - type: input
+    id: governing-decision
+    attributes:
+      label: Governing decision
+      description: The ADR, design doc, or issue that governs this work. Use "None" if there is none yet.
+      placeholder: e.g. ADR-0013, design 0011, #540
+    validations:
+      required: true
+
   - type: textarea
     id: in-scope
     attributes:
@@ -66,6 +91,21 @@ body:
       placeholder: |
         - [ ] ...
         - [ ] ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and readiness
+      description: >-
+        What must be true before this can start, and what signals it is ready to ship? Describe
+        prerequisites and observable criteria — not a release number. GitHub milestones schedule
+        the work; release notes record what shipped.
+      placeholder: |
+        - Blocked by: #...
+        - Blocks: #...
+        - Ready when: ...
     validations:
       required: false
 

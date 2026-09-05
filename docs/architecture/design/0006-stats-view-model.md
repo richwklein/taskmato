@@ -3,6 +3,11 @@
 ## Status
 
 Proposed 2026-06-06. Tracks the 0.8.0 stats expansion across issues [#400](https://github.com/richwklein/taskmato/issues/400), [#401](https://github.com/richwklein/taskmato/issues/401), [#270](https://github.com/richwklein/taskmato/issues/270), [#271](https://github.com/richwklein/taskmato/issues/271), and [#402](https://github.com/richwklein/taskmato/issues/402). Issue [#268](https://github.com/richwklein/taskmato/issues/268) is closed as superseded by #401.
+**Archival note (2026-09-05):** milestone and release numbers in this document are the historical
+schedule; the work described here has shipped. Read them as a record, not as instructions. Planning
+follows [ADR-0013](../decisions/0013-plan-capabilities-independently-of-releases.md): capabilities,
+dependencies, and readiness criteria, with scheduling in GitHub.
+
 
 ## Background
 

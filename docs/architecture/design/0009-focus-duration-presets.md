@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed 2026-08-03. Targets the **1.1.0** milestone, tracked by
+Proposed 2026-08-03; implemented. Tracked by
 [#516](https://github.com/richwklein/taskmato/issues/516). This document is the review artifact
 that precedes the ADR/issue split; all open questions are resolved (see [Decisions](#decisions)
 and [Resolved questions](#resolved-questions)).

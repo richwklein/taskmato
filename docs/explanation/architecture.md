@@ -1,86 +1,98 @@
 # Architecture overview
 
-Taskmato is a native macOS menu bar Pomodoro timer with pluggable task providers. This document explains the high-level component structure and how the pieces fit together. Load-bearing decisions have their own ADRs under [`../architecture/decisions/`](../architecture/decisions/).
+Taskmato is a native macOS focus timer with a primary application window, a compact menu bar
+companion, and pluggable task providers. ADRs under [`../architecture/decisions/`](../architecture/decisions/)
+record the decisions; historical proposals are not a description of the current app.
 
-## Components
+## Composition and sessions
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ TaskmatoApp (SwiftUI @main + AppDelegate)                        │
-│   composes services and scenes                                   │
-└──────────────────────────────────────────────────────────────────┘
-       │              │              │              │
-       ▼              ▼              ▼              ▼
-┌────────────┐ ┌────────────┐ ┌────────────────┐ ┌────────────┐
-│ Session    │ │ Task       │ │ Notification & │ │ URL Scheme │
-│ Engine +   │ │ Registry + │ │ Sound Services │ │ Handler    │
-│ Store      │ │ Providers  │ │                │ │            │
-└────────────┘ └────────────┘ └────────────────┘ └────────────┘
-                     │
-       ┌─────────────┼──────────────┐
-       ▼             ▼              ▼
-┌────────────┐ ┌────────────┐ ┌────────────────┐
-│ Local      │ │ Obsidian   │ │ Reminders      │
-│ Provider   │ │ Provider   │ │ Provider       │
-│ (JSON)     │ │ (FSEvents) │ │ (EventKit)     │
-└────────────┘ └────────────┘ └────────────────┘
-```
+`AppComposition` wires repositories, providers, navigation, task selection, session orchestration,
+and services. `TaskmatoApp` composes the scenes; `AppDelegate` handles application activation.
 
-## Session engine
+`SessionEngine` owns phase timing and transitions. `PhaseOrchestrator` connects engine events to
+persistence, notifications, and task attribution. `FocusAttribution` partitions a phase into task
+segments. A phase remains one session: completed phases count toward pomodoros, while eligible
+partial phases still contribute focus time. See [ADR-0009](../architecture/decisions/0009-focus-time-attribution-and-session-credit.md).
 
-`SessionEngine` owns the Pomodoro state machine: focus phase, short break, long break, paused, idle. State transitions are time-based using wall-clock timestamps rather than ticking counters, so the timer survives sleep/wake and app relaunch. The engine emits events that drive UI updates and trigger notifications.
-
-`SessionStore` is the stats source of truth: every completed phase is appended as a `Session` record with the originating `TaskRef`, providing the raw data for the Stats view.
+`SessionStore` coordinates the session repository; Stats derives its summaries from saved records.
+Historical task titles and optional provider snapshots let records render without their live provider.
 
 ## Task providers
 
-Task sources are pluggable via a protocol hierarchy. Each layer adds capability:
+Providers opt into capabilities through four protocol tiers:
 
-- `TaskProvider` — read-only: list lists, list tasks, observe live updates.
-- `ClosableTaskProvider: TaskProvider` — adds `complete`, `reopen`, and `completedTasks()` for the "View Completed" affordance (default impl returns empty).
-- `WritableTaskProvider: ClosableTaskProvider` — adds `addTask`, `defaultListID`, list CRUD, and `deleteTask`.
+- `TaskProvider`: reading lists/tasks and observing updates.
+- `ClosableTaskProvider`: completion, reopening, and completed-task retrieval.
+- `WritableTaskProvider`: task creation, updates, deletion, and default-list selection.
+- `WritableListProvider`: list creation, renaming, and deletion.
 
-`TaskRegistry` holds the active set; providers can be enabled, disabled, and scoped to specific lists per provider. See [ADR-0001](../architecture/decisions/0001-pluggable-task-providers.md) for the rationale behind protocol layering over a single fat protocol.
+Local owns list lifecycle and implements the full hierarchy. Reminders and Obsidian support task
+writes while leaving calendar/note lifecycle in their source applications. See
+[ADR-0011](../architecture/decisions/0011-list-management-protocol-split.md).
 
-Built-in providers:
+`ProviderRegistry` owns provider lifecycle and list caches. `TaskQueryService` handles query fan-out,
+`TaskSorter` orders results, and `SelectionStore` holds task scope. There is no `TaskRegistry` façade;
+see [ADR-0008](../architecture/decisions/0008-split-task-registry.md).
+`TaskDestinationResolver` resolves creation destinations and uses `DefaultListResolver` for consistent
+list fallback. `ActiveTaskStore` separates the current tracked task from the single staged next task.
 
-- **`LocalProvider`** — JSON file in App Support, fully writable.
-- **`ObsidianProvider`** — parses [obsidian-tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) emoji syntax from a security-scoped vault bookmark; live updates via FSEvents.
-- **`RemindersProvider`** — EventKit; live updates via `EKEventStoreChangedNotification`.
+## Application surfaces
 
-## UI shell
+The primary window uses one root `NavigationSplitView` and `MainNavigation` destinations for Timer,
+task lists/Today, and Stats scopes. The menu bar is a slim companion. Settings contains app
+preferences, provider configuration, and free session-history import/export. The old tabbed shell
+is historical; [ADR-0007](../architecture/decisions/0007-window-first-shell.md) records the window design.
 
-- **`MenuBarExtra`** popover — compact timer with quick controls, queued-phase preview, "Open Taskmato" button.
-- **Main window** — three-tab interface:
-  - **Timer** — large circular timer with full transport controls and the active task label.
-  - **Tasks** — `NavigationSplitView` with a provider sidebar (provider enable/disable, list visibility, default list, list CRUD where supported) and a picker pane holding a natively selectable task list and an inline completed-tasks section. See [ADR-0003](../architecture/decisions/0003-navigation-split-view-sidebar.md).
-  - **Stats** — Swift Charts visualisations driven by `SessionStore` aggregations.
-- **Settings** — app preferences, provider configuration, list management.
+External activation and task creation enter through `AppDelegate` and the URL-scheme handler.
+The `taskmato://` surface resolves provider/list intent before creating or selecting tasks.
 
-The popover and main window are independent scenes; the popover is driven by `MenuBarExtra` while the main window is opened via `openWindow(id: "main")`. URL events (`taskmato://`) route through `AppDelegate` + `NotificationCenter` rather than `.onOpenURL` on `MenuBarExtra` — see the in-code rationale and the URL scheme memory in `~/.claude/projects/.../memory/`.
+## Persistence and manual portability
 
-## Persistence
+- Session history uses `SwiftDataSessionRepository` behind its repository protocol.
+- Local tasks/lists use `SwiftDataLocalTaskRepository`. A one-shot migrator preserves legacy
+  `local-tasks.json` data and archives the input; JSON repository removal is tracked by #414.
+- App preferences use `UserDefaults` through `AppSettings`.
+- Obsidian tasks remain in user-selected markdown files accessed through security-scoped bookmarks.
 
-JSON file persistence under App Support is the MVP storage layer (Codable models, `Data(utf8).write(options:[])` to handle the sandbox non-atomic write quirk). Core Data is an explicit future option once stats querying outgrows the JSON layer. See [ADR-0002](../architecture/decisions/0002-json-persistence-mvp.md).
+[ADR-0002](../architecture/decisions/0002-json-persistence-mvp.md) is the original JSON decision;
+its status records the session and local-task amendments.
 
-## Distribution
+Manual session-history export and import are free in every distribution. The format uses frozen
+DTOs with an independent schema version. Import validates and previews the entire file, then merges
+atomically by session ID on confirmation. Later incoming end times replace local records; equal-time
+divergence retains local. Provider setup, secrets, bookmarks, settings, recent tasks, and timer state
+are excluded. See [design 0011](../architecture/design/0011-taskmato-pro-portability.md).
 
-Taskmato distributes as a Developer ID-signed and notarized DMG via the `make release` pipeline (lands at 1.0.0). The Xcode project already enables hardened runtime and app sandbox via Xcode 16 capability flags (`ENABLE_APP_SANDBOX`, `ENABLE_HARDENED_RUNTIME`), so the same binary configuration supports both Developer ID and Mac App Store paths — what differs is the signing identity and the App Store Connect record. App Store distribution lands at 1.3.0 alongside the Pro IAP. See [ADR-0006](../architecture/decisions/0006-developer-id-distribution.md).
+## Distribution, access, and licensing
 
-## Monetization
+The Developer ID channel ships a signed, notarized DMG. The free Mac App Store launch is a separate
+archive/upload, listing, and validation effort (#285, #570, #569); it does not depend on Pro.
+Both channels include existing free functionality, including manual import/export.
 
-A single "Taskmato Pro" non-consumable IAP unlocks all cloud providers (Todoist, Linear, Notion, TickTick, Google Tasks, GitHub Issues). Free providers (Local, Obsidian, Reminders, Things 3) stay free. No subscription. See [ADR-0004](../architecture/decisions/0004-single-pro-iap.md).
+Automatic session-history sync and cloud providers are planned Pro capabilities under one
+non-consumable purchase. Things 3 is planned as free; settings-sync access remains undecided.
+Pro is planned for the App Store build. This is product policy, not proof that CloudKit cannot work
+with Developer ID signing. #542 owns actual artifact validation.
+
+[ADR-0013](../architecture/decisions/0013-plan-capabilities-independently-of-releases.md) is the current
+access/distribution authority. [ADR-0012](../architecture/decisions/0012-pro-source-available-license-and-trademark.md)
+records the MIT core, future FSL Pro subtree, and trademark reservation. Free portability remains
+in the core. Restricted implementations consume core protocols without making core code reference
+concrete Pro types.
 
 ## What lives where
 
 | Concern | Path |
-|---------|------|
-| App entry point + composition | `app/Taskmato/TaskmatoApp.swift` |
-| Session engine + store | `app/Taskmato/Session/` |
-| Task provider protocols + registry | `app/Taskmato/Tasks/` |
-| Built-in providers | `app/Taskmato/Tasks/{Local,Obsidian,Reminders}/` |
+| --- | --- |
+| Entry point, composition, activation | `app/Taskmato/TaskmatoApp.swift`, `AppComposition.swift`, `AppDelegate.swift` |
+| Timer, attribution, session storage, portability | `app/Taskmato/Session/` |
+| Provider protocols, queries, selection, destination resolution | `app/Taskmato/Tasks/`, `Tasks/Registry/` |
+| Built-in provider implementations | `app/Taskmato/Tasks/{Local,Obsidian,Reminders}/` |
 | URL scheme | `app/Taskmato/Tasks/URLScheme/` |
-| UI shell | `app/Taskmato/MainWindow/`, `app/Taskmato/Views/` |
-| Settings | `app/Taskmato/Settings/` |
-| Notifications + sound | `app/Taskmato/Notifications/` |
+| Window, menu bar, timer, task, Stats, and Settings views | `app/Taskmato/Views/` |
+| App preferences, task tracking, notifications | `app/Taskmato/Services/` |
+| Future restricted Pro implementations | `app/Taskmato/Pro/` |
 | Unit tests | `app/TaskmatoTests/` |
+
+Scheduling belongs in GitHub. Architecture and issue acceptance criteria describe capabilities and
+readiness conditions without assigning Taskmato release numbers.
