@@ -25,6 +25,16 @@ updates:
     open-pull-requests-limit: 20
     labels:
       - 'dependencies'
+    ignore:
+      # `typescript` majors are capped by two separate dev dependencies:
+      #   typescript-eslint -> typescript >=4.8.4 <6.1.0   (breaks `lint`)
+      #   @astrojs/check    -> typescript ^5.0.0 || ^6.0.0 (breaks `build`)
+      # TS 7.0 also ships no programmatic compiler API, so typescript-eslint
+      # refuses to load against it; a new API is expected in TS 7.1.
+      # Lift this entry only once BOTH constraints have widened.
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
     groups:
       astro:
         patterns:
@@ -35,6 +45,8 @@ updates:
           - 'eslint*'
           - '@eslint/*'
           - '*eslint-plugin*'
+          - 'typescript-eslint'
+          - '@typescript-eslint/*'
       prettier:
         patterns:
           - 'prettier*'
@@ -44,7 +56,7 @@ updates:
           - '@tailwindcss/*'
       typescript:
         patterns:
-          - 'typescript*'
+          - 'typescript'
       vitest:
         patterns:
           - 'vitest'
@@ -59,6 +71,8 @@ updates:
           - 'prettier*'
           - 'tailwindcss'
           - '@tailwindcss/*'
-          - 'typescript*'
+          - 'typescript'
+          - 'typescript-eslint'
+          - '@typescript-eslint/*'
           - 'vitest'
           - '@vitest/*'
