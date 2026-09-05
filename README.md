@@ -43,4 +43,10 @@ Stats are computed from the persisted session log — never manually incremented
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+The code is **MIT** — see [`LICENSE`](LICENSE) — with one carve-out: the paid **Taskmato Pro** subtree at
+`app/Taskmato/Pro/` (added when the entitlement store lands) is source-available under the
+[Functional Source License](https://fsl.software/) and converts to MIT two years after publication.
+
+"Taskmato", the name, and the app icon are **trademarks** of Richard Klein, reserved independently of the code
+license — see [`TRADEMARKS.md`](TRADEMARKS.md). The full rationale is in
+[ADR-0012](docs/architecture/decisions/0012-pro-source-available-license-and-trademark.md).

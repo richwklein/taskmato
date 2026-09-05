@@ -8,6 +8,10 @@ Amended by [ADR-0010](0010-pro-portability-capability-gate.md) (2026-08-05), the
 approved Session History Import/Export plan (2026-09-04): the single SKU is unchanged, but manual
 session-history export and import are free. Automatic iCloud sync and cloud providers remain Pro value.
 
+Complemented by [ADR-0012](0012-pro-source-available-license-and-trademark.md) (2026-09-05), which settles
+how the repository's MIT license interacts with this paid tier (Pro subtree source-available; name and icon
+reserved by trademark).
+
 ## Context
 
 Cloud-backed task providers (Todoist, Linear, Notion, TickTick, Google Tasks, GitHub Issues) carry ongoing maintenance cost: OAuth flows, API surface drift, rate-limit handling. The free providers (Local, Obsidian, Reminders, Things 3) are local-only and stable.
