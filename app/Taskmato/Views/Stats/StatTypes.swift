@@ -69,6 +69,25 @@ struct DayTotal: Identifiable {
   var id: String { "\(day.timeIntervalSinceReferenceDate):\(providerID)" }
 }
 
+/// One calendar week's focus contribution from a single provider, used in the all-time chart.
+struct WeekTotal: Identifiable {
+
+  /// Start of the calendar week in the user's current calendar and time zone.
+  let week: Date
+
+  /// Provider that owns the focus time, or `"__untracked__"` when no task was selected.
+  let providerID: String
+
+  /// Semantic color of the owning provider, used for the stacked segment.
+  let tint: ProviderTint
+
+  /// Focus seconds attributed to this provider in this week.
+  let seconds: TimeInterval
+
+  /// Stable identity combining the week and provider.
+  var id: String { "\(week.timeIntervalSinceReferenceDate):\(providerID)" }
+}
+
 /// A provider's aggregate share of focus time within the current scope/period.
 struct ProviderSlice: Identifiable {
 
@@ -88,8 +107,8 @@ struct ProviderSlice: Identifiable {
   var id: String { providerID }
 }
 
-/// A row in the All Time sortable task table.
-nonisolated struct AllTimeTaskRow: Identifiable, Sendable {
+/// A row in the sortable task table shown beneath every scope's chart.
+nonisolated struct StatsTaskRow: Identifiable, Sendable {
 
   /// The task this row aggregates, or `nil` for untracked focus time.
   let taskRef: TaskRef?
@@ -100,10 +119,10 @@ nonisolated struct AllTimeTaskRow: Identifiable, Sendable {
   /// Human-readable provider name, or `"—"` for untracked focus time.
   let providerLabel: String
 
-  /// Total focus seconds across every session attributed to this task.
+  /// Total focus seconds attributed to this task within the current scope.
   let totalSeconds: TimeInterval
 
-  /// When the most recent session for this task ended.
+  /// When the task's most recent session within the current scope ended.
   let lastSessionDate: Date
 
   /// Stable identity derived from the task reference, falling back to the title.

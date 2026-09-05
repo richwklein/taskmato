@@ -145,7 +145,7 @@ struct AppComposition {
   private static func makeStatsViewModel(
     store: SessionStore, registry: ProviderRegistry
   ) -> StatsViewModel {
-    StatsViewModel(
+    let statsViewModel = StatsViewModel(
       store: store,
       providerLabel: { [registry] providerID in
         registry.providers.first { $0.id.rawValue == providerID }?.displayName ?? providerID
@@ -153,6 +153,8 @@ struct AppComposition {
       providerTint: { [registry] providerID in
         registry.providers.first { $0.id.rawValue == providerID }?.tint ?? .gray
       })
+    statsViewModel.startObservingTemporalChanges()
+    return statsViewModel
   }
 
   /// Revalidates the sidebar selection, reconciles the task-scope destination, and reconciles

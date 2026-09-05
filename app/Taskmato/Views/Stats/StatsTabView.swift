@@ -8,19 +8,26 @@ import SwiftUI
 /// The statistics tab shown in the main application window.
 ///
 /// The scope is chosen from the sidebar's Stats section (which sets ``StatsViewModel/scope``);
-/// for every scope except All Time this view shows period back/forward navigation. Each scope
-/// renders its own visualisation — a task donut (Today), a stacked daily bar chart with a
-/// ranked task list (7 Days / This Month), or a sortable all-time task table. All data is
-/// derived from ``StatsViewModel``.
+/// for every scope except All Time this view shows period back/forward navigation. Every scope
+/// shares the same shell — stat cards, then the scope's own chart (a task donut for Today, a
+/// stacked daily bar chart for 7 Days / This Month, the weekly chart for All Time), then the
+/// same ``StatsTaskTable``. All data is derived from ``StatsViewModel``.
 struct StatsTabView: View {
 
   @Bindable var statsViewModel: StatsViewModel
+
+  /// Persists the one-time dismissal of the session-history footer.
+  var settings: AppSettings
+
+  @State private var weeklyChartViewportState = WeeklyChartViewportState()
 
   var body: some View {
     VStack(spacing: 0) {
       navigationRow
       content
+      if !settings.statsHistoryFooterDismissed { historyFooter }
     }
+    .onAppear { statsViewModel.refreshTemporalContext() }
   }
 
   // MARK: - Content
@@ -43,27 +50,24 @@ struct StatsTabView: View {
     }
   }
 
-  @ViewBuilder
+  /// One scroll region for every scope: stat cards, the scope's chart, then the task table.
+  ///
+  /// The table lays out at its intrinsic height inside this scroll view rather than scrolling
+  /// itself, so the page never nests a second scroller.
   private func scopeContent(_ summary: SessionSummary) -> some View {
-    switch statsViewModel.scope {
-    case .allTime:
+    ScrollView {
       VStack(alignment: .leading, spacing: .sectionGap) {
-        statGrid(summary).padding([.horizontal, .top])
-        AllTimeTaskTable(rows: statsViewModel.allTaskRows)
+        statGrid(summary)
+        scopeChart(summary)
+        let rows = statsViewModel.taskRows
+        if !rows.isEmpty { StatsTaskTable(rows: rows) }
       }
-    default:
-      ScrollView {
-        VStack(alignment: .leading, spacing: .sectionGap) {
-          statGrid(summary)
-          scopeCharts(summary)
-        }
-        .padding()
-      }
+      .padding()
     }
   }
 
   @ViewBuilder
-  private func scopeCharts(_ summary: SessionSummary) -> some View {
+  private func scopeChart(_ summary: SessionSummary) -> some View {
     switch statsViewModel.scope {
     case .today:
       if !summary.taskBreakdown.isEmpty {
@@ -73,12 +77,43 @@ struct StatsTabView: View {
       DailyBarChart(
         totals: statsViewModel.dailyFocusTotals,
         providers: statsViewModel.providerBreakdown)
-      if !summary.taskBreakdown.isEmpty {
-        RankedTaskList(slices: summary.taskBreakdown)
-      }
     case .allTime:
-      EmptyView()
+      WeeklyBarChart(
+        totals: statsViewModel.weeklyFocusTotals,
+        providers: statsViewModel.weeklyFocusProviders,
+        calendar: statsViewModel.currentCalendar,
+        now: statsViewModel.currentDate,
+        viewportState: $weeklyChartViewportState)
     }
+  }
+
+  // MARK: - History footer
+
+  /// A one-time pointer to session import/export, dismissed permanently by the close button.
+  ///
+  /// The capability itself stays in Settings, so dismissing only retires the nudge.
+  private var historyFooter: some View {
+    HStack(spacing: .contentGap) {
+      SettingsLink {
+        Text("Import or export session history in Settings…")
+          .multilineTextAlignment(.center)
+      }
+      .buttonStyle(.link)
+
+      Button {
+        settings.statsHistoryFooterDismissed = true
+      } label: {
+        Image(systemName: "xmark")
+          .imageScale(.small)
+      }
+      .buttonStyle(.borderless)
+      .foregroundStyle(.secondary)
+      .help("Dismiss")
+      .accessibilityLabel("Dismiss")
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.horizontal)
+    .padding(.vertical, .contentGap)
   }
 
   // MARK: - Period navigation
@@ -169,26 +204,26 @@ struct StatsTabView: View {
 
 #if DEBUG
   #Preview("Today") {
-    StatsTabView(statsViewModel: .previewSeeded)
+    StatsTabView(statsViewModel: .previewSeeded, settings: AppSettings())
       .frame(width: 420, height: 560)
   }
 
   #Preview("7 Days") {
     let viewModel = StatsViewModel.previewSeeded
     viewModel.scope = .thisWeek
-    return StatsTabView(statsViewModel: viewModel)
+    return StatsTabView(statsViewModel: viewModel, settings: AppSettings())
       .frame(width: 420, height: 560)
   }
 
   #Preview("All Time") {
     let viewModel = StatsViewModel.previewSeeded
     viewModel.scope = .allTime
-    return StatsTabView(statsViewModel: viewModel)
+    return StatsTabView(statsViewModel: viewModel, settings: AppSettings())
       .frame(width: 420, height: 560)
   }
 
   #Preview("Empty") {
-    StatsTabView(statsViewModel: .preview)
+    StatsTabView(statsViewModel: .preview, settings: AppSettings())
       .frame(width: 420, height: 560)
   }
 #endif

@@ -21,6 +21,17 @@ final class StatsViewModel {
   private let store: SessionStore
   private let providerLabel: (String) -> String
   private let providerTint: (String) -> ProviderTint
+  private let calendarProvider: () -> Calendar
+  private let nowProvider: () -> Date
+
+  /// Calendar snapshot shared by every Stats calculation until the next temporal refresh.
+  private var calendar: Calendar
+
+  /// Clock snapshot shared by every Stats calculation until the next temporal refresh.
+  private var now: Date
+
+  /// Retains the notification observers that invalidate the snapshots above.
+  private var temporalObserver: StatsTemporalObserver?
 
   /// The full session log, oldest-first; the source for every derived value.
   private var sessions: [Session] { store.sessions }
@@ -38,14 +49,22 @@ final class StatsViewModel {
   ///   - store: The session log to aggregate.
   ///   - providerLabel: Resolves a `providerID` to a display name; defaults to the raw ID.
   ///   - providerTint: Resolves a `providerID` to a display color; defaults to ``ProviderTint/gray``.
+  ///   - calendarProvider: Supplies the user's current calendar for deterministic time tests.
+  ///   - nowProvider: Supplies the current date for deterministic time tests.
   init(
     store: SessionStore,
     providerLabel: @escaping (String) -> String = { $0 },
-    providerTint: @escaping (String) -> ProviderTint = { _ in .gray }
+    providerTint: @escaping (String) -> ProviderTint = { _ in .gray },
+    calendarProvider: @escaping () -> Calendar = { .current },
+    nowProvider: @escaping () -> Date = Date.init
   ) {
     self.store = store
     self.providerLabel = providerLabel
     self.providerTint = providerTint
+    self.calendarProvider = calendarProvider
+    self.nowProvider = nowProvider
+    self.calendar = calendarProvider()
+    self.now = nowProvider()
   }
 
   // MARK: - Navigation
@@ -73,12 +92,28 @@ final class StatsViewModel {
   /// Summary stat cards for the current scope and period.
   var statCards: SessionSummary { SessionSummary(sessions: sessions, over: scopedInterval) }
 
+  /// Begins refreshing the snapshots on activation, locale, time-zone, and day-rollover changes.
+  func startObservingTemporalChanges() {
+    temporalObserver = StatsTemporalObserver(stats: self)
+  }
+
+  /// Invalidates time-dependent projections after activation or a system calendar change.
+  func refreshTemporalContext() {
+    calendar = calendarProvider()
+    now = nowProvider()
+  }
+
+  /// The calendar snapshot used by all current Stats projections.
+  var currentCalendar: Calendar { calendar }
+
+  /// The clock snapshot used by all current Stats projections.
+  var currentDate: Date { now }
+
   /// Focus seconds per day, split by provider, within the current scope.
   ///
   /// A time metric (D5 of design doc 0010): sums every focus segment regardless of the owning
   /// phase's completion, so a stopped or skipped phase's invested time still appears.
   var dailyFocusTotals: [DayTotal] {
-    let calendar = Calendar.current
     var order: [String] = []
     var accumulated: [String: DayBucket] = [:]
 
@@ -106,6 +141,53 @@ final class StatsViewModel {
         )
       }
       .sorted { ($0.day, $0.providerID) < ($1.day, $1.providerID) }
+  }
+
+  /// Focus seconds per calendar week, split by provider, across the full history.
+  ///
+  /// Like the existing time metrics, this includes incomplete focus sessions and untracked
+  /// segments while excluding breaks. Each segment belongs to the week containing its session's
+  /// start, preserving ADR-0009's durable session-start attribution.
+  var weeklyFocusTotals: [WeekTotal] {
+    var accumulated: [String: WeekBucket] = [:]
+
+    for session in sessions where session.phase == .focus {
+      let week =
+        calendar.dateInterval(of: .weekOfYear, for: session.startedAt)?.start
+        ?? calendar.startOfDay(for: session.startedAt)
+      for segment in session.segments {
+        let providerID = segment.taskRef?.providerID.rawValue ?? Self.untrackedKey
+        let key = "\(week.timeIntervalSinceReferenceDate):\(providerID)"
+        if accumulated[key] == nil {
+          accumulated[key] = WeekBucket(week: week, providerID: providerID, seconds: 0)
+        }
+        accumulated[key]!.seconds += segment.seconds
+      }
+    }
+
+    let snapshots = providerSnapshots
+    return accumulated.values.map { entry in
+      WeekTotal(
+        week: entry.week, providerID: entry.providerID,
+        tint: displayTint(for: entry.providerID, in: snapshots), seconds: entry.seconds)
+    }
+    .sorted { ($0.week, $0.providerID) < ($1.week, $1.providerID) }
+  }
+
+  /// Providers represented by the all-time weekly chart, in a deterministic stacking order.
+  var weeklyFocusProviders: [ProviderSlice] {
+    let totals = weeklyFocusTotals
+    let secondsByProvider = totals.reduce(into: [String: TimeInterval]()) {
+      $0[$1.providerID, default: 0] += $1.seconds
+    }
+    let snapshots = providerSnapshots
+    return secondsByProvider.keys.sorted().compactMap { providerID in
+      guard let seconds = secondsByProvider[providerID], seconds > 0 else { return nil }
+      return ProviderSlice(
+        providerID: providerID, label: displayLabel(for: providerID, in: snapshots),
+        tint: displayTint(for: providerID, in: snapshots),
+        seconds: seconds)
+    }
   }
 
   /// Focus time by provider within the current scope, sorted by duration descending.
@@ -136,15 +218,16 @@ final class StatsViewModel {
       .sorted { $0.seconds > $1.seconds }
   }
 
-  /// Every task's all-time focus totals, ranked by total focus time descending.
+  /// Every task's focus totals within the current scope, ranked by focus time descending.
   ///
   /// A time metric (D5): sums every focus segment regardless of the owning phase's completion.
-  var allTaskRows: [AllTimeTaskRow] {
+  /// All Time resolves to an unbounded interval, so that scope sees the whole log.
+  var taskRows: [StatsTaskRow] {
     var order: [String] = []
     var accumulated: [String: TaskBucket] = [:]
     let snapshots = providerSnapshots
 
-    for session in sessions where session.phase == .focus {
+    for session in focusSessions(in: scopedInterval) {
       for segment in session.segments {
         let key: String
         if let ref = segment.taskRef {
@@ -165,11 +248,11 @@ final class StatsViewModel {
 
     return
       order
-      .compactMap { key -> AllTimeTaskRow? in
+      .compactMap { key -> StatsTaskRow? in
         guard let entry = accumulated[key] else { return nil }
         let resolvedLabel =
           entry.taskRef.map { displayLabel(for: $0.providerID.rawValue, in: snapshots) } ?? "—"
-        return AllTimeTaskRow(
+        return StatsTaskRow(
           taskRef: entry.taskRef, title: entry.title, providerLabel: resolvedLabel,
           totalSeconds: entry.seconds, lastSessionDate: entry.last)
       }
@@ -180,14 +263,13 @@ final class StatsViewModel {
   /// session. A count metric (D5): the pomodoro is indivisible, so a stopped or skipped phase
   /// does not extend the streak.
   var currentStreak: Int {
-    let calendar = Calendar.current
     let activeDays = Set(
       sessions
         .filter { $0.phase == .focus && $0.wasCompleted }
         .map { calendar.startOfDay(for: $0.startedAt) })
     guard !activeDays.isEmpty else { return 0 }
 
-    let today = calendar.startOfDay(for: Date())
+    let today = calendar.startOfDay(for: now)
     var cursor = today
     if !activeDays.contains(cursor) {
       guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
@@ -224,7 +306,14 @@ final class StatsViewModel {
     var seconds: TimeInterval
   }
 
-  /// Mutable accumulator for one task while building `allTaskRows`.
+  /// Mutable accumulator for one `(week, provider)` bucket while building `weeklyFocusTotals`.
+  private struct WeekBucket {
+    let week: Date
+    let providerID: String
+    var seconds: TimeInterval
+  }
+
+  /// Mutable accumulator for one task while building `taskRows`.
   private struct TaskBucket {
     let taskRef: TaskRef?
     let title: String
@@ -264,8 +353,7 @@ final class StatsViewModel {
   /// Focus sessions that started today (calendar day, local time zone), regardless of
   /// completion — the population time metrics sum over.
   private var todaysFocus: [Session] {
-    let calendar = Calendar.current
-    let today = calendar.startOfDay(for: Date())
+    let today = calendar.startOfDay(for: now)
     return sessions.filter {
       $0.phase == .focus && calendar.startOfDay(for: $0.startedAt) == today
     }
@@ -302,8 +390,6 @@ final class StatsViewModel {
 
   /// The date range the scope-dependent outputs are computed over, honoring `offset`.
   private var scopedInterval: DateInterval {
-    let calendar = Calendar.current
-    let now = Date()
     switch scope {
     case .today:
       let base = calendar.startOfDay(for: now)

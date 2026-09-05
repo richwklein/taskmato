@@ -77,6 +77,13 @@ final class AppSettings {
     didSet { store[SettingsStore.Keys.sidebarVisible] = sidebarVisible }
   }
 
+  /// Whether the Stats footer pointing at session import/export has been dismissed.
+  ///
+  /// A one-time nudge: once dismissed it never returns, and import/export stays in Settings.
+  var statsHistoryFooterDismissed: Bool {
+    didSet { store[SettingsStore.Keys.statsHistoryFooterDismissed] = statsHistoryFooterDismissed }
+  }
+
   /// The field used to sort tasks in all views. Defaults to `.dueDate`.
   var taskSortField: TaskSortField {
     didSet { store[SettingsStore.Keys.taskSortField] = taskSortField }
@@ -136,6 +143,7 @@ final class AppSettings {
     notificationsEnabled = store[SettingsStore.Keys.notificationsEnabled]
     autoStartNextPhase = store[SettingsStore.Keys.autoStartNextPhase]
     sidebarVisible = store[SettingsStore.Keys.sidebarVisible]
+    statsHistoryFooterDismissed = store[SettingsStore.Keys.statsHistoryFooterDismissed]
     taskSortField = store[SettingsStore.Keys.taskSortField]
     taskSortDirection = store[SettingsStore.Keys.taskSortDirection]
     defaultWritableProviderID = store[SettingsStore.Keys.defaultWritableProviderID]
