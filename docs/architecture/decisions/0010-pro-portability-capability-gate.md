@@ -94,4 +94,6 @@ automatic CloudKit sync or cloud providers.
   `FocusSegment` record extended by D4.
 - [ADR-0006 — Developer ID distribution first](0006-developer-id-distribution.md) — the distribution
   split that scopes Pro to the App Store build.
+- [ADR-0012 — Pro source-available license and trademark](0012-pro-source-available-license-and-trademark.md)
+  — how MIT interacts with this paid tier; relies on the §5–6 App Store/iCloud channel split recorded here.
 </content>
