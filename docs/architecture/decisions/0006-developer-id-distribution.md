@@ -2,7 +2,14 @@
 
 ## Status
 
-Accepted — 2026-05-31. Current milestone numbering for each phase below lives on the [GitHub milestones page](https://github.com/richwklein/taskmato/milestones).
+Accepted — 2026-05-31. The two-channel decision stands: Developer ID first, Mac App Store second.
+
+**Superseded sequencing (2026-09-05):** the "Pro foundation phase before App Store phase" ordering
+below is no longer current. [ADR-0013](0013-plan-capabilities-independently-of-releases.md) is the
+authority for access, distribution, and dependency ordering: the Mac App Store launch is a *free*
+launch that does not depend on Pro, and Pro follows once a usable paid capability and its purchase
+flow are ready. The phase list is retained as the original record; read it as history, not as
+instructions, and do not read milestone or release numbers into it.
 
 ## Context
 

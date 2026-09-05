@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed 2026-07-21. Realizes the 0.8.0 persistence work from [design doc 0005](0005-pre-1.0-architecture-pass.md) (Decision D2, roadmap PRs 22–25) and [design doc 0006](0006-stats-view-model.md) (Decisions D1–D2, roadmap PRs 21–23) for issue [#402](https://github.com/richwklein/taskmato/issues/402). Amends [ADR-0002](../decisions/0002-json-persistence-mvp.md) for the session log only.
+Proposed 2026-07-21; implemented. Realizes the session-persistence work from [design doc 0005](0005-pre-1.0-architecture-pass.md) (Decision D2, roadmap PRs 22–25) and [design doc 0006](0006-stats-view-model.md) (Decisions D1–D2, roadmap PRs 21–23) for issue [#402](https://github.com/richwklein/taskmato/issues/402). Amends [ADR-0002](../decisions/0002-json-persistence-mvp.md) for the session log only.
 
 ## Background
 
@@ -30,7 +30,7 @@ ADR-0002 speculated Core Data as the successor. We use **SwiftData** instead: it
 
 ### D4 — Clean cutover: no migration, no dual-impl retention, no build flag
 
-Issue #402 and [design doc 0006](0006-stats-view-model.md) originally split this work into a one-shot JSON→SwiftData migration behind a `#if DEBUG_USE_JSON_REPOSITORY` flag (PRs 21–22), with `JSONSessionRepository` retained until a 1.4.0 cleanup ([#414](https://github.com/richwklein/taskmato/issues/414)). This document supersedes that plan with a **direct cutover**:
+Issue #402 and [design doc 0006](0006-stats-view-model.md) originally split this work into a one-shot JSON→SwiftData migration behind a `#if DEBUG_USE_JSON_REPOSITORY` flag (PRs 21–22), with `JSONSessionRepository` retained until a later cleanup ([#414](https://github.com/richwklein/taskmato/issues/414)). This document supersedes that plan with a **direct cutover**:
 
 - No migration code. Any pre-existing `sessions.json` is left orphaned on disk (harmless).
 - No build flag and no staged rollout.

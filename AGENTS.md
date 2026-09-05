@@ -27,10 +27,10 @@ Unless explicitly instructed otherwise, assume:
 - **UI:** SwiftUI
 - **System APIs:** AppKit (menu bar, status items), EventKit (Apple Reminders), FSEvents (Obsidian vaults)
 - **Concurrency:** Swift Concurrency (`async/await`)
-- **Persistence:** JSON files (Codable) — see [ADR-0002](docs/architecture/decisions/0002-json-persistence-mvp.md)
+- **Persistence:** SwiftData repositories for session history and local tasks; UserDefaults for settings. JSON remains the manual portability format and legacy local-task migration input — see [architecture](docs/explanation/architecture.md).
 - **Testing:** Swift Testing (`import Testing`, `@Test` macros) — see [`docs/explanation/testing.md`](docs/explanation/testing.md) for the test charter
 - **Repository:** GitHub; release-please drives versioning ([ADR-0005](docs/architecture/decisions/0005-release-please-versioning.md))
-- **Marketing site:** GitHub Pages (lands minimal at 1.0, polished at 1.3)
+- **Marketing site:** GitHub Pages; content describes shipped capabilities.
 - **Editor:** VS Code (primary), Xcode (secondary)
 
 Clearly state when Xcode is **required** versus merely **convenient**.
@@ -63,9 +63,9 @@ Clearly state when Xcode is **required** versus merely **convenient**.
     Config/                # Version.xcconfig (driven by version.txt)
     Session/               # SessionEngine, SessionStore
     Services/              # AppSettings, TaskSelectionStore, Notification service + API
-    Tasks/                 # TaskProvider hierarchy, TaskRegistry
+    Tasks/                 # TaskProvider hierarchy and focused registry services
       Models/              # value types (TaskItem, TaskList, TaskRef, TaskDraft, …)
-      Local/               # LocalProvider (JSON-backed)
+      Local/               # LocalProvider (SwiftData-backed; legacy JSON migration)
       Obsidian/            # ObsidianProvider (FSEvents)
       Reminders/           # RemindersProvider (EventKit)
       URLScheme/           # URL handler (taskmato://)
