@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.6.0](https://github.com/richwklein/taskmato/compare/v1.5.0...v1.6.0) (2026-09-05)
+
+
+### Features
+
+* **stats:** add all-time weekly focus chart and unify the task table ([#613](https://github.com/richwklein/taskmato/issues/613)) ([7c97c44](https://github.com/richwklein/taskmato/commit/7c97c44960455e528be8a49c8c5a25a8a1268e70))
+
+
+### Documentation
+
+* align planning artifacts with capability-based decisions ([#612](https://github.com/richwklein/taskmato/issues/612)) ([625e0e6](https://github.com/richwklein/taskmato/commit/625e0e628866c7aca62eb0450bef52771e5e156d))
+* record Pro licensing decision (ADR-0012) and reserve trademarks ([#610](https://github.com/richwklein/taskmato/issues/610)) ([a8b2d9b](https://github.com/richwklein/taskmato/commit/a8b2d9bb2509e384147d5a30b47dd960a00f9020))
+
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump astro from 7.1.6 to 7.2.9 in /site in the astro group ([#609](https://github.com/richwklein/taskmato/issues/609)) ([7b96162](https://github.com/richwklein/taskmato/commit/7b96162020cedf0bf9bc2ffa195eaf637ba2b81a))
+* **deps-dev:** bump the eslint group in /site with 3 updates ([#615](https://github.com/richwklein/taskmato/issues/615)) ([019ec52](https://github.com/richwklein/taskmato/commit/019ec52a7def2321c33fee08c1ee5a2c2bec7548))
+* **deps:** bump github/codeql-action from 4.37.7 to 4.37.9 in the third-party-actions group across 1 directory ([#604](https://github.com/richwklein/taskmato/issues/604)) ([56f8df3](https://github.com/richwklein/taskmato/commit/56f8df3b0a6e6e74180a627f6c913bbfe297e5eb))
+
 ## [1.5.0](https://github.com/richwklein/taskmato/compare/v1.4.0...v1.5.0) (2026-09-04)
 
 
