@@ -48,6 +48,7 @@ test: ## Run the unit test suite
 	xcodebuild test \
 		-project $(PROJECT) \
 		-scheme $(SCHEME) \
+		-configuration Debug \
 		-destination '$(DESTINATION)' \
 		-enableCodeCoverage YES \
 		$(SIGN_FLAGS)

@@ -40,6 +40,7 @@ jobs:
           xcodebuild test \
             -project app/Taskmato.xcodeproj \
             -scheme Taskmato \
+            -configuration Debug \
             -destination 'platform=macOS' \
             -resultBundlePath TestResults.xcresult \
             -enableCodeCoverage YES \
