@@ -39,10 +39,15 @@ final class ProviderRegistry {
   var onProviderStateChanged: ((ProviderID) -> Void)?
 
   private let store: SettingsStore
+  private let entitlement: ProEntitlement
 
-  /// - Parameter store: The settings store for persistence. Override in tests.
-  init(store: SettingsStore = SettingsStore()) {
+  /// - Parameters:
+  ///   - store: The settings store for persistence. Override in tests.
+  ///   - entitlement: The Pro entitlement gate. Defaults to locked, so a caller that forgets
+  ///     to inject one fails closed rather than unlocking paid providers by accident.
+  init(store: SettingsStore = SettingsStore(), entitlement: ProEntitlement = ProEntitlement()) {
     self.store = store
+    self.entitlement = entitlement
     self.enabledIDs = store[SettingsStore.Keys.enabledProviderIDs]
   }
 
@@ -67,8 +72,16 @@ final class ProviderRegistry {
   // MARK: - Enable / Disable
 
   /// Enables a registered provider so its tasks appear in fan-out queries.
+  ///
+  /// Refuses silently when the provider is locked by entitlement — there is no locked-provider
+  /// upsell here, that surface belongs to the views, which can consult ``isUnlocked(_:)``.
+  ///
+  /// Gating on the ID rather than the object also refuses a provider that was never registered,
+  /// which ``isUnlocked(_:)`` reports as locked. Enabling an unregistered provider only ever
+  /// persisted an ID that no fan-out could resolve, so nothing is lost by rejecting it here.
   /// - Parameter provider: The provider to enable.
   func enable(_ provider: any TaskProvider) {
+    guard isUnlocked(provider.id) else { return }
     let inserted = enabledIDs.insert(provider.id).inserted
     persist()
     if inserted { onProviderStateChanged?(provider.id) }
@@ -85,10 +98,40 @@ final class ProviderRegistry {
     onProviderStateChanged?(providerID)
   }
 
-  /// Returns `true` if the provider with the given ID is currently enabled.
+  /// Returns `true` if the provider with the given ID is both enabled and unlocked.
+  ///
+  /// `enabledIDs` is the persisted user preference; this is the effective state — a paid
+  /// provider whose entitlement is later revoked reads `false` here without a persisted
+  /// disable, satisfying "revoked or unverified transactions do not unlock Pro" at every call
+  /// site with no ordering requirement.
+  ///
+  /// Returns `true` for an ID present in `enabledIDs` but not currently registered. This is a
+  /// deliberate asymmetry with ``isUnlocked(_:)``, which fails closed on an unknown ID: an
+  /// unregistered provider declares no `.paid` entitlement to honor, so this preserves today's
+  /// answer for the existing ID-only callers in `ActiveTaskReconciler` rather than failing open
+  /// on entitlement, which would be an unrelated behavior change.
   /// - Parameter providerID: The provider ID to check.
   func isEnabled(_ providerID: ProviderID) -> Bool {
-    enabledIDs.contains(providerID)
+    guard enabledIDs.contains(providerID) else { return false }
+    guard let provider = providers.first(where: { $0.id == providerID }) else { return true }
+    return isUnlocked(provider)
+  }
+
+  /// Whether the provider's entitlement is currently satisfied.
+  ///
+  /// Fails closed on an unregistered ID: an unknown provider cannot be shown to be free.
+  /// - Parameter providerID: The provider ID to check.
+  func isUnlocked(_ providerID: ProviderID) -> Bool {
+    guard let provider = providers.first(where: { $0.id == providerID }) else { return false }
+    return isUnlocked(provider)
+  }
+
+  /// Resolves a registered provider's entitlement, with no membership question to answer.
+  private func isUnlocked(_ provider: any TaskProvider) -> Bool {
+    switch provider.entitlement {
+    case .free: true
+    case .paid: entitlement.isPro
+    }
   }
 
   // MARK: - List cache

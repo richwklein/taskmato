@@ -42,6 +42,9 @@ struct AppComposition {
   let focusAttribution: FocusAttribution
   let activeTaskReconciler: ActiveTaskReconciler
   let activeTaskLiveObserver: ActiveTaskLiveObserver
+  /// The Pro entitlement gate. Exposed so #273's purchase surface and #542's session sync can
+  /// reach it without a second construction.
+  let proEntitlement: ProEntitlement
 
   /// Constructs every service, registers providers, and launches the phase-end orchestrator.
   init() {
@@ -51,7 +54,7 @@ struct AppComposition {
     let sessionRepository = Self.makeSessionRepository()
     let store = SessionStore(repository: sessionRepository)
     let activeTaskStore = ActiveTaskStore(store: settingsStore)
-    let registry = ProviderRegistry(store: settingsStore)
+    let (proEntitlement, registry) = Self.makeRegistry(store: settingsStore)
     let notifications = NotificationService(settings: settings)
     let obsidianProvider = ObsidianProvider(store: settingsStore)
     let localProvider = LocalProvider(repository: Self.makeLocalRepository())
@@ -94,7 +97,7 @@ struct AppComposition {
     self.sessionPortabilityController = SessionPortabilityController(store: store)
     self.statsViewModel = statsViewModel
     self.activeTaskStore = activeTaskStore
-    self.registry = registry
+    (self.registry, self.proEntitlement) = (registry, proEntitlement)
     self.queryService = queryService
     self.destinationResolver = destinationResolver
     self.sidebarSelection = sidebarSelection
@@ -191,6 +194,21 @@ struct AppComposition {
       reconciler: reconciler, liveObserver: liveObserver)
     liveObserver.start()
     return (reconciler, liveObserver)
+  }
+
+  /// Constructs the Pro entitlement and the registry gated by it.
+  ///
+  /// A debug build unlocks it with
+  /// `defaults write com.richwklein.Taskmato pro.debugUnlock -bool YES`, read from `UserDefaults`
+  /// directly so the key stays out of the shipped ``SettingsStore/Keys`` enumeration.
+  private static func makeRegistry(store: SettingsStore) -> (ProEntitlement, ProviderRegistry) {
+    let entitlement = ProEntitlement()
+    #if DEBUG
+      if UserDefaults.standard.bool(forKey: "pro.debugUnlock") {
+        entitlement.update(isPro: true)
+      }
+    #endif
+    return (entitlement, ProviderRegistry(store: store, entitlement: entitlement))
   }
 
   /// Requests notification authorization at launch and refreshes it on each app activation.
