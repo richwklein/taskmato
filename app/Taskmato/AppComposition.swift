@@ -23,6 +23,9 @@ struct AppComposition {
   /// Supplies the staged "next focus" readout (design doc "stage the next focus", D-d). Handed
   /// only to the main window's Timer tab, never to the menu-bar popover.
   let nextUpPresenter: NextUpPresenter
+  /// Drives the Timer tab's toolbar search field and results panel. Handed only to the main
+  /// window's Timer tab, never to the menu-bar popover.
+  let timerSearchPresenter: TimerSearchPresenter
   let store: SessionStore
   let sessionPortabilityController: SessionPortabilityController
   let statsViewModel: StatsViewModel
@@ -91,12 +94,12 @@ struct AppComposition {
     self.engine = engine
     self.settings = settings
     self.timerPresenter = timerPresenter
-    self.nextUpPresenter = NextUpPresenter(
-      presenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings)
-    self.store = store
-    self.sessionPortabilityController = SessionPortabilityController(store: store)
-    self.statsViewModel = statsViewModel
-    self.activeTaskStore = activeTaskStore
+    (self.nextUpPresenter, self.timerSearchPresenter) = Self.makeTimerPresenters(
+      timerPresenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings,
+      queryService: queryService, registry: registry)
+    (self.store, self.sessionPortabilityController) =
+      (store, SessionPortabilityController(store: store))
+    (self.statsViewModel, self.activeTaskStore) = (statsViewModel, activeTaskStore)
     (self.registry, self.proEntitlement) = (registry, proEntitlement)
     self.queryService = queryService
     self.destinationResolver = destinationResolver
@@ -142,6 +145,21 @@ struct AppComposition {
     LocalStoreJSONMigrator.migrateIfNeeded(
       jsonURL: JSONLocalTaskRepository.defaultFileURL(), into: container)
     return SwiftDataLocalTaskRepository(modelContainer: container)
+  }
+
+  /// Builds the Timer tab's two presenters, both handed only to the main window's Timer tab and
+  /// never to the menu-bar popover.
+  private static func makeTimerPresenters(
+    timerPresenter: TimerPresenter, activeTaskStore: ActiveTaskStore, settings: AppSettings,
+    queryService: TaskQueryService, registry: ProviderRegistry
+  ) -> (nextUp: NextUpPresenter, search: TimerSearchPresenter) {
+    (
+      NextUpPresenter(
+        presenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings),
+      TimerSearchPresenter(
+        queryService: queryService, settings: settings, activeTaskStore: activeTaskStore,
+        registry: registry)
+    )
   }
 
   /// Builds the stats view model, resolving provider display names and tints through `registry`.

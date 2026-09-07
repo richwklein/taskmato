@@ -44,6 +44,7 @@ struct TaskmatoApp: App {
       MainWindowView(
         presenter: composition.timerPresenter,
         nextUpPresenter: composition.nextUpPresenter,
+        searchPresenter: composition.timerSearchPresenter,
         engine: composition.engine,
         settings: composition.settings,
         statsViewModel: composition.statsViewModel,

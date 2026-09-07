@@ -67,7 +67,8 @@ private struct OpenInProviderIconKey: FocusedValueKey {
 
 extension FocusedValues {
 
-  /// Moves keyboard focus into the Tasks tab search field. Published by ``TaskDetailView``.
+  /// Moves keyboard focus into the current destination's search field. Published by
+  /// ``TaskDetailView`` and ``TimerTabView``.
   var focusSearch: (() -> Void)? {
     get { self[FocusSearchKey.self] }
     set { self[FocusSearchKey.self] = newValue }
