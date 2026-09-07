@@ -60,3 +60,23 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
+
+      # The synchronized folder group copies unrecognized file types into Contents/Resources,
+      # so the FSL LICENSE would otherwise ship inside the app. EXCLUDED_SOURCE_FILE_NAMES
+      # keeps it out, but that setting is documented for source files, not resources.
+      - name: Assert the Pro LICENSE is not bundled
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          APP="$(xcodebuild -project app/Taskmato.xcodeproj -scheme Taskmato \
+            -configuration Release -showBuildSettings 2>/dev/null \
+            | awk '$1 == "BUILT_PRODUCTS_DIR" { print $3; exit }')/Taskmato.app"
+          if [ ! -d "$APP" ]; then
+            echo "::error::Release app bundle not found at $APP"
+            exit 1
+          fi
+          if find "$APP" -name LICENSE | grep -q .; then
+            echo "::error::LICENSE was copied into $APP — EXCLUDED_SOURCE_FILE_NAMES is not taking effect"
+            find "$APP" -name LICENSE
+            exit 1
+          fi
+          echo "LICENSE correctly excluded from $APP"
