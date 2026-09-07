@@ -91,6 +91,7 @@ concrete Pro types.
 | URL scheme | `app/Taskmato/Tasks/URLScheme/` |
 | Window, menu bar, timer, task, Stats, and Settings views | `app/Taskmato/Views/` |
 | App preferences, task tracking, notifications | `app/Taskmato/Services/` |
+| MIT entitlement seam (observable `isPro`, consumed by `ProviderRegistry`) | `app/Taskmato/Services/ProEntitlement.swift` |
 | Future restricted Pro implementations | `app/Taskmato/Pro/` |
 | Unit tests | `app/TaskmatoTests/` |
 
