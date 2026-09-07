@@ -73,6 +73,9 @@ enum AppLabels {
     static let taskBreakdownChart = "Task breakdown chart"
     /// Announced for the staged focus-length line beneath the countdown ring.
     static let nextFocusLength = "Next focus length"
+    /// Announced for the Timer tab's floating search results panel, and the static label on the
+    /// Tasks search results count strip (whose value is the live count).
+    static let searchResults = "Search results"
   }
 
   /// Labels for task CRUD and lifecycle actions.
@@ -161,6 +164,25 @@ enum AppLabels {
     static let showSidebar = AppLabel("Show Sidebar", systemImage: "sidebar.left")
     /// Hides the provider sidebar column.
     static let hideSidebar = AppLabel("Hide Sidebar", systemImage: "sidebar.left")
+  }
+
+  /// Copy for the Timer tab's toolbar search field and its floating results panel — distinct
+  /// from Tasks' `"Search tasks"`, since this finds a task to focus rather than filtering a
+  /// visible list.
+  enum Search {
+    /// Prompt shown in the Timer tab's toolbar search field.
+    static let findTaskPrompt = "Find a task"
+    /// Shown in the panel while a fetch is in flight and no results have landed yet.
+    static let searching = "Searching…"
+    /// Shown when a settled fetch returns no title-matching tasks.
+    static func noResults(query: String) -> String {
+      "No tasks match \"\(query)\""
+    }
+    /// The result count read by VoiceOver, both as the panel's active announcement and (if
+    /// reused) any visible count.
+    static func resultCount(_ count: Int) -> String {
+      "\(count) \(count == 1 ? "task" : "tasks") found"
+    }
   }
 
   /// Labels for timer session controls.

@@ -212,7 +212,17 @@ struct TaskDetailView: View {
     detailColumn
       .searchable(text: $query, placement: .toolbar, prompt: "Search tasks")
       .searchFocused($isSearchFocused)
-      .task(id: query) { await refresh() }
+      .task(id: query) {
+        // `.task(id:)` cancels the prior task on change, but `globalFanOut` calls straight into
+        // EventKit and the filesystem without checking cancellation, so an in-flight fetch still
+        // runs to completion — only its result is discarded. The delay coalesces keystrokes
+        // before that fan-out starts; the on-appear and cleared-query loads stay immediate.
+        if !query.isEmpty {
+          try? await Task.sleep(for: .milliseconds(250))
+          guard !Task.isCancelled else { return }
+        }
+        await refresh()
+      }
       .task { await subscribeToProviderUpdates() }
       .onAppear {
         Task { await refresh() }
@@ -251,6 +261,13 @@ struct TaskDetailView: View {
         }
         .padding(.horizontal, .sectionGap)
         .padding(.vertical, .contentGap)
+        // Gives the search result count (previously unreached unless VoiceOver happened to
+        // navigate onto it) an identity: a static label plus the live count as its value,
+        // matching CircularTimerView's ring. Outside search, the label already carries the
+        // context (Today, a list name), so there is no separate value to attach.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(query.isEmpty ? info.label : AppLabels.Accessibility.searchResults)
+        .accessibilityValue(query.isEmpty ? "" : info.label)
       }
       detailContent
         .frame(maxWidth: .infinity, maxHeight: .infinity)

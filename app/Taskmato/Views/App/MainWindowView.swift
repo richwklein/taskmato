@@ -16,6 +16,7 @@ struct MainWindowView: View {
 
   var presenter: TimerPresenter
   var nextUpPresenter: NextUpPresenter
+  var searchPresenter: TimerSearchPresenter
   var engine: SessionEngine
   var settings: AppSettings
   var statsViewModel: StatsViewModel
@@ -94,6 +95,7 @@ struct MainWindowView: View {
       TimerTabView(
         presenter: presenter,
         nextUpPresenter: nextUpPresenter,
+        searchPresenter: searchPresenter,
         engine: engine,
         statsViewModel: statsViewModel,
         activeTaskStore: activeTaskStore,
@@ -142,16 +144,20 @@ struct MainWindowView: View {
     let registry = ProviderRegistry()
     let sidebarSelectionStore = SelectionStore(registry: registry)
     let timerPresenter = TimerPresenter(engine: engine, settings: settings)
+    let queryService = TaskQueryService(registry: registry, sorter: TaskSorter())
     MainWindowView(
       presenter: timerPresenter,
       nextUpPresenter: NextUpPresenter(
         presenter: timerPresenter, activeTaskStore: ActiveTaskStore(), settings: settings),
+      searchPresenter: TimerSearchPresenter(
+        queryService: queryService, settings: settings, activeTaskStore: ActiveTaskStore(),
+        registry: registry),
       engine: engine,
       settings: settings,
       statsViewModel: .preview,
       activeTaskStore: ActiveTaskStore(),
       registry: registry,
-      queryService: TaskQueryService(registry: registry, sorter: TaskSorter()),
+      queryService: queryService,
       destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),
       sidebarSelection: sidebarSelectionStore,
       nav: MainNavigation(
