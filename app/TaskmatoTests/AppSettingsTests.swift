@@ -68,8 +68,16 @@ struct AppSettingsTests {
     #expect(makeSettings().notificationsEnabled == true)
   }
 
-  @Test func defaultAutoStartNextPhaseIsFalse() {
-    #expect(makeSettings().autoStartNextPhase == false)
+  @Test func defaultAutoStartBreaksIsFalse() {
+    #expect(makeSettings().autoStartBreaks == false)
+  }
+
+  @Test func defaultAutoStartFocusIsFalse() {
+    #expect(makeSettings().autoStartFocus == false)
+  }
+
+  @Test func defaultStartFocusOnTaskPickIsTrue() {
+    #expect(makeSettings().startFocusOnTaskPick == true)
   }
 
   @Test func defaultSidebarVisibleIsTrue() {
@@ -183,11 +191,70 @@ struct AppSettingsTests {
     let writer = AppSettings(store: SettingsStore(defaults: defaults))
     writer.focusMinutes = 42
     writer.soundEnabled = false
-    writer.autoStartNextPhase = true
+    writer.autoStartBreaks = true
+    writer.autoStartFocus = true
+    writer.startFocusOnTaskPick = false
 
     let reader = AppSettings(store: SettingsStore(defaults: defaults))
     #expect(reader.focusMinutes == 42)
     #expect(reader.soundEnabled == false)
-    #expect(reader.autoStartNextPhase == true)
+    #expect(reader.autoStartBreaks == true)
+    #expect(reader.autoStartFocus == true)
+    #expect(reader.startFocusOnTaskPick == false)
+  }
+
+  // MARK: - Legacy auto-start migration
+
+  @Test func legacyAutoStartTrueMigratesBothAutoAdvanceKeysAndRetainsTheLegacyKey() {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let store = SettingsStore(defaults: defaults)
+    store[SettingsStore.Keys.legacyAutoStartNextPhase] = true
+
+    let settings = AppSettings(store: store)
+
+    #expect(settings.autoStartBreaks == true)
+    #expect(settings.autoStartFocus == true)
+    #expect(store.hasStoredValue(for: SettingsStore.Keys.legacyAutoStartNextPhase))
+    #expect(store[SettingsStore.Keys.legacyAutoStartNextPhase] == true)
+  }
+
+  @Test func legacyAutoStartFalseMigratesBothAutoAdvanceKeysToFalse() {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let store = SettingsStore(defaults: defaults)
+    store[SettingsStore.Keys.legacyAutoStartNextPhase] = false
+
+    let settings = AppSettings(store: store)
+
+    #expect(settings.autoStartBreaks == false)
+    #expect(settings.autoStartFocus == false)
+  }
+
+  @Test func absentLegacyAutoStartLeavesShippedDefaultsUntouched() {
+    let settings = makeSettings()
+
+    #expect(settings.autoStartBreaks == false)
+    #expect(settings.autoStartFocus == false)
+  }
+
+  @Test func startFocusOnTaskPickStaysTrueAcrossALegacyFalseMigration() {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let store = SettingsStore(defaults: defaults)
+    store[SettingsStore.Keys.legacyAutoStartNextPhase] = false
+
+    let settings = AppSettings(store: store)
+
+    #expect(settings.startFocusOnTaskPick == true)
+  }
+
+  @Test func migrationNeverReclobbersAnAutoAdvanceKeyOnceWritten() {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let store = SettingsStore(defaults: defaults)
+    store[SettingsStore.Keys.legacyAutoStartNextPhase] = true
+    _ = AppSettings(store: store)
+    store[SettingsStore.Keys.autoStartBreaks] = false
+
+    let settings = AppSettings(store: store)
+
+    #expect(settings.autoStartBreaks == false)
   }
 }

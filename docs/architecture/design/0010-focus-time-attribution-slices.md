@@ -315,6 +315,15 @@ The gates live in `TimerPresenter` (and, for the phase advance, `PhaseOrchestrat
 stays task-agnostic per D4. `FocusAttribution`'s nil-task slices and Stats' "Untracked" bucket
 stay: they are unreachable going forward, but sessions recorded before this still contain them.
 
+> **Amendment (2026-09-10, "split `autoStartNextPhase`").** The single `autoStartNextPhase`
+> setting this doc names throughout D9, D11, and Q11 is split into three: `autoStartBreaks`,
+> `autoStartFocus`, and `startFocusOnTaskPick`. D11's substance is unchanged — the break→focus
+> advance still queues instead of auto-starting when nothing is tracked — only the key it names
+> changes: `autoStartFocus` gates the D11 phase-advance case this section describes, and
+> `startFocusOnTaskPick` gates the D9/Q11 handoff-resume case (renamed from the same boolean, now
+> also covering a genuine idle pick starting focus directly). See the PR that introduced this
+> amendment for the full rationale.
+
 ## Target architecture
 
 ### Data / attribution flow

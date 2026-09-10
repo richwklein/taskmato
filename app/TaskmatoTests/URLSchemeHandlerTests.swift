@@ -508,9 +508,11 @@ struct URLSchemeHandlerTests {
     #expect(isRunning(ctx.engine.state))
   }
 
-  @Test func alwaysStartsWhenIdleEvenWithAutoStartDisabled() async {
+  @Test func alwaysStartsWhenIdleEvenWithEveryAutoStartOff() async {
     let ctx = makeHandler()
-    ctx.settings.autoStartNextPhase = false
+    ctx.settings.startFocusOnTaskPick = false
+    ctx.settings.autoStartFocus = false
+    ctx.settings.autoStartBreaks = false
     await ctx.handler.handle(URL(string: "taskmato://start?title=No+AutoStart+Gate")!)
     #expect(isRunning(ctx.engine.state))
   }

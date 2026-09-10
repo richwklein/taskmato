@@ -82,18 +82,18 @@ struct AppComposition {
       engine: engine, settings: settings,
       nav: nav, errorPresenter: errorPresenter, destinationResolver: destinationResolver
     )
+    let timerPresenter = TimerPresenter(
+      engine: engine, settings: settings, activeTaskStore: activeTaskStore)
     let runtime = Self.makeRuntime(
       RuntimeInputs(
         engine: engine, store: store, settings: settings, activeTaskStore: activeTaskStore,
         registry: registry, sidebarSelection: sidebarSelection, nav: nav,
-        notifications: notifications, errorPresenter: errorPresenter))
+        notifications: notifications, errorPresenter: errorPresenter,
+        timerPresenter: timerPresenter))
     self.activeTaskLiveObserver = runtime.activeTaskReconciliation.liveObserver
     self.activeTaskReconciler = runtime.activeTaskReconciliation.reconciler
     self.focusAttribution = runtime.focusAttribution
-    let timerPresenter = TimerPresenter(
-      engine: engine, settings: settings, activeTaskStore: activeTaskStore)
-    (self.engine, self.settings) = (engine, settings)
-    self.timerPresenter = timerPresenter
+    (self.engine, self.settings, self.timerPresenter) = (engine, settings, timerPresenter)
     (self.nextUpPresenter, self.timerSearchPresenter) = Self.makeTimerPresenters(
       timerPresenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings,
       queryService: queryService, registry: registry)
@@ -109,8 +109,7 @@ struct AppComposition {
     self.localProvider = localProvider
     self.remindersProvider = remindersProvider
     self.urlHandler = urlHandler
-    self.nav = nav
-    self.errorPresenter = errorPresenter
+    (self.nav, self.errorPresenter) = (nav, errorPresenter)
     self.phaseOrchestrator = runtime.phaseOrchestrator
   }
 
@@ -264,9 +263,9 @@ struct AppComposition {
   private static func makeRuntime(_ inputs: RuntimeInputs) -> RuntimeServices {
     let (phaseOrchestrator, focusAttribution) = Self.makePhaseOrchestrator(inputs)
     Self.wireFocusHandoff(
-      engine: inputs.engine, settings: inputs.settings, nav: inputs.nav,
-      activeTaskStore: inputs.activeTaskStore,
-      attribution: focusAttribution)
+      settings: inputs.settings, nav: inputs.nav, activeTaskStore: inputs.activeTaskStore,
+      presenter: inputs.timerPresenter,
+      runtime: (engine: inputs.engine, attribution: focusAttribution))
     let activeTaskReconciliation = Self.wireActiveTaskReconciliation(
       registry: inputs.registry, activeTaskStore: inputs.activeTaskStore,
       runtime: (engine: inputs.engine, attribution: focusAttribution),
@@ -287,6 +286,7 @@ struct AppComposition {
     let nav: MainNavigation
     let notifications: NotificationService
     let errorPresenter: ErrorPresenter
+    let timerPresenter: TimerPresenter
   }
 
   private struct RuntimeServices {
@@ -296,28 +296,34 @@ struct AppComposition {
       (reconciler: ActiveTaskReconciler, liveObserver: ActiveTaskLiveObserver)
   }
 
-  /// Wires the three focus-handoff callbacks onto `activeTaskStore` (D4/D9 of design doc 0010,
+  /// Wires the four focus-handoff callbacks onto `activeTaskStore` (D4/D9 of design doc 0010,
   /// D-f of "stage the next focus"): a task change appends a slice to the live focus phase's
-  /// attribution log, a genuine handoff continuation auto-resumes when `autoStartNextPhase` is
-  /// on, and a staged-task promotion (the complete gesture only) resumes the same way but
-  /// without navigating — the popover's two-line readout already shows the promoted task.
+  /// attribution log, a genuine handoff continuation resumes through ``FocusHandoffCoordinator``
+  /// and navigates, a staged-task promotion (the complete gesture only) resumes the same way but
+  /// without navigating — the popover's two-line readout already shows the promoted task — and an
+  /// ordinary pick starts focus from idle, all gated on `startFocusOnTaskPick`.
   private static func wireFocusHandoff(
-    engine: SessionEngine, settings: AppSettings, nav: MainNavigation,
-    activeTaskStore: ActiveTaskStore, attribution: FocusAttribution
+    settings: AppSettings, nav: MainNavigation, activeTaskStore: ActiveTaskStore,
+    presenter: TimerPresenter, runtime: (engine: SessionEngine, attribution: FocusAttribution)
   ) {
-    activeTaskStore.onActiveTaskChanged = { [weak engine] task in
+    let coordinator = FocusHandoffCoordinator(presenter: presenter, settings: settings)
+    // Bound locally so the closures capture these two, not the whole `runtime` tuple — capturing
+    // the tuple would retain `engine` strongly and defeat the weak binding beside it.
+    let attribution = runtime.attribution
+    activeTaskStore.onActiveTaskChanged = { [weak engine = runtime.engine] task in
       guard let engine else { return }
       attribution.taskChanged(to: task, consumedSeconds: engine.consumedFocusSeconds)
     }
-    activeTaskStore.onContinuationSelect = { [weak engine, weak nav] in
-      guard settings.autoStartNextPhase else { return }
-      engine?.resume()
+    // The closures are the coordinator's only owner, so these captures are deliberately strong;
+    // `[weak coordinator]` would deallocate it the moment this method returns. That forms an
+    // ActiveTaskStore → closure → coordinator → presenter → ActiveTaskStore cycle, which is
+    // intentional and app-lifetime, as with the other composition-root services.
+    activeTaskStore.onContinuationSelect = { [weak nav] in
+      guard coordinator.resumeAfterHandoff() else { return }
       nav?.showTimerInMainWindow()
     }
-    activeTaskStore.onStagedPromotion = { [weak engine] in
-      guard settings.autoStartNextPhase else { return }
-      engine?.resume()
-    }
+    activeTaskStore.onStagedPromotion = { coordinator.resumeAfterHandoff() }
+    activeTaskStore.onTaskPicked = { coordinator.startFocusOnPick() }
   }
 
   /// Registers each provider, enabling `fallback` on first launch when nothing is persisted.

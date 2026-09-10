@@ -39,7 +39,7 @@ final class PhaseOrchestrator {
   ///   - events: The phase-event stream to consume; production passes `engine.phaseEvents`.
   ///   - engine: The session engine, used to re-sync durations and advance/queue the next phase.
   ///   - store: Where completed sessions are recorded.
-  ///   - settings: User preferences consulted for durations and auto-start behavior.
+  ///   - settings: User preferences consulted for durations and per-phase auto-start behavior.
   ///   - activeTaskStore: Supplies the active task used to seed attribution on `began(.focus)`.
   ///   - notifications: Delivers the phase-end banner and sound.
   ///   - attribution: Resolves a focus phase's per-task slices (D4 of design doc 0010).
@@ -133,7 +133,8 @@ final class PhaseOrchestrator {
     case .shortBreak, .longBreak:
       next = .focus
     }
-    if settings.autoStartNextPhase, canAutoStart(next) {
+    let autoStart = next == .focus ? settings.autoStartFocus : settings.autoStartBreaks
+    if autoStart, canAutoStart(next) {
       engine.start(phase: next)
     } else {
       engine.enqueuePhase(next)
@@ -143,7 +144,8 @@ final class PhaseOrchestrator {
   /// Whether `phase` may begin unattended. Focus credits its time to a task, so with neither a
   /// tracked nor a staged task it is queued for a deliberate Start instead — completing the
   /// tracked task mid-break (D10 of design doc 0010) leaves exactly that state, and auto-starting
-  /// there would run a whole focus phase against nothing. Breaks always may.
+  /// there would run a whole focus phase against nothing (gated by `autoStartFocus`). Breaks
+  /// always may (gated by `autoStartBreaks`).
   private func canAutoStart(_ phase: SessionPhase) -> Bool {
     guard phase == .focus else { return true }
     return activeTaskStore.activeTask != nil || activeTaskStore.stagedTask != nil

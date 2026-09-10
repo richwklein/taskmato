@@ -68,6 +68,26 @@ private func makeContext(now: @escaping () -> Date = Date.init) async -> Orchest
     settings: settings, activeTaskStore: activeTaskStore, attribution: attribution, center: center)
 }
 
+private func makeTask(
+  providerID: ProviderID, nativeID: String, title: String
+) -> TaskItem {
+  TaskItem(
+    id: TaskRef(providerID: providerID, nativeID: nativeID),
+    title: title,
+    notes: nil,
+    format: .plainText,
+    priority: .none,
+    dueDate: nil,
+    scheduledDate: nil,
+    startDate: nil,
+    list: nil,
+    section: nil,
+    sourceURL: nil,
+    completedAt: nil,
+    createdAt: nil
+  )
+}
+
 /// Yields the main-actor executor repeatedly, giving a concurrently running `Task` a chance to
 /// drain buffered `AsyncStream` values before assertions run.
 @MainActor
@@ -80,7 +100,7 @@ private func drain() async {
 @MainActor
 struct PhaseOrchestratorTests {
 
-  @Test func completedFocusRecordsSessionNotifiesAndQueuesNextPhase() async {
+  @Test func completedFocusRecordsSessionNotifiesAndQueuesTheBreak() async {
     let ctx = await makeContext()
     #expect(ctx.center.stubbedStatus == .authorized)
     let runTask = Task { await ctx.orchestrator.run() }
@@ -96,7 +116,7 @@ struct PhaseOrchestratorTests {
     #expect(ctx.store.sessions.first?.phase == .focus)
     #expect(ctx.store.sessions.first?.wasCompleted == true)
     #expect(ctx.center.scheduledRequests.count == 1)
-    // autoStartNextPhase defaults to false — the next phase is queued, not started.
+    // autoStartBreaks defaults to false — the next phase is queued, not started.
     #expect(ctx.engine.queuedPhase == .shortBreak)
     #expect(ctx.engine.state == .idle)
 
@@ -104,9 +124,9 @@ struct PhaseOrchestratorTests {
     await runTask.value
   }
 
-  @Test func completedFocusAutoStartsNextPhaseWhenEnabled() async {
+  @Test func completedFocusAutoStartsBreakWhenEnabled() async {
     let ctx = await makeContext()
-    ctx.settings.autoStartNextPhase = true
+    ctx.settings.autoStartBreaks = true
     let runTask = Task { await ctx.orchestrator.run() }
 
     let startedAt = Date(timeIntervalSinceReferenceDate: 0)
@@ -129,9 +149,9 @@ struct PhaseOrchestratorTests {
 
   @Test func completedBreakAutoStartsFocusWhenATaskIsTracked() async {
     let ctx = await makeContext()
-    ctx.settings.autoStartNextPhase = true
+    ctx.settings.autoStartFocus = true
     ctx.activeTaskStore.track(
-      Self.makeTask(providerID: "local", nativeID: "abc", title: "Write plan"))
+      makeTask(providerID: "local", nativeID: "abc", title: "Write plan"))
     let runTask = Task { await ctx.orchestrator.run() }
 
     let startedAt = Date(timeIntervalSinceReferenceDate: 0)
@@ -155,7 +175,7 @@ struct PhaseOrchestratorTests {
 
   @Test func completedBreakQueuesFocusInsteadOfAutoStartingItWithNoTask() async {
     let ctx = await makeContext()
-    ctx.settings.autoStartNextPhase = true
+    ctx.settings.autoStartFocus = true
     let runTask = Task { await ctx.orchestrator.run() }
 
     let startedAt = Date(timeIntervalSinceReferenceDate: 0)
@@ -175,9 +195,9 @@ struct PhaseOrchestratorTests {
 
   @Test func completedBreakAutoStartsFocusForAStagedTask() async {
     let ctx = await makeContext()
-    ctx.settings.autoStartNextPhase = true
+    ctx.settings.autoStartFocus = true
     ctx.activeTaskStore.stage(
-      Self.makeTask(providerID: "local", nativeID: "abc", title: "Write plan"))
+      makeTask(providerID: "local", nativeID: "abc", title: "Write plan"))
     let runTask = Task { await ctx.orchestrator.run() }
 
     let startedAt = Date(timeIntervalSinceReferenceDate: 0)
@@ -191,6 +211,49 @@ struct PhaseOrchestratorTests {
     // A staged task satisfies the gate on its own; `began(.focus)` promotes it, which
     // `beganFocusPromotesTheStagedTaskAndSeedsAttributionOnIt` covers.
     #expect(ctx.engine.isRunning)
+
+    ctx.continuation.finish()
+    await runTask.value
+  }
+
+  @Test func autoStartBreaksOnAutoStartFocusOffQueuesFocusAfterBreakEvenWithATaskTracked() async {
+    let ctx = await makeContext()
+    ctx.settings.autoStartBreaks = true
+    ctx.settings.autoStartFocus = false
+    ctx.activeTaskStore.track(
+      makeTask(providerID: "local", nativeID: "abc", title: "Write plan"))
+    let runTask = Task { await ctx.orchestrator.run() }
+
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    ctx.continuation.yield(.began(phase: .shortBreak))
+    ctx.continuation.yield(
+      .ended(
+        phase: .shortBreak, startedAt: startedAt, endedAt: startedAt.addingTimeInterval(300),
+        wasCompleted: true))
+    await drain()
+
+    #expect(ctx.engine.state == .idle)
+    #expect(ctx.engine.queuedPhase == .focus)
+
+    ctx.continuation.finish()
+    await runTask.value
+  }
+
+  @Test func autoStartFocusOnAutoStartBreaksOffQueuesTheBreakAfterFocusCompletes() async {
+    let ctx = await makeContext()
+    ctx.settings.autoStartFocus = true
+    ctx.settings.autoStartBreaks = false
+    let runTask = Task { await ctx.orchestrator.run() }
+
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let endedAt = startedAt.addingTimeInterval(1500)
+    ctx.continuation.yield(.began(phase: .focus))
+    ctx.continuation.yield(
+      .ended(phase: .focus, startedAt: startedAt, endedAt: endedAt, wasCompleted: true))
+    await drain()
+
+    #expect(ctx.engine.state == .idle)
+    #expect(ctx.engine.queuedPhase == .shortBreak)
 
     ctx.continuation.finish()
     await runTask.value
@@ -216,32 +279,19 @@ struct PhaseOrchestratorTests {
     ctx.continuation.finish()
     await runTask.value
   }
+}
+
+/// Segment attribution (D1), the 30 s floor (D8), the durable draft upsert (D7), and staging
+/// (design doc "stage the next focus") — split from ``PhaseOrchestratorTests`` to keep each
+/// struct under the type-body-length limit.
+@MainActor
+struct PhaseOrchestratorSegmentTests {
 
   // MARK: - Segments (D1) and the 30 s floor (D8) of design doc 0010
 
-  private static func makeTask(
-    providerID: ProviderID, nativeID: String, title: String
-  ) -> TaskItem {
-    TaskItem(
-      id: TaskRef(providerID: providerID, nativeID: nativeID),
-      title: title,
-      notes: nil,
-      format: .plainText,
-      priority: .none,
-      dueDate: nil,
-      scheduledDate: nil,
-      startDate: nil,
-      list: nil,
-      section: nil,
-      sourceURL: nil,
-      completedAt: nil,
-      createdAt: nil
-    )
-  }
-
   @Test func completedFocusRecordsOneSegmentForTheActiveTask() async {
     let ctx = await makeContext()
-    let task = Self.makeTask(providerID: "local", nativeID: "abc", title: "Write plan")
+    let task = makeTask(providerID: "local", nativeID: "abc", title: "Write plan")
     ctx.activeTaskStore.track(task)
     let runTask = Task { await ctx.orchestrator.run() }
 
@@ -263,7 +313,7 @@ struct PhaseOrchestratorTests {
 
   @Test func breakPhaseRecordsNoSegments() async {
     let ctx = await makeContext()
-    let task = Self.makeTask(providerID: "local", nativeID: "abc", title: "Write plan")
+    let task = makeTask(providerID: "local", nativeID: "abc", title: "Write plan")
     ctx.activeTaskStore.track(task)
     let runTask = Task { await ctx.orchestrator.run() }
 
@@ -356,8 +406,8 @@ struct PhaseOrchestratorTests {
   @Test func midPhaseSliceCloseUpsertsDurableDraftOnceAboveFloor() async {
     var currentTime = Date(timeIntervalSinceReferenceDate: 1_000)
     let ctx = await makeContext(now: { currentTime })
-    let taskA = Self.makeTask(providerID: "local", nativeID: "a", title: "Task A")
-    let taskB = Self.makeTask(providerID: "local", nativeID: "b", title: "Task B")
+    let taskA = makeTask(providerID: "local", nativeID: "a", title: "Task A")
+    let taskB = makeTask(providerID: "local", nativeID: "b", title: "Task B")
     ctx.activeTaskStore.track(taskA)
     let runTask = Task { await ctx.orchestrator.run() }
 
@@ -380,8 +430,8 @@ struct PhaseOrchestratorTests {
 
   @Test func subFloorMidPhaseSliceCloseDoesNotDraft() async {
     let ctx = await makeContext()
-    let taskA = Self.makeTask(providerID: "local", nativeID: "a", title: "Task A")
-    let taskB = Self.makeTask(providerID: "local", nativeID: "b", title: "Task B")
+    let taskA = makeTask(providerID: "local", nativeID: "a", title: "Task A")
+    let taskB = makeTask(providerID: "local", nativeID: "b", title: "Task B")
     ctx.activeTaskStore.track(taskA)
     let runTask = Task { await ctx.orchestrator.run() }
 
@@ -398,9 +448,9 @@ struct PhaseOrchestratorTests {
 
   @Test func draftPersistsFromThePointItCrossesTheFloor() async {
     let ctx = await makeContext()
-    let taskA = Self.makeTask(providerID: "local", nativeID: "a", title: "Task A")
-    let taskB = Self.makeTask(providerID: "local", nativeID: "b", title: "Task B")
-    let taskC = Self.makeTask(providerID: "local", nativeID: "c", title: "Task C")
+    let taskA = makeTask(providerID: "local", nativeID: "a", title: "Task A")
+    let taskB = makeTask(providerID: "local", nativeID: "b", title: "Task B")
+    let taskC = makeTask(providerID: "local", nativeID: "c", title: "Task C")
     ctx.activeTaskStore.track(taskA)
     let runTask = Task { await ctx.orchestrator.run() }
 
@@ -424,8 +474,8 @@ struct PhaseOrchestratorTests {
 
   @Test func finalizeUpsertsOverAnExistingDraftRatherThanDuplicating() async {
     let ctx = await makeContext()
-    let taskA = Self.makeTask(providerID: "local", nativeID: "a", title: "Task A")
-    let taskB = Self.makeTask(providerID: "local", nativeID: "b", title: "Task B")
+    let taskA = makeTask(providerID: "local", nativeID: "a", title: "Task A")
+    let taskB = makeTask(providerID: "local", nativeID: "b", title: "Task B")
     ctx.activeTaskStore.track(taskA)
     let runTask = Task { await ctx.orchestrator.run() }
 
@@ -455,7 +505,7 @@ struct PhaseOrchestratorTests {
 
   @Test func beganFocusPromotesTheStagedTaskAndSeedsAttributionOnIt() async {
     let ctx = await makeContext()
-    let staged = Self.makeTask(providerID: "local", nativeID: "b", title: "Staged")
+    let staged = makeTask(providerID: "local", nativeID: "b", title: "Staged")
     ctx.activeTaskStore.stage(staged)
     let runTask = Task { await ctx.orchestrator.run() }
 
@@ -479,7 +529,7 @@ struct PhaseOrchestratorTests {
 
   @Test func beganShortBreakIgnoresAStagedTask() async {
     let ctx = await makeContext()
-    let staged = Self.makeTask(providerID: "local", nativeID: "b", title: "Staged")
+    let staged = makeTask(providerID: "local", nativeID: "b", title: "Staged")
     ctx.activeTaskStore.stage(staged)
     let runTask = Task { await ctx.orchestrator.run() }
 

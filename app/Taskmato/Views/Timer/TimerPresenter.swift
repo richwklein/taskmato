@@ -212,8 +212,13 @@ final class TimerPresenter {
   /// nothing to credit — the break still advances, the remainder just waits for a task. A staged
   /// task counts: `began(.focus)` promotes it when the orchestrator drains the event this yields,
   /// which happens after this returns.
+  ///
+  /// Clears any pending continuation for the same reason ``resume()`` and ``stop()`` do (D9 of
+  /// design doc 0010): skipping abandons the phase the handoff armed the flag for, so a later
+  /// pick must not resume whatever phase the skip landed on.
   func skip() {
     guard canSkip else { return }
+    activeTaskStore.clearPendingContinuation()
     engine.applyDurations(from: settings)
     engine.skip(nextBreak: nextBreakPhase)
     guard !hasTaskForFocus, case .running(.focus, _, _) = engine.state else { return }

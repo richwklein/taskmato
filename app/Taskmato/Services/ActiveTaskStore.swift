@@ -44,13 +44,18 @@ final class ActiveTaskStore {
   var onActiveTaskChanged: ((TaskItem?) -> Void)?
 
   /// Fired when ``track(_:)`` consumes a pending continuation (D9); the caller decides whether
-  /// to resume the paused phase, gated on `autoStartNextPhase`.
+  /// to resume the paused phase, gated on `startFocusOnTaskPick`.
   var onContinuationSelect: (() -> Void)?
 
   /// Fired when ``promoteStaged()`` promotes ``stagedTask`` — the complete gesture's handoff
   /// (design doc "stage the next focus", D-f), never the phase-boundary handoff. The caller
-  /// decides whether to resume the paused phase, gated on `autoStartNextPhase`.
+  /// resumes a paused phase, gated on `startFocusOnTaskPick`; it never *starts* focus from idle —
+  /// completing is not a pick.
   var onStagedPromotion: (() -> Void)?
+
+  /// Fired when ``track(_:)`` is an ordinary pick rather than a handoff continuation; the
+  /// caller decides whether to start focus, gated on `startFocusOnTaskPick`.
+  var onTaskPicked: (() -> Void)?
 
   private let store: SettingsStore
   static let recentsLimit = 10
@@ -78,6 +83,8 @@ final class ActiveTaskStore {
     if isPendingContinuation {
       isPendingContinuation = false
       onContinuationSelect?()
+    } else {
+      onTaskPicked?()
     }
   }
 

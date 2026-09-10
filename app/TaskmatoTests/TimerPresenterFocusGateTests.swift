@@ -243,6 +243,18 @@ struct TimerPresenterFocusGateTests {
     #expect(!store.isPendingContinuation)
   }
 
+  /// Clear ✕ mid-focus arms the flag, then Skip lands on a break. Without this, the next pick
+  /// would fire `onContinuationSelect` and resume the *break* — a phase no handoff referred to.
+  @Test func skipClearsAPendingContinuation() {
+    let store = makeStore()
+    let presenter = makePresenter(activeTaskStore: store)
+    presenter.start()
+    presenter.pause()
+    store.markPendingContinuation()
+    presenter.skip()
+    #expect(!store.isPendingContinuation)
+  }
+
   @Test func aBlockedResumeLeavesThePendingContinuationArmed() {
     let store = makeStore()
     let presenter = makePresenter(activeTaskStore: store)
