@@ -498,7 +498,8 @@ private struct SidebarTimerRow: View {
     AppSidebarView(
       nav: MainNavigation(
         settings: settings, selectionStore: sidebarSelectionStore, statsViewModel: .preview),
-      presenter: TimerPresenter(engine: SessionEngine(), settings: settings),
+      presenter: TimerPresenter(
+        engine: SessionEngine(), settings: settings, activeTaskStore: ActiveTaskStore()),
       registry: registry,
       destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),
       settings: settings,

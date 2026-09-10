@@ -134,8 +134,11 @@ task's credit and gives one clear commit point. It diverges from Session's keep-
 but matches Taskmato's existing swap behavior — the point is that complete and swap now agree.
 
 > `clear` (the ✕ button) is the same gesture without a replacement task: close the current slice,
-> pause, and **detach** the active task (a later resume continues the remainder as *untracked*
-> focus). Its confirm is dropped too (D3).
+> pause, and **detach** the active task. Its confirm is dropped too (D3).
+
+**Amended by D11.** This originally let a later resume continue the remainder as *untracked* focus.
+It no longer does: focus never runs without a task to credit, so the phase stays parked until one
+is tracked.
 
 **Amended by D8 of design doc 0009.** When a task is *staged*, complete has no picker step to route
 to, so it hands off directly: the outgoing slice still closes and is credited at the frozen pause
@@ -289,6 +292,28 @@ gated on the same setting, so the resume policy still lives in one place.
   done in its provider and clears it; swap/clear change or detach it — with **no** pause, slice, or
   routing. A break carries no focus time, so the attribution machinery is focus-only and the break
   timer runs untouched.
+
+### D11 — Focus never runs without a task
+
+Focus time is always credited to a task, so no path may put a focus phase on the clock while
+nothing is tracked. This amends D2's untracked-resume allowance and closes the gaps that followed
+from treating it as a Start-only rule:
+
+- **Start and Resume are gated alike.** Start accepts a *staged* task, since `began(.focus)`
+  promotes it as the phase opens; Resume does not, because it yields no `.began` and the remainder
+  really would run untracked. Pause and Stop are never gated.
+- **Skip is never blocked.** Leaving a break early is always allowed; the focus phase it opens is
+  *parked* (paused at full duration) when there is nothing to credit, so the break advances but the
+  remainder waits for a task. A staged task counts — `began(.focus)` promotes it.
+- **The break→focus advance queues instead of auto-starting** when nothing is tracked, even with
+  `autoStartNextPhase` on. Completing the tracked task mid-break (D10) leaves exactly that state,
+  and auto-starting there would run a whole phase against nothing.
+- **Detaching the tracked task pauses a running focus phase**, the rule `ActiveTaskReconciler`
+  already applied to externally-vanished tasks, now applied to in-app deletion as well.
+
+The gates live in `TimerPresenter` (and, for the phase advance, `PhaseOrchestrator`) so the engine
+stays task-agnostic per D4. `FocusAttribution`'s nil-task slices and Stats' "Untracked" bucket
+stay: they are unreachable going forward, but sessions recorded before this still contain them.
 
 ## Target architecture
 
@@ -457,7 +482,7 @@ Per the test charter (logic over pixels):
 | Q7 | Record a phase abandoned with no action and no end? | **No** — matches today; deliberate exits are covered and sub-floor phases drop anyway (D7, D8) |
 | Q8 | A minimum-duration floor, and where? | **30 s, per focus phase** — below it nothing is recorded; per-phase not per-slice; never affects the count (D8) |
 | Q9 | Complete from the compact popover? | **Pause + credit, fall back to popover empty state** — no forced window (D10) |
-| Q10 | `✕` clear mid-session? | **Pause + close slice + detach**, confirm dropped; resume continues untracked (D2, D3) |
+| Q10 | `✕` clear mid-session? | **Pause + close slice + detach**, confirm dropped; the phase stays parked until a task is tracked (D2, D3, D11) |
 | Q11 | Auto-resume after picking the next task? | **Only when `autoStartNextPhase` is on**, via a pending-continuation flag (D9) |
 | Q12 | Complete/swap/clear during a break? | **Mutate selection only** — no pause, slice, or routing (D10) |
 

@@ -127,6 +127,75 @@ struct PhaseOrchestratorTests {
     await runTask.value
   }
 
+  @Test func completedBreakAutoStartsFocusWhenATaskIsTracked() async {
+    let ctx = await makeContext()
+    ctx.settings.autoStartNextPhase = true
+    ctx.activeTaskStore.track(
+      Self.makeTask(providerID: "local", nativeID: "abc", title: "Write plan"))
+    let runTask = Task { await ctx.orchestrator.run() }
+
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    ctx.continuation.yield(.began(phase: .shortBreak))
+    ctx.continuation.yield(
+      .ended(
+        phase: .shortBreak, startedAt: startedAt, endedAt: startedAt.addingTimeInterval(300),
+        wasCompleted: true))
+    await drain()
+
+    guard case .running(let phase, _, _) = ctx.engine.state else {
+      Issue.record("Expected the engine to have auto-started focus")
+      ctx.continuation.finish()
+      return
+    }
+    #expect(phase == .focus)
+
+    ctx.continuation.finish()
+    await runTask.value
+  }
+
+  @Test func completedBreakQueuesFocusInsteadOfAutoStartingItWithNoTask() async {
+    let ctx = await makeContext()
+    ctx.settings.autoStartNextPhase = true
+    let runTask = Task { await ctx.orchestrator.run() }
+
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    ctx.continuation.yield(.began(phase: .shortBreak))
+    ctx.continuation.yield(
+      .ended(
+        phase: .shortBreak, startedAt: startedAt, endedAt: startedAt.addingTimeInterval(300),
+        wasCompleted: true))
+    await drain()
+
+    #expect(ctx.engine.state == .idle)
+    #expect(ctx.engine.queuedPhase == .focus)
+
+    ctx.continuation.finish()
+    await runTask.value
+  }
+
+  @Test func completedBreakAutoStartsFocusForAStagedTask() async {
+    let ctx = await makeContext()
+    ctx.settings.autoStartNextPhase = true
+    ctx.activeTaskStore.stage(
+      Self.makeTask(providerID: "local", nativeID: "abc", title: "Write plan"))
+    let runTask = Task { await ctx.orchestrator.run() }
+
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    ctx.continuation.yield(.began(phase: .shortBreak))
+    ctx.continuation.yield(
+      .ended(
+        phase: .shortBreak, startedAt: startedAt, endedAt: startedAt.addingTimeInterval(300),
+        wasCompleted: true))
+    await drain()
+
+    // A staged task satisfies the gate on its own; `began(.focus)` promotes it, which
+    // `beganFocusPromotesTheStagedTaskAndSeedsAttributionOnIt` covers.
+    #expect(ctx.engine.isRunning)
+
+    ctx.continuation.finish()
+    await runTask.value
+  }
+
   @Test func manualStopRecordsSessionButDoesNotNotifyOrAdvance() async {
     let ctx = await makeContext()
     let runTask = Task { await ctx.orchestrator.run() }

@@ -49,7 +49,8 @@ struct NextUpPresenterTests {
     let settings = AppSettings(store: settingsStore)
     let activeTaskStore = ActiveTaskStore(store: settingsStore)
     let engine = SessionEngine()
-    let timerPresenter = TimerPresenter(engine: engine, settings: settings)
+    let timerPresenter = TimerPresenter(
+      engine: engine, settings: settings, activeTaskStore: activeTaskStore)
     let presenter = NextUpPresenter(
       presenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings)
     return Subjects(

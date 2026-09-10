@@ -49,6 +49,7 @@ extension TaskDetailView {
       if didDelete {
         if activeTaskStore.activeTask?.id == task.id {
           activeTaskStore.clearActiveTask()
+          presenter.pauseUntrackedFocus()
         }
         if selectedTaskID == task.id {
           selectedTaskID = nil

@@ -42,7 +42,7 @@ enum AppLabels {
     static let cancel = "Cancel"
     // Timer controls
     /// Shown on the Start button when no task is selected.
-    static let selectTaskFirst = "Select a task before starting"
+    static let selectTaskFirst = "Select a task to focus"
     // Tasks toolbar
     /// Shown on the Add Task toolbar button.
     static let addTask = "Add a task"

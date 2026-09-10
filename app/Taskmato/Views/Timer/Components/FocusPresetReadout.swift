@@ -64,7 +64,10 @@ struct FocusPresetReadout: View {
     let engine = SessionEngine()
     let settings = AppSettings()
     settings.focusPresets = [15, 25, 45, 60]
-    return FocusPresetReadout(presenter: TimerPresenter(engine: engine, settings: settings))
-      .padding()
+    return FocusPresetReadout(
+      presenter: TimerPresenter(
+        engine: engine, settings: settings, activeTaskStore: ActiveTaskStore())
+    )
+    .padding()
   }
 #endif

@@ -106,7 +106,8 @@ struct TimerStripView: View {
       )
     )
     return TimerStripView(
-      presenter: TimerPresenter(engine: engine, settings: settings),
+      presenter: TimerPresenter(
+        engine: engine, settings: settings, activeTaskStore: activeTaskStore),
       engine: engine,
       activeTaskStore: activeTaskStore,
       registry: registry,
