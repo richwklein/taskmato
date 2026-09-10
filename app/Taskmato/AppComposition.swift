@@ -90,9 +90,9 @@ struct AppComposition {
     self.activeTaskLiveObserver = runtime.activeTaskReconciliation.liveObserver
     self.activeTaskReconciler = runtime.activeTaskReconciliation.reconciler
     self.focusAttribution = runtime.focusAttribution
-    let timerPresenter = TimerPresenter(engine: engine, settings: settings)
-    self.engine = engine
-    self.settings = settings
+    let timerPresenter = TimerPresenter(
+      engine: engine, settings: settings, activeTaskStore: activeTaskStore)
+    (self.engine, self.settings) = (engine, settings)
     self.timerPresenter = timerPresenter
     (self.nextUpPresenter, self.timerSearchPresenter) = Self.makeTimerPresenters(
       timerPresenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings,

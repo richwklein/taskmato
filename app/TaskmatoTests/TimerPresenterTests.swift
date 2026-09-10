@@ -21,17 +21,46 @@ struct TimerPresenterTests {
     return settings
   }
 
+  private func makeTask(title: String = "Write the spec") -> TaskItem {
+    TaskItem(
+      id: TaskRef(providerID: "stub", nativeID: UUID().uuidString), title: title, notes: nil,
+      format: .plainText, priority: .none, dueDate: nil, scheduledDate: nil, startDate: nil,
+      list: nil, section: nil, sourceURL: nil, completedAt: nil, createdAt: Date())
+  }
+
+  /// Builds an isolated task store, tracking a task unless `tracked` is false.
+  private func makeStore(tracked: Bool = true) -> ActiveTaskStore {
+    let store = ActiveTaskStore(
+      store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
+    if tracked { store.track(makeTask()) }
+    return store
+  }
+
+  /// Builds a presenter over isolated settings and an isolated task store. A task is tracked by
+  /// default, since every focus intent is gated on having one to credit the time to.
+  private func makePresenter(
+    engine: SessionEngine = SessionEngine(),
+    settings: AppSettings? = nil,
+    focus: Int = 25, short: Int = 5, long: Int = 15,
+    activeTaskStore: ActiveTaskStore? = nil
+  ) -> TimerPresenter {
+    TimerPresenter(
+      engine: engine,
+      settings: settings ?? makeSettings(focus: focus, short: short, long: long),
+      activeTaskStore: activeTaskStore ?? makeStore())
+  }
+
   // MARK: - Display
 
   @Test func labelWhenIdleShowsConfiguredFocusDuration() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    let presenter = makePresenter(focus: 25)
     #expect(presenter.label == "25:00")
   }
 
   @Test func labelWhileActiveReflectsTimeRemaining() {
     var now = Date(timeIntervalSinceReferenceDate: 0)
     let engine = SessionEngine(now: { now })
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    let presenter = makePresenter(engine: engine, focus: 1)
     presenter.start()
     now = now.addingTimeInterval(20)
     presenter.pause()
@@ -39,14 +68,14 @@ struct TimerPresenterTests {
   }
 
   @Test func progressIsFullWhenIdle() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    let presenter = makePresenter()
     #expect(presenter.progress == 1.0)
   }
 
   @Test func progressReflectsElapsedFraction() {
     var now = Date(timeIntervalSinceReferenceDate: 0)
     let engine = SessionEngine(now: { now })
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    let presenter = makePresenter(engine: engine, focus: 1)
     presenter.start()
     now = now.addingTimeInterval(15)
     presenter.pause()
@@ -54,7 +83,7 @@ struct TimerPresenterTests {
   }
 
   @Test func idleReportsReadyLabelAndCannotStop() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    let presenter = makePresenter()
     #expect(presenter.isIdle)
     #expect(!presenter.canStop)
     #expect(presenter.phaseName == SessionPhase.focus.idleLabel)
@@ -63,7 +92,7 @@ struct TimerPresenterTests {
   // MARK: - Accessibility
 
   @Test func accessibilityValueWhenIdleShowsConfiguredFocusDuration() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    let presenter = makePresenter(focus: 25)
     #expect(presenter.accessibilityValue == "Ready to focus, 25 minutes")
   }
 
@@ -74,7 +103,7 @@ struct TimerPresenterTests {
   @Test func accessibilityValueAtOneMinuteRemainingUsesSingularUnit() {
     var now = Date(timeIntervalSinceReferenceDate: 0)
     let engine = SessionEngine(now: { now })
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    let presenter = makePresenter(engine: engine, focus: 1)
     presenter.start()
     presenter.pause()
     #expect(presenter.accessibilityValue == "Focus, paused, 1 minute remaining")
@@ -83,7 +112,7 @@ struct TimerPresenterTests {
   @Test func accessibilityValueUnderAMinuteIsVague() {
     var now = Date(timeIntervalSinceReferenceDate: 0)
     let engine = SessionEngine(now: { now })
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    let presenter = makePresenter(engine: engine, focus: 1)
     presenter.start()
     now = now.addingTimeInterval(20)
     presenter.pause()
@@ -93,7 +122,7 @@ struct TimerPresenterTests {
   @Test func accessibilityValueInFinalTenSecondsCountsDown() {
     var now = Date(timeIntervalSinceReferenceDate: 0)
     let engine = SessionEngine(now: { now })
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    let presenter = makePresenter(engine: engine, focus: 1)
     presenter.start()
     now = now.addingTimeInterval(50)
     presenter.pause()
@@ -103,7 +132,7 @@ struct TimerPresenterTests {
   @Test func accessibilityValueAtOneSecondRemainingUsesSingularUnit() {
     var now = Date(timeIntervalSinceReferenceDate: 0)
     let engine = SessionEngine(now: { now })
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    let presenter = makePresenter(engine: engine, focus: 1)
     presenter.start()
     now = now.addingTimeInterval(59)
     presenter.pause()
@@ -113,7 +142,7 @@ struct TimerPresenterTests {
   @Test func accessibilityValueWhenPausedIncludesPausedState() {
     var now = Date(timeIntervalSinceReferenceDate: 0)
     let engine = SessionEngine(now: { now })
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 25))
+    let presenter = makePresenter(engine: engine, focus: 25)
     presenter.start()
     now = now.addingTimeInterval(60)
     presenter.pause()
@@ -124,7 +153,7 @@ struct TimerPresenterTests {
     // A freshly started session is running (not paused) with `timeRemaining` at the full
     // duration, so no advance/pause is needed to read it deterministically.
     let engine = SessionEngine(now: { Date(timeIntervalSinceReferenceDate: 0) })
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    let presenter = makePresenter(engine: engine, focus: 1)
     presenter.start()
     #expect(presenter.isRunning)
     #expect(presenter.accessibilityValue == "Focus, 1 minute remaining")
@@ -133,7 +162,7 @@ struct TimerPresenterTests {
   // MARK: - Intents
 
   @Test func startFromIdleBeginsFocus() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    let presenter = makePresenter()
     presenter.start()
     #expect(presenter.isRunning)
     #expect(presenter.phaseName == SessionPhase.focus.displayName)
@@ -141,21 +170,21 @@ struct TimerPresenterTests {
 
   @Test func startAppliesSettingsDurationsToEngine() {
     let engine = SessionEngine(focusDuration: 99)
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings(focus: 1))
+    let presenter = makePresenter(engine: engine, focus: 1)
     presenter.start()
     #expect(engine.focusDuration == 60)
     #expect(engine.timeRemaining == 60)
   }
 
   @Test func skipFromFocusStartsBreak() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    let presenter = makePresenter()
     presenter.start()
     presenter.skip()
     #expect(presenter.phaseName == SessionPhase.shortBreak.displayName)
   }
 
   @Test func pauseThenResumeReturnsToRunning() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    let presenter = makePresenter()
     presenter.start()
     presenter.pause()
     #expect(presenter.isPaused)
@@ -164,7 +193,7 @@ struct TimerPresenterTests {
   }
 
   @Test func stopReturnsToIdle() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    let presenter = makePresenter()
     presenter.start()
     presenter.stop()
     #expect(presenter.isIdle)
@@ -176,7 +205,7 @@ struct TimerPresenterTests {
   @Test func focusPresetsMirrorsSettingsWhenCurrentValueIsAPreset() {
     let settings = makeSettings(focus: 25)
     settings.focusPresets = [15, 25, 45, 60]
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    let presenter = makePresenter(settings: settings)
     #expect(presenter.focusPresets == [15, 25, 45, 60])
     #expect(presenter.selectedFocusMinutes == 25)
   }
@@ -184,7 +213,7 @@ struct TimerPresenterTests {
   @Test func focusPresetsPrependsCustomFocusMinutesNotInTheList() {
     let settings = makeSettings(focus: 30)
     settings.focusPresets = [15, 25, 45, 60]
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    let presenter = makePresenter(settings: settings)
     #expect(presenter.focusPresets == [15, 25, 30, 45, 60])
     #expect(presenter.selectedFocusMinutes == 30)
   }
@@ -192,40 +221,40 @@ struct TimerPresenterTests {
   @Test func showsFocusPresetPickerIsFalseWithASinglePreset() {
     let settings = makeSettings(focus: 25)
     settings.focusPresets = [25]
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    let presenter = makePresenter(settings: settings)
     #expect(!presenter.showsFocusPresetPicker)
   }
 
   @Test func showsFocusPresetPickerIsTrueWithMoreThanOnePreset() {
     let settings = makeSettings(focus: 25)
     settings.focusPresets = [25, 45]
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    let presenter = makePresenter(settings: settings)
     #expect(presenter.showsFocusPresetPicker)
   }
 
   @Test func showsFocusPresetPickerIsTrueWhenCustomFocusMinutesAddsASecondValue() {
     let settings = makeSettings(focus: 30)
     settings.focusPresets = [25]
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    let presenter = makePresenter(settings: settings)
     #expect(presenter.showsFocusPresetPicker)
   }
 
   @Test func selectFocusPresetUpdatesSelectionAndLabelWhileIdle() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    let presenter = makePresenter(focus: 25)
     presenter.selectFocusPreset(45)
     #expect(presenter.selectedFocusMinutes == 45)
     #expect(presenter.label == "45:00")
   }
 
   @Test func selectFocusPresetIsNoOpWhileRunning() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    let presenter = makePresenter(focus: 25)
     presenter.start()
     presenter.selectFocusPreset(45)
     #expect(presenter.selectedFocusMinutes == 25)
   }
 
   @Test func selectFocusPresetIsNoOpWhilePaused() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings(focus: 25))
+    let presenter = makePresenter(focus: 25)
     presenter.start()
     presenter.pause()
     presenter.selectFocusPreset(45)
@@ -237,7 +266,7 @@ struct TimerPresenterTests {
     let engine = SessionEngine()
     let settings = makeSettings(focus: 25)
     settings.focusPresets = [15, 25, 45, 60]
-    let presenter = TimerPresenter(engine: engine, settings: settings)
+    let presenter = makePresenter(engine: engine, settings: settings)
     engine.enqueuePhase(queued)
     #expect(!presenter.canSelectFocusPreset)
     #expect(!presenter.showsFocusPresetPicker)
@@ -247,7 +276,7 @@ struct TimerPresenterTests {
     let engine = SessionEngine()
     let settings = makeSettings(focus: 25)
     settings.focusPresets = [15, 25, 45, 60]
-    let presenter = TimerPresenter(engine: engine, settings: settings)
+    let presenter = makePresenter(engine: engine, settings: settings)
     engine.enqueuePhase(.focus)
     #expect(presenter.canSelectFocusPreset)
     #expect(presenter.showsFocusPresetPicker)
@@ -257,7 +286,7 @@ struct TimerPresenterTests {
     let engine = SessionEngine()
     let settings = makeSettings(focus: 25, short: 5)
     settings.focusPresets = [15, 25, 45, 60]
-    let presenter = TimerPresenter(engine: engine, settings: settings)
+    let presenter = makePresenter(engine: engine, settings: settings)
     engine.enqueuePhase(.shortBreak)
     presenter.selectFocusPreset(45)
     #expect(presenter.selectedFocusMinutes == 25)
@@ -268,7 +297,7 @@ struct TimerPresenterTests {
     let engine = SessionEngine()
     let settings = makeSettings(focus: 25)
     settings.focusPresets = [15, 25, 45, 60]
-    let presenter = TimerPresenter(engine: engine, settings: settings)
+    let presenter = makePresenter(engine: engine, settings: settings)
     engine.enqueuePhase(.shortBreak)
     #expect(!presenter.showsFocusPresetPicker)
     presenter.skip()
@@ -280,7 +309,7 @@ struct TimerPresenterTests {
   @Test func showsFocusPresetPickerIsFalseWhileRunning() {
     let settings = makeSettings(focus: 25)
     settings.focusPresets = [15, 25, 45, 60]
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    let presenter = makePresenter(settings: settings)
     presenter.start()
     #expect(!presenter.showsFocusPresetPicker)
   }
@@ -288,7 +317,7 @@ struct TimerPresenterTests {
   @Test func showsFocusPresetPickerIsFalseWhilePaused() {
     let settings = makeSettings(focus: 25)
     settings.focusPresets = [15, 25, 45, 60]
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: settings)
+    let presenter = makePresenter(settings: settings)
     presenter.start()
     presenter.pause()
     #expect(!presenter.showsFocusPresetPicker)
@@ -303,7 +332,7 @@ struct TimerPresenterTests {
   @Test func stagedFocusLengthLeavesTheBreakCountdownAlone() {
     let engine = SessionEngine()
     let settings = makeSettings(focus: 25, short: 5)
-    let presenter = TimerPresenter(engine: engine, settings: settings)
+    let presenter = makePresenter(engine: engine, settings: settings)
     engine.enqueuePhase(.shortBreak)
     settings.focusMinutes = 45
     #expect(presenter.selectedFocusMinutes == 45)
@@ -313,7 +342,7 @@ struct TimerPresenterTests {
   @Test func stagedFocusLengthAppliesToTheFocusPhaseAfterTheBreak() {
     let engine = SessionEngine()
     let settings = makeSettings(focus: 25, short: 5)
-    let presenter = TimerPresenter(engine: engine, settings: settings)
+    let presenter = makePresenter(engine: engine, settings: settings)
     engine.enqueuePhase(.shortBreak)
     settings.focusMinutes = 45
     presenter.skip()  // idle-skip consumes the queued break and queues focus
@@ -325,7 +354,7 @@ struct TimerPresenterTests {
   @Test func stagedFocusLengthAppliesAfterAPhaseStagedMidSession() {
     let engine = SessionEngine()
     let settings = makeSettings(focus: 25, short: 5)
-    let presenter = TimerPresenter(engine: engine, settings: settings)
+    let presenter = makePresenter(engine: engine, settings: settings)
     presenter.start()
     settings.focusMinutes = 45  // staged while focus is live; must not resize the running phase
     #expect(engine.focusDuration == 25 * 60)
@@ -336,7 +365,7 @@ struct TimerPresenterTests {
   // MARK: - Enablement
 
   @Test func canSkipDisabledWhenIdleWithNothingQueued() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
+    let presenter = makePresenter()
     #expect(presenter.isIdle)
     #expect(!presenter.isRunning)
     #expect(!presenter.isPaused)
@@ -346,7 +375,7 @@ struct TimerPresenterTests {
 
   @Test func canSkipEnabledWhenIdleWithBreakQueued() {
     let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    let presenter = makePresenter(engine: engine)
     engine.enqueuePhase(.shortBreak)
     #expect(presenter.isIdle)
     #expect(!presenter.canStop)
@@ -355,7 +384,7 @@ struct TimerPresenterTests {
 
   @Test func canSkipDisabledWhenIdleWithFocusQueued() {
     let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    let presenter = makePresenter(engine: engine)
     engine.enqueuePhase(.focus)
     #expect(presenter.isIdle)
     #expect(!presenter.canStop)
@@ -364,7 +393,7 @@ struct TimerPresenterTests {
 
   @Test func canSkipAndCanStopEnabledWhenRunning() {
     let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    let presenter = makePresenter(engine: engine)
     presenter.start()
     #expect(presenter.isRunning)
     #expect(!presenter.isPaused)
@@ -374,7 +403,7 @@ struct TimerPresenterTests {
 
   @Test func canSkipAndCanStopEnabledWhenPaused() {
     let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    let presenter = makePresenter(engine: engine)
     presenter.start()
     presenter.pause()
     #expect(presenter.isPaused)
@@ -385,31 +414,10 @@ struct TimerPresenterTests {
 
   @Test func canSkipAndCanStopDisabledAfterStoppingBackToIdle() {
     let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
+    let presenter = makePresenter(engine: engine)
     presenter.start()
     presenter.stop()
     #expect(!presenter.canStop)
     #expect(!presenter.canSkip)
-  }
-
-  @Test func startRequiresTaskIsTrueWhenIdleWithNothingQueued() {
-    let presenter = TimerPresenter(engine: SessionEngine(), settings: makeSettings())
-    #expect(presenter.isIdle)
-    #expect(presenter.startRequiresTask)
-  }
-
-  @Test func startRequiresTaskIsTrueWhenFocusIsQueued() {
-    let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
-    engine.enqueuePhase(.focus)
-    #expect(presenter.startRequiresTask)
-  }
-
-  @Test(arguments: [SessionPhase.shortBreak, .longBreak])
-  func startRequiresTaskIsFalseWhenABreakIsQueued(queued: SessionPhase) {
-    let engine = SessionEngine()
-    let presenter = TimerPresenter(engine: engine, settings: makeSettings())
-    engine.enqueuePhase(queued)
-    #expect(!presenter.startRequiresTask)
   }
 }

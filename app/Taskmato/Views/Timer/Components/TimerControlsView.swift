@@ -30,22 +30,21 @@ enum TimerControlsSize {
 /// | running                | Pause   |  ✓   |  ✓   |
 /// | paused                 | Resume  |  ✓   |  ✓   |
 ///
-/// *Skip while idle cycles a queued break back to focus. Start additionally requires a
-/// selected task, gated externally via `startDisabled`.
+/// *Skip while idle cycles a queued break back to focus.
 ///
-/// All intents route through the injected ``TimerPresenter``; callers vary only the
-/// ``TimerControlsSize`` and whether Start is disabled (typically when no task is
-/// selected). The primary action renders tinted; skip and stop render bordered.
+/// Both Start and Resume additionally require a task, since either would put focus on the clock;
+/// the presenter's `primaryDisabled` decides. Skip stays available either way — it parks the focus
+/// phase it opens rather than refusing. All intents route through the injected ``TimerPresenter``;
+/// callers vary only the ``TimerControlsSize``. The primary action renders tinted; skip and stop
+/// render bordered.
 struct TimerControlsView: View {
 
   /// The presenter supplying timer state and receiving control intents.
   let presenter: TimerPresenter
   /// The button sizing preset for this surface.
   var size: TimerControlsSize = .regular
-  /// Whether the Start button is disabled — typically when no task is selected.
-  var startDisabled: Bool = false
-  /// Tooltip shown on the Start button while it is disabled.
-  var startDisabledHelp: String = ""
+  /// Tooltip shown on the primary button while it is disabled for want of a task.
+  var primaryDisabledHelp: String = ""
 
   var body: some View {
     HStack(spacing: size.spacing) {
@@ -84,6 +83,8 @@ struct TimerControlsView: View {
         isProminent: true,
         diameter: size.primaryDiameter
       ) { presenter.resume() }
+      .disabled(presenter.primaryDisabled)
+      .help(presenter.primaryDisabled ? primaryDisabledHelp : "")
     } else {
       ControlButton(
         label: AppLabels.Timer.start.title,
@@ -91,8 +92,8 @@ struct TimerControlsView: View {
         isProminent: true,
         diameter: size.primaryDiameter
       ) { presenter.start() }
-      .disabled(startDisabled)
-      .help(startDisabled ? startDisabledHelp : "")
+      .disabled(presenter.primaryDisabled)
+      .help(presenter.primaryDisabled ? primaryDisabledHelp : "")
     }
   }
 }

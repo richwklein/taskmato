@@ -133,10 +133,19 @@ final class PhaseOrchestrator {
     case .shortBreak, .longBreak:
       next = .focus
     }
-    if settings.autoStartNextPhase {
+    if settings.autoStartNextPhase, canAutoStart(next) {
       engine.start(phase: next)
     } else {
       engine.enqueuePhase(next)
     }
+  }
+
+  /// Whether `phase` may begin unattended. Focus credits its time to a task, so with neither a
+  /// tracked nor a staged task it is queued for a deliberate Start instead — completing the
+  /// tracked task mid-break (D10 of design doc 0010) leaves exactly that state, and auto-starting
+  /// there would run a whole focus phase against nothing. Breaks always may.
+  private func canAutoStart(_ phase: SessionPhase) -> Bool {
+    guard phase == .focus else { return true }
+    return activeTaskStore.activeTask != nil || activeTaskStore.stagedTask != nil
   }
 }

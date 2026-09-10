@@ -521,7 +521,8 @@ extension TaskDetailView {
         settings: settings, selectionStore: sidebarSelectionStore, statsViewModel: .preview),
       settings: settings,
       errorPresenter: ErrorPresenter(),
-      presenter: TimerPresenter(engine: SessionEngine(), settings: settings)
+      presenter: TimerPresenter(
+        engine: SessionEngine(), settings: settings, activeTaskStore: ActiveTaskStore())
     )
   }
 #endif

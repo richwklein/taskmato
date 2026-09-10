@@ -56,7 +56,8 @@ struct NextUpReadout: View {
       ))
     return NextUpReadout(
       nextUpPresenter: NextUpPresenter(
-        presenter: TimerPresenter(engine: engine, settings: settings),
+        presenter: TimerPresenter(
+          engine: engine, settings: settings, activeTaskStore: activeTaskStore),
         activeTaskStore: activeTaskStore, settings: settings)
     )
     .padding()

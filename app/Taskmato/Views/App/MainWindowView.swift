@@ -125,8 +125,8 @@ struct MainWindowView: View {
 
   private var timerToggleAction: (() -> Void)? {
     if presenter.isRunning { return { presenter.pause() } }
+    guard !presenter.primaryDisabled else { return nil }
     if presenter.isPaused { return { presenter.resume() } }
-    guard activeTaskStore.activeTask != nil else { return nil }
     return { presenter.start() }
   }
 
@@ -143,19 +143,21 @@ struct MainWindowView: View {
     let settings = AppSettings()
     let registry = ProviderRegistry()
     let sidebarSelectionStore = SelectionStore(registry: registry)
-    let timerPresenter = TimerPresenter(engine: engine, settings: settings)
+    let activeTaskStore = ActiveTaskStore()
+    let timerPresenter = TimerPresenter(
+      engine: engine, settings: settings, activeTaskStore: activeTaskStore)
     let queryService = TaskQueryService(registry: registry, sorter: TaskSorter())
     MainWindowView(
       presenter: timerPresenter,
       nextUpPresenter: NextUpPresenter(
-        presenter: timerPresenter, activeTaskStore: ActiveTaskStore(), settings: settings),
+        presenter: timerPresenter, activeTaskStore: activeTaskStore, settings: settings),
       searchPresenter: TimerSearchPresenter(
-        queryService: queryService, settings: settings, activeTaskStore: ActiveTaskStore(),
+        queryService: queryService, settings: settings, activeTaskStore: activeTaskStore,
         registry: registry),
       engine: engine,
       settings: settings,
       statsViewModel: .preview,
-      activeTaskStore: ActiveTaskStore(),
+      activeTaskStore: activeTaskStore,
       registry: registry,
       queryService: queryService,
       destinationResolver: TaskDestinationResolver(registry: registry, settings: settings),

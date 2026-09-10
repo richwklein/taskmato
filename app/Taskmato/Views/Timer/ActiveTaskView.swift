@@ -291,7 +291,8 @@ struct ActiveTaskView: View {
     @MainActor
     func nextUpPresenter(for store: ActiveTaskStore) -> NextUpPresenter {
       NextUpPresenter(
-        presenter: TimerPresenter(engine: engine, settings: settings), activeTaskStore: store,
+        presenter: TimerPresenter(engine: engine, settings: settings, activeTaskStore: store),
+        activeTaskStore: store,
         settings: settings)
     }
 

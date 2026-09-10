@@ -96,8 +96,7 @@ struct TimerTabView: View {
       TimerControlsView(
         presenter: presenter,
         size: .regular,
-        startDisabled: presenter.startRequiresTask && activeTaskStore.activeTask == nil,
-        startDisabledHelp: AppLabels.Tooltip.selectTaskFirst
+        primaryDisabledHelp: AppLabels.Tooltip.selectTaskFirst
       )
       .padding(.top, 20)
       .padding(.bottom, .screenPadding)
@@ -141,7 +140,8 @@ struct TimerTabView: View {
     let settings = AppSettings()
     let registry = ProviderRegistry()
     let activeTaskStore = ActiveTaskStore()
-    let timerPresenter = TimerPresenter(engine: engine, settings: settings)
+    let timerPresenter = TimerPresenter(
+      engine: engine, settings: settings, activeTaskStore: activeTaskStore)
     let queryService = TaskQueryService(registry: registry, sorter: TaskSorter())
     return TimerTabView(
       presenter: timerPresenter,

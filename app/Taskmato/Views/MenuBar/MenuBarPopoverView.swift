@@ -31,8 +31,7 @@ struct MenuBarPopoverView: View {
       TimerControlsView(
         presenter: presenter,
         size: .compact,
-        startDisabled: presenter.startRequiresTask && activeTaskStore.activeTask == nil,
-        startDisabledHelp: AppLabels.Tooltip.selectTaskFirst
+        primaryDisabledHelp: AppLabels.Tooltip.selectTaskFirst
       )
       .padding(.top, .sectionGap)
       .padding(.bottom, .groupGap)
@@ -95,10 +94,12 @@ struct MenuBarPopoverView: View {
     let engine = SessionEngine()
     let settings = AppSettings()
     let registry = ProviderRegistry()
+    let activeTaskStore = ActiveTaskStore()
     return MenuBarPopoverView(
-      presenter: TimerPresenter(engine: engine, settings: settings),
+      presenter: TimerPresenter(
+        engine: engine, settings: settings, activeTaskStore: activeTaskStore),
       statsViewModel: .preview,
-      activeTaskStore: ActiveTaskStore(),
+      activeTaskStore: activeTaskStore,
       nav: MainNavigation(
         settings: settings, selectionStore: SelectionStore(registry: registry),
         statsViewModel: .preview),
