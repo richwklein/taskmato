@@ -476,14 +476,19 @@ extension TaskDetailView {
   /// URL raced ahead and started a session between the submenu opening and this click landing
   /// (issue #595) — this de-escalates to ``stageNextFocus(_:minutes:)`` so the click stages the
   /// task instead of being silently dropped. Not `private`: called from
-  /// `TaskDetailContextMenu.swift`'s "Start Focus ▸" submenu.
+  /// `TaskDetailContextMenu.swift`'s "Start Focus ▸" submenu. Deliberately toggle-independent:
+  /// with `startFocusOnTaskPick` on, `track(_:)` itself starts the phase at this length and
+  /// `presenter.start()` below no-ops; with it off, `presenter.start()` does the work. Either way
+  /// the phase runs, because this gesture is an explicit start, not a bare pick — nobody should
+  /// gate it on that setting. `settings.focusMinutes` is written before `track(_:)` so the phase
+  /// that (possibly) starts on the pick already sees the chosen length.
   func startFocus(_ task: TaskItem, minutes: Int) {
     guard presenter.canSelectFocusPreset else {
       stageNextFocus(task, minutes: minutes)
       return
     }
-    activeTaskStore.track(task)
     settings.focusMinutes = minutes
+    activeTaskStore.track(task)
     presenter.start()
     nav.showTimer()
   }

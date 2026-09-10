@@ -90,7 +90,16 @@ struct SettingsView: View {
       }
 
       Section("Behavior") {
-        Toggle("Auto-start next phase", isOn: $settings.autoStartNextPhase)
+        Toggle("Auto-start breaks", isOn: $settings.autoStartBreaks)
+        Toggle("Auto-start focus", isOn: $settings.autoStartFocus)
+        Toggle("Auto-start focus when tracking a task", isOn: $settings.startFocusOnTaskPick)
+        Text(
+          "Starts focus when you track a task while the timer is idle with focus next, and "
+            + "resumes a phase that Complete, Swap, or Clear paused. Tracking during a running "
+            + "session only swaps the tracked task."
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
       }
 
       Section("Tasks") {

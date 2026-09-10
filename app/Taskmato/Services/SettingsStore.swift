@@ -127,6 +127,12 @@ final class SettingsStore {
     set { defaults.set(newValue.map(\.rawValue), forKey: key.name) }
   }
 
+  /// Whether a value has actually been written for `key`, as opposed to the key's default
+  /// being returned for an absent entry.
+  func hasStoredValue<Value>(for key: SettingsKey<Value>) -> Bool {
+    defaults.object(forKey: key.name) != nil
+  }
+
   // MARK: - Codable & Data values
 
   /// Decodes a JSON-encoded `Codable` value for `key`, or `nil` when absent or undecodable.
@@ -184,7 +190,16 @@ extension SettingsStore {
     static let soundEnabled = SettingsKey("soundEnabled", default: true)
     static let soundName = SettingsKey("soundName", default: "Hero")
     static let notificationsEnabled = SettingsKey("notificationsEnabled", default: true)
-    static let autoStartNextPhase = SettingsKey("autoStartNextPhase", default: false)
+
+    // MARK: Behavior
+
+    static let autoStartBreaks = SettingsKey("autoStartBreaks", default: false)
+    static let autoStartFocus = SettingsKey("autoStartFocus", default: false)
+    static let startFocusOnTaskPick = SettingsKey("startFocusOnTaskPick", default: true)
+
+    /// Superseded by the three keys above. Read once to seed them and never again, but retained
+    /// so a downgrade to a 1.0.x build still reads the user's original setting.
+    static let legacyAutoStartNextPhase = SettingsKey("autoStartNextPhase", default: false)
 
     // MARK: Task views & sidebar
 

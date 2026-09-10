@@ -64,9 +64,20 @@ final class AppSettings {
     didSet { store[SettingsStore.Keys.notificationsEnabled] = notificationsEnabled }
   }
 
-  /// Whether the next phase starts automatically on natural completion, or waits for the user to press Start.
-  var autoStartNextPhase: Bool {
-    didSet { store[SettingsStore.Keys.autoStartNextPhase] = autoStartNextPhase }
+  /// Whether a break starts automatically when a focus phase completes naturally.
+  var autoStartBreaks: Bool {
+    didSet { store[SettingsStore.Keys.autoStartBreaks] = autoStartBreaks }
+  }
+
+  /// Whether a focus phase starts automatically when a break completes naturally, provided a task
+  /// is tracked or staged to credit it to (D11 of design doc 0010).
+  var autoStartFocus: Bool {
+    didSet { store[SettingsStore.Keys.autoStartFocus] = autoStartFocus }
+  }
+
+  /// Whether tracking a task starts focus immediately when the timer is idle with focus next.
+  var startFocusOnTaskPick: Bool {
+    didSet { store[SettingsStore.Keys.startFocusOnTaskPick] = startFocusOnTaskPick }
   }
 
   /// Whether the provider/list sidebar column is visible in the window-first shell.
@@ -133,6 +144,7 @@ final class AppSettings {
   /// Creates settings backed by the provided ``SettingsStore``. Pass a store over a temporary suite in tests.
   init(store: SettingsStore) {
     self.store = store
+    Self.migrateLegacyAutoStart(in: store)
     focusMinutes = store[SettingsStore.Keys.focusMinutes]
     focusPresets = store[SettingsStore.Keys.focusPresets]
     shortBreakMinutes = store[SettingsStore.Keys.shortBreakMinutes]
@@ -141,13 +153,28 @@ final class AppSettings {
     soundEnabled = store[SettingsStore.Keys.soundEnabled]
     soundName = store[SettingsStore.Keys.soundName]
     notificationsEnabled = store[SettingsStore.Keys.notificationsEnabled]
-    autoStartNextPhase = store[SettingsStore.Keys.autoStartNextPhase]
+    autoStartBreaks = store[SettingsStore.Keys.autoStartBreaks]
+    autoStartFocus = store[SettingsStore.Keys.autoStartFocus]
+    startFocusOnTaskPick = store[SettingsStore.Keys.startFocusOnTaskPick]
     sidebarVisible = store[SettingsStore.Keys.sidebarVisible]
     statsHistoryFooterDismissed = store[SettingsStore.Keys.statsHistoryFooterDismissed]
     taskSortField = store[SettingsStore.Keys.taskSortField]
     taskSortDirection = store[SettingsStore.Keys.taskSortDirection]
     defaultWritableProviderID = store[SettingsStore.Keys.defaultWritableProviderID]
     collapsedSidebarSections = store[SettingsStore.Keys.collapsedSidebarSections]
+  }
+
+  /// Seeds the split auto-advance keys from the single pre-1.1 `autoStartNextPhase` value.
+  /// Runs only while the legacy key exists and neither new key has been written, so a later
+  /// toggle change is never re-clobbered; the legacy key is left in place for downgrade safety.
+  private static func migrateLegacyAutoStart(in store: SettingsStore) {
+    guard store.hasStoredValue(for: SettingsStore.Keys.legacyAutoStartNextPhase),
+      !store.hasStoredValue(for: SettingsStore.Keys.autoStartBreaks),
+      !store.hasStoredValue(for: SettingsStore.Keys.autoStartFocus)
+    else { return }
+    let value = store[SettingsStore.Keys.legacyAutoStartNextPhase]
+    store[SettingsStore.Keys.autoStartBreaks] = value
+    store[SettingsStore.Keys.autoStartFocus] = value
   }
 
   // MARK: - Focus presets
