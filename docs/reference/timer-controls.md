@@ -29,8 +29,10 @@ drift between surfaces.
 Start is additionally gated by task selection
 (`startDisabled = selectionStore.activeTask == nil`), an external task-selection axis
 orthogonal to session state. The idle "break queued" row is only reachable mid-cycle
-after a phase completes with auto-start off — `PhaseOrchestrator` enqueues the next
-phase. Idle Skip cycles a queued break back to focus.
+after a focus phase completes with `autoStartBreaks` off, and the idle "focus queued"
+row after a break completes with `autoStartFocus` off (or with no task to credit
+regardless of the toggle) — `PhaseOrchestrator` enqueues the next phase in either case.
+Idle Skip cycles a queued break back to focus.
 
 ## Active-task controls
 

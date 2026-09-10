@@ -24,13 +24,14 @@ private func makeItem(providerID: ProviderID, nativeID: String, title: String) -
   )
 }
 
+@MainActor
+private func makeStore() -> ActiveTaskStore {
+  ActiveTaskStore(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
+}
+
 @Suite("ActiveTaskStore")
 @MainActor
 struct ActiveTaskStoreTests {
-
-  private func makeStore() -> ActiveTaskStore {
-    ActiveTaskStore(store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!))
-  }
 
   // MARK: - Active task
 
@@ -289,7 +290,61 @@ struct ActiveTaskStoreTests {
     #expect(fired == false)
   }
 
-  // MARK: - Staging (design doc "stage the next focus")
+  // MARK: - onTaskPicked
+
+  @Test func trackFiresOnTaskPickedForAnOrdinaryPick() {
+    let store = makeStore()
+    var fired = false
+    store.onTaskPicked = { fired = true }
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Task"))
+    #expect(fired)
+  }
+
+  @Test func trackDoesNotFireOnTaskPickedWhenConsumingAPendingContinuation() {
+    let store = makeStore()
+    var fired = false
+    store.onTaskPicked = { fired = true }
+    store.markPendingContinuation()
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Task"))
+    #expect(fired == false)
+  }
+
+  @Test func trackFiresOnContinuationSelectInsteadOfOnTaskPickedWhenPending() {
+    let store = makeStore()
+    var continuationFired = false
+    var pickedFired = false
+    store.onContinuationSelect = { continuationFired = true }
+    store.onTaskPicked = { pickedFired = true }
+    store.markPendingContinuation()
+    store.track(makeItem(providerID: "alpha", nativeID: "1", title: "Task"))
+    #expect(continuationFired)
+    #expect(pickedFired == false)
+  }
+
+  @Test func applyStagedTaskDoesNotFireOnTaskPicked() {
+    let store = makeStore()
+    var fired = false
+    store.onTaskPicked = { fired = true }
+    store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
+    store.applyStagedTask()
+    #expect(fired == false)
+  }
+
+  @Test func promoteStagedDoesNotFireOnTaskPicked() {
+    let store = makeStore()
+    var fired = false
+    store.onTaskPicked = { fired = true }
+    store.stage(makeItem(providerID: "alpha", nativeID: "1", title: "Staged"))
+    store.promoteStaged()
+    #expect(fired == false)
+  }
+}
+
+/// Staging (design doc "stage the next focus") — split from ``ActiveTaskStoreTests`` to keep
+/// each struct under the type-body-length limit.
+@Suite("ActiveTaskStore - Staging")
+@MainActor
+struct ActiveTaskStoreStagingTests {
 
   @Test func stageLeavesActiveTaskUntouched() {
     let store = makeStore()

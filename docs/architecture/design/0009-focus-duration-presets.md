@@ -223,6 +223,13 @@ Neither touches `isPendingContinuation`. `select(_:)` consumes that flag in the 
 arming it in the promotion path is decorative — and with `autoStartNextPhase` off it would strand a
 paused ring with no picker and no way to resume.
 
+> **Amendment (2026-09-10, "split `autoStartNextPhase`").** `autoStartNextPhase` is split into
+> three settings. The `onStagedPromotion`-gated `resume()` this section describes is now gated on
+> `startFocusOnTaskPick` instead. The resume *logic* is unchanged, but the **default flips**:
+> `autoStartNextPhase` shipped `false`, `startFocusOnTaskPick` ships `true`, and the migration
+> seeds only the two auto-advance keys. An upgrading user who had auto-start off therefore gets
+> this resume where they previously got none — a deliberate consequence, recorded in the PR.
+
 **Only the task is staged.** The gesture keeps writing `settings.focusMinutes` and the readout
 renders that same value live. A separate staged-length slot was designed and rejected: it can
 diverge from what the engine actually applies, because `focusPresets`'s setter re-snaps
