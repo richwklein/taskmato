@@ -36,7 +36,7 @@
     "eslint-plugin-jsx-a11y": "^6.10.0",
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "prettier": "^3.9.0",
-    "prettier-plugin-astro": "^0.14.1",
+    "prettier-plugin-astro": "^1.0.0",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^6.0.2",
