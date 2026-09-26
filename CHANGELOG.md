@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.1](https://github.com/richwklein/taskmato/compare/v1.6.0...v1.6.1) (2026-09-26)
+
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump astro from 7.2.9 to 7.3.3 in /site in the astro group across 1 directory ([#627](https://github.com/richwklein/taskmato/issues/627)) ([93d38a3](https://github.com/richwklein/taskmato/commit/93d38a385a47dc8276d2bd33b6c2f43a7d3805c0))
+* **deps-dev:** bump the eslint group across 1 directory with 5 updates ([#632](https://github.com/richwklein/taskmato/issues/632)) ([e914637](https://github.com/richwklein/taskmato/commit/e914637c130a7f7b361bd23dd167864a0d67fc5d))
+* **deps-dev:** bump the vitest group across 1 directory with 2 updates ([#626](https://github.com/richwklein/taskmato/issues/626)) ([cee569b](https://github.com/richwklein/taskmato/commit/cee569b7ad17f3b31700195cf82874b3730267cd))
+* **deps:** bump github/codeql-action from 4.37.9 to 4.38.0 in the third-party-actions group ([#629](https://github.com/richwklein/taskmato/issues/629)) ([4e8d1be](https://github.com/richwklein/taskmato/commit/4e8d1bebaf3031caabc8f6f4d0b58b12fad70469))
+
 ## [1.6.0](https://github.com/richwklein/taskmato/compare/v1.5.0...v1.6.0) (2026-09-10)
 
 
