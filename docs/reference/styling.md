@@ -30,7 +30,7 @@ are used directly — they are not re-exported as tokens.
 
 | Token | Value | Where it's appropriate |
 | --- | --- | --- |
-| `dueUrgent` | `.red` | Due date at or past its urgency threshold |
+| `dueUrgent` | `.red` | Overdue due date (any day before today, or a time already passed) |
 | `priorityHighest` | `.red` | Accent for the single highest-priority level, distinct from the elevated band |
 | `priorityHigh` | `.orange` | Accent for elevated-priority tasks (medium and high) |
 | `priorityNeutral` | `.primary` | Default tint for tasks without elevated priority (low) |
@@ -43,7 +43,8 @@ are used directly — they are not re-exported as tokens.
 | `chartPalette` | `[.blue, .green, .orange, .purple, .red, .teal, .indigo, .pink]` | Ordered colors for chart slices/series |
 
 `statusError`, `dueUrgent`, and `priorityHighest` share the `.red` value — same color, distinct
-semantics. They never collide spatially (error banner vs. due-date text vs. priority glyph).
+semantics. `dueUrgent` and `priorityHighest` can co-occur on one row, so they are told apart by
+shape (a flag against a filled triangle), not by color.
 
 ### Card surfaces
 
@@ -89,7 +90,7 @@ automatically. **Explicit colors do not**, and five leaves would otherwise sit i
 
 | Leaf | Explicit color | Failure on the fill |
 | --- | --- | --- |
-| `TaskMetadataLabel` | `dueUrgent` | red on blue |
+| `TaskMetadataLabel` | `dueUrgent` (overdue tier only) | red on blue |
 | `PriorityGlyph` | `priority.accentColor` | orange/red on blue |
 | `TaskStateButtonView` | `.accentColor` | accent on accent |
 | `TaskMarkdownTitle` | link tint | blue on blue |
@@ -111,9 +112,14 @@ with its underline carrying the link affordance.
 Inline markdown links take the **tint**, not the foreground style, so `.foregroundStyle` never
 reaches them and they need their own pass.
 
-Meaning never rests on hue alone: priority carries a distinct glyph per level, urgency stays a
-brightness step (an urgent date renders `.primary` beside a normal date's `.secondary`), and
-inline links are underlined unconditionally so the affordance survives losing its tint.
+Meaning never rests on hue alone: priority carries a distinct glyph per level; the due-today
+tier carries the self-describing word "Today" alongside its `.primary` brightness step; the
+overdue tier carries `dueUrgent` plus a `flag.fill` glyph, because an absolute date does not
+say "late" on its own; and inline links are underlined unconditionally so the affordance
+survives losing its tint. `dueUrgent` and `priorityHighest` can now co-occur on one row, so
+they are distinguished by shape — a flag against a filled triangle — not by color.
+`TaskMetadataLabel` also names the tier in its `.accessibilityLabel`, since that label
+replaces rather than supplements the spoken date.
 
 `cardBackground()` paints the card surface (`cardSurface` fill, `cardBorder` at `cardHairline`)
 and takes no emphasis: the only remaining cards are the stat cards, which are not selectable.

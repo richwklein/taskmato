@@ -8,7 +8,7 @@ import SwiftUI
 
 extension Color {
 
-  /// Due date that has reached or passed its urgency threshold.
+  /// Due date that is past due.
   static let dueUrgent: Color = .red
 
   /// Accent tint for the single highest-priority level, distinct from the elevated band.

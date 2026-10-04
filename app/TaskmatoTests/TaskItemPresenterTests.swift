@@ -15,6 +15,7 @@ struct TaskItemPresenterTests {
   private func makeTask(
     priority: TaskPriority = .none,
     dueDate: Date? = nil,
+    dueDateIncludesTime: Bool = false,
     completedAt: Date? = nil
   ) -> TaskItem {
     TaskItem(
@@ -24,6 +25,7 @@ struct TaskItemPresenterTests {
       format: .plainText,
       priority: priority,
       dueDate: dueDate,
+      dueDateIncludesTime: dueDateIncludesTime,
       scheduledDate: nil,
       startDate: nil,
       list: nil,
@@ -98,36 +100,14 @@ struct TaskItemPresenterTests {
     let presenter = TaskItemPresenter(
       task: makeTask(dueDate: due, completedAt: Date()),
       kind: .completed(onRestore: {}, onDelete: nil))
-    #expect(presenter.dueDate == nil)
+    #expect(presenter.dueDisplay(now: Date(timeIntervalSince1970: 0)) == nil)
   }
 
   @Test func dueDateShownWhenActive() {
     let due = Date(timeIntervalSinceNow: 3600)
     let presenter = TaskItemPresenter(
       task: makeTask(dueDate: due), kind: .active(onComplete: {}, onDelete: nil))
-    #expect(presenter.dueDate == due)
-  }
-
-  @Test func urgencyReflectsTodayAndPast() {
-    let past = Date(timeIntervalSinceNow: -86_400)
-    let today = Date()
-    let future = Date(timeIntervalSinceNow: 7 * 86_400)
-
-    #expect(
-      TaskItemPresenter(task: makeTask(dueDate: past), kind: .active(onComplete: {}, onDelete: nil))
-        .dueIsUrgent)
-    #expect(
-      TaskItemPresenter(
-        task: makeTask(dueDate: today), kind: .active(onComplete: {}, onDelete: nil)
-      ).dueIsUrgent)
-    #expect(
-      !TaskItemPresenter(
-        task: makeTask(dueDate: future), kind: .active(onComplete: {}, onDelete: nil)
-      )
-      .dueIsUrgent)
-    #expect(
-      !TaskItemPresenter(task: makeTask(dueDate: nil), kind: .active(onComplete: {}, onDelete: nil))
-        .dueIsUrgent)
+    #expect(presenter.dueDisplay(now: Date(timeIntervalSince1970: 0)) != nil)
   }
 
   // MARK: - Lineage

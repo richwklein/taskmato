@@ -19,6 +19,8 @@ struct TaskRowView: View {
   let task: TaskItem
   let kind: TaskItemKind
   var lineage: TaskLineage?
+  /// The clock the due-date label is computed against.
+  var now: Date = .now
 
   @State private var completionHover = false
   @State private var rowHover = false
@@ -38,7 +40,7 @@ struct TaskRowView: View {
           if let notes = task.notes {
             TaskNoteView(notes: notes, format: task.format)
           }
-          TaskMetadataLabel(presenter: presenter)
+          TaskMetadataLabel(presenter: presenter, now: now)
           if let lineage = presenter.displayLineage {
             TaskLineageRow(lineage: lineage)
           }
