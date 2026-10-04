@@ -37,6 +37,9 @@ struct TaskDetailView: View {
   @State private var query: String = ""
   /// Not `private`: `TaskDetailSelection.swift` resolves ``selectedTaskID`` against this.
   @State var sections: [TaskSection] = []
+  /// The clock due-date labels are computed against, re-stamped on data loads and day changes.
+  @State var clock: Date = .now
+  @State private var temporal = TaskTemporalObserver()
   @State private var isLoading: Bool = false
   @State private var isAddingTask = false
   @State private var newTaskDestination: TaskDestination?
@@ -227,6 +230,7 @@ struct TaskDetailView: View {
       .onAppear {
         Task { await refresh() }
       }
+      .onChange(of: temporal.token) { _, _ in clock = .now }
       .onChange(of: refreshToken) { _, _ in Task { await refresh() } }
       .onChange(of: isAddingTask) { _, adding in
         if !adding { Task { await refresh() } }
@@ -392,6 +396,7 @@ extension TaskDetailView {
     let (tasks, _) = await queryService.tasks(
       query: currentQuery,
       sortBy: settings.taskSortField, direction: settings.taskSortDirection)
+    clock = .now
     sections = buildDisplaySections(from: tasks, query: currentQuery)
     isLoading = false
   }
@@ -413,6 +418,7 @@ extension TaskDetailView {
       sortBy: settings.taskSortField,
       direction: settings.taskSortDirection
     )
+    clock = .now
     completedTasks = tasks
     isLoadingCompleted = false
   }

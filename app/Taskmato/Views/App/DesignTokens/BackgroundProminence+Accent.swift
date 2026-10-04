@@ -17,8 +17,8 @@ extension BackgroundProminence {
   /// that contrasts with its own selection background; `.primary` is the default for full-strength
   /// accents, while secondary content can explicitly preserve its hierarchy.
   ///
-  /// Meaning does not depend on the hue: priority carries a distinct glyph per level, and
-  /// urgency stays a brightness step, since a non-urgent date renders `.secondary` beside this.
+  /// Meaning does not depend on the hue: priority carries a distinct glyph per level, and an
+  /// overdue date carries a flag glyph alongside its red.
   /// - Parameters:
   ///   - color: The explicit color to use on a standard background.
   ///   - increasedColor: The semantic color to use on an increased-prominence background.

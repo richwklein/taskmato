@@ -11,6 +11,10 @@ import Foundation
 /// returns parsed tasks, making it straightforward to unit-test without a filesystem.
 nonisolated struct ObsidianTaskParser: Sendable {
 
+  /// Time zone the date-only emoji values resolve against, so `📅 2026-10-03` lands on that
+  /// zone's midnight rather than UTC's.
+  var timeZone: TimeZone = Calendar.current.timeZone
+
   // MARK: - Public interface
 
   /// The result of parsing a single markdown file for incomplete tasks.
@@ -390,6 +394,7 @@ nonisolated struct ObsidianTaskParser: Sendable {
 
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withFullDate]
+    formatter.timeZone = timeZone
     return formatter.date(from: dateString)
   }
 

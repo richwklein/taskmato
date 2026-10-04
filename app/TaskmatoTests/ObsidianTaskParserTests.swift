@@ -25,6 +25,25 @@ struct ObsidianTaskParserTests {
     ).items
   }
 
+  /// Parses with the date-only time zone pinned, so day handling is asserted independently of
+  /// the host's zone — a UTC host cannot distinguish local-midnight from UTC-midnight parsing.
+  private func parse(_ content: String, in timeZone: TimeZone) -> [TaskItem] {
+    ObsidianTaskParser(timeZone: timeZone).parse(
+      content: content,
+      providerID: providerID,
+      fileRelativePath: "tasks.md",
+      vaultName: "MyVault",
+      list: dummyList
+    ).items
+  }
+
+  /// The instant of midnight on the given civil day in `timeZone`.
+  private func midnight(_ year: Int, _ month: Int, _ day: Int, in timeZone: TimeZone) -> Date {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    return calendar.date(from: DateComponents(year: year, month: month, day: day))!
+  }
+
   // MARK: - Basic parsing
 
   @Test func parsesSimpleIncompleteTask() {
@@ -123,12 +142,18 @@ struct ObsidianTaskParserTests {
   @Test func parsesDueDate() throws {
     let tasks = parse("- [ ] Task 📅 2025-12-31")
     let due = try #require(tasks[0].dueDate)
-    var utcCalendar = Calendar(identifier: .gregorian)
-    utcCalendar.timeZone = TimeZone(identifier: "UTC")!
-    let components = utcCalendar.dateComponents([.year, .month, .day], from: due)
+    let components = Calendar.current.dateComponents([.year, .month, .day, .hour], from: due)
     #expect(components.year == 2025)
     #expect(components.month == 12)
     #expect(components.day == 31)
+    #expect(components.hour == 0)
+  }
+
+  @Test(arguments: ["Asia/Tokyo", "America/Chicago"])
+  func dateOnlyDueDateLandsOnMidnightInTheGivenZone(identifier: String) throws {
+    let zone = TimeZone(identifier: identifier)!
+    let due = try #require(parse("- [ ] Task 📅 2025-12-31", in: zone)[0].dueDate)
+    #expect(due == midnight(2025, 12, 31, in: zone))
   }
 
   @Test func parsesScheduledDate() {

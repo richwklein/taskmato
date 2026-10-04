@@ -8,7 +8,7 @@ import Foundation
 /// Derives the display values and action affordances ``TaskRowView`` needs from a task, its
 /// ``TaskItemKind``, and optional ``TaskLineage``.
 ///
-/// The presenter holds the row's display logic — completed-state detection, due-date urgency,
+/// The presenter holds the row's display logic — completed-state detection, due-date display,
 /// the completed subtitle, the lineage-visibility gate, and the kind-derived
 /// complete/restore/delete affordances — leaving the view as a layout-only shell.
 /// It exposes plain values (no SwiftUI `View` types), so its rules are unit-testable directly.
@@ -70,15 +70,12 @@ struct TaskItemPresenter {
 
   // MARK: - Metadata
 
-  /// The due date to display, or `nil` — suppressed for completed tasks, which show the
-  /// completed subtitle instead.
-  var dueDate: Date? { isCompleted ? nil : task.dueDate }
-
-  /// Whether ``dueDate`` carries a meaningful time-of-day, or is date-only.
-  var dueDateIncludesTime: Bool { isCompleted ? false : task.dueDateIncludesTime }
-
-  /// `true` when the due date is today or already past.
-  var dueIsUrgent: Bool { task.dueDate?.isUrgentDueDate ?? false }
+  /// The due-date label and tier, or `nil` for a completed task, which shows
+  /// ``completedSubtitle`` instead.
+  func dueDisplay(now: Date) -> DueDateDisplay? {
+    guard !isCompleted, let due = task.dueDate else { return nil }
+    return DueDateDisplay(dueDate: due, includesTime: task.dueDateIncludesTime, now: now)
+  }
 
   /// The lineage to display, or `nil` when there is nothing meaningful to show.
   var displayLineage: TaskLineage? {

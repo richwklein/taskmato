@@ -14,24 +14,37 @@ import SwiftUI
 struct TaskMetadataLabel: View {
 
   let presenter: TaskItemPresenter
+  /// The clock the due date is computed against.
+  let now: Date
 
   /// Set by `List` on an emphasized selected row, where the overdue tint stops reading.
   @Environment(\.backgroundProminence) private var prominence
 
   var body: some View {
-    if let due = presenter.dueDate {
-      Text(
-        due,
-        format: presenter.dueDateIncludesTime
-          ? .dateTime.month(.abbreviated).day().hour().minute()
-          : .dateTime.month(.abbreviated).day()
-      )
+    if let display = presenter.dueDisplay(now: now) {
+      HStack(spacing: .iconLabel) {
+        if display.urgency == .overdue {
+          Image(systemName: "flag.fill")
+            .accessibilityHidden(true)
+        }
+        Text(display.text)
+      }
       .font(.taskMetadata)
-      .foregroundStyle(presenter.dueIsUrgent ? prominence.accent(.dueUrgent) : Color.secondary)
+      .foregroundStyle(color(for: display.urgency))
+      .help(display.tooltipText)
+      .accessibilityLabel(display.accessibleText)
     } else if presenter.isCompleted {
       Text(presenter.completedSubtitle)
         .font(.taskMetadata)
         .foregroundStyle(.tertiary)
+    }
+  }
+
+  private func color(for urgency: DueDateDisplay.Urgency) -> Color {
+    switch urgency {
+    case .overdue: return prominence.accent(.dueUrgent)
+    case .today: return .primary
+    case .upcoming: return .secondary
     }
   }
 }

@@ -20,7 +20,8 @@ extension TaskDetailView {
         TaskRowView(
           task: task,
           kind: activeKind(for: task),
-          lineage: lineage(for: task)
+          lineage: lineage(for: task),
+          now: clock
         )
         .contextMenu { taskContextMenu(for: task) }
       }
@@ -36,7 +37,8 @@ extension TaskDetailView {
     TaskRowView(
       task: task,
       kind: completedKind(for: task),
-      lineage: lineage(for: task)
+      lineage: lineage(for: task),
+      now: clock
     )
     .contextMenu { completedTaskContextMenu(for: task) }
   }

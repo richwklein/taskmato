@@ -12,6 +12,10 @@ import Foundation
 /// filesystem.
 nonisolated struct ObsidianTaskLineFormatter: Sendable {
 
+  /// Time zone the emitted `yyyy-MM-dd` values are rendered in, matching
+  /// ``ObsidianTaskParser/timeZone`` so a line round-trips to the same day.
+  var timeZone: TimeZone = Calendar.current.timeZone
+
   /// Builds a single `- [ ] Title 🔺 🛫 yyyy-MM-dd ⏰ yyyy-MM-dd 📅 yyyy-MM-dd` task line.
   ///
   /// - Parameters:
@@ -39,13 +43,13 @@ nonisolated struct ObsidianTaskLineFormatter: Sendable {
       line += " \(emoji)"
     }
     if let startDate {
-      line += " 🛫 \(Self.dateString(startDate))"
+      line += " 🛫 \(dateString(startDate))"
     }
     if let scheduledDate {
-      line += " ⏰ \(Self.dateString(scheduledDate))"
+      line += " ⏰ \(dateString(scheduledDate))"
     }
     if let dueDate {
-      line += " 📅 \(Self.dateString(dueDate))"
+      line += " 📅 \(dateString(dueDate))"
     }
     return line
   }
@@ -66,9 +70,10 @@ nonisolated struct ObsidianTaskLineFormatter: Sendable {
   }
 
   /// Formats `date` as `yyyy-MM-dd`, matching ``ObsidianTaskParser``'s date-extraction format.
-  private static func dateString(_ date: Date) -> String {
+  private func dateString(_ date: Date) -> String {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withFullDate]
+    formatter.timeZone = timeZone
     return formatter.string(from: date)
   }
 }
