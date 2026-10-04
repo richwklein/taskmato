@@ -18,6 +18,7 @@ struct ObsidianTaskLineFormatterTests {
   private func date(_ string: String) -> Date {
     let iso = ISO8601DateFormatter()
     iso.formatOptions = [.withFullDate]
+    iso.timeZone = Calendar.current.timeZone
     return iso.date(from: string)!
   }
 
@@ -147,5 +148,29 @@ struct ObsidianTaskLineFormatterTests {
   @Test func trimsSurroundingWhitespaceFromNotes() {
     let lines = formatter.formatNoteLines("\n  Note text  \n")
     #expect(lines == ["    Note text"])
+  }
+
+  /// Both directions matter and fail differently: reading in UTC shows an all-day task on the
+  /// wrong day west of UTC, while writing in UTC rewrites the user's vault line a day early east
+  /// of it. Pinning the zone is what makes either regression fail on a UTC runner too.
+  @Test(arguments: ["Asia/Tokyo", "America/Chicago"])
+  func dateOnlyRoundTripPreservesTheDay(identifier: String) throws {
+    let zone = TimeZone(identifier: identifier)!
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = zone
+    let midnight = calendar.date(from: DateComponents(year: 2026, month: 10, day: 3))!
+
+    let written = ObsidianTaskLineFormatter(timeZone: zone)
+      .formatLine(title: "Task", dueDate: midnight)
+    #expect(written == "- [ ] Task 📅 2026-10-03")
+
+    let read = ObsidianTaskParser(timeZone: zone).parse(
+      content: written,
+      providerID: "obsidian",
+      fileRelativePath: "tasks.md",
+      vaultName: "MyVault",
+      list: dummyList
+    ).items
+    #expect(try #require(read.first).dueDate == midnight)
   }
 }
