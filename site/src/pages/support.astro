@@ -53,7 +53,9 @@ const rows = [
   <p class="text-ink-muted mt-0">Choose a topic or get in touch.</p>
 
   <div class="border-line bg-surface rounded-card divide-line divide-y overflow-hidden border">
-    {rows.map((row) => <SupportRow {...row} />)}
+    {rows.map((row) => (
+      <SupportRow {...row} />
+    ))}
   </div>
 
   <div class="border-leaf/30 bg-leaf/5 rounded-card mt-8 border p-6">
@@ -62,14 +64,12 @@ const rows = [
       System requirements
     </h2>
     <ul class="mb-0 list-none pl-0">
-      {
-        requirements.map((requirement) => (
-          <li class="flex items-start gap-3 pl-0">
-            <Icon name="check" size={18} class="text-leaf-ink mt-1.5" />
-            <span>{requirement}</span>
-          </li>
-        ))
-      }
+      {requirements.map((requirement) => (
+        <li class="flex items-start gap-3 pl-0">
+          <Icon name="check" size={18} class="text-leaf-ink mt-1.5" />
+          <span>{requirement}</span>
+        </li>
+      ))}
     </ul>
   </div>
 
@@ -91,13 +91,16 @@ const rows = [
     </Faq>
     <Faq question="My Obsidian tasks are missing.">
       <p class="mt-0">
-        Taskmato reads tasks written in <a
+        Taskmato reads tasks written in{' '}
+        <a
           href="https://publish.obsidian.md/tasks/Introduction"
           target="_blank"
           rel="noopener noreferrer"
-          >Obsidian Tasks<span class="sr-only"> (opens in a new tab)</span></a
-        > emoji syntax. If you moved or renamed your vault folder, select it again in the Obsidian provider
-        settings.
+        >
+          Obsidian Tasks<span class="sr-only"> (opens in a new tab)</span>
+        </a>{' '}
+        emoji syntax. If you moved or renamed your vault folder, select it again in the Obsidian
+        provider settings.
       </p>
     </Faq>
     <Faq question="Notifications aren't appearing.">
@@ -108,25 +111,27 @@ const rows = [
     </Faq>
     <Faq question="Where does my data live?">
       <p class="mt-0">
-        The <a href={withBase('/privacy')}>privacy policy</a> explains what Taskmato stores and where.
+        The <a href={withBase('/privacy')}>privacy policy</a> explains what Taskmato stores and
+        where.
       </p>
     </Faq>
     <Faq question="Can I create tasks from a script or shortcut?" last>
       <p class="mt-0">
-        Yes. Use the <code>taskmato://start?title=...</code> URL to create an ad hoc task and start a
-        focus session.
+        Yes. Use the <code>taskmato://start?title=...</code> URL to create an ad hoc task and start
+        a focus session.
       </p>
     </Faq>
   </div>
 
-  <div
-    class="border-line bg-surface rounded-card mt-8 flex flex-col items-center gap-4 border p-6 sm:flex-row"
-  >
+  <div class="border-line bg-surface rounded-card mt-8 flex flex-col items-center gap-4 border p-6 sm:flex-row">
     <div class="min-w-0 flex-1">
       <h2 class="mt-0 mb-1 text-lg font-semibold">Still need help?</h2>
       <p class="text-ink-muted mt-0 mb-0 text-sm">
         Send an email and I'll get back to you. Or
-        <a href={DOWNLOAD_URL} download>download the latest version</a> in case a fix already shipped.
+        <a href={DOWNLOAD_URL} download>
+          download the latest version
+        </a>{' '}
+        in case a fix already shipped.
       </p>
     </div>
     <a

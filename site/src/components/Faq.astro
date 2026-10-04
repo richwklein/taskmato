@@ -15,9 +15,7 @@ const { question, last = false } = Astro.props
 ---
 
 <details class:list={['group', !last && 'border-line border-b']}>
-  <summary
-    class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-semibold [&::-webkit-details-marker]:hidden"
-  >
+  <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-semibold [&::-webkit-details-marker]:hidden">
     {question}
     <Icon
       name="plus"

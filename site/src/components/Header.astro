@@ -24,23 +24,21 @@ const navItems: Array<{ key: 'home' | 'privacy' | 'support'; label: string; href
       <span>Taskmato</span>
     </a>
     <nav aria-label="Primary" class="flex flex-wrap gap-6 text-sm font-medium">
-      {
-        navItems.map((item) => {
-          const isActive = item.key === current
-          return (
-            <a
-              href={item.href}
-              aria-current={isActive ? 'page' : undefined}
-              class:list={[
-                'decoration-brand underline-offset-4',
-                isActive ? 'text-ink underline' : 'text-ink-muted hover:text-ink no-underline',
-              ]}
-            >
-              {item.label}
-            </a>
-          )
-        })
-      }
+      {navItems.map((item) => {
+        const isActive = item.key === current
+        return (
+          <a
+            href={item.href}
+            aria-current={isActive ? 'page' : undefined}
+            class:list={[
+              'decoration-brand underline-offset-4',
+              isActive ? 'text-ink underline' : 'text-ink-muted hover:text-ink no-underline',
+            ]}
+          >
+            {item.label}
+          </a>
+        )
+      })}
     </nav>
   </div>
 </header>

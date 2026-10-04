@@ -23,7 +23,9 @@ const bullets = [
     <div class="flex flex-col gap-4 text-center md:text-left">
       <h2 class="text-ink text-3xl font-bold">Edit tasks in place.</h2>
       <ul class="text-ink-muted flex flex-col gap-2 text-lg">
-        {bullets.map((bullet) => <li>{bullet}</li>)}
+        {bullets.map((bullet) => (
+          <li>{bullet}</li>
+        ))}
       </ul>
     </div>
   </div>

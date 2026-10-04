@@ -20,7 +20,9 @@ const { number, icon, title } = Astro.props
   <div class="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
     <Icon name={icon} size={24} class="text-brand-ink mt-1" />
     <div>
-      <h2 class="mt-0 mb-3 text-xl font-semibold">{number}. {title}</h2>
+      <h2 class="mt-0 mb-3 text-xl font-semibold">
+        {number}. {title}
+      </h2>
       <slot />
     </div>
   </div>

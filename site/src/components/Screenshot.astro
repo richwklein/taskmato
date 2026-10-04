@@ -23,26 +23,24 @@ const entry = Object.entries(screenshots).find(([path]) => path.endsWith(`/${fil
 const image = entry?.[1]?.default
 ---
 
-{
-  image ? (
-    <Image
-      src={image}
-      alt={alt}
-      width={width}
-      height={height}
-      class:list={['rounded-shell border-line h-auto w-full border', className]}
-    />
-  ) : (
-    <div
-      class:list={[
-        'rounded-shell border-line bg-surface text-ink-muted flex items-center justify-center border text-sm',
-        className,
-      ]}
-      style={`aspect-ratio: ${width} / ${height};`}
-      role="img"
-      aria-label={alt}
-    >
-      Screenshot pending
-    </div>
-  )
-}
+{image ? (
+  <Image
+    src={image}
+    alt={alt}
+    width={width}
+    height={height}
+    class:list={['rounded-shell border-line h-auto w-full border', className]}
+  />
+) : (
+  <div
+    class:list={[
+      'rounded-shell border-line bg-surface text-ink-muted flex items-center justify-center border text-sm',
+      className,
+    ]}
+    style={`aspect-ratio: ${width} / ${height};`}
+    role="img"
+    aria-label={alt}
+  >
+    Screenshot pending
+  </div>
+)}

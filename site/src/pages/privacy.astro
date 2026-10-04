@@ -39,9 +39,10 @@ import {
       Taskmato stores your focus sessions, local tasks, app settings, and information about active
       and recent tasks. If you use the Obsidian provider, it also stores a bookmark to the vault
       folder you selected. This data stays in the app's sandbox container at
-      <code class="inline-block max-w-full overflow-x-auto align-bottom whitespace-nowrap"
-        >{CONTAINER_PATH}</code
-      >.
+      <code class="inline-block max-w-full overflow-x-auto align-bottom whitespace-nowrap">
+        {CONTAINER_PATH}
+      </code>
+      .
     </p>
   </PolicySection>
 
@@ -86,8 +87,7 @@ import {
       <li>Access to your camera, microphone, contacts, location, Bluetooth, or USB devices</li>
     </ul>
     <p>You can inspect the installed app's sandbox entitlements with:</p>
-    <pre
-      class="bg-ink text-canvas rounded-card overflow-x-auto px-4 py-3"><code>codesign -dvvv --entitlements :- /Applications/Taskmato.app</code></pre>
+    <pre class="bg-ink text-canvas rounded-card overflow-x-auto px-4 py-3"><code>codesign -dvvv --entitlements :- /Applications/Taskmato.app</code></pre>
   </PolicySection>
 
   <PolicySection number={4} icon="alert-triangle" title="Crash reports">
@@ -102,10 +102,11 @@ import {
   <PolicySection number={5} icon="trash" title="Deleting your data">
     <p>
       Move Taskmato to the Trash, then delete its container directory at
-      <code class="inline-block max-w-full overflow-x-auto align-bottom whitespace-nowrap"
-        >{CONTAINER_PATH}</code
-      > to remove the data Taskmato stored. This does not remove your Reminders or Obsidian content. Changes
-      Taskmato already made there, such as completed reminders or edited task lines, remain.
+      <code class="inline-block max-w-full overflow-x-auto align-bottom whitespace-nowrap">
+        {CONTAINER_PATH}
+      </code>{' '}
+      to remove the data Taskmato stored. This does not remove your Reminders or Obsidian content.
+      Changes Taskmato already made there, such as completed reminders or edited task lines, remain.
     </p>
   </PolicySection>
 

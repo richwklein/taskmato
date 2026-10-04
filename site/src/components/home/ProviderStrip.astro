@@ -30,19 +30,15 @@ const providers = [
 ---
 
 <section class="mx-auto max-w-5xl px-6 py-12" aria-label="Supported task providers">
-  <div
-    class="border-line bg-surface rounded-card divide-line grid divide-y overflow-hidden border min-[700px]:grid-cols-3 min-[700px]:divide-x min-[700px]:divide-y-0"
-  >
-    {
-      providers.map((provider) => (
-        <div class="flex items-start gap-4 p-6">
-          <Icon name={provider.icon} size={34} class:list={[provider.iconClass]} />
-          <div>
-            <p class="text-ink font-semibold">{provider.name}</p>
-            <p class="text-ink-muted mt-1 text-sm">{provider.description}</p>
-          </div>
+  <div class="border-line bg-surface rounded-card divide-line grid divide-y overflow-hidden border min-[700px]:grid-cols-3 min-[700px]:divide-x min-[700px]:divide-y-0">
+    {providers.map((provider) => (
+      <div class="flex items-start gap-4 p-6">
+        <Icon name={provider.icon} size={34} class:list={[provider.iconClass]} />
+        <div>
+          <p class="text-ink font-semibold">{provider.name}</p>
+          <p class="text-ink-muted mt-1 text-sm">{provider.description}</p>
         </div>
-      ))
-    }
+      </div>
+    ))}
   </div>
 </section>

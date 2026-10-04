@@ -25,10 +25,13 @@ const { icon, title, description, href, external = false } = Astro.props
 >
   <Icon name={icon} size={24} class="text-brand-ink" />
   <span class="min-w-0 flex-1">
-    <span class="text-ink block font-semibold"
-      >{title}{external && <span class="sr-only"> (opens in a new tab)</span>}</span
-    >
+    <span class="text-ink block font-semibold">
+      {title}
+      {external && <span class="sr-only"> (opens in a new tab)</span>}
+    </span>
     <span class="text-ink-muted block text-sm">{description}</span>
   </span>
-  <span class="text-ink-muted shrink-0" aria-hidden="true">&rsaquo;</span>
+  <span class="text-ink-muted shrink-0" aria-hidden="true">
+    &rsaquo;
+  </span>
 </a>
