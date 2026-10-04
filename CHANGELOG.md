@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.7.0](https://github.com/richwklein/taskmato/compare/v1.6.0...v1.7.0) (2026-10-04)
+
+
+### Features
+
+* **tasks:** reserve red for past-due tasks and use relative due dates ([#637](https://github.com/richwklein/taskmato/issues/637)) ([4e70b87](https://github.com/richwklein/taskmato/commit/4e70b874cd1e5323c039bcf345d97e16b2fe8e89))
+
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump astro from 7.2.9 to 7.3.3 in /site in the astro group across 1 directory ([#627](https://github.com/richwklein/taskmato/issues/627)) ([93d38a3](https://github.com/richwklein/taskmato/commit/93d38a385a47dc8276d2bd33b6c2f43a7d3805c0))
+* **deps-dev:** bump astro from 7.3.3 to 7.3.5 in /site in the astro group ([#634](https://github.com/richwklein/taskmato/issues/634)) ([b4e413d](https://github.com/richwklein/taskmato/commit/b4e413df3974e65b3a08d694cd56708defe22fca))
+* **deps-dev:** bump the eslint group across 1 directory with 5 updates ([#632](https://github.com/richwklein/taskmato/issues/632)) ([e914637](https://github.com/richwklein/taskmato/commit/e914637c130a7f7b361bd23dd167864a0d67fc5d))
+* **deps-dev:** bump the eslint group in /site with 2 updates ([#635](https://github.com/richwklein/taskmato/issues/635)) ([e18408c](https://github.com/richwklein/taskmato/commit/e18408c2d453ff5c8ae3e43dec9aad2a82444830))
+* **deps-dev:** bump the prettier group across 1 directory with 2 updates ([#631](https://github.com/richwklein/taskmato/issues/631)) ([a9d07b0](https://github.com/richwklein/taskmato/commit/a9d07b0bd190eb11e78f6b4692c21f8e7b735346))
+* **deps-dev:** bump the vitest group across 1 directory with 2 updates ([#626](https://github.com/richwklein/taskmato/issues/626)) ([cee569b](https://github.com/richwklein/taskmato/commit/cee569b7ad17f3b31700195cf82874b3730267cd))
+* **deps-dev:** bump the vitest group across 1 directory with 2 updates ([#636](https://github.com/richwklein/taskmato/issues/636)) ([cdd89a5](https://github.com/richwklein/taskmato/commit/cdd89a5655d520476181a51a2963bf62c62059d9))
+* **deps:** bump github/codeql-action from 4.37.9 to 4.38.0 in the third-party-actions group ([#629](https://github.com/richwklein/taskmato/issues/629)) ([4e8d1be](https://github.com/richwklein/taskmato/commit/4e8d1bebaf3031caabc8f6f4d0b58b12fad70469))
+* **deps:** bump github/codeql-action from 4.38.0 to 4.38.2 in the third-party-actions group ([#633](https://github.com/richwklein/taskmato/issues/633)) ([d23a0a8](https://github.com/richwklein/taskmato/commit/d23a0a867ff4aceb45cf67490918182db45fe1d1))
+
 ## [1.6.0](https://github.com/richwklein/taskmato/compare/v1.5.0...v1.6.0) (2026-09-10)
 
 
