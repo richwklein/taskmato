@@ -119,6 +119,9 @@ struct PhaseOrchestratorTests {
     // autoStartBreaks defaults to false — the next phase is queued, not started.
     #expect(ctx.engine.queuedPhase == .shortBreak)
     #expect(ctx.engine.state == .idle)
+    #expect(
+      ctx.center.scheduledRequests.first?.content.body
+        == AppLabels.PhaseEnd.body(next: .shortBreak, outcome: .queued))
 
     ctx.continuation.finish()
     await runTask.value
@@ -142,6 +145,9 @@ struct PhaseOrchestratorTests {
       return
     }
     #expect(phase == .shortBreak)
+    #expect(
+      ctx.center.scheduledRequests.first?.content.body
+        == AppLabels.PhaseEnd.body(next: .shortBreak, outcome: .started))
 
     ctx.continuation.finish()
     await runTask.value
@@ -168,6 +174,9 @@ struct PhaseOrchestratorTests {
       return
     }
     #expect(phase == .focus)
+    #expect(
+      ctx.center.scheduledRequests.first?.content.body
+        == AppLabels.PhaseEnd.body(next: .focus, outcome: .started))
 
     ctx.continuation.finish()
     await runTask.value
@@ -188,6 +197,9 @@ struct PhaseOrchestratorTests {
 
     #expect(ctx.engine.state == .idle)
     #expect(ctx.engine.queuedPhase == .focus)
+    #expect(
+      ctx.center.scheduledRequests.first?.content.body
+        == AppLabels.PhaseEnd.body(next: .focus, outcome: .awaitingTask))
 
     ctx.continuation.finish()
     await runTask.value
@@ -211,6 +223,9 @@ struct PhaseOrchestratorTests {
     // A staged task satisfies the gate on its own; `began(.focus)` promotes it, which
     // `beganFocusPromotesTheStagedTaskAndSeedsAttributionOnIt` covers.
     #expect(ctx.engine.isRunning)
+    #expect(
+      ctx.center.scheduledRequests.first?.content.body
+        == AppLabels.PhaseEnd.body(next: .focus, outcome: .started))
 
     ctx.continuation.finish()
     await runTask.value
@@ -234,6 +249,9 @@ struct PhaseOrchestratorTests {
 
     #expect(ctx.engine.state == .idle)
     #expect(ctx.engine.queuedPhase == .focus)
+    #expect(
+      ctx.center.scheduledRequests.first?.content.body
+        == AppLabels.PhaseEnd.body(next: .focus, outcome: .queued))
 
     ctx.continuation.finish()
     await runTask.value
@@ -254,6 +272,9 @@ struct PhaseOrchestratorTests {
 
     #expect(ctx.engine.state == .idle)
     #expect(ctx.engine.queuedPhase == .shortBreak)
+    #expect(
+      ctx.center.scheduledRequests.first?.content.body
+        == AppLabels.PhaseEnd.body(next: .shortBreak, outcome: .queued))
 
     ctx.continuation.finish()
     await runTask.value

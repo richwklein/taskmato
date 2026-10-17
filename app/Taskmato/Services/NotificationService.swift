@@ -66,11 +66,15 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
   /// Synchronous on the hot path — authorization gating uses the cached `authStatus`.
   /// Sound is attached to the notification content so Focus and DND suppress it alongside
   /// the banner.
-  func send(phase: SessionPhase) {
+  /// - Parameters:
+  ///   - phase: The phase that just completed.
+  ///   - nextPhase: The phase that follows `phase`.
+  ///   - outcome: How `nextPhase` was resolved at the moment the banner is sent.
+  func send(phase: SessionPhase, nextPhase: SessionPhase, outcome: PhaseEndOutcome) {
     guard authStatus == .authorized, settings.notificationsEnabled else { return }
     let content = UNMutableNotificationContent()
-    content.title = phase.notificationTitle
-    content.body = phase.notificationBody
+    content.title = AppLabels.PhaseEnd.title(ended: phase)
+    content.body = AppLabels.PhaseEnd.body(next: nextPhase, outcome: outcome)
     if settings.soundEnabled {
       content.sound = UNNotificationSound(
         named: UNNotificationSoundName(rawValue: "\(settings.soundName).aiff"))

@@ -40,24 +40,6 @@ extension SessionPhase {
     }
   }
 
-  /// Title line for the phase-end notification banner.
-  var notificationTitle: String {
-    switch self {
-    case .focus: return String(localized: "Focus session complete")
-    case .shortBreak: return String(localized: "Break's over")
-    case .longBreak: return String(localized: "Long break done")
-    }
-  }
-
-  /// Body line for the phase-end notification banner.
-  var notificationBody: String {
-    switch self {
-    case .focus: return String(localized: "Time for a break.")
-    case .shortBreak: return String(localized: "Ready to focus again?")
-    case .longBreak: return String(localized: "Time to get back to it.")
-    }
-  }
-
 }
 
 /// The current state of the session engine's state machine.
