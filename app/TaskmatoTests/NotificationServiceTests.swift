@@ -103,7 +103,7 @@ struct NotificationServiceTests {
   @Test func sendDoesNothingWhenNotAuthorized() async {
     let ctx = makeContext(status: .denied)
     await ctx.service.refreshAuthStatus()
-    ctx.service.send(phase: .focus)
+    ctx.service.send(phase: .focus, nextPhase: .shortBreak, outcome: .queued)
     #expect(ctx.center.scheduledRequests.isEmpty)
   }
 
@@ -111,14 +111,14 @@ struct NotificationServiceTests {
     let ctx = makeContext(status: .authorized)
     await ctx.service.refreshAuthStatus()
     ctx.settings.notificationsEnabled = false
-    ctx.service.send(phase: .focus)
+    ctx.service.send(phase: .focus, nextPhase: .shortBreak, outcome: .queued)
     #expect(ctx.center.scheduledRequests.isEmpty)
   }
 
   @Test func sendSchedulesRequestWhenAuthorized() async {
     let ctx = makeContext(status: .authorized)
     await ctx.service.refreshAuthStatus()
-    ctx.service.send(phase: .focus)
+    ctx.service.send(phase: .focus, nextPhase: .shortBreak, outcome: .queued)
     #expect(ctx.center.scheduledRequests.count == 1)
   }
 
@@ -128,7 +128,7 @@ struct NotificationServiceTests {
     let ctx = makeContext(status: .authorized)
     await ctx.service.refreshAuthStatus()
     ctx.settings.soundEnabled = true
-    ctx.service.send(phase: .focus)
+    ctx.service.send(phase: .focus, nextPhase: .shortBreak, outcome: .queued)
     #expect(ctx.center.scheduledRequests.first?.content.sound != nil)
   }
 
@@ -136,7 +136,7 @@ struct NotificationServiceTests {
     let ctx = makeContext(status: .authorized)
     await ctx.service.refreshAuthStatus()
     ctx.settings.soundEnabled = false
-    ctx.service.send(phase: .focus)
+    ctx.service.send(phase: .focus, nextPhase: .shortBreak, outcome: .queued)
     #expect(ctx.center.scheduledRequests.first?.content.sound == nil)
   }
 
@@ -145,9 +145,39 @@ struct NotificationServiceTests {
   @Test func sendEmbedsPhaseRawValueInUserInfo() async {
     let ctx = makeContext(status: .authorized)
     await ctx.service.refreshAuthStatus()
-    ctx.service.send(phase: .shortBreak)
+    ctx.service.send(phase: .shortBreak, nextPhase: .focus, outcome: .queued)
     let userInfo = ctx.center.scheduledRequests.first?.content.userInfo
     #expect(userInfo?["phase"] as? String == SessionPhase.shortBreak.rawValue)
+  }
+
+  @Test(arguments: [
+    (SessionPhase.focus, "Focus session complete"),
+    (.shortBreak, "Short break complete"),
+    (.longBreak, "Long break complete"),
+  ])
+  func sendTitlesTheBannerAfterTheEndedPhase(ended: SessionPhase, title: String) async {
+    let ctx = makeContext(status: .authorized)
+    await ctx.service.refreshAuthStatus()
+    ctx.service.send(phase: ended, nextPhase: .focus, outcome: .queued)
+    #expect(ctx.center.scheduledRequests.first?.content.title == title)
+  }
+
+  @Test(arguments: [
+    (SessionPhase.focus, PhaseEndOutcome.started, "Focus started."),
+    (.shortBreak, .started, "Short break started."),
+    (.longBreak, .started, "Long break started."),
+    (.focus, .queued, "Ready to focus?"),
+    (.shortBreak, .queued, "Ready for a short break?"),
+    (.longBreak, .queued, "Ready for a long break?"),
+    (.focus, .awaitingTask, "Select a task to focus."),
+  ])
+  func sendDescribesTheResolvedNextPhaseInTheBody(
+    next: SessionPhase, outcome: PhaseEndOutcome, body: String
+  ) async {
+    let ctx = makeContext(status: .authorized)
+    await ctx.service.refreshAuthStatus()
+    ctx.service.send(phase: .focus, nextPhase: next, outcome: outcome)
+    #expect(ctx.center.scheduledRequests.first?.content.body == body)
   }
 
 }

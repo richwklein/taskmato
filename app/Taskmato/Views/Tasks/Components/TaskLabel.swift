@@ -3,6 +3,8 @@
 //  Taskmato
 //
 
+import Foundation
+
 /// A paired title and SF Symbol name used consistently across menus, toolbars, and buttons.
 struct AppLabel {
   /// Title-style string for menus and toolbar labels.
@@ -197,6 +199,35 @@ enum AppLabels {
     static let skip = AppLabel("Skip Phase", systemImage: "forward.fill")
     /// Stops the current session.
     static let stop = AppLabel("Stop", systemImage: "stop.fill")
+  }
+
+  /// Phase-end banner copy — sentence-style capitalization, each string wrapped in
+  /// `String(localized:)` because notification content bypasses SwiftUI's string extraction.
+  enum PhaseEnd {
+    /// Banner title naming the phase that just completed.
+    static func title(ended: SessionPhase) -> String {
+      switch ended {
+      case .focus: return String(localized: "Focus session complete")
+      case .shortBreak: return String(localized: "Short break complete")
+      case .longBreak: return String(localized: "Long break complete")
+      }
+    }
+
+    /// Banner body describing the state of `next` when the banner is sent.
+    ///
+    /// `.awaitingTask` reads "Select a task to focus." whatever `next` is, since the orchestrator
+    /// only produces it for focus; it mirrors ``Tooltip/selectTaskFirst``.
+    static func body(next: SessionPhase, outcome: PhaseEndOutcome) -> String {
+      switch (outcome, next) {
+      case (.awaitingTask, _): return String(localized: "Select a task to focus.")
+      case (.started, .focus): return String(localized: "Focus started.")
+      case (.started, .shortBreak): return String(localized: "Short break started.")
+      case (.started, .longBreak): return String(localized: "Long break started.")
+      case (.queued, .focus): return String(localized: "Ready to focus?")
+      case (.queued, .shortBreak): return String(localized: "Ready for a short break?")
+      case (.queued, .longBreak): return String(localized: "Ready for a long break?")
+      }
+    }
   }
 
   /// Labels for the Help menu's in-app links (App Store Guideline 5.1.1(i)).

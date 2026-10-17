@@ -7,10 +7,10 @@ import Foundation
 
 /// Drives the phase-end side-effect cascade from a stream of ``PhaseEvent`` values.
 ///
-/// Consumes ``SessionEngine/phaseEvents``: records the completed session, fires the phase
-/// notification, re-syncs engine durations from settings, and advances or queues the next
-/// phase. Isolating this cascade behind an injected stream makes it testable without a real
-/// clock or the live app services.
+/// Consumes ``SessionEngine/phaseEvents``: records the completed session, re-syncs engine
+/// durations from settings, advances or queues the next phase, then fires the phase
+/// notification describing how that phase was resolved. Isolating this cascade behind an
+/// injected stream makes it testable without a real clock or the live app services.
 @MainActor
 final class PhaseOrchestrator {
 
@@ -109,7 +109,8 @@ final class PhaseOrchestrator {
     store.upsert(session)
   }
 
-  /// Records the completed session, fires the phase notification, and advances the timer.
+  /// Records the completed session, re-syncs durations, advances or queues the next phase, then
+  /// fires the phase notification describing how that phase was resolved.
   private func apply(phase: SessionPhase, startedAt: Date, endedAt: Date, wasCompleted: Bool) {
     let duration = endedAt.timeIntervalSince(startedAt)
     let segments: [FocusSegment] =
@@ -124,7 +125,6 @@ final class PhaseOrchestrator {
     currentPhaseID = nil
     draftSegments = []
     guard wasCompleted else { return }
-    notifications.send(phase: phase)
     engine.applyDurations(from: settings)
     let next: SessionPhase
     switch phase {
@@ -139,6 +139,20 @@ final class PhaseOrchestrator {
     } else {
       engine.enqueuePhase(next)
     }
+    let outcome: PhaseEndOutcome =
+      if case .running(next, _, _) = engine.state {
+        .started
+      } else if next == .focus, !hasTaskForFocus {
+        .awaitingTask
+      } else {
+        .queued
+      }
+    notifications.send(phase: phase, nextPhase: next, outcome: outcome)
+  }
+
+  /// Whether a tracked or staged task exists to credit a focus phase to.
+  private var hasTaskForFocus: Bool {
+    activeTaskStore.activeTask != nil || activeTaskStore.stagedTask != nil
   }
 
   /// Whether `phase` may begin unattended. Focus credits its time to a task, so with neither a
@@ -147,7 +161,6 @@ final class PhaseOrchestrator {
   /// there would run a whole focus phase against nothing (gated by `autoStartFocus`). Breaks
   /// always may (gated by `autoStartBreaks`).
   private func canAutoStart(_ phase: SessionPhase) -> Bool {
-    guard phase == .focus else { return true }
-    return activeTaskStore.activeTask != nil || activeTaskStore.stagedTask != nil
+    phase != .focus || hasTaskForFocus
   }
 }
