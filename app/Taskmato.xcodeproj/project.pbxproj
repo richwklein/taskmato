@@ -30,9 +30,23 @@
 		79ED8D332FA62D8500554240 /* Version.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Version.xcconfig; path = Taskmato/Config/Version.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		796A9C613085486500CBE182 /* Exceptions for "Taskmato" folder in "Taskmato" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Config/Version.xcconfig,
+				Info.plist,
+			);
+			target = 79ED8D082FA62D8300554240 /* Taskmato */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		79ED8D0B2FA62D8300554240 /* Taskmato */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				796A9C613085486500CBE182 /* Exceptions for "Taskmato" folder in "Taskmato" target */,
+			);
 			path = Taskmato;
 			sourceTree = "<group>";
 		};
