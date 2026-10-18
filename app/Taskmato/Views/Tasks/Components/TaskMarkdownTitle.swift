@@ -32,11 +32,7 @@ struct TaskMarkdownTitle: View {
   /// plain foreground so the link would read as ordinary text. The underline is unconditional
   /// so a link looks the same whether or not its row happens to be selected.
   private var title: AttributedString {
-    var text = task.markdownTitle
-    for range in text.runs.filter({ $0.link != nil }).map(\.range) {
-      text[range].underlineStyle = .single
-    }
-    return text
+    task.markdownTitle.underliningLinks()
   }
 
   var body: some View {

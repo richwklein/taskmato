@@ -31,6 +31,9 @@ extension CGFloat {
   /// Padding between content and the edge of a screen, sheet, or popover.
   static let screenPadding: CGFloat = 24
 
+  /// Width of the leading bar beside a block quote in a note.
+  static let quoteRule: CGFloat = 2
+
   /// Width of a card's border.
   static let cardHairline: CGFloat = 1
 }

@@ -138,7 +138,18 @@ and takes no emphasis: the only remaining cards are the stat cards, which are no
 | `groupGap` | `12` | Gap between grouped items or grid cells; one step looser than `contentGap` |
 | `sectionGap` | `16` | Gap between distinct sections of content |
 | `cardHairline` | `1` | Width of a card's resting border |
+| `quoteRule` | `2` | Width of the leading bar beside a block quote in a note |
 | `screenPadding` | `24` | Padding between content and a screen/sheet/popover edge |
+
+### Notes
+
+`TaskNoteView` renders block markdown (headings, lists, task checkboxes, quotes, code blocks,
+rules) at `.caption` in `.secondary`; headings are `.caption.bold()` and code is
+`.caption.monospaced()`. Quote bars use `separatorColor` at `quoteRule` width, and the accent
+color appears only on links. Blocks sit `rowVertical` apart, and every heading after the first
+gets `contentGap` above it so each section groups with its text. Tables flatten to one line per
+row with cells joined by ` · `. Raw HTML is stripped, comments are dropped, and images become a
+"View Image" link.
 
 ## Shape
 

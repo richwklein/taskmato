@@ -7,9 +7,8 @@ import SwiftUI
 
 /// Renders task notes using the format declared by the containing ``TaskItem``.
 ///
-/// Markdown notes use `AttributedString(markdown:)` with inline-only interpretation —
-/// bold, italic, code spans, and links render; headers and block-level constructs do not.
-/// Falls back to plain text if markdown parsing fails.
+/// Markdown notes render as blocks — headings, lists, task checkboxes, quotes, code, and
+/// rules — with raw HTML stripped and images shown as links. Plain-text notes render verbatim.
 struct TaskNoteView: View {
 
   let notes: String
@@ -19,17 +18,8 @@ struct TaskNoteView: View {
   /// blue on blue.
   @Environment(\.backgroundProminence) private var prominence
 
-  /// The rendered notes with inline links underlined so their affordance survives selection.
-  private var attributedNotes: AttributedString {
-    var text = format.attributedString(for: notes)
-    for range in text.runs.filter({ $0.link != nil }).map(\.range) {
-      text[range].underlineStyle = .single
-    }
-    return text
-  }
-
   var body: some View {
-    Text(attributedNotes)
+    NoteBlocksView(blocks: NoteMarkdownParser.blocks(for: notes, format: format))
       .font(.caption)
       .foregroundStyle(.secondary)
       .tint(prominence.accent(.accentColor, increasedColor: .secondary))
