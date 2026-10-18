@@ -71,4 +71,9 @@ extension NoteBlock {
   var isHeading: Bool {
     if case .heading = content { true } else { false }
   }
+
+  /// `true` when the block is a table row.
+  var isTableRow: Bool {
+    if case .tableRow = content { true } else { false }
+  }
 }

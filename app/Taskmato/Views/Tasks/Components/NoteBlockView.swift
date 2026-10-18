@@ -5,19 +5,29 @@
 
 import SwiftUI
 
-/// Lays out parsed note blocks as a vertical stack, with a wider gap above each heading so a
-/// section groups with the text under it; font and color come from the caller.
+/// Lays out parsed note blocks as a vertical stack spaced by ``spacing(before:after:)``; font
+/// and color come from the caller.
 struct NoteBlocksView: View {
 
   let blocks: [NoteBlock]
 
   var body: some View {
-    VStack(alignment: .leading, spacing: .rowVertical) {
+    VStack(alignment: .leading, spacing: 0) {
       ForEach(Array(blocks.enumerated()), id: \.offset) { offset, block in
         NoteContainedBlock(content: block.content, containers: block.containers[...])
-          .padding(.top, offset > 0 && block.isHeading ? .contentGap - .rowVertical : 0)
+          .padding(.top, offset > 0 ? Self.spacing(before: block, after: blocks[offset - 1]) : 0)
       }
     }
+  }
+
+  /// The gap above `block`: tight under a heading and within a list or table, wider before a
+  /// heading, and a paragraph gap otherwise. Extra blank lines in the source add no space.
+  static func spacing(before block: NoteBlock, after previous: NoteBlock) -> CGFloat {
+    if previous.isHeading { return .rowVertical }
+    if block.isHeading { return .groupGap }
+    if block.listDepth > 0, previous.listDepth > 0 { return .rowVertical }
+    if block.isTableRow, previous.isTableRow { return .rowVertical }
+    return .contentGap
   }
 }
 

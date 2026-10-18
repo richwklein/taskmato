@@ -146,10 +146,11 @@ and takes no emphasis: the only remaining cards are the stat cards, which are no
 `TaskNoteView` renders block markdown (headings, lists, task checkboxes, quotes, code blocks,
 rules) at `.caption` in `.secondary`; headings are `.caption.bold()` and code is
 `.caption.monospaced()`. Quote bars use `separatorColor` at `quoteRule` width, and the accent
-color appears only on links. Blocks sit `rowVertical` apart, and every heading after the first
-gets `contentGap` above it so each section groups with its text. Tables flatten to one line per
-row with cells joined by ` · `. Raw HTML is stripped, comments are dropped, and images become a
-"View Image" link.
+color appears only on links. Blocks sit `contentGap` apart and a heading gets `groupGap` above
+it; list items, table rows, and the block under a heading stay `rowVertical` apart. As on GitHub
+and in Obsidian, extra blank lines in the source collapse into one gap. Tables flatten to one
+line per row with cells joined by ` · `. Raw HTML is stripped, comments are dropped, and images
+become a "View Image" link.
 
 ## Shape
 
