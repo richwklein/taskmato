@@ -66,3 +66,36 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           update-comment: true
           genhtml-ignore-errors: empty
+
+  # The deployment target is macOS 15. A separate job, not a matrix, keeps the
+  # required `test` check name intact.
+  test-macos-15:
+    runs-on: macos-15
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Detect relevant changes
+        id: changes
+        uses: ./.github/actions/detect-relevant-changes
+
+      - name: Select Xcode
+        if: steps.changes.outputs.relevant == 'true'
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+
+      - name: Sync version
+        if: steps.changes.outputs.relevant == 'true'
+        run: bash scripts/sync-version.sh
+
+      - name: Run unit tests
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          xcodebuild test \
+            -project app/Taskmato.xcodeproj \
+            -scheme Taskmato \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -only-testing:TaskmatoTests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
