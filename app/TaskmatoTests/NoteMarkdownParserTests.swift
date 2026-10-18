@@ -303,15 +303,17 @@ struct NoteMarkdownParserTests {
 
   @Test func articleSeriesIssueBody() throws {
     let blocks = parse(try fixture("issue-574-article-series"))
-    let bullets = { (count: Int) in Array(repeating: "• p", count: count) }
-    let expected: [String] =
-      ["h2", "p", "p"]
-      + ["h2", "p", "p"]
-      + ["h2", "p", "p", "p"] + bullets(3) + ["p", "p"]
-      + ["h2"] + bullets(7)
-      + ["h2"] + bullets(6)
-      + ["h2"] + Array(repeating: "[ ] p", count: 7)
-      + ["h2"] + bullets(1)
+    let bullets: (Int) -> [String] = { Array(repeating: "• p", count: $0) }
+    var expected = ["h2", "p", "p", "h2", "p", "p", "h2", "p", "p", "p"]
+    expected += bullets(3)
+    expected += ["p", "p", "h2"]
+    expected += bullets(7)
+    expected += ["h2"]
+    expected += bullets(6)
+    expected += ["h2"]
+    expected += Array(repeating: "[ ] p", count: 7)
+    expected += ["h2"]
+    expected += bullets(1)
     #expect(signatures(blocks) == expected)
     #expect(
       texts(blocks).last
