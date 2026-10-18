@@ -363,12 +363,14 @@ nonisolated enum SessionPortability {
   }
 
   private static func stringBytes(in record: SessionRecordV1) -> Int {
-    record.segments.reduce(0) { total, segment in
-      total + (segment.taskRef?.providerID.utf8.count ?? 0)
-        + (segment.taskRef?.nativeID.utf8.count ?? 0)
-        + (segment.taskTitle?.utf8.count ?? 0)
-        + (segment.providerLabel?.utf8.count ?? 0)
+    var total = 0
+    for segment in record.segments {
+      total += segment.taskRef?.providerID.utf8.count ?? 0
+      total += segment.taskRef?.nativeID.utf8.count ?? 0
+      total += segment.taskTitle?.utf8.count ?? 0
+      total += segment.providerLabel?.utf8.count ?? 0
     }
+    return total
   }
 
   private static func record(from session: Session) -> SessionRecordV1 {
