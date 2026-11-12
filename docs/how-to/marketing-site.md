@@ -4,7 +4,7 @@ The Taskmato marketing site is an Astro 7 static site hosted on GitHub Pages. It
 
 ## Local development
 
-Node.js 22.22.3 and pnpm 10.24.0 are pinned in the repo's `.tool-versions`. Install them via `asdf install`, then:
+Node.js 22.23.4 and pnpm 10.24.0 are pinned in the repo's `.tool-versions`. Install them via `asdf install`, then:
 
 ```bash
 cd site
