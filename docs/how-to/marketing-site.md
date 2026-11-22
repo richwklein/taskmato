@@ -14,6 +14,10 @@ pnpm run dev
 
 The dev server starts at `http://localhost:3000`.
 
+## Refreshing dependencies
+
+From `site/`, use the pinned pnpm version to run `pnpm update`. Review the manifest and lockfile diff, then run `pnpm install --frozen-lockfile`, `pnpm run verify`, and `pnpm run test:coverage`. Commit the approved manifest and lockfile together. New releases must be at least five days old; keep TypeScript on version 6 until the constraints documented in Dependabot's configuration permit a major update.
+
 ## Building for production
 
 ```bash
@@ -67,15 +71,15 @@ Merging a change under `site/` does **not** deploy it. A release or a manual dis
 
 The site is served at `https://taskmato.com`. The pieces that make that work:
 
-| Layer          | Setting                                                                                              |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Registrar      | Bluehost (also hosts the DNS zone)                                                                   |
-| Apex `A`       | `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`                            |
-| `www` `CNAME`  | `richwklein.github.io`                                                                               |
-| Verification   | `_github-pages-challenge-richwklein` `TXT`, from github.com/settings/pages                             |
-| Repo setting   | Custom domain `taskmato.com` with **Enforce HTTPS** enabled                                          |
-| Astro          | `site: 'https://taskmato.com'`, no `base`                                                            |
-| Artifact       | [`site/public/CNAME`](../../site/public/CNAME) — copied verbatim to `dist/` and shipped in the Pages artifact |
+| Layer         | Setting                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------- |
+| Registrar     | Bluehost (also hosts the DNS zone)                                                                            |
+| Apex `A`      | `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`                                    |
+| `www` `CNAME` | `richwklein.github.io`                                                                                        |
+| Verification  | `_github-pages-challenge-richwklein` `TXT`, from github.com/settings/pages                                    |
+| Repo setting  | Custom domain `taskmato.com` with **Enforce HTTPS** enabled                                                   |
+| Astro         | `site: 'https://taskmato.com'`, no `base`                                                                     |
+| Artifact      | [`site/public/CNAME`](../../site/public/CNAME) — copied verbatim to `dist/` and shipped in the Pages artifact |
 
 Because Pages publishes from a workflow rather than a branch, the custom domain is stored in the repository's Pages settings and a `CNAME` file is not strictly required. One is committed anyway so the domain is versioned with the site and reasserted on every deploy — if the Pages setting is ever cleared (disabling and re-enabling Pages will do it), the next deploy restores the domain instead of silently serving from `richwklein.github.io`.
 
@@ -87,12 +91,12 @@ GitHub redirects the default `richwklein.github.io/taskmato` URL to the custom d
 
 ## Pages
 
-| Route       | Purpose                                                                 |
-| ----------- | ------------------------------------------------------------------------ |
-| `/`         | Landing page                                                             |
-| `/privacy`  | Privacy policy — the URL App Store Connect points at                    |
-| `/support`  | Support contact, common questions, downloads                             |
-| `/404`      | Not-found page; Astro emits `dist/404.html`, which GitHub Pages serves automatically for unknown paths on a custom domain — no extra config needed |
+| Route      | Purpose                                                                                                                                            |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`        | Landing page                                                                                                                                       |
+| `/privacy` | Privacy policy — the URL App Store Connect points at                                                                                               |
+| `/support` | Support contact, common questions, downloads                                                                                                       |
+| `/404`     | Not-found page; Astro emits `dist/404.html`, which GitHub Pages serves automatically for unknown paths on a custom domain — no extra config needed |
 
 Merging a change to any of these does **not** publish it — see [GitHub Pages deployment](#github-pages-deployment) above; a release or manual dispatch is required.
 
@@ -106,12 +110,12 @@ Every color, radius, and font used on the site is a Tailwind `@theme` custom pro
 
 The brand red and leaf green each ship in two variants, and picking the wrong one silently fails WCAG AA:
 
-| Token | Contrast on canvas | Use for |
-| --- | --- | --- |
-| `brand` (`#E9342B`) | 3.9:1 — **fails AA for text** | focus ring, underline decoration, tints |
-| `brand-ink` (`#CE2E25`) | 4.9:1 (5.2:1 against white) | link text, filled CTA backgrounds |
-| `leaf` (`#2F8F46`) | 3.8:1 — **fails AA for text** | privacy band tints and borders |
-| `leaf-ink` (`#26773C`) | 5.2:1 | privacy headings and callout text |
+| Token                   | Contrast on canvas            | Use for                                 |
+| ----------------------- | ----------------------------- | --------------------------------------- |
+| `brand` (`#E9342B`)     | 3.9:1 — **fails AA for text** | focus ring, underline decoration, tints |
+| `brand-ink` (`#CE2E25`) | 4.9:1 (5.2:1 against white)   | link text, filled CTA backgrounds       |
+| `leaf` (`#2F8F46`)      | 3.8:1 — **fails AA for text** | privacy band tints and borders          |
+| `leaf-ink` (`#26773C`)  | 5.2:1                         | privacy headings and callout text       |
 
 Anything a visitor reads uses the `-ink` variant. The design plan specifies the brand values as approximate, so these darkened pairs stay inside its direction while meeting the accessibility bar it also requires.
 
@@ -123,13 +127,13 @@ The site is light-only by design — the dark app screenshots are the intended c
 
 The lookup is by exact filename, so these cannot be renamed without editing the section component that requests them:
 
-| File | Capture |
-| --- | --- |
-| `hero-timer.png` | Timer screen, running session, sidebar visible |
-| `menu-bar-timer.png` | Popover open, selected task, active controls |
+| File                 | Capture                                         |
+| -------------------- | ----------------------------------------------- |
+| `hero-timer.png`     | Timer screen, running session, sidebar visible  |
+| `menu-bar-timer.png` | Popover open, selected task, active controls    |
 | `task-providers.png` | Task view with all three sources in the sidebar |
-| `task-editing.png` | Edit sheet over the main window, seeded task |
-| `stats-today.png` | Today view, summary cards, task breakdown donut |
+| `task-editing.png`   | Edit sheet over the main window, seeded task    |
+| `stats-today.png`    | Today view, summary cards, task breakdown donut |
 
 Capture in dark mode at one display scale, from a seeded workspace only — never real task data. Stats is captured on **Today** and no other scope: the session store holds every session ever recorded, so 7 Days, This Month, and All Time would publish real task titles.
 
