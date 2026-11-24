@@ -44,3 +44,20 @@ Idle Skip cycles a queued break back to focus.
 
 These are behavior/visibility-driven, not enabled/disabled, and all read the single
 `engine.state` source, so there's no drift.
+
+## Leftover time on task pick
+
+Completing, swapping or clearing the active task mid-focus pauses the phase with its
+remainder and arms `ActiveTaskStore.isPendingContinuation`. While that holds
+(`TimerPresenter.pendingContinuationRemaining` is non-nil), the task context menu's focus
+submenu offers:
+
+| Item | Effect |
+| --- | --- |
+| *mm:ss* Left | Tracks the picked task and resumes the remainder on it |
+| *N* min (below a divider) | Ends the paused phase, sets the focus length to *N* min, and starts a new phase on the picked task |
+
+Choosing a length records the partial session before the new phase begins, and drops it when it is
+under the focus floor. It writes *N* to `focusMinutes`, as the other focus-length gestures do.
+A manual pause keeps the standard "Focus Next" menu. Track Task, double-click, Return and
+Timer-tab search resume the remainder without showing it when `startFocusOnTaskPick` is on.

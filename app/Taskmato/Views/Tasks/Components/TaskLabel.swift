@@ -119,6 +119,11 @@ enum AppLabels {
     /// The same submenu while a break is queued, where the length applies to the focus phase
     /// after that break rather than starting one now (issue #580).
     static let focusNext = AppLabel("Focus Next", systemImage: "bolt.badge.clock.fill")
+    /// Submenu item that resumes the paused remainder on the picked task, e.g. `"14:27 Left"`; the preset
+    /// lengths below it discard the remainder.
+    static func useTimeLeft(_ time: String) -> AppLabel {
+      AppLabel("\(time) Left", systemImage: "clock.arrow.circlepath")
+    }
   }
 
   /// Copy for the staged "next focus" readout (design doc "stage the next focus", D-d).

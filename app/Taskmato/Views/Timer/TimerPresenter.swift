@@ -150,6 +150,24 @@ final class TimerPresenter {
   /// queued, and there the readout is counting down that break, not focus (issue #580).
   var canSelectFocusPreset: Bool { isIdle && nextStartPhase == .focus }
 
+  /// Seconds left on a focus phase that a complete, swap or clear paused for a handoff, or `nil`
+  /// otherwise.
+  ///
+  /// Gated on the pending-continuation flag, not just the paused state: a manual pause keeps its
+  /// task, and a swap can arm the flag while idle, where there is no remainder to offer.
+  var pendingContinuationRemaining: TimeInterval? {
+    guard activeTaskStore.isPendingContinuation, case .paused(.focus, let remaining) = engine.state
+    else { return nil }
+    return remaining
+  }
+
+  /// ``pendingContinuationRemaining`` formatted as `"MM:SS"`, or `nil` when there is none.
+  var pendingContinuationLabel: String? {
+    guard let remaining = pendingContinuationRemaining else { return nil }
+    let seconds = Int(remaining)
+    return String(format: "%02d:%02d", seconds / 60, seconds % 60)
+  }
+
   /// Focus-length presets to offer, ascending, in minutes.
   ///
   /// Mirrors `settings.focusPresets`, but prepends the current `focusMinutes` when it holds a
