@@ -73,7 +73,8 @@ struct MainWindowView: View {
     }
     .frame(minWidth: 640, minHeight: 400)
     .focusedSceneValue(\.timerToggle, timerToggleAction)
-    .focusedSceneValue(\.timerToggleTitle, timerToggleTitleValue)
+    .focusedSceneValue(\.timerToggleTitle, timerToggleLabel.title)
+    .focusedSceneValue(\.timerToggleIcon, timerToggleLabel.systemImage)
     .focusedSceneValue(\.timerSkip, { presenter.skip() })
     .focusedSceneValue(\.timerStop, presenter.canStop ? { presenter.stop() } : nil)
     .onAppear {
@@ -130,10 +131,10 @@ struct MainWindowView: View {
     return { presenter.start() }
   }
 
-  private var timerToggleTitleValue: String {
-    if presenter.isRunning { return AppLabels.Timer.pause.title }
-    if presenter.isPaused { return AppLabels.Timer.resume.title }
-    return AppLabels.Timer.start.title
+  private var timerToggleLabel: AppLabel {
+    if presenter.isRunning { return AppLabels.Timer.pause }
+    if presenter.isPaused { return AppLabels.Timer.resume }
+    return AppLabels.Timer.start
   }
 }
 
