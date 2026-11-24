@@ -103,6 +103,16 @@ enum AppLabels {
     static let openInProvider = AppLabel("Open in Provider", systemImage: "arrow.up.forward.app")
   }
 
+  /// Strings used when rendering task notes.
+  nonisolated enum Notes {
+    /// Link text for an embedded image whose alt text is missing or generic.
+    static let viewImage = "View Image"
+    /// VoiceOver label for a checked task-list item in a note.
+    static let taskCompleted = "Completed"
+    /// VoiceOver label for an unchecked task-list item in a note.
+    static let taskNotCompleted = "Not completed"
+  }
+
   /// Labels for the focus-duration presets feature (design doc 0009): the Settings editor,
   /// the timer quick-select surfaces, and the task "Start Focus" submenu.
   enum FocusPreset {
