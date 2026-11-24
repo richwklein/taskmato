@@ -511,6 +511,39 @@ extension TaskDetailView {
     nav.showTimer()
   }
 
+  /// Resumes the focus remainder a complete, swap or clear paused, now on `task` — the leftover
+  /// submenu's "Use … Left". If another surface cleared the pending continuation since the menu
+  /// opened, falls back to ``startFocus(_:minutes:)`` at the current length, which starts the task
+  /// when idle and stages it otherwise. Not `private`: called from `TaskDetailContextMenu.swift`.
+  func useTimeLeft(_ task: TaskItem) {
+    guard presenter.pendingContinuationRemaining != nil else {
+      startFocus(task, minutes: settings.focusMinutes)
+      return
+    }
+    activeTaskStore.track(task)
+    presenter.resume()
+    nav.showTimer()
+  }
+
+  /// Discards the paused remainder and starts a new focus phase of `minutes` on `task` — the
+  /// leftover submenu's "Start Fresh". Stages `task` rather than tracking it: a swap leaves the old
+  /// task tracked, and `track(_:)` right after `stop()` would credit that task's partial time to
+  /// `task`. Staging defers the change to the phase start, after the ended session is recorded.
+  /// Falls back to ``startFocus(_:minutes:)`` without stopping when the pending continuation is
+  /// gone, so a phase another surface resumed is never ended. Not `private`: called from
+  /// `TaskDetailContextMenu.swift`.
+  func startFresh(_ task: TaskItem, minutes: Int) {
+    guard presenter.pendingContinuationRemaining != nil else {
+      startFocus(task, minutes: minutes)
+      return
+    }
+    presenter.stop()
+    settings.focusMinutes = minutes
+    activeTaskStore.stage(task)
+    presenter.start()
+    nav.showTimer()
+  }
+
   private func onCompleteHandler(for task: TaskItem) -> (() -> Void)? {
     registry.closableProvider(for: task.id) != nil ? { self.handleComplete(task) } : nil
   }

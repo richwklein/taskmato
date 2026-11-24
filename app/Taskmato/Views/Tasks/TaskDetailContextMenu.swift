@@ -31,6 +31,39 @@ extension TaskDetailView {
   /// into a surprise immediate start.
   @ViewBuilder
   private func focusPresetMenu(for task: TaskItem) -> some View {
+    if let remaining = presenter.pendingContinuationLabel {
+      leftoverFocusMenu(for: task, remaining: remaining)
+    } else {
+      standardFocusPresetMenu(for: task)
+    }
+  }
+
+  /// The submenu shown while a complete, swap or clear has paused focus with time left: resume
+  /// the remainder on `task`, or discard it for a fresh length.
+  @ViewBuilder
+  private func leftoverFocusMenu(for task: TaskItem, remaining: String) -> some View {
+    Menu {
+      Button {
+        useTimeLeft(task)
+      } label: {
+        let label = AppLabels.FocusPreset.useTimeLeft(remaining)
+        Label(label.title, systemImage: label.systemImage)
+      }
+      Divider()
+      ForEach(presenter.focusPresets, id: \.self) { minutes in
+        Button("\(minutes) min") {
+          startFresh(task, minutes: minutes)
+        }
+      }
+    } label: {
+      Label(
+        AppLabels.FocusPreset.focusNext.title,
+        systemImage: AppLabels.FocusPreset.focusNext.systemImage)
+    }
+  }
+
+  @ViewBuilder
+  private func standardFocusPresetMenu(for task: TaskItem) -> some View {
     let startsImmediately = presenter.canSelectFocusPreset
     Menu {
       ForEach(presenter.focusPresets, id: \.self) { minutes in
