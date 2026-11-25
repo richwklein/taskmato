@@ -145,6 +145,7 @@ struct TaskmatoCommands: Commands {
   @FocusedValue(\.openInProviderIcon) private var openInProviderIcon
   @FocusedValue(\.timerToggle) private var timerToggle
   @FocusedValue(\.timerToggleTitle) private var timerToggleTitle
+  @FocusedValue(\.timerToggleIcon) private var timerToggleIcon
   @FocusedValue(\.timerSkip) private var timerSkip
   @FocusedValue(\.timerStop) private var timerStop
   @Environment(\.openURL) private var openURL
@@ -185,22 +186,38 @@ struct TaskmatoCommands: Commands {
   var body: some Commands {
     // File → New Task (⌘N) and Add Provider ▸.
     CommandGroup(replacing: .newItem) {
-      Button(AppLabels.Task.add.title) { addTask?() }
-        .keyboardShortcut("n")
-        .disabled(addTask == nil)
+      Button {
+        addTask?()
+      } label: {
+        Label(AppLabels.Task.add.title, systemImage: AppLabels.Task.add.systemImage)
+      }
+      .labelStyle(.titleAndIcon)
+      .keyboardShortcut("n")
+      .disabled(addTask == nil)
 
       // Disabled placeholder when every provider is already enabled — an empty submenu
       // reads as broken, a greyed item reads as "nothing to add". Enabling here is picked up
       // by the sidebar, which expands the section, opens configuration, and loads lists.
       if disabledProviders.isEmpty {
-        Button(AppLabels.Sidebar.addProvider.title) {}
-          .disabled(true)
+        Button {
+        } label: {
+          Label(
+            AppLabels.Sidebar.addProvider.title,
+            systemImage: AppLabels.Sidebar.addProvider.systemImage)
+        }
+        .labelStyle(.titleAndIcon)
+        .disabled(true)
       } else {
-        Menu(AppLabels.Sidebar.addProvider.title) {
+        Menu {
           ForEach(disabledProviders, id: \.id) { provider in
             Button(provider.displayName) { registry.enable(provider) }
           }
+        } label: {
+          Label(
+            AppLabels.Sidebar.addProvider.title,
+            systemImage: AppLabels.Sidebar.addProvider.systemImage)
         }
+        .labelStyle(.titleAndIcon)
       }
       Divider()
       // Track Task mirrors the Tasks-tab toolbar button and the row context menu. Return does
@@ -210,6 +227,7 @@ struct TaskmatoCommands: Commands {
       } label: {
         Label(AppLabels.Task.track.title, systemImage: AppLabels.Task.track.systemImage)
       }
+      .labelStyle(.titleAndIcon)
       .keyboardShortcut("t")
       .disabled(trackTask == nil)
       // Title and glyph both come from the selected task's provider, so the item reads
@@ -223,6 +241,7 @@ struct TaskmatoCommands: Commands {
           systemImage: openInProviderIcon ?? AppLabels.Task.openInProvider.systemImage
         )
       }
+      .labelStyle(.titleAndIcon)
       .keyboardShortcut("o", modifiers: [.command, .shift])
       .disabled(openInProvider == nil)
     }
@@ -230,9 +249,14 @@ struct TaskmatoCommands: Commands {
     // published by the task detail surface).
     CommandGroup(after: .textEditing) {
       Divider()
-      Button(AppLabels.View.find.title) { focusSearch?() }
-        .keyboardShortcut("f")
-        .disabled(focusSearch == nil)
+      Button {
+        focusSearch?()
+      } label: {
+        Label(AppLabels.View.find.title, systemImage: AppLabels.View.find.systemImage)
+      }
+      .labelStyle(.titleAndIcon)
+      .keyboardShortcut("f")
+      .disabled(focusSearch == nil)
     }
     // View → destination navigation (⌘1/2/3), layout, completed toggle (⌘⇧C), Sort By, and
     // the sidebar toggle (⌃⌘S) last so it sits just above the system Enter Full Screen item.
@@ -246,18 +270,21 @@ struct TaskmatoCommands: Commands {
       } label: {
         Label(AppLabels.Tab.timer.title, systemImage: nav.destination == .timer ? "checkmark" : "")
       }
+      .labelStyle(.titleAndIcon)
       .keyboardShortcut("1")
       Button {
         nav.destination = .today
       } label: {
         Label(AppLabels.Tab.today.title, systemImage: nav.destination == .today ? "checkmark" : "")
       }
+      .labelStyle(.titleAndIcon)
       .keyboardShortcut("2")
       Button {
         nav.showStats()
       } label: {
         Label(AppLabels.Tab.stats.title, systemImage: isStatsDestination ? "checkmark" : "")
       }
+      .labelStyle(.titleAndIcon)
       .keyboardShortcut("3")
       Divider()
       Button {
@@ -268,6 +295,7 @@ struct TaskmatoCommands: Commands {
           systemImage: toggleCompletedIcon ?? AppLabels.View.showCompleted.systemImage
         )
       }
+      .labelStyle(.titleAndIcon)
       .keyboardShortcut("c", modifiers: [.command, .shift])
       .disabled(toggleCompleted == nil)
       Divider()
@@ -281,6 +309,7 @@ struct TaskmatoCommands: Commands {
       } label: {
         Label(AppLabels.View.sort.title, systemImage: AppLabels.View.sort.systemImage)
       }
+      .labelStyle(.titleAndIcon)
       .disabled(!isTaskScope)
       Divider()
       Button {
@@ -288,26 +317,55 @@ struct TaskmatoCommands: Commands {
       } label: {
         Label(sidebarToggleTitle, systemImage: AppLabels.View.showSidebar.systemImage)
       }
+      .labelStyle(.titleAndIcon)
       .keyboardShortcut("s", modifiers: [.control, .command])
     }
     // Timer menu — Start/Pause/Resume (⌘⏎), Skip Phase (⌘K), Stop (⌘.).
     CommandMenu("Timer") {
-      Button(timerToggleTitle ?? AppLabels.Timer.start.title) { timerToggle?() }
-        .keyboardShortcut(.return)
-        .disabled(timerToggle == nil)
-      Button(AppLabels.Timer.skip.title) { timerSkip?() }
-        .keyboardShortcut("k")
-        .disabled(timerSkip == nil)
+      Button {
+        timerToggle?()
+      } label: {
+        Label(
+          timerToggleTitle ?? AppLabels.Timer.start.title,
+          systemImage: timerToggleIcon ?? AppLabels.Timer.start.systemImage)
+      }
+      .labelStyle(.titleAndIcon)
+      .keyboardShortcut(.return)
+      .disabled(timerToggle == nil)
+      Button {
+        timerSkip?()
+      } label: {
+        Label(AppLabels.Timer.skip.title, systemImage: AppLabels.Timer.skip.systemImage)
+      }
+      .labelStyle(.titleAndIcon)
+      .keyboardShortcut("k")
+      .disabled(timerSkip == nil)
       Divider()
-      Button(AppLabels.Timer.stop.title) { timerStop?() }
-        .keyboardShortcut(".", modifiers: .command)
-        .disabled(timerStop == nil)
+      Button {
+        timerStop?()
+      } label: {
+        Label(AppLabels.Timer.stop.title, systemImage: AppLabels.Timer.stop.systemImage)
+      }
+      .labelStyle(.titleAndIcon)
+      .keyboardShortcut(".", modifiers: .command)
+      .disabled(timerStop == nil)
     }
     // Help menu — links to the public support and privacy pages (App Store Guideline
     // 5.1.1(i) requires the privacy policy link both in ASC metadata and in the app).
     CommandGroup(replacing: .help) {
-      Button(AppLabels.Help.support.title) { openURL(AppLinks.support) }
-      Button(AppLabels.Help.privacyPolicy.title) { openURL(AppLinks.privacyPolicy) }
+      Button {
+        openURL(AppLinks.support)
+      } label: {
+        Label(AppLabels.Help.support.title, systemImage: AppLabels.Help.support.systemImage)
+      }
+      .labelStyle(.titleAndIcon)
+      Button {
+        openURL(AppLinks.privacyPolicy)
+      } label: {
+        Label(
+          AppLabels.Help.privacyPolicy.title, systemImage: AppLabels.Help.privacyPolicy.systemImage)
+      }
+      .labelStyle(.titleAndIcon)
     }
   }
 }

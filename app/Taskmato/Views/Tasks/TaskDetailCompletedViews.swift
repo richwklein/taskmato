@@ -23,7 +23,7 @@ extension TaskDetailView {
           lineage: lineage(for: task),
           now: clock
         )
-        .contextMenu { taskContextMenu(for: task) }
+        .contextMenu { taskContextMenu(for: task).labelStyle(.titleAndIcon) }
       }
     } header: {
       if shouldShowHeader(section) {
@@ -40,6 +40,6 @@ extension TaskDetailView {
       lineage: lineage(for: task),
       now: clock
     )
-    .contextMenu { completedTaskContextMenu(for: task) }
+    .contextMenu { completedTaskContextMenu(for: task).labelStyle(.titleAndIcon) }
   }
 }

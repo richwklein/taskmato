@@ -60,6 +60,7 @@ extension TaskDetailView {
         AppLabels.FocusPreset.focusNext.title,
         systemImage: AppLabels.FocusPreset.focusNext.systemImage)
     }
+    .labelStyle(.titleAndIcon)
   }
 
   @ViewBuilder
@@ -83,6 +84,7 @@ extension TaskDetailView {
           ? AppLabels.FocusPreset.startFocus.systemImage
           : AppLabels.FocusPreset.focusNext.systemImage)
     }
+    .labelStyle(.titleAndIcon)
   }
 
   /// Context menu items shown on secondary-click (right-click or ctrl+click) of an active task row or card.

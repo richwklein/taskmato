@@ -35,6 +35,10 @@ private struct TimerToggleTitleKey: FocusedValueKey {
   typealias Value = String
 }
 
+private struct TimerToggleIconKey: FocusedValueKey {
+  typealias Value = String
+}
+
 private struct TimerSkipKey: FocusedValueKey {
   typealias Value = () -> Void
 }
@@ -108,6 +112,12 @@ extension FocusedValues {
   var timerToggleTitle: String? {
     get { self[TimerToggleTitleKey.self] }
     set { self[TimerToggleTitleKey.self] = newValue }
+  }
+
+  /// The SF Symbol name for the timer toggle action — matches the current title.
+  var timerToggleIcon: String? {
+    get { self[TimerToggleIconKey.self] }
+    set { self[TimerToggleIconKey.self] = newValue }
   }
 
   /// Skips the current phase and advances to the next. Published by ``TimerTabView``.
