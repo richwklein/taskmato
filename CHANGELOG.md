@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.8.0](https://github.com/richwklein/taskmato/compare/v1.7.0...v1.8.0) (2026-11-25)
+
+
+### Features
+
+* **tasks:** offer remaining time when picking a task after a handoff pause ([#664](https://github.com/richwklein/taskmato/issues/664)) ([996d937](https://github.com/richwklein/taskmato/commit/996d937fd0968e041c8d077279dd391a34058ac6))
+
+
+### Bug Fixes
+
+* describe the resolved next phase in phase-end notifications ([#645](https://github.com/richwklein/taskmato/issues/645)) ([4d8ce75](https://github.com/richwklein/taskmato/commit/4d8ce7526f5f9eb982ccd0fe98852e34acefd216))
+* show task context menu icons on macOS 27 ([#665](https://github.com/richwklein/taskmato/issues/665)) ([8e15f63](https://github.com/richwklein/taskmato/commit/8e15f63f661e874d0d65d0446168a77d981b72bc))
+
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump astro from 7.3.5 to 7.3.8 in /site in the astro group ([#641](https://github.com/richwklein/taskmato/issues/641)) ([6f9738b](https://github.com/richwklein/taskmato/commit/6f9738b97aa4b0d02dc39725913d5b34811567e0))
+* **deps-dev:** bump the eslint group across 1 directory with 3 updates ([#639](https://github.com/richwklein/taskmato/issues/639)) ([1bd02fe](https://github.com/richwklein/taskmato/commit/1bd02feb0a8b9d7671750fe9a3a48d74b99b6862))
+* **deps-dev:** bump the prettier group across 1 directory with 2 updates ([#643](https://github.com/richwklein/taskmato/issues/643)) ([95b9ec3](https://github.com/richwklein/taskmato/commit/95b9ec372a93572d2554e33712bcefed723b07e4))
+* **deps-dev:** bump the vitest group across 1 directory with 2 updates ([#640](https://github.com/richwklein/taskmato/issues/640)) ([7367c5b](https://github.com/richwklein/taskmato/commit/7367c5b841632cb10b99fa22b0617decea965772))
+* **deps:** bump github/codeql-action from 4.38.2 to 4.38.3 in the third-party-actions group ([#642](https://github.com/richwklein/taskmato/issues/642)) ([95e7633](https://github.com/richwklein/taskmato/commit/95e763359af3f94997f73ddc8b6450941ea8179c))
+* **deps:** refresh marketing site toolchain ([#660](https://github.com/richwklein/taskmato/issues/660)) ([19e987e](https://github.com/richwklein/taskmato/commit/19e987eb30196782103c0c65bfe9628fe79463e4))
+
 ## [1.7.0](https://github.com/richwklein/taskmato/compare/v1.6.0...v1.7.0) (2026-10-04)
 
 
